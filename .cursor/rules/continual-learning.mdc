@@ -1,0 +1,8 @@
+---
+description: Підтримка AGENTS.md через Continual Learning — читати на старті сесії; після накопичення стійких фактів оновлювати за docs/chat-v2/CONTINUAL-LEARNING.md
+alwaysApply: true
+---
+
+- На початку роботи в репозиторії переглянь [AGENTS.md](mdc:AGENTS.md) (розділи Learned User Preferences / Learned Workspace Facts).
+- Не дублюй у AGENTS.md секрети, PII й одноразові задачі.
+- Інкрементальне оновлення: skill **Continual Learning**, індекс `.cursor/hooks/state/continual-learning-index.json`, транскрипти в `~/.cursor/projects/<slug>/agent-transcripts/`.
