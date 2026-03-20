@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ChatArchiveController;
 use App\Http\Controllers\Api\V1\ChatMessageController;
 use App\Http\Controllers\Api\V1\FriendController;
 use App\Http\Controllers\Api\V1\IgnoreController;
@@ -22,6 +23,8 @@ Route::prefix('v1')->group(function (): void {
             Route::get('rooms', [RoomController::class, 'index']);
             Route::get('rooms/{room}/messages', [ChatMessageController::class, 'index']);
         });
+
+        Route::middleware('throttle:archive-read')->get('archive/messages', [ChatArchiveController::class, 'index']);
 
         Route::middleware('throttle:chat-post')->post('rooms/{room}/messages', [ChatMessageController::class, 'store']);
 

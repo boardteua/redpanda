@@ -52,6 +52,12 @@
                 >
                     Відкрити чат
                 </router-link>
+                <router-link
+                    :to="{ name: 'archive' }"
+                    class="rp-focusable rp-btn rp-btn-ghost mt-3 block w-full text-center no-underline"
+                >
+                    Архів чату
+                </router-link>
                 <button
                     type="button"
                     class="rp-focusable rp-btn rp-btn-ghost mt-3 w-full"
@@ -347,6 +353,7 @@ export default {
     },
     async mounted() {
         await this.refreshUser();
+        this.maybeRedirectHistory();
     },
     methods: {
         fieldInvalid(field) {
@@ -385,6 +392,12 @@ export default {
                 this.user = null;
             }
         },
+        maybeRedirectHistory() {
+            const h = this.$route.query.history;
+            if ((h === '1' || h === 1) && this.user) {
+                this.$router.replace({ name: 'archive' }).catch(() => {});
+            }
+        },
         handleAxiosError(err) {
             const status = err.response?.status;
             if (status === 422) {
@@ -411,6 +424,7 @@ export default {
                     remember: this.loginForm.remember,
                 });
                 await this.refreshUser();
+                this.maybeRedirectHistory();
             } catch (e) {
                 this.handleAxiosError(e);
             } finally {
@@ -424,6 +438,7 @@ export default {
                 await this.ensureSanctum();
                 await window.axios.post('/api/v1/auth/register', { ...this.registerForm });
                 await this.refreshUser();
+                this.maybeRedirectHistory();
             } catch (e) {
                 this.handleAxiosError(e);
             } finally {
@@ -441,6 +456,7 @@ export default {
                 }
                 await window.axios.post('/api/v1/auth/guest', payload);
                 await this.refreshUser();
+                this.maybeRedirectHistory();
             } catch (e) {
                 if (e.response?.status === 422) {
                     const errs = e.response.data.errors || {};

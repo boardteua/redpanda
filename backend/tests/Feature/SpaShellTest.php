@@ -25,4 +25,12 @@ class SpaShellTest extends TestCase
             ->assertSee('<div id="app"></div>', false)
             ->assertSee('type="module"', false);
     }
+
+    public function test_archive_route_returns_spa_shell(): void
+    {
+        $this->get('/archive')
+            ->assertOk()
+            ->assertSee('<div id="app"></div>', false)
+            ->assertSee('type="module"', false);
+    }
 }

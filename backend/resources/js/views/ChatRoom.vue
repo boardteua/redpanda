@@ -18,6 +18,15 @@
                     >
                         ← На головну
                     </router-link>
+                    <router-link
+                        :to="{
+                            name: 'archive',
+                            query: selectedRoomId ? { room: String(selectedRoomId) } : {},
+                        }"
+                        class="rp-focusable shrink-0 text-sm font-medium text-[var(--rp-link)] hover:text-[var(--rp-link-hover)]"
+                    >
+                        Архів чату
+                    </router-link>
                     <button
                         ref="mobilePanelToggle"
                         type="button"
@@ -213,6 +222,27 @@
             </div>
 
             <div class="min-h-0 flex-1 overflow-y-auto p-3 text-sm text-[var(--rp-text)]">
+                <div
+                    v-if="privateListLoadError || friendsIgnoresLoadError"
+                    class="mb-3 space-y-2"
+                    role="region"
+                    aria-label="Помилки завантаження списків"
+                >
+                    <p
+                        v-if="privateListLoadError"
+                        role="alert"
+                        class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-error-bg)] px-2 py-1.5 text-xs text-[var(--rp-error)]"
+                    >
+                        {{ privateListLoadError }}
+                    </p>
+                    <p
+                        v-if="friendsIgnoresLoadError"
+                        role="alert"
+                        class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-error-bg)] px-2 py-1.5 text-xs text-[var(--rp-error)]"
+                    >
+                        {{ friendsIgnoresLoadError }}
+                    </p>
+                </div>
                 <!-- Люди -->
                 <div
                     v-show="sidebarTab === 'users'"
@@ -380,7 +410,30 @@
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'private' ? 'false' : 'true'"
                 >
-                    <p class="py-6 text-center text-[var(--rp-text-muted)]">Немає нових повідомлень</p>
+                    <p
+                        v-if="conversations.length === 0"
+                        class="py-6 text-center text-[var(--rp-text-muted)]"
+                    >
+                        Немає нових повідомлень
+                    </p>
+                    <ul v-else class="space-y-2">
+                        <li v-for="(c, idx) in conversations" :key="conversationRowKey(c, idx)">
+                            <button
+                                v-if="c.peer && c.peer.id"
+                                type="button"
+                                class="rp-focusable w-full rounded-md border-2 border-[var(--rp-border-subtle)] px-3 py-2 text-left hover:border-[var(--rp-border)]"
+                                @click="openPrivatePeer(c.peer)"
+                            >
+                                <span class="block font-semibold text-[var(--rp-text)]">{{ c.peer.user_name }}</span>
+                                <span class="mt-0.5 block truncate text-xs text-[var(--rp-text-muted)]">{{
+                                    (c.last_message && c.last_message.body) || '—'
+                                }}</span>
+                            </button>
+                            <p v-else class="rounded-md border border-dashed border-[var(--rp-border-subtle)] px-2 py-2 text-xs text-[var(--rp-text-muted)]">
+                                Некоректний запис розмови
+                            </p>
+                        </li>
+                    </ul>
                 </div>
 
                 <!-- Кімнати -->
@@ -483,6 +536,32 @@ const SIDEBAR_TAB_ICONS = {
         '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm4.5 1c.83 0 1.5-.67 1.5-1.5S17.33 10 16.5 10 15 10.67 15 11.5s.67 1.5 1.5 1.5zM19 3l-4 4 1.5 1.5L20.5 4 19 3z"/></svg>',
 };
 
+/**
+ * Початковий стан бічної панелі (друзі, приват, ігнор).
+ * Поля мають збігатися з використанням у шаблоні — не прибирати точково при merge.
+ * Прапор echoUserListenerReady додатково скидається в setupEcho при створенні нового Echo (HMR тощо).
+ */
+function createChatRoomSidebarState() {
+    return {
+        peerLookupName: '',
+        conversations: [],
+        friendsAccepted: [],
+        friendsIncoming: [],
+        friendsOutgoing: [],
+        ignores: [],
+        privatePeer: null,
+        privateMessages: [],
+        privateMessageIds: new Set(),
+        privateComposerText: '',
+        loadingPrivateMessages: false,
+        sendingPrivate: false,
+        privateLoadError: '',
+        echoUserListenerReady: false,
+        privateListLoadError: '',
+        friendsIgnoresLoadError: '',
+    };
+}
+
 function normalizeMessage(raw) {
     if (!raw || typeof raw.post_id === 'undefined') {
         return null;
@@ -532,6 +611,7 @@ export default {
             mqHandler: null,
             /** Елемент фокусу до відкриття off-canvas (повертаємо при закритті). */
             panelFocusReturnEl: null,
+            ...createChatRoomSidebarState(),
         };
     },
     computed: {
@@ -579,6 +659,28 @@ export default {
             }
             if (to === 'friends' || to === 'ignore') {
                 this.loadFriendsAndIgnores();
+            }
+        },
+        /** Зміна акаунту / вихід без повного reload: перепідписати приватний канал user.{id}. */
+        user(to, from) {
+            if (!this.echo) {
+                return;
+            }
+            const prevId = from && from.id;
+            const nextId = to && to.id;
+            if (prevId != null && nextId != null && Number(prevId) === Number(nextId)) {
+                return;
+            }
+            if (prevId != null) {
+                try {
+                    this.echo.leave(`user.${prevId}`);
+                } catch {
+                    /* */
+                }
+            }
+            this.echoUserListenerReady = false;
+            if (nextId != null) {
+                this.$nextTick(() => this.ensureUserPrivateListener());
             }
         },
     },
@@ -885,6 +987,7 @@ export default {
                     return;
                 }
                 this.echo = echo;
+                this.echoUserListenerReady = false;
             }
 
             this.wsDegraded = false;
@@ -941,10 +1044,13 @@ export default {
                 return;
             }
             try {
+                this.privateListLoadError = '';
                 const { data } = await window.axios.get('/api/v1/private/conversations');
-                this.conversations = data.data || [];
+                const list = data && data.data;
+                this.conversations = Array.isArray(list) ? list : [];
             } catch {
-                /* */
+                this.conversations = [];
+                this.privateListLoadError = 'Не вдалося завантажити список розмов.';
             }
         },
         async loadFriendsAndIgnores() {
@@ -952,19 +1058,36 @@ export default {
                 return;
             }
             try {
+                this.friendsIgnoresLoadError = '';
                 const [acc, inc, out, ign] = await Promise.all([
                     window.axios.get('/api/v1/friends'),
                     window.axios.get('/api/v1/friends/requests/incoming'),
                     window.axios.get('/api/v1/friends/requests/outgoing'),
                     window.axios.get('/api/v1/ignores'),
                 ]);
-                this.friendsAccepted = acc.data.data || [];
-                this.friendsIncoming = inc.data.data || [];
-                this.friendsOutgoing = out.data.data || [];
-                this.ignores = ign.data.data || [];
+                const pickList = (res) => {
+                    const d = res && res.data && res.data.data;
+
+                    return Array.isArray(d) ? d : [];
+                };
+                this.friendsAccepted = pickList(acc);
+                this.friendsIncoming = pickList(inc);
+                this.friendsOutgoing = pickList(out);
+                this.ignores = pickList(ign);
             } catch {
-                /* */
+                this.friendsAccepted = [];
+                this.friendsIncoming = [];
+                this.friendsOutgoing = [];
+                this.ignores = [];
+                this.friendsIgnoresLoadError = 'Не вдалося завантажити друзів або список ігнору.';
             }
+        },
+        conversationRowKey(c, idx) {
+            if (c && c.peer && c.peer.id != null) {
+                return `peer-${c.peer.id}`;
+            }
+
+            return `conv-${idx}`;
         },
         openPrivatePeer(peer) {
             if (!peer || !peer.id) {

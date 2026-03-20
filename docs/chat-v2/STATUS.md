@@ -5,10 +5,23 @@
 | Поле | Значення |
 |------|-----------|
 | **Фаза** | DevQALoop |
-| **Поточна задача** | T09 (Архів) |
-| **Спроба Dev (остання)** | T08: 1/3 |
-| **Останній QA** | T08: **PASS** (2026-03-20) |
+| **Поточна задача** | T10 (Медіа) |
+| **Спроба Dev (остання)** | T09: 1/3 |
+| **Останній QA** | T09: **PASS** (2026-03-20) |
 | **Блокери** | — |
+
+## T09 — QA (доказ)
+
+- `cd backend && php artisan test` — OK (`ChatArchiveApiTest`, `SpaShellTest`).
+- `cd backend && npm run build` — OK.
+- Чекліст: [T09-QA.md](T09-QA.md).
+
+## T09 — Архів (підсумок)
+
+| Елемент | Значення |
+|---------|----------|
+| API | `GET /api/v1/archive/messages` — offset-пагінація, `q`, `room`; throttle `archive-read` |
+| SPA | `/archive` → `ArchiveChat.vue`; з чату посилання з `?room=`; `/?history=1` → архів після входу |
 
 ## T08 — QA (доказ)
 

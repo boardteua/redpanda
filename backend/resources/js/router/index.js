@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import VueRouter from 'vue-router';
+import ArchiveChat from '../views/ArchiveChat.vue';
 import AuthWelcome from '../views/AuthWelcome.vue';
 import ChatRoom from '../views/ChatRoom.vue';
 
@@ -17,6 +18,11 @@ export default new VueRouter({
             path: '/chat',
             name: 'chat',
             component: ChatRoom,
+        },
+        {
+            path: '/archive',
+            name: 'archive',
+            component: ArchiveChat,
         },
     ],
 });
