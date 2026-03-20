@@ -23,6 +23,7 @@
 | [docs/chat-v2/T11-QA.md](../docs/chat-v2/T11-QA.md) | Health, structured logs |
 | [docs/chat-v2/T11-RUNBOOK.md](../docs/chat-v2/T11-RUNBOOK.md) | Reverb / Redis / readiness (операційний) |
 | [docs/chat-v2/T12-QA.md](../docs/chat-v2/T12-QA.md) | Модерація MVP (бан IP, фільтр, mute/kick) |
+| [docs/chat-v2/T14-QA.md](../docs/chat-v2/T14-QA.md) | Інтеграція: скрізний чекліст + API smoke |
 | [docs/board-te-ua/SITE-STRUCTURE.md](../docs/board-te-ua/SITE-STRUCTURE.md) | Сценарії, екрани, команди, архів |
 | [docs/board-te-ua/CHAT-PANEL-SIDEBAR.md](../docs/board-te-ua/CHAT-PANEL-SIDEBAR.md) | Сайдбар 320px, вкладки, панелі |
 | [docs/board-te-ua/CHAT-MAIN-INPUT.md](../docs/board-te-ua/CHAT-MAIN-INPUT.md) | Стрічка, ввід, смайли, POST |

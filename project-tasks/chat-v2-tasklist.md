@@ -108,7 +108,7 @@
 
 ---
 
-### [ ] T14 — Інтеграція: повний прохід «логін → чат → сайдбар → (приват якщо T08 готовий)»; code review / reality check
+### [x] T14 — Інтеграція: повний прохід «логін → чат → сайдбар → (приват якщо T08 готовий)»; code review / reality check
 
 - **Delegate:** code-reviewer або testing-reality-checker (за роллю в команді)
 - **QA evidence:** чекліст з AGENT-ORCHESTRATION; вердикт PASS / NEEDS_WORK

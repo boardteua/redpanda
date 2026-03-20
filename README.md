@@ -26,4 +26,6 @@
 
 **Модерація MVP (T12):** бан IP, слова-фільтр, mute/kick на користувачах; API `/api/v1/mod/*` для `user_rank ≥ 1` — [docs/chat-v2/T12-QA.md](docs/chat-v2/T12-QA.md).
 
+**Інтеграція (T14):** скрізний чекліст і API-smoke — [docs/chat-v2/T14-QA.md](docs/chat-v2/T14-QA.md) (`php artisan test --filter=IntegrationFlowApiTest`).
+
 Пам’ять для агентів: [AGENTS.md](AGENTS.md) (оновлення — [docs/chat-v2/CONTINUAL-LEARNING.md](docs/chat-v2/CONTINUAL-LEARNING.md)).
