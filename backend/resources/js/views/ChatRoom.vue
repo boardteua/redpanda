@@ -450,7 +450,7 @@
         </aside>
 
         <PrivateChatPanel
-            v-if="user"
+            v-if="user && privatePeer"
             :peer="privatePeer"
             :messages="privateMessages"
             :loading="loadingPrivateMessages"

@@ -4,6 +4,8 @@
 
 **Код додатку:** каталог [`backend/`](backend/) (`composer install`, `cp .env.example .env`, `php artisan key:generate`, `npm ci`, `npm run build`).
 
+**Порожня сторінка в браузері:** якщо колись запускали `npm run dev`, у `backend/public/` з’являється файл **`hot`** — тоді HTML тягне скрипти з **http://127.0.0.1:5173**. Без запущеного Vite (`npm run dev`) інтерфейс не змонтується. Варіанти: (1) у другому терміналі `cd backend && npm run dev`, або (2) видалити `backend/public/hot` і мати актуальний `npm run build` — тоді достатньо лише `php artisan serve`.
+
 Локальний **MySQL** (наприклад OrbStack): `docker run -d --name rp-mysql-redpanda -e MYSQL_ROOT_PASSWORD=secret -e MYSQL_DATABASE=redpanda -p 3307:3306 mysql:8 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci` — дочекатися `mysqladmin ping`, у `.env` вказати `DB_PORT=3307` та пароль.
 
 **Auth API (T02):** префікс `POST|GET /api/v1/auth/...`, Sanctum SPA (cookie + CSRF).
