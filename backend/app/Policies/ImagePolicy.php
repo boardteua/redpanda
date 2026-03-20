@@ -20,9 +20,14 @@ class ImagePolicy
             ->distinct()
             ->pluck('post_roomid');
 
-        foreach ($roomIds as $roomId) {
-            $room = Room::query()->where('room_id', $roomId)->first();
-            if ($room !== null && $user->can('interact', $room)) {
+        if ($roomIds->isEmpty()) {
+            return false;
+        }
+
+        $rooms = Room::query()->whereIn('room_id', $roomIds->all())->get();
+
+        foreach ($rooms as $room) {
+            if ($user->can('interact', $room)) {
                 return true;
             }
         }

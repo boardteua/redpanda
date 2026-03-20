@@ -122,6 +122,17 @@ class ModerationApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_filter_word_min_length_two(): void
+    {
+        $mod = User::factory()->moderator()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/mod/filter-words', ['word' => 'x'])
+            ->assertUnprocessable();
+    }
+
     public function test_moderator_can_ban_ip_and_clear_mute(): void
     {
         $mod = User::factory()->moderator()->create();

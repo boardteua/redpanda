@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Moderation\ModerationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ModerationController extends Controller
 {
@@ -31,12 +32,26 @@ class ModerationController extends Controller
 
         $row = $this->moderation->banIp($data['ip']);
 
+        Log::info('moderation.ip_ban.created', [
+            'actor_id' => $request->user()->id,
+            'banned_ip' => $row->ip,
+            'banned_ip_id' => $row->id,
+        ]);
+
         return response()->json(['data' => $row], 201);
     }
 
-    public function destroyBannedIp(BannedIp $bannedIp): JsonResponse
+    public function destroyBannedIp(Request $request, BannedIp $bannedIp): JsonResponse
     {
-        $this->moderation->unbanIp((int) $bannedIp->id);
+        $ip = $bannedIp->ip;
+        $id = (int) $bannedIp->id;
+        $this->moderation->unbanIp($id);
+
+        Log::info('moderation.ip_ban.removed', [
+            'actor_id' => $request->user()->id,
+            'banned_ip' => $ip,
+            'banned_ip_id' => $id,
+        ]);
 
         return response()->json(null, 204);
     }
@@ -51,17 +66,31 @@ class ModerationController extends Controller
     public function storeFilterWord(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'word' => ['required', 'string', 'max:191', 'regex:/\S/'],
+            'word' => ['required', 'string', 'min:2', 'max:191', 'regex:/\S/'],
         ]);
 
         $row = $this->moderation->addFilterWord($data['word']);
 
+        Log::info('moderation.filter_word.created', [
+            'actor_id' => $request->user()->id,
+            'filter_word_id' => $row->id,
+            'word' => $row->word,
+        ]);
+
         return response()->json(['data' => $row], 201);
     }
 
-    public function destroyFilterWord(FilterWord $filterWord): JsonResponse
+    public function destroyFilterWord(Request $request, FilterWord $filterWord): JsonResponse
     {
-        $this->moderation->removeFilterWord((int) $filterWord->id);
+        $id = (int) $filterWord->id;
+        $word = $filterWord->word;
+        $this->moderation->removeFilterWord($id);
+
+        Log::info('moderation.filter_word.removed', [
+            'actor_id' => $request->user()->id,
+            'filter_word_id' => $id,
+            'word' => $word,
+        ]);
 
         return response()->json(null, 204);
     }
@@ -78,6 +107,13 @@ class ModerationController extends Controller
         $minutes = $data['minutes'] ?? null;
         $this->moderation->muteUser($user, $minutes);
         $user->refresh();
+
+        Log::info('moderation.user.mute', [
+            'actor_id' => $actor->id,
+            'target_user_id' => $user->id,
+            'minutes' => $minutes,
+            'mute_until' => $user->mute_until,
+        ]);
 
         return response()->json(['data' => [
             'id' => $user->id,
@@ -99,6 +135,13 @@ class ModerationController extends Controller
         $minutes = $data['minutes'] ?? null;
         $this->moderation->kickUser($user, $minutes);
         $user->refresh();
+
+        Log::info('moderation.user.kick', [
+            'actor_id' => $actor->id,
+            'target_user_id' => $user->id,
+            'minutes' => $minutes,
+            'kick_until' => $user->kick_until,
+        ]);
 
         return response()->json(['data' => [
             'id' => $user->id,

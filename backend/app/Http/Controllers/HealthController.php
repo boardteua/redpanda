@@ -48,7 +48,7 @@ class HealthController extends Controller
 
     private function shouldCheckRedis(): bool
     {
-        if (filter_var(env('HEALTH_CHECK_REDIS', false), FILTER_VALIDATE_BOOLEAN)) {
+        if (filter_var(config('observability.health_check_redis'), FILTER_VALIDATE_BOOLEAN)) {
             return true;
         }
 

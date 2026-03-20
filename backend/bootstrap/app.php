@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
         $middleware->append(RequestLogContext::class);
+
+        $trusted = env('TRUSTED_PROXIES');
+        if (is_string($trusted) && $trusted !== '') {
+            $at = $trusted === '*' ? '*' : array_values(array_filter(array_map('trim', explode(',', $trusted))));
+            $middleware->trustProxies(at: $at);
+        }
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {

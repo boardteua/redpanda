@@ -15,4 +15,15 @@ return [
 
     'log_http_summary' => env('LOG_HTTP_SUMMARY', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Health readiness: Redis probe
+    |--------------------------------------------------------------------------
+    |
+    | Див. HealthController::ready(). Читати лише через config(), не через env() у коді.
+    |
+    */
+
+    'health_check_redis' => env('HEALTH_CHECK_REDIS', false),
+
 ];
