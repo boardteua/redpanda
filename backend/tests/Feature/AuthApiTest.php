@@ -1,0 +1,148 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
+use Tests\TestCase;
+
+class AuthApiTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function statefulHeaders(): array
+    {
+        return ['Referer' => config('app.url')];
+    }
+
+    public function test_register_login_user_and_logout_flow(): void
+    {
+        $register = $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/register', [
+                'user_name' => 'TestUser',
+                'email' => 'test@example.com',
+                'password' => 'password-secure-1',
+                'password_confirmation' => 'password-secure-1',
+            ]);
+
+        $register->assertCreated()
+            ->assertJsonPath('data.user_name', 'TestUser')
+            ->assertJsonPath('data.guest', false);
+
+        $this->assertAuthenticatedAs(User::query()->where('user_name', 'TestUser')->first(), 'web');
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/auth/user')
+            ->assertOk()
+            ->assertJsonPath('data.user_name', 'TestUser');
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/logout')
+            ->assertNoContent();
+
+        $this->assertGuest('web');
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/login', [
+                'user_name' => 'TestUser',
+                'password' => 'password-secure-1',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.user_name', 'TestUser');
+    }
+
+    public function test_guest_creates_user_and_registered_member_gate(): void
+    {
+        $response = $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/guest', []);
+
+        $response->assertCreated();
+        $user = User::query()->where('guest', true)->first();
+        $this->assertNotNull($user);
+        $this->assertSame($user->user_name, $response->json('data.user_name'));
+
+        $this->assertFalse(Gate::forUser($user)->allows('actAsRegisteredMember', $user));
+
+        $registered = User::factory()->create(['guest' => false]);
+        $this->assertTrue(Gate::forUser($registered)->allows('actAsRegisteredMember', $registered));
+    }
+
+    public function test_guest_cannot_use_password_login(): void
+    {
+        $guest = User::factory()->guest()->create([
+            'user_name' => 'anon1',
+            'password' => null,
+        ]);
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/login', [
+                'user_name' => 'anon1',
+                'password' => 'any-password-here',
+            ])
+            ->assertUnprocessable();
+    }
+
+    public function test_login_throttle_returns_429(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->from(config('app.url'))
+                ->withHeaders($this->statefulHeaders())
+                ->postJson('/api/v1/auth/login', [
+                    'user_name' => 'nobody',
+                    'password' => 'wrong',
+                ])
+                ->assertUnprocessable();
+        }
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/login', [
+                'user_name' => 'nobody',
+                'password' => 'wrong',
+            ])
+            ->assertStatus(429);
+    }
+
+    public function test_register_throttle_returns_429(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $n = "u{$i}";
+            $this->from(config('app.url'))
+                ->withHeaders($this->statefulHeaders())
+                ->postJson('/api/v1/auth/register', [
+                    'user_name' => $n,
+                    'email' => "{$n}@example.com",
+                    'password' => 'password-secure-1',
+                    'password_confirmation' => 'password-secure-1',
+                ])
+                ->assertCreated();
+        }
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/register', [
+                'user_name' => 'u5',
+                'email' => 'u5@example.com',
+                'password' => 'password-secure-1',
+                'password_confirmation' => 'password-secure-1',
+            ])
+            ->assertStatus(429);
+    }
+}

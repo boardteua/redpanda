@@ -1,0 +1,800 @@
+<template>
+    <div class="flex min-h-screen flex-col bg-[var(--rp-bg)] md:flex-row">
+        <!-- Затемнення (лише мобільний off-canvas) -->
+        <button
+            v-if="panelOpen && isNarrowViewport"
+            type="button"
+            class="rp-focusable fixed inset-0 z-40 bg-black/40 md:hidden"
+            aria-label="Закрити панель чату"
+            @click="closePanel"
+        />
+
+        <div class="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-6 sm:px-6">
+            <header class="mb-4 flex w-full flex-wrap items-center justify-between gap-3">
+                <div class="flex min-w-0 flex-wrap items-center gap-3">
+                    <router-link
+                        to="/"
+                        class="rp-focusable shrink-0 text-sm font-medium text-[var(--rp-link)] hover:text-[var(--rp-link-hover)]"
+                    >
+                        ← На головну
+                    </router-link>
+                    <button
+                        ref="mobilePanelToggle"
+                        type="button"
+                        class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md border-2 border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] text-[var(--rp-text)] md:hidden"
+                        :aria-expanded="panelOpen ? 'true' : 'false'"
+                        aria-controls="chat-panel"
+                        title="Люди"
+                        @click="togglePanel"
+                    >
+                        <span class="rp-sr-only">Відкрити або сховати панель чату</span>
+                        <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
+                            />
+                        </svg>
+                    </button>
+                    <div v-if="currentRoom" class="min-w-0">
+                        <p class="truncate text-lg font-semibold text-[var(--rp-text)]">
+                            {{ currentRoom.room_name }}
+                        </p>
+                        <p v-if="currentRoom.topic" class="truncate text-sm text-[var(--rp-text-muted)]">
+                            {{ currentRoom.topic }}
+                        </p>
+                    </div>
+                    <span
+                        v-if="wsDegraded"
+                        class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] px-2 py-1 text-xs text-[var(--rp-text-muted)]"
+                        role="status"
+                    >
+                        Реалтайм недоступний — оновлення через опитування
+                    </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        ref="desktopPanelToggle"
+                        type="button"
+                        class="rp-focusable hidden h-11 w-11 items-center justify-center rounded-md border-2 border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] text-[var(--rp-text)] md:inline-flex"
+                        :aria-expanded="panelOpen ? 'true' : 'false'"
+                        aria-controls="chat-panel"
+                        title="Панель чату"
+                        @click="togglePanel"
+                    >
+                        <span class="rp-sr-only">Перемкнути панель чату</span>
+                        <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
+                            />
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                        aria-label="Перемкнути тему оформлення"
+                        @click="cycleTheme"
+                    >
+                        {{ themeLabel }}
+                    </button>
+                </div>
+            </header>
+
+            <main id="main-content" class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4" tabindex="-1">
+                <div v-if="loadError" class="rp-banner" role="alert">
+                    {{ loadError }}
+                </div>
+                <div
+                    v-else-if="!loadingRooms && rooms.length === 0"
+                    class="rp-banner"
+                    role="status"
+                >
+                    Немає доступних кімнат. Зверніться до адміністратора.
+                </div>
+
+                <div
+                    class="rp-panel flex max-w-none min-h-[12rem] flex-1 flex-col overflow-hidden"
+                    style="min-height: 50vh"
+                >
+                    <h2 class="rp-sr-only">Повідомлення</h2>
+                    <ul
+                        ref="messageList"
+                        class="flex max-h-[min(50vh,32rem)] flex-col gap-2 overflow-y-auto p-2"
+                        role="log"
+                        aria-live="polite"
+                        aria-relevant="additions"
+                    >
+                        <li
+                            v-for="m in messages"
+                            :key="m.post_id"
+                            class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] px-3 py-2 text-sm"
+                        >
+                            <div class="flex flex-wrap items-baseline gap-2 text-[var(--rp-text-muted)]">
+                                <time class="font-mono text-xs">{{ m.post_time || '—' }}</time>
+                                <span class="font-semibold text-[var(--rp-text)]">{{ m.post_user }}</span>
+                            </div>
+                            <p class="mt-1 whitespace-pre-wrap break-words text-[var(--rp-text)]">
+                                {{ m.post_message }}
+                            </p>
+                        </li>
+                    </ul>
+                    <p
+                        v-if="messages.length === 0 && !loadingMessages"
+                        class="p-4 text-center text-sm text-[var(--rp-text-muted)]"
+                    >
+                        Ще немає повідомлень. Напишіть перше нижче.
+                    </p>
+                </div>
+
+                <form class="rp-panel max-w-none flex flex-col gap-3" @submit.prevent="sendMessage">
+                    <label class="rp-label" for="chat-composer">Повідомлення</label>
+                    <textarea
+                        id="chat-composer"
+                        v-model="composerText"
+                        class="rp-input rp-focusable min-h-[5rem] resize-y font-sans"
+                        maxlength="4000"
+                        rows="3"
+                        :disabled="sending || !selectedRoomId"
+                        placeholder="Текст повідомлення…"
+                    />
+                    <div class="flex justify-end">
+                        <button
+                            type="submit"
+                            class="rp-focusable rp-btn rp-btn-primary"
+                            :disabled="sending || !selectedRoomId || !composerText.trim()"
+                        >
+                            Надіслати
+                        </button>
+                    </div>
+                </form>
+            </main>
+        </div>
+
+        <!-- Панель #chat_panel — 320px, порядок вкладок як у CHAT-PANEL-SIDEBAR -->
+        <aside
+            id="chat-panel"
+            class="flex w-[320px] max-w-[100vw] flex-shrink-0 flex-col border-l border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-50 max-md:shadow-lg max-md:transition-transform max-md:duration-200 max-md:ease-out md:relative md:z-auto md:h-screen md:shadow-none md:transition-none"
+            :class="[
+                isNarrowViewport && (panelOpen ? 'max-md:translate-x-0' : 'max-md:translate-x-full'),
+                !isNarrowViewport && !panelOpen ? 'md:hidden' : '',
+            ]"
+            aria-label="Панель чату"
+        >
+            <div class="flex items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-3 py-2">
+                <h2 class="text-sm font-semibold text-[var(--rp-text)]">Панель</h2>
+                <button
+                    ref="panelCloseBtn"
+                    type="button"
+                    class="rp-focusable flex h-11 w-11 items-center justify-center rounded-md text-[var(--rp-text-muted)] hover:bg-[var(--rp-surface-elevated)] hover:text-[var(--rp-text)]"
+                    aria-label="Закрити панель"
+                    @click="closePanel"
+                >
+                    <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                        />
+                    </svg>
+                </button>
+            </div>
+
+            <div
+                class="flex border-b border-[var(--rp-border-subtle)] px-1 py-2"
+                role="tablist"
+                aria-label="Вкладки панелі чату"
+                @keydown="onSidebarTabKeydown"
+            >
+                <button
+                    v-for="tab in sidebarTabs"
+                    :key="tab.id"
+                    :id="'chat-tab-' + tab.id"
+                    type="button"
+                    role="tab"
+                    class="rp-focusable flex h-11 flex-1 items-center justify-center rounded-md border-2 text-[var(--rp-text)]"
+                    :class="
+                        sidebarTab === tab.id
+                            ? 'border-[var(--rp-border)] bg-[var(--rp-surface-elevated)]'
+                            : 'border-transparent bg-transparent hover:bg-[var(--rp-surface-elevated)]'
+                    "
+                    :aria-selected="sidebarTab === tab.id ? 'true' : 'false'"
+                    :aria-controls="'chat-panel-' + tab.id"
+                    :tabindex="sidebarTab === tab.id ? 0 : -1"
+                    :title="tab.title"
+                    @click="selectSidebarTab(tab.id)"
+                >
+                    <span class="rp-sr-only">{{ tab.title }}</span>
+                    <span class="inline-flex items-center justify-center" v-html="tab.icon" />
+                </button>
+            </div>
+
+            <div class="min-h-0 flex-1 overflow-y-auto p-3 text-sm text-[var(--rp-text)]">
+                <!-- Люди -->
+                <div
+                    v-show="sidebarTab === 'users'"
+                    id="chat-panel-users"
+                    role="tabpanel"
+                    aria-labelledby="chat-tab-users"
+                    tabindex="-1"
+                    :aria-hidden="sidebarTab === 'users' ? 'false' : 'true'"
+                >
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
+                        Онлайн
+                    </p>
+                    <ul v-if="user" class="space-y-2">
+                        <li
+                            class="flex items-center gap-2 rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] px-2 py-2"
+                        >
+                            <span
+                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--rp-border-subtle)] text-xs font-bold text-[var(--rp-text-muted)]"
+                                aria-hidden="true"
+                            >
+                                {{ userInitial }}
+                            </span>
+                            <span class="font-medium">{{ user.user_name }}</span>
+                            <span class="text-xs text-[var(--rp-text-muted)]">(ви)</span>
+                        </li>
+                    </ul>
+                    <p class="mt-3 text-[var(--rp-text-muted)]">
+                        Інших учасників онлайн поки не показуємо — з’явиться разом із presence API.
+                    </p>
+                </div>
+
+                <!-- Друзі -->
+                <div
+                    v-show="sidebarTab === 'friends'"
+                    id="chat-panel-friends"
+                    role="tabpanel"
+                    aria-labelledby="chat-tab-friends"
+                    tabindex="-1"
+                    :aria-hidden="sidebarTab === 'friends' ? 'false' : 'true'"
+                >
+                    <div class="mb-3 flex gap-1">
+                        <button
+                            type="button"
+                            class="rp-focusable rp-tab flex-1 px-1 text-xs sm:text-sm"
+                            :aria-selected="friendsSubTab === 'active' ? 'true' : 'false'"
+                            @click="friendsSubTab = 'active'"
+                        >
+                            Активний
+                        </button>
+                        <button
+                            type="button"
+                            class="rp-focusable rp-tab flex-1 px-1 text-xs sm:text-sm"
+                            :aria-selected="friendsSubTab === 'pending' ? 'true' : 'false'"
+                            @click="friendsSubTab = 'pending'"
+                        >
+                            Запити на дружбу
+                        </button>
+                    </div>
+                    <p v-if="friendsSubTab === 'active'" class="text-center text-[var(--rp-text-muted)]">
+                        Список друзів порожній.
+                    </p>
+                    <p v-else class="text-center text-[var(--rp-text-muted)]">Немає запитів у друзі</p>
+                </div>
+
+                <!-- Приват -->
+                <div
+                    v-show="sidebarTab === 'private'"
+                    id="chat-panel-private"
+                    role="tabpanel"
+                    aria-labelledby="chat-tab-private"
+                    tabindex="-1"
+                    :aria-hidden="sidebarTab === 'private' ? 'false' : 'true'"
+                >
+                    <p class="py-6 text-center text-[var(--rp-text-muted)]">Немає нових повідомлень</p>
+                </div>
+
+                <!-- Кімнати -->
+                <div
+                    v-show="sidebarTab === 'rooms'"
+                    id="chat-panel-rooms"
+                    role="tabpanel"
+                    aria-labelledby="chat-tab-rooms"
+                    tabindex="-1"
+                    :aria-hidden="sidebarTab === 'rooms' ? 'false' : 'true'"
+                >
+                    <p v-if="loadingRooms" class="text-[var(--rp-text-muted)]">Завантаження…</p>
+                    <ul v-else class="space-y-2">
+                        <li v-for="r in rooms" :key="r.room_id">
+                            <button
+                                type="button"
+                                class="rp-focusable w-full rounded-md border-2 px-3 py-2 text-left transition-colors"
+                                :class="
+                                    r.room_id === selectedRoomId
+                                        ? 'border-[var(--rp-primary)] bg-[var(--rp-surface-elevated)]'
+                                        : 'border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] hover:border-[var(--rp-border)]'
+                                "
+                                @click="selectRoom(r.room_id)"
+                            >
+                                <span class="block font-semibold text-[var(--rp-text)]">{{ r.room_name }}</span>
+                                <span v-if="r.topic" class="mt-0.5 block text-xs text-[var(--rp-text-muted)]">{{
+                                    r.topic
+                                }}</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Ігнор -->
+                <div
+                    v-show="sidebarTab === 'ignore'"
+                    id="chat-panel-ignore"
+                    role="tabpanel"
+                    aria-labelledby="chat-tab-ignore"
+                    tabindex="-1"
+                    :aria-hidden="sidebarTab === 'ignore' ? 'false' : 'true'"
+                >
+                    <p class="py-6 text-center text-[var(--rp-text-muted)]">Список ігнор порожній</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+</template>
+
+<script>
+import { createEcho } from '../lib/echo';
+
+const THEME_KEY = 'redpanda-theme';
+
+const SIDEBAR_TAB_ICONS = {
+    users:
+        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
+    friends:
+        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg>',
+    private:
+        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>',
+    rooms:
+        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
+    ignore:
+        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm4.5 1c.83 0 1.5-.67 1.5-1.5S17.33 10 16.5 10 15 10.67 15 11.5s.67 1.5 1.5 1.5zM19 3l-4 4 1.5 1.5L20.5 4 19 3z"/></svg>',
+};
+
+function normalizeMessage(raw) {
+    if (!raw || typeof raw.post_id === 'undefined') {
+        return null;
+    }
+
+    return {
+        post_id: raw.post_id,
+        post_roomid: raw.post_roomid,
+        user_id: raw.user_id,
+        post_date: raw.post_date,
+        post_time: raw.post_time,
+        post_user: raw.post_user,
+        post_message: raw.post_message,
+        post_color: raw.post_color,
+        type: raw.type,
+        client_message_id: raw.client_message_id,
+    };
+}
+
+export default {
+    name: 'ChatRoom',
+    data() {
+        return {
+            user: null,
+            rooms: [],
+            selectedRoomId: null,
+            messages: [],
+            messageIds: new Set(),
+            composerText: '',
+            loadingRooms: true,
+            loadingMessages: false,
+            sending: false,
+            loadError: '',
+            echo: null,
+            echoChannel: null,
+            echoSubscribedRoomId: null,
+            wsDegraded: false,
+            pollTimer: null,
+            themeUi: 'system',
+            panelOpen: true,
+            sidebarTab: 'rooms',
+            friendsSubTab: 'active',
+            isNarrowViewport: false,
+            mqHandler: null,
+            /** Елемент фокусу до відкриття off-canvas (повертаємо при закритті). */
+            panelFocusReturnEl: null,
+        };
+    },
+    computed: {
+        themeLabel() {
+            if (this.themeUi === 'light') {
+                return 'Тема: світла';
+            }
+            if (this.themeUi === 'dark') {
+                return 'Тема: темна';
+            }
+
+            return 'Тема: як у системі';
+        },
+        currentRoom() {
+            return this.rooms.find((r) => r.room_id === this.selectedRoomId) || null;
+        },
+        userInitial() {
+            const n = this.user && this.user.user_name;
+            if (!n || typeof n !== 'string') {
+                return '?';
+            }
+
+            return n.trim().charAt(0).toUpperCase() || '?';
+        },
+        sidebarTabs() {
+            return [
+                { id: 'users', title: 'Люди', icon: SIDEBAR_TAB_ICONS.users },
+                { id: 'friends', title: 'Друзі', icon: SIDEBAR_TAB_ICONS.friends },
+                { id: 'private', title: 'Приват', icon: SIDEBAR_TAB_ICONS.private },
+                { id: 'rooms', title: 'Кімнати', icon: SIDEBAR_TAB_ICONS.rooms },
+                { id: 'ignore', title: 'Ігнор', icon: SIDEBAR_TAB_ICONS.ignore },
+            ];
+        },
+    },
+    watch: {
+        panelOpen() {
+            this.syncBodyScrollLock(this.panelOpen && this.isNarrowViewport);
+        },
+        isNarrowViewport() {
+            this.syncBodyScrollLock(this.panelOpen && this.isNarrowViewport);
+        },
+    },
+    created() {
+        this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
+    },
+    async mounted() {
+        document.documentElement.setAttribute('data-theme', this.themeUi);
+        this.initViewportListener();
+        await this.bootstrap();
+        window.addEventListener('keydown', this.onGlobalKeydown);
+    },
+    beforeDestroy() {
+        window.removeEventListener('keydown', this.onGlobalKeydown);
+        this.teardownMediaQuery();
+        document.body.style.overflow = '';
+        this.teardownEcho(true);
+        this.stopPoll();
+    },
+    methods: {
+        initViewportListener() {
+            if (typeof window === 'undefined' || !window.matchMedia) {
+                return;
+            }
+            const mq = window.matchMedia('(max-width: 767px)');
+            this.isNarrowViewport = mq.matches;
+            this.panelOpen = !mq.matches;
+            this.mqHandler = () => {
+                this.isNarrowViewport = mq.matches;
+                if (!mq.matches) {
+                    this.panelOpen = true;
+                }
+                this.$nextTick(() => {
+                    this.syncBodyScrollLock(this.panelOpen && this.isNarrowViewport);
+                });
+            };
+            mq.addEventListener('change', this.mqHandler);
+        },
+        teardownMediaQuery() {
+            if (typeof window === 'undefined' || !window.matchMedia || !this.mqHandler) {
+                return;
+            }
+            const mq = window.matchMedia('(max-width: 767px)');
+            mq.removeEventListener('change', this.mqHandler);
+            this.mqHandler = null;
+        },
+        syncBodyScrollLock(lock) {
+            document.body.style.overflow = lock ? 'hidden' : '';
+        },
+        onGlobalKeydown(e) {
+            if (e.key !== 'Escape') {
+                return;
+            }
+            if (this.panelOpen && this.isNarrowViewport) {
+                this.closePanel();
+            }
+        },
+        focusPanelCloseButton() {
+            this.$nextTick(() => {
+                const btn = this.$refs.panelCloseBtn;
+                if (btn && typeof btn.focus === 'function') {
+                    btn.focus();
+                }
+            });
+        },
+        /** Відкрити панель і перевести фокус на кнопку закриття (off-canvas). */
+        beginOpeningPanel() {
+            if (!this.panelOpen) {
+                this.panelFocusReturnEl = document.activeElement;
+            }
+            this.panelOpen = true;
+            if (this.isNarrowViewport) {
+                this.focusPanelCloseButton();
+            }
+        },
+        closePanel() {
+            if (!this.panelOpen) {
+                return;
+            }
+            const returnEl = this.panelFocusReturnEl;
+            this.panelFocusReturnEl = null;
+            this.panelOpen = false;
+            this.$nextTick(() => {
+                if (returnEl && typeof returnEl.focus === 'function') {
+                    try {
+                        returnEl.focus();
+                    } catch {
+                        /* */
+                    }
+                }
+            });
+        },
+        togglePanel() {
+            if (this.panelOpen) {
+                this.closePanel();
+            } else {
+                this.beginOpeningPanel();
+            }
+        },
+        selectSidebarTab(id) {
+            this.sidebarTab = id;
+            this.$nextTick(() => {
+                const el = document.getElementById(`chat-tab-${id}`);
+                if (el && typeof el.focus === 'function') {
+                    el.focus();
+                }
+            });
+        },
+        onSidebarTabKeydown(e) {
+            const ids = this.sidebarTabs.map((t) => t.id);
+            const i = ids.indexOf(this.sidebarTab);
+            if (i < 0) {
+                return;
+            }
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                e.preventDefault();
+                const delta = e.key === 'ArrowRight' ? 1 : -1;
+                const next = ids[(i + delta + ids.length) % ids.length];
+                this.selectSidebarTab(next);
+            }
+            if (e.key === 'Home') {
+                e.preventDefault();
+                this.selectSidebarTab(ids[0]);
+            }
+            if (e.key === 'End') {
+                e.preventDefault();
+                this.selectSidebarTab(ids[ids.length - 1]);
+            }
+        },
+        cycleTheme() {
+            const order = ['system', 'light', 'dark'];
+            const i = Math.max(0, order.indexOf(this.themeUi));
+            const next = order[(i + 1) % order.length];
+            this.themeUi = next;
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem(THEME_KEY, next);
+        },
+        async ensureSanctum() {
+            await window.axios.get('/sanctum/csrf-cookie');
+        },
+        async fetchUser() {
+            try {
+                const { data } = await window.axios.get('/api/v1/auth/user');
+
+                return data.data;
+            } catch {
+                return null;
+            }
+        },
+        async bootstrap() {
+            this.user = await this.fetchUser();
+            if (!this.user) {
+                this.$router.replace({ path: '/' });
+
+                return;
+            }
+
+            await this.loadRooms();
+            const qRoom = this.$route.query.room;
+            const fromQuery = qRoom ? Number(qRoom) : null;
+            if (fromQuery && this.rooms.some((r) => r.room_id === fromQuery)) {
+                this.selectedRoomId = fromQuery;
+            } else if (this.rooms.length > 0) {
+                this.selectedRoomId = this.rooms[0].room_id;
+            }
+
+            if (this.selectedRoomId) {
+                this.$router.replace({ path: '/chat', query: { room: String(this.selectedRoomId) } }).catch(() => {});
+                await this.applyRoomSelection();
+            }
+        },
+        async loadRooms() {
+            this.loadingRooms = true;
+            this.loadError = '';
+            try {
+                const { data } = await window.axios.get('/api/v1/rooms');
+                this.rooms = data.data || [];
+            } catch {
+                this.loadError = 'Не вдалося завантажити кімнати.';
+                this.rooms = [];
+            } finally {
+                this.loadingRooms = false;
+            }
+        },
+        clearMessages() {
+            this.messages = [];
+            this.messageIds = new Set();
+        },
+        mergeMessage(raw) {
+            const m = normalizeMessage(raw);
+            if (!m || this.messageIds.has(m.post_id)) {
+                return;
+            }
+            const rid = this.selectedRoomId;
+            if (
+                rid != null
+                && m.post_roomid != null
+                && Number(m.post_roomid) !== Number(rid)
+            ) {
+                return;
+            }
+            this.messageIds.add(m.post_id);
+            this.messages.push(m);
+            this.messages.sort((a, b) => a.post_id - b.post_id);
+            this.$nextTick(() => this.scrollToBottom());
+        },
+        scrollToBottom() {
+            const el = this.$refs.messageList;
+            if (el) {
+                el.scrollTop = el.scrollHeight;
+            }
+        },
+        async loadMessages() {
+            if (!this.selectedRoomId) {
+                return;
+            }
+            this.loadingMessages = true;
+            try {
+                const { data } = await window.axios.get(
+                    `/api/v1/rooms/${this.selectedRoomId}/messages`,
+                    { params: { limit: 80 } },
+                );
+                this.clearMessages();
+                (data.data || []).forEach((row) => this.mergeMessage(row));
+            } catch {
+                this.loadError = 'Не вдалося завантажити повідомлення.';
+            } finally {
+                this.loadingMessages = false;
+                this.$nextTick(() => this.scrollToBottom());
+            }
+        },
+        async pollNewMessages() {
+            if (!this.selectedRoomId || !this.wsDegraded) {
+                return;
+            }
+            try {
+                const { data } = await window.axios.get(
+                    `/api/v1/rooms/${this.selectedRoomId}/messages`,
+                    { params: { limit: 80 } },
+                );
+                (data.data || []).forEach((row) => this.mergeMessage(row));
+            } catch {
+                /* ignore */
+            }
+        },
+        startPollIfDegraded() {
+            this.stopPoll();
+            if (!this.wsDegraded) {
+                return;
+            }
+            this.pollTimer = window.setInterval(() => this.pollNewMessages(), 10000);
+        },
+        stopPoll() {
+            if (this.pollTimer !== null) {
+                clearInterval(this.pollTimer);
+                this.pollTimer = null;
+            }
+        },
+        teardownEcho(fullDisconnect = false) {
+            if (this.echo && this.echoSubscribedRoomId !== null) {
+                try {
+                    this.echo.leave(`room.${this.echoSubscribedRoomId}`);
+                } catch {
+                    /* */
+                }
+            }
+            this.echoSubscribedRoomId = null;
+            this.echoChannel = null;
+
+            if (fullDisconnect && this.echo) {
+                try {
+                    this.echo.disconnect();
+                } catch {
+                    /* */
+                }
+                this.echo = null;
+            }
+        },
+        setupEcho() {
+            this.teardownEcho(false);
+
+            let echo = this.echo;
+            if (!echo) {
+                echo = createEcho();
+                if (!echo) {
+                    this.wsDegraded = true;
+                    this.startPollIfDegraded();
+
+                    return;
+                }
+                this.echo = echo;
+            }
+
+            this.wsDegraded = false;
+
+            const roomId = this.selectedRoomId;
+            this.echoSubscribedRoomId = roomId;
+            const channel = echo.private(`room.${roomId}`);
+
+            channel.subscribed(() => {
+                this.wsDegraded = false;
+                this.stopPoll();
+            });
+
+            channel.error(() => {
+                this.wsDegraded = true;
+                this.startPollIfDegraded();
+            });
+
+            channel.listen('.MessagePosted', (payload) => {
+                this.mergeMessage(payload);
+            });
+
+            this.echoChannel = channel;
+        },
+        async applyRoomSelection() {
+            this.teardownEcho(false);
+            this.clearMessages();
+            this.loadError = '';
+            await this.loadMessages();
+            this.setupEcho();
+            this.startPollIfDegraded();
+        },
+        async selectRoom(roomId) {
+            if (!roomId || roomId === this.selectedRoomId) {
+                return;
+            }
+            this.selectedRoomId = roomId;
+            this.$router.replace({ path: '/chat', query: { room: String(roomId) } }).catch(() => {});
+            await this.applyRoomSelection();
+            if (this.isNarrowViewport && this.panelOpen) {
+                this.panelFocusReturnEl = this.$refs.mobilePanelToggle || this.panelFocusReturnEl;
+                this.closePanel();
+            }
+        },
+        async sendMessage() {
+            const text = this.composerText.trim();
+            if (!text || !this.selectedRoomId || this.sending) {
+                return;
+            }
+            this.sending = true;
+            await this.ensureSanctum();
+            const clientMessageId = crypto.randomUUID();
+            try {
+                const { data, status } = await window.axios.post(
+                    `/api/v1/rooms/${this.selectedRoomId}/messages`,
+                    {
+                        message: text,
+                        client_message_id: clientMessageId,
+                    },
+                );
+                if (data.data) {
+                    this.mergeMessage(data.data);
+                }
+                if (status === 201 || status === 200) {
+                    this.composerText = '';
+                }
+            } catch (e) {
+                const msg = e.response?.data?.message || 'Не вдалося надіслати.';
+                this.loadError = msg;
+            } finally {
+                this.sending = false;
+            }
+        },
+    },
+};
+</script>
