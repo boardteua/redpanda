@@ -1,0 +1,514 @@
+openapi: 3.0.3
+info:
+  title: redpanda Chat v2 API
+  description: |
+    HTTP API для чату v2 (Laravel backend у каталозі `backend/`).
+
+    **Sanctum SPA (cookie):** для браузерного клієнта з того ж сайту спочатку викликайте `GET /sanctum/csrf-cookie` з `credentials: include`,
+    потім передавайте заголовок `X-XSRF-TOKEN` (значення з cookie `XSRF-TOKEN`, URL-decoded) на всі **змінюючі** запити (`POST` тощо) разом з cookie сесії.
+    Див. також [T03-QA.md](T03-QA.md).
+
+    **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки; клієнт має рендерити їх як **текст**, а не HTML,
+    доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)).
+
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`).
+
+    **WebSocket (Laravel Reverb, протокол як у Pusher):** приватні канали `private-room.{roomId}` та `private-user.{userId}` авторизуються через `POST /broadcasting/auth` (сесія + для змінюючих запитів CSRF).
+    Після успішного `POST /api/v1/rooms/{roomId}/messages` транслюється подія **`.MessagePosted`** на `private-room.{roomId}` (деталі payload — [T05-QA.md](T05-QA.md)).
+
+    **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; HTTP контракт той самий, що в таблиці paths нижче.
+  version: "0.6.0"
+  license:
+    name: Proprietary
+    url: https://example.com/
+
+servers:
+  - url: /
+    description: Відносно origin додатку (наприклад http://127.0.0.1:8000)
+
+tags:
+  - name: Auth
+    description: Реєстрація, сесія, профіль
+  - name: Chat
+    description: Кімнати та публічні повідомлення (T04)
+
+paths:
+  /sanctum/csrf-cookie:
+    get:
+      tags: [Auth]
+      summary: Отримати CSRF cookie (перед POST з браузера)
+      operationId: sanctumCsrfCookie
+      security: []
+      responses:
+        "204":
+          description: Cookie `XSRF-TOKEN` виставлено; використайте його для заголовка `X-XSRF-TOKEN`.
+        "403":
+          description: Доступ заборонено (наприклад, некоректний origin для stateful Sanctum).
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Реєстрація
+      operationId: authRegister
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Створено; сесія відкрита
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Вхід за паролем
+      operationId: authLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK; сесія відкрита
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/guest:
+    post:
+      tags: [Auth]
+      summary: Вхід як гість
+      operationId: authGuest
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuestRequest"
+      responses:
+        "201":
+          description: Створено гостьового користувача; сесія відкрита
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/user:
+    get:
+      tags: [Auth]
+      summary: Поточний користувач
+      operationId: authUser
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Поточний користувач (обгортка `data`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Вихід (інвалідація сесії)
+      operationId: authLogout
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      responses:
+        "204":
+          description: Немає тіла
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/rooms:
+    get:
+      tags: [Chat]
+      summary: Список кімнат, доступних користувачу
+      description: Гості отримують лише кімнати з `access === 0`.
+      operationId: listRooms
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Список кімнат у полі `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}/messages:
+    get:
+      tags: [Chat]
+      summary: Історія повідомлень (сторінка)
+      description: |
+        Повертає до `limit` повідомлень старіших за `before` (якщо задано), у полі `data` — у **хронологічному** порядку (старі → новіші у межах сторінки).
+        `meta.next_cursor` — мінімальний `post_id` у сторінці для наступного запиту «старіше».
+      operationId: listRoomMessages
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - name: before
+          in: query
+          description: Повернути лише повідомлення з `post_id` < `before`
+          schema:
+            type: integer
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Сторінка повідомлень і `meta.next_cursor`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+    post:
+      tags: [Chat]
+      summary: Надіслати повідомлення
+      description: |
+        Ідемпотентність: повтор з тим самим `client_message_id` у **тій самій** кімнаті повертає **200** і той самий ресурс з `meta.duplicate: true`.
+        Той самий ключ у **іншій** кімнаті — **422**.
+        `meta.slash` завжди присутній; для відповіді-дубля — `recognized: false` (тіло повторного запиту не застосовується).
+      operationId: postRoomMessage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostChatMessageRequest"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessagePostResponseCreated"
+        "200":
+          description: Ідемпотентний повтор (дубль)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessagePostResponseDuplicate"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Валідація або конфлікт `client_message_id` з іншою кімнатою
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ValidationErrorBody"
+                  - $ref: "#/components/schemas/ClientIdRoomConflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+components:
+  securitySchemes:
+    sanctumSession:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+      description: Ім’я cookie зазвичай з `SESSION_COOKIE` у `.env` (типово `laravel_session`).
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Після `GET /sanctum/csrf-cookie` — значення з cookie `XSRF-TOKEN` (URL decode).
+
+  parameters:
+    RoomId:
+      name: roomId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Первинний ключ `rooms.room_id`
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [user_name, email, password, password_confirmation]
+      properties:
+        user_name:
+          type: string
+          minLength: 2
+          maxLength: 191
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        password_confirmation:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [user_name, password]
+      properties:
+        user_name:
+          type: string
+        password:
+          type: string
+        remember:
+          type: boolean
+
+    GuestRequest:
+      type: object
+      properties:
+        user_name:
+          type: string
+          nullable: true
+          description: Якщо null/відсутнє — сервер генерує нік.
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+        guest:
+          type: boolean
+        email:
+          type: string
+          nullable: true
+
+    UserResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/User"
+
+    Room:
+      type: object
+      properties:
+        room_id:
+          type: integer
+        room_name:
+          type: string
+        topic:
+          type: string
+          nullable: true
+        access:
+          type: integer
+          description: "0 — усі авторизовані (гості дозволені); > 0 — лише зареєстровані"
+
+    RoomListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+
+    ChatMessage:
+      type: object
+      properties:
+        post_id:
+          type: integer
+        user_id:
+          type: integer
+        post_date:
+          type: integer
+          description: Unix timestamp
+        post_time:
+          type: string
+          nullable: true
+        post_user:
+          type: string
+        post_message:
+          type: string
+        post_color:
+          type: string
+          nullable: true
+        post_roomid:
+          type: integer
+        type:
+          type: string
+        client_message_id:
+          type: string
+          nullable: true
+
+    SlashMeta:
+      type: object
+      required: [name, recognized]
+      properties:
+        name:
+          type: string
+          nullable: true
+        recognized:
+          type: boolean
+
+    PostChatMessageRequest:
+      type: object
+      required: [message, client_message_id]
+      properties:
+        message:
+          type: string
+          maxLength: 4000
+        client_message_id:
+          type: string
+          format: uuid
+
+    ChatMessageListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        meta:
+          type: object
+          required: [next_cursor]
+          properties:
+            next_cursor:
+              type: integer
+              nullable: true
+
+    ChatMessagePostResponseCreated:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatMessage"
+        meta:
+          type: object
+          required: [duplicate, slash]
+          properties:
+            duplicate:
+              type: boolean
+              enum: [false]
+            slash:
+              $ref: "#/components/schemas/SlashMeta"
+
+    ChatMessagePostResponseDuplicate:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatMessage"
+        meta:
+          type: object
+          required: [duplicate, slash]
+          properties:
+            duplicate:
+              type: boolean
+              enum: [true]
+            slash:
+              $ref: "#/components/schemas/SlashMeta"
+
+    ValidationErrorBody:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    ClientIdRoomConflict:
+      type: object
+      properties:
+        message:
+          type: string
+          example: client_message_id already used for another room.
+
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Неавторизовано
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    Forbidden:
+      description: Немає доступу до кімнати
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    NotFound:
+      description: Кімната не знайдена
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    ValidationError:
+      description: Помилка валідації
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationErrorBody"
+    TooManyRequests:
+      description: Перевищено ліміт запитів
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
