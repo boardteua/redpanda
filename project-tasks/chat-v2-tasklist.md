@@ -63,7 +63,7 @@
 
 ---
 
-### [ ] T08 — Приват + друзі + ignore: API, UI private_panel, broadcast `private.*`, узгодження `/msg` з одним шляхом відправки
+### [x] T08 — Приват + друзі + ignore: API, UI private_panel, broadcast `private.*`, узгодження `/msg` з одним шляхом відправки
 
 - **Delegate:** Full stack (Backend + Frontend послідовно або два мікро-задачі за погодженням оркестратора)
 - **Deliverables:** паритет PRIVATE-MESSAGES.md; авторизація private каналів

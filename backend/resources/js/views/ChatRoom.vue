@@ -109,7 +109,15 @@
                         >
                             <div class="flex flex-wrap items-baseline gap-2 text-[var(--rp-text-muted)]">
                                 <time class="font-mono text-xs">{{ m.post_time || '—' }}</time>
-                                <span class="font-semibold text-[var(--rp-text)]">{{ m.post_user }}</span>
+                                <button
+                                    v-if="user && m.post_user !== user.user_name"
+                                    type="button"
+                                    class="rp-focusable font-semibold text-[var(--rp-link)] hover:underline"
+                                    @click="openPrivateByUserName(m.post_user)"
+                                >
+                                    {{ m.post_user }}
+                                </button>
+                                <span v-else class="font-semibold text-[var(--rp-text)]">{{ m.post_user }}</span>
                             </div>
                             <p class="mt-1 whitespace-pre-wrap break-words text-[var(--rp-text)]">
                                 {{ m.post_message }}
@@ -133,7 +141,7 @@
                         maxlength="4000"
                         rows="3"
                         :disabled="sending || !selectedRoomId"
-                        placeholder="Текст повідомлення…"
+                        placeholder="Текст повідомлення… (/msg нік текст — надіслати в приват)"
                     />
                     <div class="flex justify-end">
                         <button
@@ -234,6 +242,28 @@
                     <p class="mt-3 text-[var(--rp-text-muted)]">
                         Інших учасників онлайн поки не показуємо — з’явиться разом із presence API.
                     </p>
+                    <div class="mt-4 space-y-2 border-t border-[var(--rp-border-subtle)] pt-3">
+                        <label class="rp-label" for="pm-lookup">Приват за ніком</label>
+                        <div class="flex flex-wrap gap-2">
+                            <input
+                                id="pm-lookup"
+                                v-model.trim="peerLookupName"
+                                type="text"
+                                maxlength="191"
+                                class="rp-input rp-focusable min-w-[8rem] flex-1"
+                                placeholder="нік"
+                                @keyup.enter="lookupAndOpenPrivate"
+                            />
+                            <button
+                                type="button"
+                                class="rp-focusable rp-btn rp-btn-primary shrink-0"
+                                :disabled="!peerLookupName"
+                                @click="lookupAndOpenPrivate"
+                            >
+                                Відкрити
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Друзі -->
@@ -263,10 +293,82 @@
                             Запити на дружбу
                         </button>
                     </div>
-                    <p v-if="friendsSubTab === 'active'" class="text-center text-[var(--rp-text-muted)]">
-                        Список друзів порожній.
-                    </p>
-                    <p v-else class="text-center text-[var(--rp-text-muted)]">Немає запитів у друзі</p>
+                    <template v-if="friendsSubTab === 'active'">
+                        <p
+                            v-if="friendsAccepted.length === 0"
+                            class="text-center text-[var(--rp-text-muted)]"
+                        >
+                            Список друзів порожній.
+                        </p>
+                        <ul v-else class="space-y-2">
+                            <li
+                                v-for="f in friendsAccepted"
+                                :key="f.user.id"
+                                class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] px-2 py-2"
+                            >
+                                <span class="font-medium text-[var(--rp-text)]">{{ f.user.user_name }}</span>
+                                <button
+                                    type="button"
+                                    class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                                    @click="openPrivatePeer(f.user)"
+                                >
+                                    Приват
+                                </button>
+                            </li>
+                        </ul>
+                    </template>
+                    <template v-else>
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
+                            Вхідні
+                        </p>
+                        <p
+                            v-if="friendsIncoming.length === 0"
+                            class="mb-4 text-center text-sm text-[var(--rp-text-muted)]"
+                        >
+                            Немає запитів у друзі
+                        </p>
+                        <ul v-else class="mb-4 space-y-2">
+                            <li
+                                v-for="r in friendsIncoming"
+                                :key="'in-' + r.user.id"
+                                class="flex flex-wrap items-center gap-2 rounded-md border border-[var(--rp-border-subtle)] px-2 py-2"
+                            >
+                                <span class="font-medium text-[var(--rp-text)]">{{ r.user.user_name }}</span>
+                                <button
+                                    type="button"
+                                    class="rp-focusable rp-btn rp-btn-primary text-xs"
+                                    @click="acceptFriend(r.user.id)"
+                                >
+                                    Прийняти
+                                </button>
+                                <button
+                                    type="button"
+                                    class="rp-focusable rp-btn rp-btn-ghost text-xs"
+                                    @click="rejectFriend(r.user.id)"
+                                >
+                                    Відхилити
+                                </button>
+                            </li>
+                        </ul>
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
+                            Вихідні
+                        </p>
+                        <p
+                            v-if="friendsOutgoing.length === 0"
+                            class="text-center text-sm text-[var(--rp-text-muted)]"
+                        >
+                            Немає відправлених запитів
+                        </p>
+                        <ul v-else class="space-y-1">
+                            <li
+                                v-for="r in friendsOutgoing"
+                                :key="'out-' + r.user.id"
+                                class="text-sm text-[var(--rp-text)]"
+                            >
+                                {{ r.user.user_name }}
+                            </li>
+                        </ul>
+                    </template>
                 </div>
 
                 <!-- Приват -->
@@ -321,14 +423,49 @@
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'ignore' ? 'false' : 'true'"
                 >
-                    <p class="py-6 text-center text-[var(--rp-text-muted)]">Список ігнор порожній</p>
+                    <p
+                        v-if="ignores.length === 0"
+                        class="py-6 text-center text-[var(--rp-text-muted)]"
+                    >
+                        Список ігнор порожній
+                    </p>
+                    <ul v-else class="space-y-2">
+                        <li
+                            v-for="row in ignores"
+                            :key="row.user.id"
+                            class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--rp-border-subtle)] px-2 py-2"
+                        >
+                            <span class="font-medium text-[var(--rp-text)]">{{ row.user.user_name }}</span>
+                            <button
+                                type="button"
+                                class="rp-focusable text-sm font-semibold text-[var(--rp-link)] hover:underline"
+                                @click="removeIgnore(row.user.id)"
+                            >
+                                Зняти
+                            </button>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </aside>
+
+        <PrivateChatPanel
+            v-if="user"
+            :peer="privatePeer"
+            :messages="privateMessages"
+            :loading="loadingPrivateMessages"
+            :sending="sendingPrivate"
+            :error="privateLoadError"
+            :composer-text.sync="privateComposerText"
+            :current-user-id="user.id"
+            @close="closePrivatePanel"
+            @send="sendPrivateMessageFromPanel"
+        />
     </div>
 </template>
 
 <script>
+import PrivateChatPanel from '../components/PrivateChatPanel.vue';
 import { createEcho } from '../lib/echo';
 
 const THEME_KEY = 'redpanda-theme';
@@ -367,6 +504,9 @@ function normalizeMessage(raw) {
 
 export default {
     name: 'ChatRoom',
+    components: {
+        PrivateChatPanel,
+    },
     data() {
         return {
             user: null,
@@ -433,6 +573,14 @@ export default {
         isNarrowViewport() {
             this.syncBodyScrollLock(this.panelOpen && this.isNarrowViewport);
         },
+        sidebarTab(to) {
+            if (to === 'private') {
+                this.loadConversations();
+            }
+            if (to === 'friends' || to === 'ignore') {
+                this.loadFriendsAndIgnores();
+            }
+        },
     },
     created() {
         this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
@@ -482,6 +630,11 @@ export default {
         },
         onGlobalKeydown(e) {
             if (e.key !== 'Escape') {
+                return;
+            }
+            if (this.privatePeer) {
+                this.closePrivatePanel();
+
                 return;
             }
             if (this.panelOpen && this.isNarrowViewport) {
@@ -601,6 +754,8 @@ export default {
                 this.$router.replace({ path: '/chat', query: { room: String(this.selectedRoomId) } }).catch(() => {});
                 await this.applyRoomSelection();
             }
+
+            await Promise.all([this.loadConversations(), this.loadFriendsAndIgnores()]);
         },
         async loadRooms() {
             this.loadingRooms = true;
@@ -701,6 +856,14 @@ export default {
             this.echoChannel = null;
 
             if (fullDisconnect && this.echo) {
+                if (this.user) {
+                    try {
+                        this.echo.leave(`user.${this.user.id}`);
+                    } catch {
+                        /* */
+                    }
+                }
+                this.echoUserListenerReady = false;
                 try {
                     this.echo.disconnect();
                 } catch {
@@ -745,6 +908,209 @@ export default {
             });
 
             this.echoChannel = channel;
+            this.ensureUserPrivateListener();
+        },
+        ensureUserPrivateListener() {
+            if (!this.echo || !this.user || this.echoUserListenerReady) {
+                return;
+            }
+            this.echoUserListenerReady = true;
+            const ch = this.echo.private(`user.${this.user.id}`);
+            ch.listen('.PrivateMessagePosted', (payload) => {
+                this.onPrivateWsPayload(payload);
+            });
+        },
+        onPrivateWsPayload(payload) {
+            if (!payload || typeof payload.id === 'undefined' || !this.user) {
+                return;
+            }
+            if (Number(payload.recipient_id) !== Number(this.user.id)) {
+                return;
+            }
+            if (
+                this.privatePeer
+                && Number(payload.sender_id) === Number(this.privatePeer.id)
+            ) {
+                this.mergePrivateMessage(payload);
+                this.privateMessages.sort((a, b) => a.id - b.id);
+            }
+            this.loadConversations();
+        },
+        async loadConversations() {
+            if (!this.user) {
+                return;
+            }
+            try {
+                const { data } = await window.axios.get('/api/v1/private/conversations');
+                this.conversations = data.data || [];
+            } catch {
+                /* */
+            }
+        },
+        async loadFriendsAndIgnores() {
+            if (!this.user) {
+                return;
+            }
+            try {
+                const [acc, inc, out, ign] = await Promise.all([
+                    window.axios.get('/api/v1/friends'),
+                    window.axios.get('/api/v1/friends/requests/incoming'),
+                    window.axios.get('/api/v1/friends/requests/outgoing'),
+                    window.axios.get('/api/v1/ignores'),
+                ]);
+                this.friendsAccepted = acc.data.data || [];
+                this.friendsIncoming = inc.data.data || [];
+                this.friendsOutgoing = out.data.data || [];
+                this.ignores = ign.data.data || [];
+            } catch {
+                /* */
+            }
+        },
+        openPrivatePeer(peer) {
+            if (!peer || !peer.id) {
+                return;
+            }
+            this.privatePeer = { id: peer.id, user_name: peer.user_name };
+            this.privateLoadError = '';
+            this.privateMessages = [];
+            this.privateMessageIds = new Set();
+            this.sidebarTab = 'private';
+            this.loadPrivateMessages();
+        },
+        closePrivatePanel() {
+            this.privatePeer = null;
+            this.privateMessages = [];
+            this.privateMessageIds = new Set();
+            this.privateComposerText = '';
+            this.privateLoadError = '';
+        },
+        async lookupAndOpenPrivate() {
+            if (!this.peerLookupName) {
+                return;
+            }
+            await this.openPrivateByUserName(this.peerLookupName);
+            this.peerLookupName = '';
+        },
+        async openPrivateByUserName(name) {
+            if (!name || !this.user) {
+                return;
+            }
+            try {
+                const { data } = await window.axios.get('/api/v1/users/lookup', {
+                    params: { name },
+                });
+                this.openPrivatePeer(data.data);
+                this.loadError = '';
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Користувача не знайдено.';
+            }
+        },
+        async loadPrivateMessages() {
+            if (!this.privatePeer) {
+                return;
+            }
+            this.loadingPrivateMessages = true;
+            this.privateLoadError = '';
+            try {
+                const { data } = await window.axios.get(
+                    `/api/v1/private/peers/${this.privatePeer.id}/messages`,
+                    { params: { limit: 80 } },
+                );
+                this.privateMessageIds = new Set();
+                this.privateMessages = [];
+                (data.data || []).forEach((row) => this.mergePrivateMessage(row));
+                this.privateMessages.sort((a, b) => a.id - b.id);
+            } catch (e) {
+                this.privateLoadError = e.response?.data?.message || 'Не вдалося завантажити приват.';
+            } finally {
+                this.loadingPrivateMessages = false;
+            }
+        },
+        mergePrivateMessage(raw) {
+            if (!raw || typeof raw.id === 'undefined' || this.privateMessageIds.has(raw.id)) {
+                return;
+            }
+            if (!this.privatePeer || !this.user) {
+                return;
+            }
+            const uid = Number(this.user.id);
+            const pid = Number(this.privatePeer.id);
+            const sid = Number(raw.sender_id);
+            const rid = Number(raw.recipient_id);
+            const inThread = (sid === uid && rid === pid) || (sid === pid && rid === uid);
+            if (!inThread) {
+                return;
+            }
+            this.privateMessageIds.add(raw.id);
+            this.privateMessages.push({
+                id: raw.id,
+                sender_id: raw.sender_id,
+                recipient_id: raw.recipient_id,
+                body: raw.body,
+                sent_at: raw.sent_at,
+                sent_time: raw.sent_time,
+                client_message_id: raw.client_message_id,
+            });
+        },
+        async sendPrivateMessageFromPanel(body) {
+            if (!this.privatePeer || this.sendingPrivate) {
+                return;
+            }
+            const text = typeof body === 'string' ? body.trim() : '';
+            if (!text) {
+                return;
+            }
+            this.sendingPrivate = true;
+            await this.ensureSanctum();
+            const clientMessageId = crypto.randomUUID();
+            try {
+                const { data, status } = await window.axios.post(
+                    `/api/v1/private/peers/${this.privatePeer.id}/messages`,
+                    {
+                        message: text,
+                        client_message_id: clientMessageId,
+                    },
+                );
+                if (data.data) {
+                    this.mergePrivateMessage(data.data);
+                    this.privateMessages.sort((a, b) => a.id - b.id);
+                }
+                if (status === 201 || status === 200) {
+                    this.privateComposerText = '';
+                }
+                await this.loadConversations();
+            } catch (e) {
+                this.privateLoadError = e.response?.data?.message || 'Не вдалося надіслати.';
+            } finally {
+                this.sendingPrivate = false;
+            }
+        },
+        async acceptFriend(userId) {
+            await this.ensureSanctum();
+            try {
+                await window.axios.post(`/api/v1/friends/${userId}/accept`);
+                await this.loadFriendsAndIgnores();
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Не вдалося прийняти запит.';
+            }
+        },
+        async rejectFriend(userId) {
+            await this.ensureSanctum();
+            try {
+                await window.axios.post(`/api/v1/friends/${userId}/reject`);
+                await this.loadFriendsAndIgnores();
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Не вдалося відхилити запит.';
+            }
+        },
+        async removeIgnore(userId) {
+            await this.ensureSanctum();
+            try {
+                await window.axios.delete(`/api/v1/ignores/${userId}`);
+                await this.loadFriendsAndIgnores();
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Не вдалося зняти ігнор.';
+            }
         },
         async applyRoomSelection() {
             this.teardownEcho(false);
@@ -769,6 +1135,30 @@ export default {
         async sendMessage() {
             const text = this.composerText.trim();
             if (!text || !this.selectedRoomId || this.sending) {
+                return;
+            }
+            const msgMatch = text.match(/^\/msg\s+(\S+)(?:\s+(.*))?$/i);
+            if (msgMatch) {
+                const targetName = msgMatch[1];
+                const pmBody = (msgMatch[2] || '').trim();
+                this.sending = true;
+                this.loadError = '';
+                await this.ensureSanctum();
+                try {
+                    const { data } = await window.axios.get('/api/v1/users/lookup', {
+                        params: { name: targetName },
+                    });
+                    this.openPrivatePeer(data.data);
+                    this.composerText = '';
+                    if (pmBody) {
+                        await this.sendPrivateMessageFromPanel(pmBody);
+                    }
+                } catch (e) {
+                    this.loadError = e.response?.data?.message || 'Не вдалося знайти користувача для /msg.';
+                } finally {
+                    this.sending = false;
+                }
+
                 return;
             }
             this.sending = true;

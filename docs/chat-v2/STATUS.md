@@ -5,10 +5,24 @@
 | Поле | Значення |
 |------|-----------|
 | **Фаза** | DevQALoop |
-| **Поточна задача** | T08 (Приват + друзі + ignore) |
-| **Спроба Dev (остання)** | T07: 1/3 |
-| **Останній QA** | T07: **PASS** (2026-03-20) |
+| **Поточна задача** | T09 (Архів) |
+| **Спроба Dev (остання)** | T08: 1/3 |
+| **Останній QA** | T08: **PASS** (2026-03-20) |
 | **Блокери** | — |
+
+## T08 — QA (доказ)
+
+- `cd backend && php artisan test` — OK (`PrivateMessageApiTest`, `FriendApiTest`, `IgnoreApiTest`).
+- `cd backend && npm run build` — OK.
+- Чекліст: [T08-QA.md](T08-QA.md).
+
+## T08 — Приват / друзі / ігнор (підсумок)
+
+| Елемент | Значення |
+|---------|----------|
+| API | `private/*`, `users/lookup`, `friends*`, `ignores*` |
+| WS | `.PrivateMessagePosted` → `private-user.{recipientId}` |
+| UI | `PrivateChatPanel.vue`, оновлені вкладки сайдбару; `/msg нік [текст]` у головному композері |
 
 ## T07 — QA (доказ)
 

@@ -53,5 +53,17 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(30)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
         });
+
+        RateLimiter::for('private-read', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(120)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
+
+        RateLimiter::for('private-post', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(30)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
     }
 }

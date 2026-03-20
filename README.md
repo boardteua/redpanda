@@ -18,4 +18,6 @@
 
 **Панель чату (T07):** сайдбар **320px** на `/chat` (вкладки як у board.te, off-canvas на вузькому екрані); QA — [docs/chat-v2/T07-QA.md](docs/chat-v2/T07-QA.md).
 
+**Приват і соціальне (T08):** REST приват, друзі, ігнор; панель привату + `/msg нік` у композері кімнати; WS **PrivateMessagePosted** на `private-user.{id}`; QA — [docs/chat-v2/T08-QA.md](docs/chat-v2/T08-QA.md).
+
 Пам’ять для агентів: [AGENTS.md](AGENTS.md) (оновлення — [docs/chat-v2/CONTINUAL-LEARNING.md](docs/chat-v2/CONTINUAL-LEARNING.md)).
