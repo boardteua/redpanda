@@ -1,0 +1,8 @@
+---
+description: Після закриття задачі з chat-v2-tasklist — коміт у git (одна задача ≈ один коміт).
+alwaysApply: true
+---
+
+- Після **QA PASS** по **Txx** з [project-tasks/chat-v2-tasklist.md](mdc:project-tasks/chat-v2-tasklist.md) зроби **`git commit`** змін по цій задачі.
+- Повідомлення: згадка **Txx** у subject або body; не змішуй непов’язані задачі в одному коміті.
+- Повний регламент: [docs/chat-v2/AGENT-ORCHESTRATION.md](mdc:docs/chat-v2/AGENT-ORCHESTRATION.md) → розділ **Git: коміти при закритті задачі**.
