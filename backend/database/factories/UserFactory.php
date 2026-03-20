@@ -53,4 +53,18 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    public function moderator(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->forceFill(['user_rank' => User::RANK_MODERATOR])->save();
+        });
+    }
+
+    public function admin(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->forceFill(['user_rank' => User::RANK_ADMIN])->save();
+        });
+    }
 }

@@ -36,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
             Log::shareContext(['user_id' => $event->user->getAuthIdentifier()]);
         });
 
+        Gate::define('moderate', fn (User $user): bool => $user->canModerate());
+
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Room::class, RoomPolicy::class);
         Gate::policy(Image::class, ImagePolicy::class);
@@ -92,6 +94,12 @@ class AppServiceProvider extends ServiceProvider
             $user = $request->user();
 
             return Limit::perMinute(30)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
+
+        RateLimiter::for('mod-actions', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(120)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
         });
     }
 }

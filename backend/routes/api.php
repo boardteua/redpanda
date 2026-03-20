@@ -6,12 +6,14 @@ use App\Http\Controllers\Api\V1\ChatImageController;
 use App\Http\Controllers\Api\V1\ChatMessageController;
 use App\Http\Controllers\Api\V1\FriendController;
 use App\Http\Controllers\Api\V1\IgnoreController;
+use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\PrivateMessageController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\UserLookupController;
+use App\Http\Middleware\RejectBannedIp;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->group(function (): void {
+Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): void {
     Route::middleware('throttle:auth-register')->post('auth/register', [AuthController::class, 'register']);
     Route::middleware('throttle:auth-login')->post('auth/login', [AuthController::class, 'login']);
     Route::middleware('throttle:auth-guest')->post('auth/guest', [AuthController::class, 'guest']);
@@ -52,5 +54,16 @@ Route::prefix('v1')->group(function (): void {
         Route::get('ignores', [IgnoreController::class, 'index']);
         Route::post('ignores/{user}', [IgnoreController::class, 'store']);
         Route::delete('ignores/{user}', [IgnoreController::class, 'destroy']);
+
+        Route::middleware(['can:moderate', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
+            Route::get('banned-ips', [ModerationController::class, 'indexBannedIps']);
+            Route::post('banned-ips', [ModerationController::class, 'storeBannedIp']);
+            Route::delete('banned-ips/{bannedIp}', [ModerationController::class, 'destroyBannedIp']);
+            Route::get('filter-words', [ModerationController::class, 'indexFilterWords']);
+            Route::post('filter-words', [ModerationController::class, 'storeFilterWord']);
+            Route::delete('filter-words/{filterWord}', [ModerationController::class, 'destroyFilterWord']);
+            Route::post('users/{user}/mute', [ModerationController::class, 'muteUser']);
+            Route::post('users/{user}/kick', [ModerationController::class, 'kickUser']);
+        });
     });
 });

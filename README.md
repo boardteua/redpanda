@@ -24,4 +24,6 @@
 
 **Спостережуваність (T11):** `GET /up`, `GET /health/ready`; JSON-логи — канал `structured` у `config/logging.php`; QA — [docs/chat-v2/T11-QA.md](docs/chat-v2/T11-QA.md), runbook — [docs/chat-v2/T11-RUNBOOK.md](docs/chat-v2/T11-RUNBOOK.md).
 
+**Модерація MVP (T12):** бан IP, слова-фільтр, mute/kick на користувачах; API `/api/v1/mod/*` для `user_rank ≥ 1` — [docs/chat-v2/T12-QA.md](docs/chat-v2/T12-QA.md).
+
 Пам’ять для агентів: [AGENTS.md](AGENTS.md) (оновлення — [docs/chat-v2/CONTINUAL-LEARNING.md](docs/chat-v2/CONTINUAL-LEARNING.md)).

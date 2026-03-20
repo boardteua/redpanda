@@ -9,6 +9,8 @@ use App\Http\Requests\Chat\StoreChatMessageRequest;
 use App\Http\Resources\ChatMessageResource;
 use App\Models\ChatMessage;
 use App\Models\Room;
+use App\Services\Moderation\ContentWordFilter;
+use App\Services\Moderation\UserPostingGate;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +21,8 @@ class ChatMessageController extends Controller
 {
     public function __construct(
         private readonly SlashCommandPipeline $slashPipeline,
+        private readonly ContentWordFilter $wordFilter,
+        private readonly UserPostingGate $postingGate,
     ) {}
 
     public function index(Request $request, Room $room): AnonymousResourceCollection|JsonResponse
@@ -57,6 +61,7 @@ class ChatMessageController extends Controller
         $this->authorize('interact', $room);
 
         $user = $request->user();
+        $this->postingGate->ensureCanPost($user);
         $clientId = $request->validated('client_message_id');
 
         $existing = ChatMessage::query()
@@ -77,6 +82,7 @@ class ChatMessageController extends Controller
         $raw = (string) ($request->validated('message') ?? '');
         $fileRef = $request->filled('image_id') ? (int) $request->input('image_id') : 0;
         $pipe = $this->slashPipeline->transform($raw, $user->user_name);
+        $pipe['message'] = $this->wordFilter->filter($pipe['message']);
         $now = time();
 
         try {

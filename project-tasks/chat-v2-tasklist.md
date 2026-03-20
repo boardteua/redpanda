@@ -94,7 +94,7 @@
 
 ---
 
-### [ ] T12 — Модерація MVP: banned IP, filter words, kick/mute hooks (мінімум який відповідає схемі users)
+### [x] T12 — Модерація MVP: banned IP, filter words, kick/mute hooks (мінімум який відповідає схемі users)
 
 - **Delegate:** Backend Architect
 - **QA evidence:** тест або ручний сценарій блокування

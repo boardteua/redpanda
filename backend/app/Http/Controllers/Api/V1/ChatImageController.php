@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Image;
+use App\Services\Moderation\UserPostingGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -11,7 +12,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChatImageController extends Controller
 {
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, UserPostingGate $postingGate): JsonResponse
     {
         $request->validate([
             'image' => [
@@ -23,6 +24,7 @@ class ChatImageController extends Controller
         ]);
 
         $user = $request->user();
+        $postingGate->ensureCanPost($user);
         $file = $request->file('image');
         $now = time();
         $path = $file->store((string) $user->id, 'chat_images');

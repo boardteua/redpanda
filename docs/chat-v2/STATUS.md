@@ -5,10 +5,25 @@
 | Поле | Значення |
 |------|-----------|
 | **Фаза** | DevQALoop |
-| **Поточна задача** | T12 (Модерація MVP) |
-| **Спроба Dev (остання)** | T11: 1/3 |
-| **Останній QA** | T11: **PASS** (2026-03-20) |
+| **Поточна задача** | T14 (інтеграція) — або опційно T13 (ETL) |
+| **Спроба Dev (остання)** | T12: 1/3 |
+| **Останній QA** | T12: **PASS** (2026-03-20) |
 | **Блокери** | — |
+
+## T12 — QA (доказ)
+
+- `cd backend && php artisan test` — OK (`ModerationApiTest`, повний suite).
+- `cd backend && npm run build` — OK.
+- Чекліст: [T12-QA.md](T12-QA.md).
+
+## T12 — Модерація MVP (підсумок)
+
+| Елемент | Значення |
+|---------|----------|
+| Бан IP | `banned_ips` + middleware на `api/v1/*` |
+| Фільтр | `filter_words` + заміна в публічному / приватному тексті |
+| Mute / kick | `users.mute_until`, `kick_until` (unix); блок відправки |
+| API | `/api/v1/mod/*`, `can:moderate` (`user_rank` ≥ 1), throttle `mod-actions` |
 
 ## T11 — QA (доказ)
 

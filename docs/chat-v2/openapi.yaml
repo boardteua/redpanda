@@ -11,7 +11,7 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки; клієнт має рендерити їх як **текст**, а не HTML,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`).
 
     **WebSocket (Laravel Reverb, протокол як у Pusher):** приватні канали `private-room.{roomId}` та `private-user.{userId}` авторизуються через `POST /broadcasting/auth` (сесія + для змінюючих запитів CSRF).
     Після успішного `POST /api/v1/rooms/{roomId}/messages` транслюється подія **`.MessagePosted`** на `private-room.{roomId}` (деталі payload — [T05-QA.md](T05-QA.md)).
@@ -24,10 +24,12 @@ info:
 
     **Спостережуваність (T11):** `GET /up` (liveness), `GET /health/ready` (readiness, JSON); структуровані логи — [T11-QA.md](T11-QA.md), runbook — [T11-RUNBOOK.md](T11-RUNBOOK.md).
 
+    **Модерація MVP (T12):** таблиці `banned_ips`, `filter_words`; на `users` — `user_rank`, `mute_until`, `kick_until`; API `/api/v1/mod/*` для `user_rank ≥ 1` — [T12-QA.md](T12-QA.md).
+
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.10.0"
+  version: "0.11.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -43,6 +45,8 @@ tags:
     description: Кімнати та публічні повідомлення (T04)
   - name: Health
     description: Liveness / readiness (T11)
+  - name: Moderation
+    description: Бан IP, фільтр слів, mute/kick (T12, потрібен user_rank ≥ 1)
 
 paths:
   /up:
@@ -80,6 +84,210 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthReadyResponse"
+
+  /api/v1/mod/banned-ips:
+    get:
+      tags: [Moderation]
+      summary: Список заблокованих IP
+      operationId: modListBannedIps
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Масив у `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModBannedIpListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Moderation]
+      summary: Додати IP у бан
+      operationId: modStoreBannedIp
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModBanIpRequest"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModBannedIpCreatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/banned-ips/{bannedIpId}:
+    delete:
+      tags: [Moderation]
+      summary: Прибрати IP з бану
+      operationId: modDestroyBannedIp
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/BannedIpId"
+      responses:
+        "204":
+          description: Видалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/filter-words:
+    get:
+      tags: [Moderation]
+      summary: Список слів фільтра
+      operationId: modListFilterWords
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Масив у `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModFilterWordListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Moderation]
+      summary: Додати слово у фільтр
+      operationId: modStoreFilterWord
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModFilterWordRequest"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModFilterWordCreatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/filter-words/{filterWordId}:
+    delete:
+      tags: [Moderation]
+      summary: Прибрати слово з фільтра
+      operationId: modDestroyFilterWord
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/FilterWordId"
+      responses:
+        "204":
+          description: Видалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/{userId}/mute:
+    post:
+      tags: [Moderation]
+      summary: Мут користувача (хвилини; 0 або відсутнє — зняти)
+      operationId: modMuteUser
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModMinutesRequest"
+      responses:
+        "200":
+          description: Оновлені обмеження
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModUserRestrictionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/{userId}/kick:
+    post:
+      tags: [Moderation]
+      summary: Kick користувача (хвилини; 0 або відсутнє — зняти)
+      operationId: modKickUser
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModMinutesRequest"
+      responses:
+        "200":
+          description: Оновлені обмеження
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModUserRestrictionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /sanctum/csrf-cookie:
     get:
@@ -458,6 +666,31 @@ components:
         type: integer
         minimum: 1
 
+    BannedIpId:
+      name: bannedIpId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    FilterWordId:
+      name: filterWordId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    ModUserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: `users.id` цілі
+
     RoomId:
       name: roomId
       in: path
@@ -550,6 +783,107 @@ components:
             type: string
             enum: [ok, fail]
           description: Мінімум `database`; опційно `redis`
+
+    ModBanIpRequest:
+      type: object
+      required: [ip]
+      properties:
+        ip:
+          type: string
+          description: IPv4 або IPv6
+
+    ModBannedIpRow:
+      type: object
+      properties:
+        id:
+          type: integer
+        ip:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ModBannedIpListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModBannedIpRow"
+
+    ModBannedIpCreatedResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ModBannedIpRow"
+
+    ModFilterWordRequest:
+      type: object
+      required: [word]
+      properties:
+        word:
+          type: string
+          maxLength: 191
+
+    ModFilterWordRow:
+      type: object
+      properties:
+        id:
+          type: integer
+        word:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ModFilterWordListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModFilterWordRow"
+
+    ModFilterWordCreatedResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ModFilterWordRow"
+
+    ModMinutesRequest:
+      type: object
+      properties:
+        minutes:
+          type: integer
+          minimum: 0
+          maximum: 525600
+          nullable: true
+          description: Тривалість; 0 або пропуск — зняти обмеження
+
+    ModUserRestrictionData:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+        mute_until:
+          type: integer
+          nullable: true
+        kick_until:
+          type: integer
+          nullable: true
+
+    ModUserRestrictionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ModUserRestrictionData"
 
     RoomListResponse:
       type: object

@@ -8,6 +8,8 @@ use App\Http\Requests\Chat\StorePrivateMessageRequest;
 use App\Http\Resources\PrivateMessageResource;
 use App\Models\PrivateMessage;
 use App\Models\User;
+use App\Services\Moderation\ContentWordFilter;
+use App\Services\Moderation\UserPostingGate;
 use App\Services\PrivateMessageGate;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +19,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 class PrivateMessageController extends Controller
 {
+    public function __construct(
+        private readonly ContentWordFilter $wordFilter,
+        private readonly UserPostingGate $postingGate,
+    ) {}
+
     public function conversations(Request $request): JsonResponse
     {
         $uid = (int) $request->user()->id;
@@ -114,6 +121,8 @@ class PrivateMessageController extends Controller
             return response()->json(['message' => 'Надсилання заблоковано (ігнор).'], 403);
         }
 
+        $this->postingGate->ensureCanPost($user);
+
         $clientId = $request->validated('client_message_id');
 
         $existing = PrivateMessage::query()
@@ -135,12 +144,13 @@ class PrivateMessageController extends Controller
         }
 
         $now = time();
+        $body = $this->wordFilter->filter($request->validated('message'));
 
         try {
             $message = PrivateMessage::query()->create([
                 'sender_id' => $user->id,
                 'recipient_id' => $peer->id,
-                'body' => $request->validated('message'),
+                'body' => $body,
                 'sent_at' => $now,
                 'sent_time' => date('H:i', $now),
                 'client_message_id' => $clientId,

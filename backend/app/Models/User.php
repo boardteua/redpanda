@@ -15,6 +15,12 @@ use Laravel\Sanctum\HasApiTokens;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
+    public const RANK_USER = 0;
+
+    public const RANK_MODERATOR = 1;
+
+    public const RANK_ADMIN = 2;
+
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -29,6 +35,30 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'guest' => 'boolean',
+            'user_rank' => 'integer',
+            'mute_until' => 'integer',
+            'kick_until' => 'integer',
         ];
+    }
+
+    public function isMutedAt(?int $now = null): bool
+    {
+        $now ??= time();
+        $until = $this->mute_until;
+
+        return $until !== null && $until > $now;
+    }
+
+    public function isKickedAt(?int $now = null): bool
+    {
+        $now ??= time();
+        $until = $this->kick_until;
+
+        return $until !== null && $until > $now;
+    }
+
+    public function canModerate(): bool
+    {
+        return (int) $this->user_rank >= self::RANK_MODERATOR;
     }
 }
