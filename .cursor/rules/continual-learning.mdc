@@ -6,3 +6,4 @@ alwaysApply: true
 - На початку роботи в репозиторії переглянь [AGENTS.md](mdc:AGENTS.md) (розділи Learned User Preferences / Learned Workspace Facts).
 - Не дублюй у AGENTS.md секрети, PII й одноразові задачі.
 - Інкрементальне оновлення: skill **Continual Learning**, індекс `.cursor/hooks/state/continual-learning-index.json`, транскрипти в `~/.cursor/projects/<slug>/agent-transcripts/`.
+- Після **QA PASS** по задачі з чекліста — **git commit** (див. [git-task-commits.mdc](mdc:.cursor/rules/git-task-commits.mdc) та [AGENT-ORCHESTRATION.md](mdc:docs/chat-v2/AGENT-ORCHESTRATION.md)).
