@@ -19,6 +19,7 @@
 | [docs/chat-v2/T07-QA.md](../docs/chat-v2/T07-QA.md) | Панель 320px, вкладки, off-canvas |
 | [docs/chat-v2/T08-QA.md](../docs/chat-v2/T08-QA.md) | Приват, друзі, ignore, `/msg` |
 | [docs/chat-v2/T09-QA.md](../docs/chat-v2/T09-QA.md) | Архів чату, пагінація, пошук |
+| [docs/chat-v2/T10-QA.md](../docs/chat-v2/T10-QA.md) | Зображення в чаті, upload, стрічка / архів |
 | [docs/board-te-ua/SITE-STRUCTURE.md](../docs/board-te-ua/SITE-STRUCTURE.md) | Сценарії, екрани, команди, архів |
 | [docs/board-te-ua/CHAT-PANEL-SIDEBAR.md](../docs/board-te-ua/CHAT-PANEL-SIDEBAR.md) | Сайдбар 320px, вкладки, панелі |
 | [docs/board-te-ua/CHAT-MAIN-INPUT.md](../docs/board-te-ua/CHAT-MAIN-INPUT.md) | Стрічка, ввід, смайли, POST |

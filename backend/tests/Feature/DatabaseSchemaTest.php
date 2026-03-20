@@ -18,5 +18,6 @@ class DatabaseSchemaTest extends TestCase
         $this->assertTrue(Schema::hasTable('private_messages'));
         $this->assertTrue(Schema::hasTable('friendships'));
         $this->assertTrue(Schema::hasTable('user_ignores'));
+        $this->assertTrue(Schema::hasTable('images'));
     }
 }

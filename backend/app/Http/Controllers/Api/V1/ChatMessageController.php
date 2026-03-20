@@ -74,7 +74,8 @@ class ChatMessageController extends Controller
             return $this->duplicateMessageResponse($existing);
         }
 
-        $raw = $request->validated('message');
+        $raw = (string) ($request->validated('message') ?? '');
+        $fileRef = $request->filled('image_id') ? (int) $request->input('image_id') : 0;
         $pipe = $this->slashPipeline->transform($raw, $user->user_name);
         $now = time();
 
@@ -90,7 +91,7 @@ class ChatMessageController extends Controller
                 'type' => 'public',
                 'post_target' => null,
                 'avatar' => null,
-                'file' => 0,
+                'file' => $fileRef,
                 'client_message_id' => $clientId,
             ]);
         } catch (QueryException $e) {

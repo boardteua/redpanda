@@ -26,6 +26,7 @@ export function createEcho() {
         enabledTransports: ['ws', 'wss'],
         authEndpoint: `${window.location.origin}/broadcasting/auth`,
         auth: {
+            headers: {},
             withCredentials: true,
         },
     });

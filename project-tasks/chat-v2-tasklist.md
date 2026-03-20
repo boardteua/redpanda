@@ -79,7 +79,7 @@
 
 ---
 
-### [ ] T10 — Медіа: upload зображень, таблиця `images`, обмеження MIME/size; інтеграція з повідомленням
+### [x] T10 — Медіа: upload зображень, таблиця `images`, обмеження MIME/size; інтеграція з повідомленням
 
 - **Delegate:** Backend + Frontend
 - **Deliverables:** файли поза webroot або signed URL; помилки зрозумілі для UI

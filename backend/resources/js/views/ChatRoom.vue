@@ -128,9 +128,20 @@
                                 </button>
                                 <span v-else class="font-semibold text-[var(--rp-text)]">{{ m.post_user }}</span>
                             </div>
-                            <p class="mt-1 whitespace-pre-wrap break-words text-[var(--rp-text)]">
+                            <p
+                                v-if="m.post_message"
+                                class="mt-1 whitespace-pre-wrap break-words text-[var(--rp-text)]"
+                            >
                                 {{ m.post_message }}
                             </p>
+                            <figure v-if="m.image && m.image.url" class="mt-2">
+                                <img
+                                    :src="m.image.url"
+                                    alt="Вкладене зображення"
+                                    class="max-h-64 max-w-full rounded-md border border-[var(--rp-border-subtle)] object-contain"
+                                    loading="lazy"
+                                />
+                            </figure>
                         </li>
                     </ul>
                     <p
@@ -149,14 +160,56 @@
                         class="rp-input rp-focusable min-h-[5rem] resize-y font-sans"
                         maxlength="4000"
                         rows="3"
-                        :disabled="sending || !selectedRoomId"
+                        :disabled="sending || uploadingImage || !selectedRoomId"
                         placeholder="Текст повідомлення… (/msg нік текст — надіслати в приват)"
                     />
-                    <div class="flex justify-end">
+                    <input
+                        ref="imageInput"
+                        type="file"
+                        class="hidden"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        @change="onChatImageSelected"
+                    />
+                    <div
+                        v-if="pendingImageId && pendingPreviewUrl"
+                        class="flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] p-2"
+                    >
+                        <img
+                            :src="pendingPreviewUrl"
+                            alt=""
+                            class="max-h-24 max-w-[12rem] rounded object-contain"
+                        />
+                        <button
+                            type="button"
+                            class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                            :disabled="sending || uploadingImage"
+                            @click="clearPendingChatImage"
+                        >
+                            Прибрати фото
+                        </button>
+                    </div>
+                    <p v-if="imageUploadError" class="text-sm text-[var(--rp-error)]" role="alert">
+                        {{ imageUploadError }}
+                    </p>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <button
+                            type="button"
+                            class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                            :disabled="sending || uploadingImage || !selectedRoomId"
+                            title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
+                            @click="$refs.imageInput && $refs.imageInput.click()"
+                        >
+                            Фото
+                        </button>
                         <button
                             type="submit"
                             class="rp-focusable rp-btn rp-btn-primary"
-                            :disabled="sending || !selectedRoomId || !composerText.trim()"
+                            :disabled="
+                                sending
+                                || uploadingImage
+                                || !selectedRoomId
+                                || (!composerText.trim() && !pendingImageId)
+                            "
                         >
                             Надіслати
                         </button>
@@ -567,6 +620,12 @@ function normalizeMessage(raw) {
         return null;
     }
 
+    const file = raw.file != null ? Number(raw.file) : 0;
+    const image =
+        raw.image && raw.image.url
+            ? { id: Number(raw.image.id), url: raw.image.url }
+            : null;
+
     return {
         post_id: raw.post_id,
         post_roomid: raw.post_roomid,
@@ -578,6 +637,8 @@ function normalizeMessage(raw) {
         post_color: raw.post_color,
         type: raw.type,
         client_message_id: raw.client_message_id,
+        file,
+        image,
     };
 }
 
@@ -597,6 +658,10 @@ export default {
             loadingRooms: true,
             loadingMessages: false,
             sending: false,
+            pendingImageId: null,
+            pendingPreviewUrl: '',
+            uploadingImage: false,
+            imageUploadError: '',
             loadError: '',
             echo: null,
             echoChannel: null,
@@ -1255,9 +1320,43 @@ export default {
                 this.closePanel();
             }
         },
+        clearPendingChatImage() {
+            this.pendingImageId = null;
+            this.pendingPreviewUrl = '';
+            this.imageUploadError = '';
+            if (this.$refs.imageInput) {
+                this.$refs.imageInput.value = '';
+            }
+        },
+        async onChatImageSelected(e) {
+            const input = e.target;
+            const file = input.files && input.files[0];
+            if (!file || !this.selectedRoomId) {
+                return;
+            }
+            this.imageUploadError = '';
+            this.uploadingImage = true;
+            await this.ensureSanctum();
+            try {
+                const form = new FormData();
+                form.append('image', file);
+                const { data } = await window.axios.post('/api/v1/images', form, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                this.pendingImageId = data.data.id;
+                this.pendingPreviewUrl = data.data.url;
+            } catch (err) {
+                const msg = err.response?.data?.message || 'Не вдалося завантажити зображення.';
+                this.imageUploadError = msg;
+                this.clearPendingChatImage();
+            } finally {
+                this.uploadingImage = false;
+                input.value = '';
+            }
+        },
         async sendMessage() {
             const text = this.composerText.trim();
-            if (!text || !this.selectedRoomId || this.sending) {
+            if ((!text && !this.pendingImageId) || !this.selectedRoomId || this.sending) {
                 return;
             }
             const msgMatch = text.match(/^\/msg\s+(\S+)(?:\s+(.*))?$/i);
@@ -1288,18 +1387,23 @@ export default {
             await this.ensureSanctum();
             const clientMessageId = crypto.randomUUID();
             try {
+                const body = {
+                    message: text,
+                    client_message_id: clientMessageId,
+                };
+                if (this.pendingImageId) {
+                    body.image_id = this.pendingImageId;
+                }
                 const { data, status } = await window.axios.post(
                     `/api/v1/rooms/${this.selectedRoomId}/messages`,
-                    {
-                        message: text,
-                        client_message_id: clientMessageId,
-                    },
+                    body,
                 );
                 if (data.data) {
                     this.mergeMessage(data.data);
                 }
                 if (status === 201 || status === 200) {
                     this.composerText = '';
+                    this.clearPendingChatImage();
                 }
             } catch (e) {
                 const msg = e.response?.data?.message || 'Не вдалося надіслати.';

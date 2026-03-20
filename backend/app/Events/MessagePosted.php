@@ -8,6 +8,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
 
 class MessagePosted implements ShouldBroadcast
 {
@@ -36,6 +37,14 @@ class MessagePosted implements ShouldBroadcast
     public function broadcastWith(): array
     {
         $m = $this->message;
+        $fileId = (int) $m->file;
+        $image = null;
+        if ($fileId > 0) {
+            $image = [
+                'id' => $fileId,
+                'url' => URL::route('api.v1.chat-images.file', ['image' => $fileId], true),
+            ];
+        }
 
         return [
             'post_id' => $m->post_id,
@@ -48,6 +57,8 @@ class MessagePosted implements ShouldBroadcast
             'post_color' => $m->post_color,
             'type' => $m->type,
             'client_message_id' => $m->client_message_id,
+            'file' => $fileId,
+            'image' => $image,
         ];
     }
 }

@@ -49,4 +49,14 @@ class ChatMessage extends Model
     {
         return $this->belongsTo(Room::class, 'post_roomid', 'room_id');
     }
+
+    /**
+     * Вкладене зображення (`chat.file` = `images.id`, 0 — немає).
+     *
+     * @return BelongsTo<Image, $this>
+     */
+    public function attachedImage(): BelongsTo
+    {
+        return $this->belongsTo(Image::class, 'file');
+    }
 }

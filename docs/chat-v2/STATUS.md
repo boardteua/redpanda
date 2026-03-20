@@ -5,10 +5,24 @@
 | Поле | Значення |
 |------|-----------|
 | **Фаза** | DevQALoop |
-| **Поточна задача** | T10 (Медіа) |
-| **Спроба Dev (остання)** | T09: 1/3 |
-| **Останній QA** | T09: **PASS** (2026-03-20) |
+| **Поточна задача** | T11 (Спостережуваність) |
+| **Спроба Dev (остання)** | T10: 1/3 |
+| **Останній QA** | T10: **PASS** (2026-03-20) |
 | **Блокери** | — |
+
+## T10 — QA (доказ)
+
+- `cd backend && php artisan test` — OK (`ChatImageApiTest`, решта suite за CI).
+- `cd backend && npm run build` — OK.
+- Чекліст: [T10-QA.md](T10-QA.md).
+
+## T10 — Медіа (підсумок)
+
+| Елемент | Значення |
+|---------|----------|
+| API | `POST /api/v1/images`, `GET /api/v1/images/{id}/file`; `POST .../messages` з `image_id`; диск `storage/app/chat-images` |
+| Політика | `ImagePolicy::view` — власник або повідомлення в доступній кімнаті |
+| SPA | `ChatRoom.vue` upload + прев’ю; `ArchiveChat.vue` прев’ю в таблиці |
 
 ## T09 — QA (доказ)
 

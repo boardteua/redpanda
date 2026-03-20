@@ -11,7 +11,7 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки; клієнт має рендерити їх як **текст**, а не HTML,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`, `archive-read`, `private-*`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`).
 
     **WebSocket (Laravel Reverb, протокол як у Pusher):** приватні канали `private-room.{roomId}` та `private-user.{userId}` авторизуються через `POST /broadcasting/auth` (сесія + для змінюючих запитів CSRF).
     Після успішного `POST /api/v1/rooms/{roomId}/messages` транслюється подія **`.MessagePosted`** на `private-room.{roomId}` (деталі payload — [T05-QA.md](T05-QA.md)).
@@ -20,10 +20,12 @@ info:
 
     **Архів (T09):** `GET /api/v1/archive/messages` — offset-пагінація (`page`, `per_page` ∈ {10,25,50,100}), пошук `q` (≤200 символів); деталі — [T09-QA.md](T09-QA.md).
 
+    **Медіа (T10):** `POST /api/v1/images` (multipart, поле `image`), `GET /api/v1/images/{id}/file` — файли на диску `storage/app/chat-images` (не в `public/`); доступ до файлу за політикою (власник або повідомлення в доступній кімнаті). Повідомлення: опційний `image_id` у `POST .../messages` — [T10-QA.md](T10-QA.md).
+
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.8.0"
+  version: "0.9.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -227,6 +229,82 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/images:
+    post:
+      tags: [Chat]
+      summary: Завантажити зображення (чернетка перед повідомленням)
+      description: |
+        `multipart/form-data`, поле **`image`**. Дозволені MIME: `image/jpeg`, `image/png`, `image/gif`, `image/webp`; максимум **4096 КБ**.
+        У відповіді — `data.id` для передачі в `POST /api/v1/rooms/{roomId}/messages` як `image_id`.
+      operationId: uploadChatImage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Збережено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatImageUploadResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/images/{imageId}/file:
+    get:
+      tags: [Chat]
+      summary: Отримати файл зображення
+      description: |
+        Потік байтів з коректним `Content-Type`. Доступ: власник зображення або користувач з доступом до кімнати, де є повідомлення з цим `image_id` у полі `file`.
+      operationId: downloadChatImageFile
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/ImageId"
+      responses:
+        "200":
+          description: Тіло зображення
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/rooms/{roomId}/messages:
     get:
       tags: [Chat]
@@ -275,6 +353,7 @@ paths:
         Ідемпотентність: повтор з тим самим `client_message_id` у **тій самій** кімнаті повертає **200** і той самий ресурс з `meta.duplicate: true`.
         Той самий ключ у **іншій** кімнаті — **422**.
         `meta.slash` завжди присутній; для відповіді-дубля — `recognized: false` (тіло повторного запиту не застосовується).
+        Потрібен **непорожній** `message` (після trim) або **`image_id`** власного завантаження (`POST /api/v1/images`).
       operationId: postRoomMessage
       security:
         - sanctumSession: []
@@ -331,6 +410,14 @@ components:
       description: Після `GET /sanctum/csrf-cookie` — значення з cookie `XSRF-TOKEN` (URL decode).
 
   parameters:
+    ImageId:
+      name: imageId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
     RoomId:
       name: roomId
       in: path
@@ -446,6 +533,36 @@ components:
         client_message_id:
           type: string
           nullable: true
+        file:
+          type: integer
+          description: 0 — без вкладення; інакше `images.id`
+        image:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            url:
+              type: string
+              format: uri
+
+    ChatImageUploadResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [id, url, mime, size_bytes]
+          properties:
+            id:
+              type: integer
+            url:
+              type: string
+              format: uri
+            mime:
+              type: string
+            size_bytes:
+              type: integer
 
     SlashMeta:
       type: object
@@ -459,11 +576,17 @@ components:
 
     PostChatMessageRequest:
       type: object
-      required: [message, client_message_id]
+      required: [client_message_id]
       properties:
         message:
           type: string
           maxLength: 4000
+          nullable: true
+        image_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Ідентифікатор з `POST /api/v1/images`; має належати поточному користувачу
         client_message_id:
           type: string
           format: uuid

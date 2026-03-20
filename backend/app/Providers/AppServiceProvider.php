@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Image;
 use App\Models\Room;
 use App\Models\User;
+use App\Policies\ImagePolicy;
 use App\Policies\RoomPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Room::class, RoomPolicy::class);
+        Gate::policy(Image::class, ImagePolicy::class);
 
         RateLimiter::for('auth-register', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());
@@ -52,6 +55,18 @@ class AppServiceProvider extends ServiceProvider
             $user = $request->user();
 
             return Limit::perMinute(60)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
+
+        RateLimiter::for('image-upload', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(20)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
+
+        RateLimiter::for('image-read', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(180)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
         });
 
         RateLimiter::for('chat-post', function (Request $request) {

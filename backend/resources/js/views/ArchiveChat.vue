@@ -119,6 +119,13 @@
                                 class="border-b border-[var(--rp-border-subtle)] px-3 py-2 align-top"
                                 :title="m.post_message"
                             >
+                                <img
+                                    v-if="m.image && m.image.url"
+                                    :src="m.image.url"
+                                    alt=""
+                                    class="mb-2 max-h-20 max-w-full rounded border border-[var(--rp-border-subtle)] object-contain"
+                                    loading="lazy"
+                                />
                                 <span class="line-clamp-3 whitespace-pre-wrap break-words">{{ m.post_message }}</span>
                             </td>
                             <td class="border-b border-[var(--rp-border-subtle)] px-3 py-2 align-top font-mono text-xs whitespace-nowrap text-[var(--rp-text-muted)]">

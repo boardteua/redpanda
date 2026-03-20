@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\ChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\URL;
 
 /** @mixin ChatMessage */
 class ChatMessageResource extends JsonResource
@@ -25,6 +26,14 @@ class ChatMessageResource extends JsonResource
             'post_roomid' => (int) $this->post_roomid,
             'type' => $this->type,
             'client_message_id' => $this->client_message_id,
+            'file' => (int) $this->file,
+            'image' => $this->when(
+                (int) $this->file > 0,
+                fn () => [
+                    'id' => (int) $this->file,
+                    'url' => URL::route('api.v1.chat-images.file', ['image' => (int) $this->file], true),
+                ],
+            ),
         ];
     }
 }
