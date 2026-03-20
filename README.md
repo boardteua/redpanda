@@ -22,4 +22,6 @@
 
 **Приват і соціальне (T08):** REST приват, друзі, ігнор; панель привату + `/msg нік` у композері кімнати; WS **PrivateMessagePosted** на `private-user.{id}`; QA — [docs/chat-v2/T08-QA.md](docs/chat-v2/T08-QA.md).
 
+**Спостережуваність (T11):** `GET /up`, `GET /health/ready`; JSON-логи — канал `structured` у `config/logging.php`; QA — [docs/chat-v2/T11-QA.md](docs/chat-v2/T11-QA.md), runbook — [docs/chat-v2/T11-RUNBOOK.md](docs/chat-v2/T11-RUNBOOK.md).
+
 Пам’ять для агентів: [AGENTS.md](AGENTS.md) (оновлення — [docs/chat-v2/CONTINUAL-LEARNING.md](docs/chat-v2/CONTINUAL-LEARNING.md)).

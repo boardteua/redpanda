@@ -87,7 +87,7 @@
 
 ---
 
-### [ ] T11 — Спостережуваність: structured logs, health/readiness, короткий runbook (Reverb/Redis down) у `docs/chat-v2/` або README
+### [x] T11 — Спостережуваність: structured logs, health/readiness, короткий runbook (Reverb/Redis down) у `docs/chat-v2/` або README
 
 - **Delegate:** Backend Architect / DevOps-oriented developer
 - **QA evidence:** `curl` health endpoint; приклад рядка логу

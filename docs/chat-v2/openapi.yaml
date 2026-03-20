@@ -22,10 +22,12 @@ info:
 
     **Медіа (T10):** `POST /api/v1/images` (multipart, поле `image`), `GET /api/v1/images/{id}/file` — файли на диску `storage/app/chat-images` (не в `public/`); доступ до файлу за політикою (власник або повідомлення в доступній кімнаті). Повідомлення: опційний `image_id` у `POST .../messages` — [T10-QA.md](T10-QA.md).
 
+    **Спостережуваність (T11):** `GET /up` (liveness), `GET /health/ready` (readiness, JSON); структуровані логи — [T11-QA.md](T11-QA.md), runbook — [T11-RUNBOOK.md](T11-RUNBOOK.md).
+
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.9.0"
+  version: "0.10.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -39,8 +41,46 @@ tags:
     description: Реєстрація, сесія, профіль
   - name: Chat
     description: Кімнати та публічні повідомлення (T04)
+  - name: Health
+    description: Liveness / readiness (T11)
 
 paths:
+  /up:
+    get:
+      tags: [Health]
+      summary: Liveness (процес відповідає)
+      description: Вбудований маршрут Laravel; HTML-відповідь. Не перевіряє БД.
+      operationId: healthUp
+      security: []
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Помилка під час діагностики (див. подію DiagnosingHealth)
+
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness (БД та за потреби Redis)
+      description: |
+        `checks.database` завжди; `checks.redis` — якщо `HEALTH_CHECK_REDIS=true` або cache/queue на redis.
+        **503** якщо `status` = `degraded`.
+      operationId: healthReady
+      security: []
+      responses:
+        "200":
+          description: Усі перевірки ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
+        "503":
+          description: Одна або кілька перевірок fail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
+
   /sanctum/csrf-cookie:
     get:
       tags: [Auth]
@@ -496,6 +536,20 @@ components:
         access:
           type: integer
           description: "0 — усі авторизовані (гості дозволені); > 0 — лише зареєстровані"
+
+    HealthReadyResponse:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ok, fail]
+          description: Мінімум `database`; опційно `redis`
 
     RoomListResponse:
       type: object

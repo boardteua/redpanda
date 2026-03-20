@@ -8,9 +8,12 @@ use App\Models\User;
 use App\Policies\ImagePolicy;
 use App\Policies\RoomPolicy;
 use App\Policies\UserPolicy;
+use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,6 +32,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(Authenticated::class, function (Authenticated $event): void {
+            Log::shareContext(['user_id' => $event->user->getAuthIdentifier()]);
+        });
+
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Room::class, RoomPolicy::class);
         Gate::policy(Image::class, ImagePolicy::class);

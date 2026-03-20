@@ -5,10 +5,24 @@
 | Поле | Значення |
 |------|-----------|
 | **Фаза** | DevQALoop |
-| **Поточна задача** | T11 (Спостережуваність) |
-| **Спроба Dev (остання)** | T10: 1/3 |
-| **Останній QA** | T10: **PASS** (2026-03-20) |
+| **Поточна задача** | T12 (Модерація MVP) |
+| **Спроба Dev (остання)** | T11: 1/3 |
+| **Останній QA** | T11: **PASS** (2026-03-20) |
 | **Блокери** | — |
+
+## T11 — QA (доказ)
+
+- `cd backend && php artisan test` — OK (`HealthEndpointTest`, повний suite).
+- `cd backend && npm run build` — OK.
+- Чекліст: [T11-QA.md](T11-QA.md); runbook: [T11-RUNBOOK.md](T11-RUNBOOK.md).
+
+## T11 — Спостережуваність (підсумок)
+
+| Елемент | Значення |
+|---------|----------|
+| Liveness | `GET /up` (Laravel) |
+| Readiness | `GET /health/ready` — JSON, опційно Redis за `HEALTH_CHECK_REDIS` / драйвери |
+| Логи | Канал `structured` (JSON); middleware + `Authenticated` → `request_id`, `user_id` |
 
 ## T10 — QA (доказ)
 
