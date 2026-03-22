@@ -24,11 +24,9 @@
                 :logging-out="loggingOut"
                 :panel-open="panelOpen"
                 :ws-degraded="wsDegraded"
-                :theme-label="themeLabel"
                 :selected-room-id="selectedRoomId"
                 @logout="logout"
                 @toggle-panel="togglePanel"
-                @cycle-theme="cycleTheme"
             />
 
             <p
@@ -138,7 +136,9 @@
             :mode="userInfoModalMode"
             :viewer="user"
             :target="userInfoModalTarget"
+            :theme-label="themeLabel"
             @close="closeUserInfoModal"
+            @cycle-theme="cycleTheme"
         />
         <SimpleStubModal
             :open="adminSettingsStubOpen"
@@ -149,8 +149,10 @@
         <UserProfileModal
             :open="profileModalOpen"
             :user="user"
+            :theme-label="themeLabel"
             @close="profileModalOpen = false"
             @updated="onProfileModalUpdated"
+            @cycle-theme="cycleTheme"
         />
         <ConfirmDialogModal
             :open="deleteConfirmOpen"

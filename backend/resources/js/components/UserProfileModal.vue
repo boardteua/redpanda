@@ -176,6 +176,22 @@
                         </button>
                     </div>
 
+                    <!-- Оформлення (T43): тема лише локально, без API -->
+                    <div v-show="activeTab === 'appearance'" class="space-y-3">
+                        <p class="text-sm text-[var(--rp-text-muted)]">
+                            Світла, темна або як у системі. Застосовується до всього чату на цьому пристрої
+                            (зберігається в браузері).
+                        </p>
+                        <button
+                            type="button"
+                            class="rp-focusable rp-btn rp-btn-secondary text-sm"
+                            aria-label="Перемкнути тему оформлення"
+                            @click="$emit('cycle-theme')"
+                        >
+                            {{ themeLabel }}
+                        </button>
+                    </div>
+
                     <!-- Акаунт -->
                     <div v-show="activeTab === 'account'" class="space-y-3">
                         <div>
@@ -313,6 +329,10 @@ export default {
             type: Object,
             default: null,
         },
+        themeLabel: {
+            type: String,
+            default: '',
+        },
     },
     data() {
         titleSeq += 1;
@@ -360,6 +380,7 @@ export default {
             },
             tabs: [
                 { id: 'personal', label: 'Персональні' },
+                { id: 'appearance', label: 'Оформлення' },
                 { id: 'account', label: 'Акаунт' },
                 { id: 'social', label: 'Соцмережі' },
                 { id: 'sounds', label: 'Звуки' },

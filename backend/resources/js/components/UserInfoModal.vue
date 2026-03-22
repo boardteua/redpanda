@@ -44,6 +44,26 @@
                 <p v-if="viewer.guest">
                     <span class="text-[var(--rp-text-muted)]">Ви увійшли як гість.</span>
                 </p>
+                <!-- T43: гості не мають повного профілю — тема лише локально (localStorage), той самий цикл що в чаті -->
+                <div
+                    v-if="viewer && viewer.guest"
+                    class="mt-4 space-y-2 rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] p-3"
+                >
+                    <p class="text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
+                        Оформлення
+                    </p>
+                    <p class="text-xs text-[var(--rp-text-muted)]">
+                        Тема зберігається лише на цьому пристрої (без облікового запису).
+                    </p>
+                    <button
+                        type="button"
+                        class="rp-focusable rp-btn rp-btn-secondary w-full text-sm"
+                        aria-label="Перемкнути тему оформлення"
+                        @click="$emit('cycle-theme')"
+                    >
+                        {{ themeLabel }}
+                    </button>
+                </div>
             </template>
             <template v-else>
                 <p>
@@ -105,6 +125,10 @@ export default {
         target: {
             type: Object,
             default: null,
+        },
+        themeLabel: {
+            type: String,
+            default: '',
         },
     },
     computed: {

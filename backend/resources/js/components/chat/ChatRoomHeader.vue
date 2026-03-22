@@ -71,14 +71,6 @@
                         />
                     </svg>
                 </button>
-                <button
-                    type="button"
-                    class="rp-focusable rp-btn rp-btn-ghost text-sm"
-                    aria-label="Перемкнути тему оформлення"
-                    @click="$emit('cycle-theme')"
-                >
-                    {{ themeLabel }}
-                </button>
             </div>
         </div>
     </header>
@@ -93,7 +85,6 @@ export default {
         loggingOut: { type: Boolean, default: false },
         panelOpen: { type: Boolean, default: false },
         wsDegraded: { type: Boolean, default: false },
-        themeLabel: { type: String, required: true },
         selectedRoomId: {
             default: null,
             validator: (v) => v === null || v === undefined || typeof v === 'number',
