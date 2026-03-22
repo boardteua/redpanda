@@ -221,7 +221,7 @@
                     ref="chatComposer"
                     v-model="composerText"
                     class="rp-focusable rp-chat-composer-input w-full"
-                    maxlength="4000"
+                    :maxlength="messageMaxLength"
                     rows="1"
                     :disabled="sending || uploadingImage || !selectedRoomId"
                     placeholder="Повідомлення — Enter надішле, Shift+Enter — новий рядок; зображення можна вставити з буфера"
@@ -336,6 +336,11 @@ export default {
         sending: { type: Boolean, default: false },
         loggingOut: { type: Boolean, default: false },
         isGuest: { type: Boolean, default: false },
+        /** Узгоджено з `StoreChatMessageRequest` / `UpdateChatMessageRequest` (T35). */
+        messageMaxLength: {
+            type: Number,
+            default: 4000,
+        },
         ensureSanctum: { type: Function, required: true },
     },
     data() {

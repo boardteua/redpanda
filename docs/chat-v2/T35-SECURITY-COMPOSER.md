@@ -39,8 +39,8 @@
 
 ## Рекомендації (не блокери)
 
-- **UX:** узгодити `maxlength` textarea з фактичним `max` для VIP/staff (або прибрати жорсткий maxlength і покладатися лише на відповідь 422).
-- **Майбутні клієнти:** документувати в OpenAPI/гайді, що `post_message` — **plain text**, не HTML.
+- **UX:** ~~узгодити `maxlength` textarea з фактичним `max` для VIP/staff~~ — зроблено: `ChatRoom.vue` → `composerMessageMaxLength` (2000 / 4000 / 8000 як у `StoreChatMessageRequest` / `UpdateChatMessageRequest`), проп у `ChatRoomComposer`.
+- **Майбутні клієнти:** ~~документувати в OpenAPI~~ — у `docs/chat-v2/openapi.yaml` уточнено plain text для `post_message` / `message` та max за ролями.
 
 ## Докази (автотести)
 

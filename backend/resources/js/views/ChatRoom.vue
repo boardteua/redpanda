@@ -77,6 +77,7 @@
                         :sending="sending"
                         :logging-out="loggingOut"
                         :is-guest="Boolean(user && user.guest)"
+                        :message-max-length="composerMessageMaxLength"
                         :ensure-sanctum="ensureSanctum"
                         @submit-message="sendMessage"
                         @cycle-edit="onComposerCycleEdit"
@@ -387,6 +388,19 @@ export default {
         },
         chatTopicLine() {
             return this.currentRoom && this.currentRoom.topic ? this.currentRoom.topic : '';
+        },
+        /** Узгоджено з `StoreChatMessageRequest` / `UpdateChatMessageRequest` (T35). */
+        composerMessageMaxLength() {
+            const u = this.user;
+            if (!u || u.guest) {
+                return 2000;
+            }
+            const r = u.chat_role;
+            if (r === 'vip' || r === 'moderator' || r === 'admin') {
+                return 8000;
+            }
+
+            return 4000;
         },
         sidebarTabs() {
             return [

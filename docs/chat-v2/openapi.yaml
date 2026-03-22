@@ -8,8 +8,8 @@ info:
     потім передавайте заголовок `X-XSRF-TOKEN` (значення з cookie `XSRF-TOKEN`, URL-decoded) на всі **змінюючі** запити (`POST` тощо) разом з cookie сесії.
     Див. також [T03-QA.md](T03-QA.md).
 
-    **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки; клієнт має рендерити їх як **текст**, а не HTML,
-    доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)).
+    **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
+    доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
 
     **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`).
 
@@ -763,6 +763,7 @@ paths:
         Той самий ключ у **іншій** кімнаті — **422**.
         `meta.slash` завжди присутній; для відповіді-дубля — `recognized: false` (тіло повторного запиту не застосовується).
         Потрібен **непорожній** `message` (після trim) або **`image_id`** власного завантаження (`POST /api/v1/images`).
+        Поле `message` — **plain text**; max довжина: гість **2000**, користувач **4000**, VIP/модератор/адмін **8000** (інакше **422**).
       operationId: postRoomMessage
       security:
         - sanctumSession: []
@@ -813,6 +814,7 @@ paths:
         Лише `type: public`. RBAC: адмін — будь-який допис у кімнаті; модератор — будь-який, крім авторства адміністратора;
         звичайний користувач — лише власні в межах `message_edit_window_hours` з `GET /api/v1/auth/user`; VIP — власні без обмеження часу; гість — заборонено.
         Текст проходить той самий word-filter, що й при створенні. Поле `style` опційне; якщо не передано — стиль не змінюється.
+        Поле `message` — **plain text**; max довжина як у `POST` (гість 2000 / користувач 4000 / VIP або staff 8000).
       operationId: patchRoomMessage
       security:
         - sanctumSession: []
@@ -1227,7 +1229,9 @@ components:
       properties:
         message:
           type: string
-          description: Новий текст (після trim; порожній дозволено лише якщо у повідомлення вже є вкладене зображення)
+          description: |
+            Plain text (не HTML). Після trim порожній дозволено лише якщо у повідомлення вже є вкладене зображення.
+            Максимальна довжина — як у `PostChatMessageRequest.message` (роль: 2000 / 4000 / 8000).
         style:
           nullable: true
           allOf:
@@ -1267,6 +1271,7 @@ components:
           nullable: true
           description: URL аватарки автора на момент допису; null — показувати ініціали (див. T17/T18)
         post_message:
+          description: Plain text тіла повідомлення (не HTML); клієнт не повинен інтерпретувати як розмітку.
           type: string
         post_style:
           nullable: true
@@ -1421,8 +1426,10 @@ components:
       properties:
         message:
           type: string
-          maxLength: 4000
           nullable: true
+          description: |
+            Plain text (не HTML). Максимальна довжина залежить від ролі автентифікованого користувача:
+            гість — 2000, звичайний користувач — 4000, VIP / модератор / адмін — 8000 символів.
         image_id:
           type: integer
           minimum: 1
