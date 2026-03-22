@@ -1,6 +1,7 @@
 <template>
     <header
         class="mb-2 flex w-full flex-shrink-0 flex-col gap-1.5 rounded-lg border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-bg)] px-2 py-2 sm:px-3"
+        :style="headerChromeStyle"
     >
         <div v-if="chatBreadcrumb" class="min-w-0">
             <p
@@ -28,10 +29,11 @@
                     Реалтайм недоступний — оновлення через опитування
                 </span>
                 <button
+                    v-if="!panelOpen"
                     ref="mobilePanelToggle"
                     type="button"
                     class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-icon)] hover:bg-[var(--rp-chat-sidebar-tab-active-bg)] md:hidden"
-                    :aria-expanded="panelOpen ? 'true' : 'false'"
+                    aria-expanded="false"
                     aria-controls="chat-panel"
                     title="Меню"
                     @click="$emit('toggle-panel')"
@@ -42,10 +44,11 @@
                     </svg>
                 </button>
                 <button
+                    v-if="!panelOpen"
                     ref="desktopPanelToggle"
                     type="button"
                     class="rp-focusable hidden h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-icon)] hover:opacity-95 md:inline-flex"
-                    :aria-expanded="panelOpen ? 'true' : 'false'"
+                    aria-expanded="false"
                     aria-controls="chat-panel"
                     title="Панель чату"
                     @click="$emit('toggle-panel')"
@@ -70,6 +73,21 @@ export default {
         chatTopicLine: { type: String, default: '' },
         panelOpen: { type: Boolean, default: false },
         wsDegraded: { type: Boolean, default: false },
+        /** T61: hex акцент кімнати (fallback за room_id у батьківському компоненті). */
+        roomAccentHex: { type: String, default: '' },
+    },
+    computed: {
+        headerChromeStyle() {
+            const c = (this.roomAccentHex || '').trim();
+            if (!c) {
+                return {};
+            }
+
+            return {
+                background: `color-mix(in srgb, var(--rp-chat-sidebar-bg) 82%, ${c} 18%)`,
+                boxShadow: `inset 4px 0 0 0 ${c}`,
+            };
+        },
     },
 };
 </script>
