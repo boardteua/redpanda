@@ -158,7 +158,7 @@
                                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] text-xs font-bold text-[var(--rp-text-muted)]"
                                     aria-hidden="true"
                                 >
-                                    {{ peerInitial(m.post_user) }}
+                                    {{ initialFromDisplayName(m.post_user) }}
                                 </span>
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
@@ -330,7 +330,7 @@
                                     maxlength="4000"
                                     rows="3"
                                     :disabled="sending || uploadingImage || !selectedRoomId"
-                                    placeholder="Повідомлення (Жміть кнопку ⇧ щоб поправити останні повідомлення)"
+                                    placeholder="Повідомлення (Жміть кнопку ⇧, щоб поправити останні повідомлення — згодом)"
                                 />
                             </div>
                             <button
@@ -755,6 +755,19 @@ import { createEcho } from '../lib/echo';
 
 const THEME_KEY = 'redpanda-theme';
 
+/** Перша літера імені для аватар-заглушки (стрічка + сайдбар). */
+function initialFromDisplayName(name) {
+    if (name == null || typeof name !== 'string') {
+        return '?';
+    }
+    const p = name.trim();
+    if (!p) {
+        return '?';
+    }
+
+    return p.charAt(0).toUpperCase() || '?';
+}
+
 const SIDEBAR_TAB_ICONS = {
     users:
         '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
@@ -875,12 +888,7 @@ export default {
             return this.rooms.find((r) => r.room_id === this.selectedRoomId) || null;
         },
         userInitial() {
-            const n = this.user && this.user.user_name;
-            if (!n || typeof n !== 'string') {
-                return '?';
-            }
-
-            return n.trim().charAt(0).toUpperCase() || '?';
+            return initialFromDisplayName(this.user && this.user.user_name);
         },
         chatBreadcrumb() {
             const u = this.user && this.user.user_name;
@@ -965,14 +973,7 @@ export default {
         this.stopPoll();
     },
     methods: {
-        peerInitial(name) {
-            if (!name || typeof name !== 'string') {
-                return '?';
-            }
-            const p = name.trim();
-
-            return p ? p.charAt(0).toUpperCase() : '?';
-        },
+        initialFromDisplayName,
         nickColorStyle(m) {
             if (!m || !m.post_user) {
                 return {};
@@ -980,7 +981,16 @@ export default {
             if (m.post_color === 'guest') {
                 return { color: 'var(--rp-text-muted)' };
             }
-            const palette = ['#b45309', '#c2410c', '#1d4ed8', '#0f766e', '#7c3aed', '#b91c1c', '#0e7490'];
+            /* Темні відтінки ≥ ~4.5:1 на білому для жирного ~15px (WCAG AA) */
+            const palette = [
+                '#9a3412',
+                '#c2410c',
+                '#1e3a8a',
+                '#115e59',
+                '#5b21b6',
+                '#991b1b',
+                '#155e75',
+            ];
             let h = 0;
             const n = m.post_user;
             for (let i = 0; i < n.length; i++) {
