@@ -8,6 +8,7 @@ use App\Events\MessageUpdated;
 use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
 use App\Models\ChatMessage;
+use App\Models\Image;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Broadcasting\BroadcastEvent;
@@ -612,6 +613,55 @@ class ChatApiTest extends TestCase
             ->assertJsonPath('data.can_edit', true);
 
         $this->assertNotNull(ChatMessage::query()->find($msg->post_id)?->post_edited_at);
+
+        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+            return $job->event instanceof MessageUpdated;
+        });
+    }
+
+    public function test_patch_message_with_image_preserves_file_and_allows_empty_text(): void
+    {
+        Bus::fake([BroadcastEvent::class]);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $image = Image::query()->create([
+            'user_id' => $user->id,
+            'user_name' => $user->user_name,
+            'disk_path' => 'chat/test/'.Str::random(8).'.png',
+            'file_name' => 'x.png',
+            'mime' => 'image/png',
+            'size_bytes' => 100,
+            'date_sent' => time(),
+        ]);
+        $msg = $this->seedPublicChatMessage($public, $user, [
+            'post_message' => 'caption',
+            'file' => $image->id,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'new caption',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.file', $image->id)
+            ->assertJsonPath('data.post_message', 'new caption');
+
+        $this->assertSame($image->id, (int) ChatMessage::query()->find($msg->post_id)?->file);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => '   ',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.file', $image->id)
+            ->assertJsonPath('data.post_message', '');
+
+        $this->assertSame($image->id, (int) ChatMessage::query()->find($msg->post_id)?->file);
 
         Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof MessageUpdated;

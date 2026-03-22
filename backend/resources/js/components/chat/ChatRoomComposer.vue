@@ -190,7 +190,12 @@
             class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] px-2 py-1.5 text-sm sm:px-3"
             role="status"
         >
-            <span class="text-[var(--rp-text-muted)]">Редагування повідомлення</span>
+            <span class="text-[var(--rp-text-muted)]">
+                Редагування повідомлення
+                <span v-if="editExistingImageUrl" class="block text-[0.7rem] font-normal text-[var(--rp-text-muted)]">
+                    Зображення вкладення залишається; змінюються лише текст і форматування.
+                </span>
+            </span>
             <button
                 type="button"
                 class="rp-focusable rp-btn rp-btn-ghost text-sm"
@@ -274,6 +279,21 @@
             @change="onChatImageSelected"
         />
         <div
+            v-if="editPostId && editExistingImageUrl"
+            class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)] p-2 sm:mx-3"
+            role="region"
+            aria-label="Поточне вкладене зображення"
+        >
+            <img
+                :src="editExistingImageUrl"
+                alt=""
+                class="max-h-24 max-w-[12rem] rounded object-contain"
+            />
+            <p class="max-w-[14rem] text-[0.75rem] text-[var(--rp-text-muted)]">
+                Це зображення лишиться після збереження. Замінити вкладення в цьому повідомленні не можна — надішли новий допис або видали повідомлення.
+            </p>
+        </div>
+        <div
             v-if="pendingImageId && pendingPreviewUrl"
             class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)] p-2 sm:mx-3"
         >
@@ -356,6 +376,8 @@ export default {
             emojiModalOpen: false,
             editPostId: null,
             editHadFile: false,
+            /** URL поточного вкладення під час редагування (лише прев’ю; PATCH не змінює file). */
+            editExistingImageUrl: '',
         };
     },
     computed: {
@@ -421,6 +443,8 @@ export default {
             }
             this.editPostId = message.post_id;
             this.editHadFile = Boolean(message.image && message.image.id);
+            this.editExistingImageUrl =
+                message.image && message.image.url ? String(message.image.url) : '';
             this.composerText = message.post_message != null ? String(message.post_message) : '';
             this.clearPendingChatImage();
             const n = normalizePostStyleFromApi(message.post_style);
@@ -460,6 +484,7 @@ export default {
         cancelEdit() {
             this.editPostId = null;
             this.editHadFile = false;
+            this.editExistingImageUrl = '';
             this.composerText = '';
             this.composerStyle = readComposerStyleFromStorage();
             this.clearPendingChatImage();
@@ -472,6 +497,7 @@ export default {
             this.clearPendingChatImage();
             this.editPostId = null;
             this.editHadFile = false;
+            this.editExistingImageUrl = '';
             this.formatPanel = null;
             this.$nextTick(() => this.syncComposerInputHeight());
         },
