@@ -1,11 +1,8 @@
 <template>
-    <header
-        class="mb-2 flex w-full flex-shrink-0 flex-col gap-1.5 rounded-lg border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-bg)] px-2 py-2 sm:px-3"
-        :style="headerChromeStyle"
-    >
+    <header class="mb-2 flex w-full flex-shrink-0 flex-col gap-1.5 px-2 py-1 sm:px-3">
         <div v-if="chatBreadcrumb" class="min-w-0">
             <p
-                class="truncate text-[0.6875rem] font-semibold tracking-wide text-[var(--rp-chat-sidebar-fg)]"
+                class="truncate text-[0.6875rem] font-semibold tracking-wide text-[var(--rp-text-muted)]"
             >
                 {{ chatBreadcrumb }}
             </p>
@@ -14,7 +11,7 @@
             <div class="min-w-0 flex-1 basis-[min(100%,12rem)]">
                 <p
                     v-if="chatTopicLine"
-                    class="line-clamp-2 text-sm leading-snug text-[var(--rp-chat-sidebar-muted)]"
+                    class="line-clamp-2 text-sm leading-snug text-[var(--rp-text-muted)]"
                     :title="chatTopicLine"
                 >
                     {{ chatTopicLine }}
@@ -23,7 +20,7 @@
             <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
                 <span
                     v-if="wsDegraded"
-                    class="max-w-[11rem] rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] px-2 py-1 text-xs text-[var(--rp-chat-sidebar-muted)] md:max-w-none"
+                    class="max-w-[11rem] rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-chat-toolbar-bg)] px-2 py-1 text-xs text-[var(--rp-text-muted)] md:max-w-none"
                     role="status"
                 >
                     Реалтайм недоступний — оновлення через опитування
@@ -32,7 +29,7 @@
                     v-if="!panelOpen"
                     ref="mobilePanelToggle"
                     type="button"
-                    class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-icon)] hover:bg-[var(--rp-chat-sidebar-tab-active-bg)] md:hidden"
+                    class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] text-[var(--rp-text-muted)] hover:bg-[var(--rp-chat-composer-bg)] md:hidden"
                     aria-expanded="false"
                     aria-controls="chat-panel"
                     title="Меню"
@@ -47,7 +44,7 @@
                     v-if="!panelOpen"
                     ref="desktopPanelToggle"
                     type="button"
-                    class="rp-focusable hidden h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-icon)] hover:opacity-95 md:inline-flex"
+                    class="rp-focusable hidden h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] text-[var(--rp-text-muted)] hover:bg-[var(--rp-chat-composer-bg)] md:inline-flex"
                     aria-expanded="false"
                     aria-controls="chat-panel"
                     title="Панель чату"
@@ -73,21 +70,6 @@ export default {
         chatTopicLine: { type: String, default: '' },
         panelOpen: { type: Boolean, default: false },
         wsDegraded: { type: Boolean, default: false },
-        /** T61: hex акцент кімнати (fallback за room_id у батьківському компоненті). */
-        roomAccentHex: { type: String, default: '' },
-    },
-    computed: {
-        headerChromeStyle() {
-            const c = (this.roomAccentHex || '').trim();
-            if (!c) {
-                return {};
-            }
-
-            return {
-                background: `color-mix(in srgb, var(--rp-chat-sidebar-bg) 82%, ${c} 18%)`,
-                boxShadow: `inset 4px 0 0 0 ${c}`,
-            };
-        },
     },
 };
 </script>

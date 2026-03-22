@@ -22,7 +22,6 @@
                 :chat-breadcrumb="chatBreadcrumb"
                 :chat-topic-line="chatTopicLine"
                 :panel-open="panelOpen"
-                :room-accent-hex="currentRoomHeaderAccentHex"
                 :ws-degraded="wsDegraded"
                 @toggle-panel="togglePanel"
             />
@@ -274,29 +273,6 @@ const SIDEBAR_TAB_ICONS = {
     ignore:
         '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm4.5 1c.83 0 1.5-.67 1.5-1.5S17.33 10 16.5 10 15 10.67 15 11.5s.67 1.5 1.5 1.5zM19 3l-4 4 1.5 1.5L20.5 4 19 3z"/></svg>',
 };
-
-/** T61: API не містить кольору кімнати — стабільний акцент за id (контраст тексту через існуючі токени сайдбару). */
-const ROOM_HEADER_ACCENT_HEX = [
-    '#c2410c',
-    '#0d9488',
-    '#be123c',
-    '#1d4ed8',
-    '#7c3aed',
-    '#b45309',
-    '#047857',
-];
-
-function roomHeaderAccentHex(roomId) {
-    if (roomId == null || roomId === '') {
-        return '';
-    }
-    const n = Math.abs(Number(roomId));
-    if (!Number.isFinite(n)) {
-        return '';
-    }
-
-    return ROOM_HEADER_ACCENT_HEX[n % ROOM_HEADER_ACCENT_HEX.length];
-}
 
 function peerTargetFromConversationPeerPayload(p) {
     if (!p) {
@@ -557,14 +533,6 @@ export default {
         },
         chatTopicLine() {
             return this.currentRoom && this.currentRoom.topic ? this.currentRoom.topic : '';
-        },
-        currentRoomHeaderAccentHex() {
-            const r = this.currentRoom;
-            if (!r || r.room_id == null) {
-                return '';
-            }
-
-            return roomHeaderAccentHex(r.room_id);
         },
         /** Узгоджено з `StoreChatMessageRequest` / `UpdateChatMessageRequest` (T35). */
         composerMessageMaxLength() {
