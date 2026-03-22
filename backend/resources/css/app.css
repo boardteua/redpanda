@@ -385,6 +385,59 @@
     text-decoration: underline;
 }
 
+.rp-btn-secondary {
+    background: var(--rp-surface-elevated);
+    color: var(--rp-text);
+    border-color: var(--rp-border-subtle);
+    min-height: 2.75rem;
+}
+
+.rp-btn-secondary:hover:not(:disabled) {
+    border-color: var(--rp-border);
+}
+
+.rp-btn-secondary:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.rp-btn-danger {
+    background: var(--rp-error);
+    color: #fff;
+    border-color: transparent;
+}
+
+.rp-btn-danger:hover:not(:disabled) {
+    filter: brightness(0.95);
+}
+
+.rp-btn-danger:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.rp-btn-outline {
+    background: transparent;
+    color: var(--rp-text);
+    border-color: var(--rp-border-subtle);
+    min-height: 2.75rem;
+}
+
+.rp-btn-outline:hover:not(:disabled) {
+    border-color: var(--rp-border);
+    background: var(--rp-surface-elevated);
+}
+
+.rp-btn-outline:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.rp-btn--pending {
+    cursor: wait;
+    opacity: 0.75;
+}
+
 .rp-link {
     color: var(--rp-link);
     font-weight: 600;

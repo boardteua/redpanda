@@ -17,45 +17,43 @@
                     </p>
                 </div>
             </div>
-            <button
-                type="button"
-                class="rp-focusable rp-btn rp-btn-ghost text-sm"
+            <RpButton
+                variant="ghost"
+                class="text-sm"
                 aria-label="Перемкнути тему оформлення"
                 @click="cycleTheme"
             >
                 {{ themeLabel }}
-            </button>
+            </RpButton>
         </header>
 
         <main id="main-content" class="mx-auto w-full max-w-5xl flex-1 space-y-4" tabindex="-1">
-            <div v-if="!viewerIsStaff" class="rp-banner" role="alert">
+            <RpBanner v-if="!viewerIsStaff">
                 Доступ лише для персоналу чату (модератор або адміністратор).
-            </div>
+            </RpBanner>
 
             <template v-else>
-                <div class="rp-panel space-y-3">
+                <RpPanel class="space-y-3">
                     <h2 class="text-sm font-semibold text-[var(--rp-text)]">Нове правило</h2>
                     <form class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" @submit.prevent="addRule">
                         <div class="flex min-w-[10rem] flex-1 flex-col gap-1">
                             <label class="text-xs font-medium text-[var(--rp-text-muted)]" for="sw-word">Слово / фраза</label>
-                            <input
+                            <RpTextField
                                 id="sw-word"
-                                v-model.trim="createForm.word"
+                                v-model="createForm.word"
                                 type="text"
                                 maxlength="191"
-                                class="rp-input rp-focusable"
                                 required
                                 autocomplete="off"
                             />
                         </div>
                         <div class="flex w-full min-w-[8rem] flex-col gap-1 sm:w-40">
                             <label class="text-xs font-medium text-[var(--rp-text-muted)]" for="sw-cat">Категорія</label>
-                            <input
+                            <RpTextField
                                 id="sw-cat"
-                                v-model.trim="createForm.category"
+                                v-model="createForm.category"
                                 type="text"
                                 maxlength="64"
-                                class="rp-input rp-focusable"
                                 placeholder="default"
                                 autocomplete="off"
                             />
@@ -78,25 +76,24 @@
                         </div>
                         <div v-if="createForm.action === 'temp_mute'" class="flex w-full min-w-[6rem] flex-col gap-1 sm:w-28">
                             <label class="text-xs font-medium text-[var(--rp-text-muted)]" for="sw-min">Хв.</label>
-                            <input
+                            <RpTextField
                                 id="sw-min"
-                                v-model.number="createForm.mute_minutes"
+                                v-model="createForm.mute_minutes"
                                 type="number"
                                 min="1"
                                 max="525600"
-                                class="rp-input rp-focusable"
                                 placeholder="30"
                             />
                         </div>
-                        <button type="submit" class="rp-focusable rp-btn rp-btn-primary shrink-0" :disabled="saving">
+                        <RpButton native-type="submit" class="shrink-0" :disabled="saving">
                             Додати
-                        </button>
+                        </RpButton>
                     </form>
-                </div>
+                </RpPanel>
 
-                <p v-if="loadError" class="rp-banner" role="alert">
+                <RpBanner v-if="loadError">
                     {{ loadError }}
-                </p>
+                </RpBanner>
                 <p v-if="statusMsg" class="text-sm text-[var(--rp-text-muted)]" role="status">
                     {{ statusMsg }}
                 </p>
@@ -150,27 +147,25 @@
                     </p>
                 </div>
 
-                <div v-if="selected" class="rp-panel space-y-3">
+                <RpPanel v-if="selected" class="space-y-3">
                     <h2 class="text-sm font-semibold text-[var(--rp-text)]">Редагувати #{{ selected.id }}</h2>
                     <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
                         <div class="flex min-w-[10rem] flex-1 flex-col gap-1">
                             <label class="text-xs font-medium text-[var(--rp-text-muted)]" for="sw-e-word">Слово</label>
-                            <input
+                            <RpTextField
                                 id="sw-e-word"
-                                v-model.trim="editForm.word"
+                                v-model="editForm.word"
                                 type="text"
                                 maxlength="191"
-                                class="rp-input rp-focusable"
                             />
                         </div>
                         <div class="flex w-full min-w-[8rem] flex-col gap-1 sm:w-40">
                             <label class="text-xs font-medium text-[var(--rp-text-muted)]" for="sw-e-cat">Категорія</label>
-                            <input
+                            <RpTextField
                                 id="sw-e-cat"
-                                v-model.trim="editForm.category"
+                                v-model="editForm.category"
                                 type="text"
                                 maxlength="64"
-                                class="rp-input rp-focusable"
                             />
                         </div>
                         <div class="flex w-full min-w-[10rem] flex-col gap-1 sm:w-48">
@@ -191,25 +186,19 @@
                         </div>
                         <div v-if="editForm.action === 'temp_mute'" class="flex w-full min-w-[6rem] flex-col gap-1 sm:w-28">
                             <label class="text-xs font-medium text-[var(--rp-text-muted)]" for="sw-e-min">Хв.</label>
-                            <input
+                            <RpTextField
                                 id="sw-e-min"
-                                v-model.number="editForm.mute_minutes"
+                                v-model="editForm.mute_minutes"
                                 type="number"
                                 min="1"
                                 max="525600"
-                                class="rp-input rp-focusable"
                             />
                         </div>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-primary shrink-0"
-                            :disabled="saving"
-                            @click="saveEdit"
-                        >
+                        <RpButton class="shrink-0" :disabled="saving" @click="saveEdit">
                             Зберегти зміни
-                        </button>
+                        </RpButton>
                     </div>
-                </div>
+                </RpPanel>
             </template>
         </main>
     </div>
@@ -348,7 +337,8 @@ export default {
             this.statusMsg = '';
         },
         async addRule() {
-            if (!this.createForm.word || this.createForm.word.length < 2) {
+            const word = (this.createForm.word || '').trim();
+            if (!word || word.length < 2) {
                 this.statusMsg = 'Мінімум 2 символи для слова.';
 
                 return;
@@ -357,12 +347,13 @@ export default {
             this.statusMsg = '';
             try {
                 const body = {
-                    word: this.createForm.word,
+                    word,
                     match_mode: this.createForm.match_mode,
                     action: this.createForm.action,
                 };
-                if (this.createForm.category) {
-                    body.category = this.createForm.category;
+                const cat = (this.createForm.category || '').trim();
+                if (cat) {
+                    body.category = cat;
                 }
                 if (this.createForm.action === 'temp_mute' && this.createForm.mute_minutes) {
                     body.mute_minutes = this.createForm.mute_minutes;
@@ -390,8 +381,8 @@ export default {
             this.statusMsg = '';
             try {
                 const body = {
-                    word: this.editForm.word,
-                    category: this.editForm.category || 'default',
+                    word: (this.editForm.word || '').trim(),
+                    category: (this.editForm.category || '').trim() || 'default',
                     match_mode: this.editForm.match_mode,
                     action: this.editForm.action,
                 };

@@ -17,62 +17,51 @@
                     </p>
                 </div>
             </div>
-            <button
-                type="button"
-                class="rp-focusable rp-btn rp-btn-ghost text-sm"
+            <RpButton
+                variant="ghost"
+                class="text-sm"
                 aria-label="Перемкнути тему оформлення"
                 @click="cycleTheme"
             >
                 {{ themeLabel }}
-            </button>
+            </RpButton>
         </header>
 
         <main id="main-content" class="mx-auto w-full max-w-5xl flex-1 space-y-4" tabindex="-1">
-            <div v-if="!viewerIsStaff" class="rp-banner" role="alert">
+            <RpBanner v-if="!viewerIsStaff">
                 Доступ лише для персоналу чату (модератор або адміністратор).
-            </div>
+            </RpBanner>
 
             <template v-else>
-                <div class="rp-panel flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <RpPanel class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
                     <div class="flex min-w-[8rem] flex-1 flex-col gap-1">
                         <label class="text-xs font-medium text-[var(--rp-text-muted)]" for="fm-room">
                             Кімната (id, опційно)
                         </label>
-                        <input
+                        <RpTextField
                             id="fm-room"
-                            v-model.trim="filterRoomId"
+                            v-model="filterRoomId"
                             type="text"
                             inputmode="numeric"
-                            class="rp-input rp-focusable"
                             placeholder="усі"
-                            aria-describedby="fm-room-hint"
+                            described-by="fm-room-hint"
                             autocomplete="off"
                         />
                         <p id="fm-room-hint" class="text-xs text-[var(--rp-text-muted)]">
                             Залиште порожнім, щоб показати всі кімнати.
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-primary shrink-0"
-                        :disabled="loading"
-                        @click="loadPage(1)"
-                    >
+                    <RpButton class="shrink-0" :disabled="loading" @click="loadPage(1)">
                         Застосувати фільтр
-                    </button>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-ghost shrink-0"
-                        :disabled="loading"
-                        @click="loadPage(meta.current_page)"
-                    >
+                    </RpButton>
+                    <RpButton variant="ghost" class="shrink-0" :disabled="loading" @click="loadPage(meta.current_page)">
                         Оновити
-                    </button>
-                </div>
+                    </RpButton>
+                </RpPanel>
 
-                <p v-if="loadError" class="rp-banner" role="alert">
+                <RpBanner v-if="loadError">
                     {{ loadError }}
-                </p>
+                </RpBanner>
                 <p v-if="statusMsg" class="text-sm text-[var(--rp-text-muted)]" role="status">
                     {{ statusMsg }}
                 </p>
@@ -130,21 +119,17 @@
                                 </td>
                                 <td class="px-3 py-2 align-top">
                                     <div class="flex flex-wrap gap-2">
-                                        <button
-                                            type="button"
-                                            class="rp-focusable rp-btn rp-btn-ghost text-xs"
-                                            @click="openInChat(r)"
-                                        >
+                                        <RpButton variant="ghost" class="text-xs" @click="openInChat(r)">
                                             Відкрити в чаті
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="rp-focusable rp-btn rp-btn-primary text-xs"
+                                        </RpButton>
+                                        <RpButton
+                                            class="text-xs"
+                                            :loading="clearingId === r.post_id"
                                             :disabled="clearingId === r.post_id"
                                             @click="clearFlag(r)"
                                         >
                                             Зняти прапорець
-                                        </button>
+                                        </RpButton>
                                     </div>
                                 </td>
                             </tr>
@@ -159,22 +144,22 @@
                 >
                     <span>Сторінка {{ meta.current_page }} з {{ meta.last_page }}</span>
                     <div class="flex gap-2">
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost text-xs"
+                        <RpButton
+                            variant="ghost"
+                            class="text-xs"
                             :disabled="loading || meta.current_page <= 1"
                             @click="loadPage(meta.current_page - 1)"
                         >
                             Назад
-                        </button>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost text-xs"
+                        </RpButton>
+                        <RpButton
+                            variant="ghost"
+                            class="text-xs"
                             :disabled="loading || meta.current_page >= meta.last_page"
                             @click="loadPage(meta.current_page + 1)"
                         >
                             Далі
-                        </button>
+                        </RpButton>
                     </div>
                 </nav>
             </template>

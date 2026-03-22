@@ -23,22 +23,22 @@
                     </p>
                 </div>
             </div>
-            <button
-                type="button"
-                class="rp-focusable rp-btn rp-btn-ghost text-sm"
+            <RpButton
+                variant="ghost"
+                class="text-sm"
                 aria-label="Перемкнути тему оформлення"
                 @click="cycleTheme"
             >
                 {{ themeLabel }}
-            </button>
+            </RpButton>
         </header>
 
         <main id="main-content" class="mx-auto w-full max-w-5xl flex-1" tabindex="-1">
-            <div v-if="loadError" class="rp-banner mb-4" role="alert">
+            <RpBanner v-if="loadError" class="mb-4">
                 {{ loadError }}
-            </div>
+            </RpBanner>
 
-            <div class="rp-panel mb-4 space-y-4">
+            <RpPanel class="mb-4 space-y-4">
                 <div class="flex flex-wrap items-end gap-3">
                     <div>
                         <label class="rp-label" for="archive-per-page">Дописів на сторінку</label>
@@ -70,26 +70,21 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <label class="rp-label rp-sr-only" for="archive-search">Пошук</label>
-                    <input
+                    <RpTextField
                         id="archive-search"
-                        v-model.trim="searchInput"
+                        v-model="searchInput"
                         type="search"
                         maxlength="200"
-                        class="rp-input rp-focusable min-w-[12rem] flex-1"
+                        class="min-w-[12rem] flex-1"
                         placeholder="Текст або нік…"
                         :disabled="loading"
-                        @keyup.enter="applySearch"
+                        @keyup.enter.native="applySearch"
                     />
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-primary shrink-0"
-                        :disabled="loading"
-                        @click="applySearch"
-                    >
+                    <RpButton class="shrink-0" :disabled="loading" @click="applySearch">
                         Шукати
-                    </button>
+                    </RpButton>
                 </div>
-            </div>
+            </RpPanel>
 
             <p v-if="loading" class="text-sm text-[var(--rp-text-muted)]" role="status">
                 Завантаження…
@@ -166,38 +161,38 @@
                     <span v-if="meta.total != null" class="text-[var(--rp-text-muted)]"> · Усього {{ meta.total }}</span>
                 </p>
                 <div class="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                    <RpButton
+                        variant="ghost"
+                        class="text-sm"
                         :disabled="loading || meta.current_page <= 1"
                         @click="goPage(1)"
                     >
                         Перша
-                    </button>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                    </RpButton>
+                    <RpButton
+                        variant="ghost"
+                        class="text-sm"
                         :disabled="loading || meta.current_page <= 1"
                         @click="goPage(meta.current_page - 1)"
                     >
                         Попередня
-                    </button>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                    </RpButton>
+                    <RpButton
+                        variant="ghost"
+                        class="text-sm"
                         :disabled="loading || meta.current_page >= meta.last_page"
                         @click="goPage(meta.current_page + 1)"
                     >
                         Наступна
-                    </button>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                    </RpButton>
+                    <RpButton
+                        variant="ghost"
+                        class="text-sm"
                         :disabled="loading || meta.current_page >= meta.last_page"
                         @click="goPage(meta.last_page)"
                     >
                         Остання
-                    </button>
+                    </RpButton>
                 </div>
             </nav>
         </main>
@@ -361,7 +356,7 @@ export default {
         },
         applySearch() {
             this.page = 1;
-            this.appliedSearch = this.searchInput;
+            this.appliedSearch = (this.searchInput || '').trim();
             this.loadArchive();
         },
         onPerPageChange() {

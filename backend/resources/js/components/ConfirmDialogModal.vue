@@ -14,21 +14,17 @@
             <div
                 class="flex flex-col-reverse gap-2 border-t border-[var(--rp-border-subtle)] px-4 py-4 sm:flex-row sm:justify-end"
             >
-                <button
-                    type="button"
+                <RpButton
+                    variant="outline"
+                    class="w-full sm:w-auto"
                     data-rp-initial-focus
-                    class="rp-focusable rp-btn w-full border border-[var(--rp-border-subtle)] bg-transparent sm:w-auto"
                     @click="onCancel"
                 >
                     {{ cancelLabel }}
-                </button>
-                <button
-                    type="button"
-                    class="rp-focusable rp-btn w-full bg-[var(--rp-error)] text-white hover:opacity-90 sm:w-auto"
-                    @click="onConfirm"
-                >
+                </RpButton>
+                <RpButton variant="danger" class="w-full sm:w-auto" @click="onConfirm">
                     {{ confirmLabel }}
-                </button>
+                </RpButton>
             </div>
         </template>
     </RpModal>

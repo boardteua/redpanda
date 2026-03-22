@@ -69,13 +69,9 @@
                 placeholder="Повідомлення…"
                 @input="$emit('update:composerText', $event.target.value)"
             />
-            <button
-                type="submit"
-                class="rp-focusable rp-btn rp-btn-primary w-full"
-                :disabled="sending || !composerText.trim()"
-            >
+            <RpButton native-type="submit" class="w-full" :disabled="sending || !composerText.trim()">
                 Надіслати
-            </button>
+            </RpButton>
         </form>
     </div>
 </template>
