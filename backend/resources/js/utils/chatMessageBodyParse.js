@@ -3,8 +3,8 @@
  * Текст не інтерпретується як HTML; споживач рендерить сегменти без v-html для type=text.
  *
  * Масштабованість: нові соцмережі — додати запис у {@link EMBED_RESOLVERS} (порядок = пріоритет).
- * Довгостроково можна підʼєднати реєстр oEmbed (див. /iamcal/oembed, npm `oembed-providers`) на бекенді
- * й підставляти `html` з відповіді замість жорстких iframe-src — Context7 libraryId: `/iamcal/oembed`.
+ * Для частини хостів (Vimeo, SoundCloud, …) без локального резолвера — сегмент `oembedPending`;
+ * клієнт викликає GET `/api/v1/oembed` (T55) і підставляє iframe з санітизованого `html`.
  */
 
 const URL_RE = /https?:\/\/[^\s<>"']+/gi;
@@ -71,6 +71,39 @@ export function isSafeHttpUrl(href) {
  * @param {string} href
  * @returns {boolean}
  */
+/**
+ * Чи варто питати бекенд oEmbed (обмежений список хостів, без дублювання жорстких ембедів).
+ * @param {string} trimmed
+ * @returns {boolean}
+ */
+export function shouldTryBackendOembedUrl(trimmed) {
+    try {
+        const u = new URL(trimmed);
+        const h = u.hostname.replace(/^www\./, '').toLowerCase();
+        if (h === 'player.vimeo.com') {
+            return true;
+        }
+        if (h === 'vimeo.com' || h.endsWith('.vimeo.com')) {
+            return true;
+        }
+        if (h.includes('dailymotion.com')) {
+            return true;
+        }
+        if (h === 'soundcloud.com' || h === 'on.soundcloud.com') {
+            return true;
+        }
+        if (h === 'tiktok.com' || h.endsWith('.tiktok.com')) {
+            return true;
+        }
+        if (h === 'twitch.tv' || h.endsWith('.twitch.tv')) {
+            return true;
+        }
+        return false;
+    } catch {
+        return false;
+    }
+}
+
 export function isLikelyImageUrl(href) {
     try {
         const u = new URL(href);
@@ -374,7 +407,7 @@ export function classifyUrl(trimmed) {
 
 /**
  * @param {string|null|undefined} text
- * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'embed', src: string, provider: string }>}
+ * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string }>}
  */
 export function parseChatMessageBody(text) {
     if (text == null || text === '') {
@@ -403,6 +436,12 @@ export function parseChatMessageBody(text) {
                 type: 'embed',
                 src: classified.iframeSrc,
                 provider: classified.provider,
+            });
+        } else if (classified.kind === 'link' && shouldTryBackendOembedUrl(trimmed)) {
+            segments.push({
+                type: 'oembedPending',
+                href: trimmed,
+                label: trimmed,
             });
         } else if (classified.kind === 'image') {
             segments.push({

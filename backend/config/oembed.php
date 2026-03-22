@@ -69,6 +69,11 @@ return [
         'www.kickstarter.com',
         'soundcloud.com',
         'w.soundcloud.com',
+        'player.twitch.tv',
+        'clips.twitch.tv',
+        'www.tiktok.com',
+        'tiktok.com',
+        'dailymotion.com',
     ],
 
 ];

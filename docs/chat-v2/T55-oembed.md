@@ -39,8 +39,15 @@ curl -sS -b cookies.txt \
 
 У тестах без мережі використовуйте `Http::fake()` (див. `Tests\Feature\OEmbedApiTest`).
 
+## SPA (ChatMessageBody / T46)
+
+- Для URL без локального резолвера, але з евристичного списку хостів (Vimeo, SoundCloud, Dailymotion, TikTok, Twitch), парсер емітить сегмент **`oembedPending`**.
+- Компонент **`ChatOembedBlock`** викликає `GET /api/v1/oembed` (axios + cookies), з відповіді парсить **лише** `iframe` через `DOMParser` (без `v-html`).
+- У варіанті **`archive`** такі URL показуються як звичайне посилання (без запиту oEmbed).
+
 ## QA
 
 - `cd backend && php artisan test --filter=OEmbedApiTest`
+- `cd backend && npm run test:msg-parse && npm run build`
 
 У `phpunit.xml` задано `OEMBED_TESTING_SKIP_DNS_HOSTS` (лише `APP_ENV=testing`), щоб тести проходили без зовнішнього DNS (наприклад у sandbox CI). У продакшені цю змінну не встановлювати.

@@ -1,7 +1,12 @@
 <template>
     <div :class="rootClass">
-        <template v-for="(seg, i) in segments">
+        <template v-for="(seg, i) in displaySegments">
             <span v-if="seg.type === 'text'" :key="'t-' + i">{{ seg.value }}</span>
+            <ChatOembedBlock
+                v-else-if="seg.type === 'oembedPending'"
+                :key="'oe-' + i"
+                :resource-url="seg.href"
+            />
             <a
                 v-else-if="seg.type === 'link'"
                 :key="'a-' + i"
@@ -102,6 +107,7 @@
 
 <script>
 import { parseChatMessageBody } from '../../utils/chatMessageBodyParse';
+import ChatOembedBlock from './ChatOembedBlock.vue';
 
 /** Провайдери з окремим layout уже в шаблоні вище. */
 const SOCIAL_EMBED_HEIGHT = {
@@ -113,6 +119,9 @@ const SOCIAL_EMBED_HEIGHT = {
 
 export default {
     name: 'ChatMessageBody',
+    components: {
+        ChatOembedBlock,
+    },
     props: {
         /** Plain text з API (post_message / body). */
         text: {
@@ -136,6 +145,16 @@ export default {
     computed: {
         segments() {
             return parseChatMessageBody(this.text);
+        },
+        displaySegments() {
+            if (this.variant === 'archive') {
+                return this.segments.map((s) =>
+                    s.type === 'oembedPending'
+                        ? { type: 'link', href: s.href, label: s.label }
+                        : s,
+                );
+            }
+            return this.segments;
         },
         rootClass() {
             const base = ['whitespace-pre-wrap', 'break-words'];

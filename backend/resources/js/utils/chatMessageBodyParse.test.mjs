@@ -5,6 +5,7 @@ import {
     EMBED_RESOLVERS,
     isSafeHttpUrl,
     parseChatMessageBody,
+    shouldTryBackendOembedUrl,
     spotifyEmbedUrl,
     trimUrlTrailing,
     tryFacebookPostEmbed,
@@ -118,4 +119,22 @@ test('Facebook story_fbid → plugins/post.php', () => {
 test('plain Facebook profile is not forced embed', () => {
     assert.equal(tryFacebookPostEmbed('https://www.facebook.com/zuck'), null);
     assert.equal(classifyUrl('https://www.facebook.com/zuck').kind, 'link');
+});
+
+test('shouldTryBackendOembedUrl for Vimeo and SoundCloud', () => {
+    assert.equal(shouldTryBackendOembedUrl('https://vimeo.com/123456789'), true);
+    assert.equal(shouldTryBackendOembedUrl('https://player.vimeo.com/video/1'), true);
+    assert.equal(shouldTryBackendOembedUrl('https://soundcloud.com/artist/track'), true);
+    assert.equal(shouldTryBackendOembedUrl('https://www.twitch.tv/name'), true);
+    assert.equal(shouldTryBackendOembedUrl('https://example.com/x'), false);
+    assert.equal(shouldTryBackendOembedUrl('https://www.youtube.com/watch?v=abc'), false);
+});
+
+test('Vimeo watch URL becomes oembedPending segment', () => {
+    const u = 'https://vimeo.com/123456789';
+    assert.equal(classifyUrl(u).kind, 'link');
+    const segs = parseChatMessageBody(`check ${u} out`);
+    const pending = segs.find((s) => s.type === 'oembedPending');
+    assert.ok(pending);
+    assert.equal(pending.href, u);
 });
