@@ -53,6 +53,7 @@ class MessagePosted implements ShouldBroadcast
             'post_date' => (int) $m->post_date,
             'post_time' => $m->post_time,
             'post_user' => $m->post_user,
+            'avatar' => $m->avatar,
             'post_message' => $m->post_message,
             'post_color' => $m->post_color,
             'type' => $m->type,

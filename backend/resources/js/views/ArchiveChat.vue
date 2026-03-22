@@ -112,8 +112,16 @@
                     </thead>
                     <tbody>
                         <tr v-for="m in rows" :key="m.post_id">
-                            <td class="border-b border-[var(--rp-border-subtle)] px-3 py-2 align-top font-medium">
-                                {{ m.post_user }}
+                            <td class="border-b border-[var(--rp-border-subtle)] px-3 py-2 align-top">
+                                <div class="flex items-center gap-2">
+                                    <UserAvatar
+                                        :src="m.avatar || ''"
+                                        :name="m.post_user"
+                                        variant="table"
+                                        decorative
+                                    />
+                                    <span class="font-medium">{{ m.post_user }}</span>
+                                </div>
                             </td>
                             <td
                                 class="border-b border-[var(--rp-border-subtle)] px-3 py-2 align-top"
@@ -190,10 +198,15 @@
 </template>
 
 <script>
+import UserAvatar from '../components/UserAvatar.vue';
+
 const THEME_KEY = 'redpanda-theme';
 
 export default {
     name: 'ArchiveChat',
+    components: {
+        UserAvatar,
+    },
     data() {
         return {
             user: null,

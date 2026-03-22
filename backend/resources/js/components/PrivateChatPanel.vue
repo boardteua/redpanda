@@ -6,8 +6,11 @@
         aria-modal="true"
         :aria-label="'Приват: ' + peer.user_name"
     >
-        <div class="flex shrink-0 items-center justify-between border-b border-[var(--rp-border-subtle)] px-3 py-2">
-            <span class="truncate font-semibold text-[var(--rp-text)]">{{ peer.user_name }}</span>
+        <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-3 py-2">
+            <span class="flex min-w-0 items-center gap-2">
+                <UserAvatar variant="private" :name="peer.user_name" decorative />
+                <span class="truncate font-semibold text-[var(--rp-text)]">{{ peer.user_name }}</span>
+            </span>
             <button
                 type="button"
                 class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--rp-text-muted)] hover:bg-[var(--rp-surface-elevated)]"
@@ -33,13 +36,21 @@
             <li
                 v-for="m in messages"
                 :key="m.id"
-                class="mb-2 border-b border-[var(--rp-border-subtle)] pb-2 last:mb-0 last:border-0 last:pb-0"
+                class="mb-2 flex gap-2 border-b border-[var(--rp-border-subtle)] pb-2 last:mb-0 last:border-0 last:pb-0"
             >
-                <div class="text-xs text-[var(--rp-text-muted)]">
-                    <time>{{ m.sent_time || '—' }}</time>
-                    <span class="ml-2 font-medium text-[var(--rp-text)]">{{ labelFor(m) }}</span>
+                <UserAvatar
+                    variant="private"
+                    :name="avatarNameFor(m)"
+                    :src="avatarSrcFor(m)"
+                    decorative
+                />
+                <div class="min-w-0 flex-1">
+                    <div class="text-xs text-[var(--rp-text-muted)]">
+                        <time>{{ m.sent_time || '—' }}</time>
+                        <span class="ml-2 font-medium text-[var(--rp-text)]">{{ labelFor(m) }}</span>
+                    </div>
+                    <p class="mt-1 whitespace-pre-wrap break-words text-[var(--rp-text)]">{{ m.body }}</p>
                 </div>
-                <p class="mt-1 whitespace-pre-wrap break-words text-[var(--rp-text)]">{{ m.body }}</p>
             </li>
         </ul>
         <form class="shrink-0 border-t border-[var(--rp-border-subtle)] p-2" @submit.prevent="onSubmit">
@@ -97,6 +108,14 @@ export default {
             type: Number,
             required: true,
         },
+        currentUserName: {
+            type: String,
+            default: '',
+        },
+        currentUserAvatarUrl: {
+            type: String,
+            default: '',
+        },
     },
     watch: {
         messages: {
@@ -112,6 +131,14 @@ export default {
     methods: {
         labelFor(m) {
             return Number(m.sender_id) === Number(this.currentUserId) ? 'Ви' : this.peer.user_name;
+        },
+        avatarNameFor(m) {
+            return Number(m.sender_id) === Number(this.currentUserId)
+                ? this.currentUserName || 'Ви'
+                : this.peer.user_name;
+        },
+        avatarSrcFor(m) {
+            return Number(m.sender_id) === Number(this.currentUserId) ? this.currentUserAvatarUrl : '';
         },
         scrollBottom() {
             const el = this.$refs.privateList;

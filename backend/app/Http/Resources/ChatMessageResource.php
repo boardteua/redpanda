@@ -26,6 +26,7 @@ class ChatMessageResource extends JsonResource
             'post_roomid' => (int) $this->post_roomid,
             'type' => $this->type,
             'client_message_id' => $this->client_message_id,
+            'avatar' => $this->avatar,
             'file' => (int) $this->file,
             'image' => $this->when(
                 (int) $this->file > 0,

@@ -748,6 +748,10 @@ components:
         email:
           type: string
           nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+          description: URL аватарки профілю; поки може бути null (T18)
 
     UserResponse:
       type: object
@@ -910,6 +914,10 @@ components:
           nullable: true
         post_user:
           type: string
+        avatar:
+          type: string
+          nullable: true
+          description: URL аватарки автора на момент допису; null — показувати ініціали (див. T17/T18)
         post_message:
           type: string
         post_color:

@@ -21,6 +21,7 @@ class UserResource extends JsonResource
             'user_name' => $this->user_name,
             'guest' => (bool) $this->guest,
             'email' => $this->email,
+            'avatar_url' => null,
         ];
     }
 }

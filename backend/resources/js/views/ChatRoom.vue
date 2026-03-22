@@ -154,12 +154,12 @@
                                         : 'bg-[var(--rp-chat-row-odd)]'
                                 "
                             >
-                                <span
-                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] text-xs font-bold text-[var(--rp-text-muted)]"
-                                    aria-hidden="true"
-                                >
-                                    {{ initialFromDisplayName(m.post_user) }}
-                                </span>
+                                <UserAvatar
+                                    :src="m.avatar"
+                                    :name="m.post_user"
+                                    variant="feed"
+                                    decorative
+                                />
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                                         <p class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
@@ -486,12 +486,12 @@
                         <li
                             class="rp-chat-side-card flex items-center gap-2 rounded-md border px-2 py-2"
                         >
-                            <span
-                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-input-bg)] text-xs font-bold text-[var(--rp-chat-sidebar-muted)]"
-                                aria-hidden="true"
-                            >
-                                {{ userInitial }}
-                            </span>
+                            <UserAvatar
+                                :src="user.avatar_url || ''"
+                                :name="user.user_name"
+                                variant="sidebar"
+                                decorative
+                            />
                             <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ user.user_name }}</span>
                             <span class="text-xs text-[var(--rp-chat-sidebar-muted)]">(ви)</span>
                         </li>
@@ -563,7 +563,16 @@
                                 :key="f.user.id"
                                 class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
                             >
-                                <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ f.user.user_name }}</span>
+                                <span class="flex min-w-0 items-center gap-2">
+                                    <UserAvatar
+                                        :name="f.user.user_name"
+                                        variant="sidebar"
+                                        decorative
+                                    />
+                                    <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                        f.user.user_name
+                                    }}</span>
+                                </span>
                                 <button
                                     type="button"
                                     class="rp-focusable rp-btn rp-btn-ghost text-sm"
@@ -590,7 +599,16 @@
                                 :key="'in-' + r.user.id"
                                 class="rp-chat-side-card flex flex-wrap items-center gap-2 rounded-md border px-2 py-2"
                             >
-                                <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ r.user.user_name }}</span>
+                                <span class="flex min-w-0 items-center gap-2">
+                                    <UserAvatar
+                                        :name="r.user.user_name"
+                                        variant="sidebar"
+                                        decorative
+                                    />
+                                    <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                        r.user.user_name
+                                    }}</span>
+                                </span>
                                 <button
                                     type="button"
                                     class="rp-focusable rp-btn rp-btn-primary text-xs"
@@ -620,9 +638,14 @@
                             <li
                                 v-for="r in friendsOutgoing"
                                 :key="'out-' + r.user.id"
-                                class="text-sm text-[var(--rp-chat-sidebar-fg)]"
+                                class="flex items-center gap-2 text-sm text-[var(--rp-chat-sidebar-fg)]"
                             >
-                                {{ r.user.user_name }}
+                                <UserAvatar
+                                    :name="r.user.user_name"
+                                    variant="sidebar"
+                                    decorative
+                                />
+                                <span class="truncate">{{ r.user.user_name }}</span>
                             </li>
                         </ul>
                     </template>
@@ -648,15 +671,22 @@
                             <button
                                 v-if="c.peer && c.peer.id"
                                 type="button"
-                                class="rp-focusable rp-chat-side-room-btn w-full rounded-md border-2 px-3 py-2 text-left"
+                                class="rp-focusable rp-chat-side-room-btn flex w-full items-start gap-2 rounded-md border-2 px-3 py-2 text-left"
                                 @click="openPrivatePeer(c.peer)"
                             >
-                                <span class="block font-semibold text-[var(--rp-chat-sidebar-fg)]">{{
-                                    c.peer.user_name
-                                }}</span>
-                                <span
-                                    class="mt-0.5 block truncate text-xs text-[var(--rp-chat-sidebar-muted)]"
-                                >{{ (c.last_message && c.last_message.body) || '—' }}</span>
+                                <UserAvatar
+                                    :name="c.peer.user_name"
+                                    variant="sidebar"
+                                    decorative
+                                />
+                                <span class="min-w-0 flex-1">
+                                    <span class="block font-semibold text-[var(--rp-chat-sidebar-fg)]">{{
+                                        c.peer.user_name
+                                    }}</span>
+                                    <span
+                                        class="mt-0.5 block truncate text-xs text-[var(--rp-chat-sidebar-muted)]"
+                                    >{{ (c.last_message && c.last_message.body) || '—' }}</span>
+                                </span>
                             </button>
                             <p
                                 v-else
@@ -719,7 +749,16 @@
                             :key="row.user.id"
                             class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
                         >
-                            <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ row.user.user_name }}</span>
+                            <span class="flex min-w-0 items-center gap-2">
+                                <UserAvatar
+                                    :name="row.user.user_name"
+                                    variant="sidebar"
+                                    decorative
+                                />
+                                <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                    row.user.user_name
+                                }}</span>
+                            </span>
                             <button
                                 type="button"
                                 class="rp-focusable text-sm font-semibold text-[var(--rp-chat-sidebar-link)] hover:text-[var(--rp-chat-sidebar-link-hover)] hover:underline"
@@ -743,6 +782,8 @@
             :error="privateLoadError"
             :composer-text.sync="privateComposerText"
             :current-user-id="user.id"
+            :current-user-name="user.user_name"
+            :current-user-avatar-url="user.avatar_url || ''"
             @close="closePrivatePanel"
             @send="sendPrivateMessageFromPanel"
         />
@@ -751,22 +792,10 @@
 
 <script>
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
+import UserAvatar from '../components/UserAvatar.vue';
 import { createEcho } from '../lib/echo';
 
 const THEME_KEY = 'redpanda-theme';
-
-/** Перша літера імені для аватар-заглушки (стрічка + сайдбар). */
-function initialFromDisplayName(name) {
-    if (name == null || typeof name !== 'string') {
-        return '?';
-    }
-    const p = name.trim();
-    if (!p) {
-        return '?';
-    }
-
-    return p.charAt(0).toUpperCase() || '?';
-}
 
 const SIDEBAR_TAB_ICONS = {
     users:
@@ -829,6 +858,7 @@ function normalizeMessage(raw) {
         post_color: raw.post_color,
         type: raw.type,
         client_message_id: raw.client_message_id,
+        avatar: raw.avatar ? String(raw.avatar) : '',
         file,
         image,
     };
@@ -886,9 +916,6 @@ export default {
         },
         currentRoom() {
             return this.rooms.find((r) => r.room_id === this.selectedRoomId) || null;
-        },
-        userInitial() {
-            return initialFromDisplayName(this.user && this.user.user_name);
         },
         chatBreadcrumb() {
             const u = this.user && this.user.user_name;
@@ -973,7 +1000,6 @@ export default {
         this.stopPoll();
     },
     methods: {
-        initialFromDisplayName,
         nickColorStyle(m) {
             if (!m || !m.post_user) {
                 return {};

@@ -159,6 +159,7 @@ class ChatApiTest extends TestCase
 
         $first->assertCreated()
             ->assertJsonPath('data.post_message', '*'.$user->user_name.' says hi*')
+            ->assertJsonPath('data.avatar', null)
             ->assertJsonPath('meta.duplicate', false)
             ->assertJsonPath('meta.slash.recognized', true);
 
@@ -254,5 +255,33 @@ class ChatApiTest extends TestCase
             ->assertJsonPath('data.0.post_message', 'mb')
             ->assertJsonPath('data.1.post_message', 'mc')
             ->assertJsonPath('meta.next_cursor', fn ($v) => $v !== null);
+    }
+
+    public function test_messages_index_includes_avatar_url_when_set(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        ChatMessage::query()->create([
+            'user_id' => $user->id,
+            'post_date' => 2000,
+            'post_time' => '12:00',
+            'post_user' => $user->user_name,
+            'post_message' => 'with avatar',
+            'post_color' => 'user',
+            'post_roomid' => $public->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => 'https://example.test/avatars/u1.png',
+            'file' => 0,
+            'client_message_id' => 'd0000000-0000-4000-8000-000000000001',
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=10')
+            ->assertOk()
+            ->assertJsonPath('data.0.avatar', 'https://example.test/avatars/u1.png');
     }
 }
