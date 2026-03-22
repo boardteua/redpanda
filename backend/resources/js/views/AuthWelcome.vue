@@ -27,53 +27,11 @@
             tabindex="-1"
         >
             <div
-                v-if="user"
                 class="rp-panel"
                 role="region"
-                aria-labelledby="signed-in-heading"
+                :aria-labelledby="authRegionLabelledBy"
             >
-                <h2 id="signed-in-heading" class="text-lg font-semibold text-[var(--rp-text)]">
-                    Ви в чаті
-                </h2>
-                <p class="mt-3 text-[var(--rp-text-muted)]">
-                    Нік:
-                    <strong class="text-[var(--rp-text)]">{{ user.user_name }}</strong>
-                    <span v-if="user.guest" class="ml-1 text-sm">(гість)</span>
-                </p>
-                <p
-                    v-if="!user.guest && user.email"
-                    class="mt-1 text-sm text-[var(--rp-text-muted)]"
-                >
-                    {{ user.email }}
-                </p>
-                <router-link
-                    :to="{ name: 'chat' }"
-                    class="rp-focusable rp-btn rp-btn-primary mt-4 block w-full text-center no-underline"
-                >
-                    Відкрити чат
-                </router-link>
-                <router-link
-                    :to="{ name: 'archive' }"
-                    class="rp-focusable rp-btn rp-btn-ghost mt-3 block w-full text-center no-underline"
-                >
-                    Архів чату
-                </router-link>
-                <button
-                    type="button"
-                    class="rp-focusable rp-btn rp-btn-ghost mt-3 w-full"
-                    :disabled="loading"
-                    @click="logout"
-                >
-                    Вийти
-                </button>
-            </div>
-
-            <div
-                v-else
-                class="rp-panel"
-                role="region"
-                :aria-labelledby="mode === 'login' ? 'login-heading' : 'register-heading'"
-            >
+                <template v-if="!user">
                 <div
                     class="mb-6 flex gap-2"
                     role="tablist"
@@ -269,7 +227,7 @@
                     </form>
                 </div>
 
-                <div v-if="!user" class="mt-8">
+                <div class="mt-8">
                     <div class="rp-divider" aria-hidden="true">
                         або
                     </div>
@@ -302,6 +260,14 @@
                         Зайти анонімно
                     </button>
                 </div>
+                </template>
+                <p
+                    v-else
+                    class="py-6 text-center text-sm text-[var(--rp-text-muted)]"
+                    aria-live="polite"
+                >
+                    Перенаправлення до чату…
+                </p>
             </div>
         </main>
     </div>
@@ -337,6 +303,13 @@ export default {
         };
     },
     computed: {
+        authRegionLabelledBy() {
+            if (this.user) {
+                return undefined;
+            }
+
+            return this.mode === 'login' ? 'login-heading' : 'register-heading';
+        },
         themeLabel() {
             if (this.themeUi === 'light') {
                 return 'Тема: світла';
@@ -353,7 +326,7 @@ export default {
     },
     async mounted() {
         await this.refreshUser();
-        this.maybeRedirectHistory();
+        this.redirectIfAuthenticated();
     },
     methods: {
         fieldInvalid(field) {
@@ -392,11 +365,17 @@ export default {
                 this.user = null;
             }
         },
-        maybeRedirectHistory() {
-            const h = this.$route.query.history;
-            if ((h === '1' || h === 1) && this.user) {
-                this.$router.replace({ name: 'archive' }).catch(() => {});
+        redirectIfAuthenticated() {
+            if (!this.user) {
+                return;
             }
+            const h = this.$route.query.history;
+            if (h === '1' || h === 1) {
+                this.$router.replace({ name: 'archive' }).catch(() => {});
+
+                return;
+            }
+            this.$router.replace({ name: 'chat' }).catch(() => {});
         },
         handleAxiosError(err) {
             const status = err.response?.status;
@@ -424,7 +403,7 @@ export default {
                     remember: this.loginForm.remember,
                 });
                 await this.refreshUser();
-                this.maybeRedirectHistory();
+                this.redirectIfAuthenticated();
             } catch (e) {
                 this.handleAxiosError(e);
             } finally {
@@ -438,7 +417,7 @@ export default {
                 await this.ensureSanctum();
                 await window.axios.post('/api/v1/auth/register', { ...this.registerForm });
                 await this.refreshUser();
-                this.maybeRedirectHistory();
+                this.redirectIfAuthenticated();
             } catch (e) {
                 this.handleAxiosError(e);
             } finally {
@@ -456,7 +435,7 @@ export default {
                 }
                 await window.axios.post('/api/v1/auth/guest', payload);
                 await this.refreshUser();
-                this.maybeRedirectHistory();
+                this.redirectIfAuthenticated();
             } catch (e) {
                 if (e.response?.status === 422) {
                     const errs = e.response.data.errors || {};
@@ -464,18 +443,6 @@ export default {
                 } else {
                     this.handleAxiosError(e);
                 }
-            } finally {
-                this.loading = false;
-            }
-        },
-        async logout() {
-            this.loading = true;
-            try {
-                await this.ensureSanctum();
-                await window.axios.post('/api/v1/auth/logout');
-                this.user = null;
-            } catch {
-                this.formError = 'Не вдалося вийти. Спробуйте ще раз.';
             } finally {
                 this.loading = false;
             }

@@ -12,12 +12,14 @@
         <div class="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-6 sm:px-6">
             <header class="mb-4 flex w-full flex-wrap items-center justify-between gap-3">
                 <div class="flex min-w-0 flex-wrap items-center gap-3">
-                    <router-link
-                        to="/"
+                    <button
+                        type="button"
                         class="rp-focusable shrink-0 text-sm font-medium text-[var(--rp-link)] hover:text-[var(--rp-link-hover)]"
+                        :disabled="loggingOut"
+                        @click="logout"
                     >
-                        ← На головну
-                    </router-link>
+                        Вийти
+                    </button>
                     <router-link
                         :to="{
                             name: 'archive',
@@ -669,6 +671,7 @@ export default {
             wsDegraded: false,
             pollTimer: null,
             themeUi: 'system',
+            loggingOut: false,
             panelOpen: true,
             sidebarTab: 'rooms',
             friendsSubTab: 'active',
@@ -887,6 +890,21 @@ export default {
             this.themeUi = next;
             document.documentElement.setAttribute('data-theme', next);
             localStorage.setItem(THEME_KEY, next);
+        },
+        async logout() {
+            this.loggingOut = true;
+            try {
+                await this.ensureSanctum();
+                await window.axios.post('/api/v1/auth/logout');
+                this.user = null;
+                this.teardownEcho(true);
+                this.stopPoll();
+                await this.$router.replace({ path: '/' });
+            } catch {
+                this.loadError = 'Не вдалося вийти. Спробуйте ще раз.';
+            } finally {
+                this.loggingOut = false;
+            }
         },
         async ensureSanctum() {
             await window.axios.get('/sanctum/csrf-cookie');
