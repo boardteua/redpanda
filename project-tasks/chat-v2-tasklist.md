@@ -209,3 +209,18 @@
   - За потреби: розширення payload подій/OpenAPI (`docs/chat-v2/openapi.yaml`), тести API на відсутність приватних рядків у відповіді «чужого» користувача
 - **QA evidence:** [docs/chat-v2/T25-QA.md](../docs/chat-v2/T25-QA.md) — `php artisan test` (ChatApiTest + архів), `npm run build` PASS; ручний сценарій — опційно в T25-QA
 - **Примітка:** повна «копія» legacy draggable `#private_panel` не вимагається — акцент на UX з запиту клієнта (інлайн у стрімі + приватність пари)
+
+---
+
+### [x] T26 — БД: індекси та перевірка планів під гарячі запити чату (стрічка, архів, привати, вкладення)
+
+- **Delegate:** Backend Architect (+ database-optimizer / короткий spike за потреби)
+- **Залежність:** після **T01** (базові міграції), узгоджено з **T04**/**T09**/**T08** (фактичні SQL у `ChatMessageController`, `ChatArchiveController`, `PrivateMessageController`); не змінювати контракт API без потреби
+- **Deliverables:**
+  - Міграції (MySQL 8): додати індекс **`chat(post_roomid, post_id)`** (узгоджено з `ORDER BY post_id` у стрічці та архіві); на копії/staging з даними — **`EXPLAIN ANALYZE`** до/після; за результатом зафіксувати в PR чи залишаємо **`idx_chat_room_date`**, чи прибираємо як зайвий (write amplification)
+  - **`private_messages`:** додати симетричний до поточного покриття індекс під гілку `recipient_id` (напр. **`(recipient_id, sender_id, id)`** або **`(recipient_id, id)`** — обґрунтувати планом) для запиту списку розмов з `OR sender/recipient` + агрегація; опційно — рефактор на два запити / `UNION` + порівняння планів, якщо один запит лишається повільним
+  - **`chat(file)`:** індекс для перевірок «чи використовується зображення в стрічці» (`ImagePolicy`, видалення/політика файлів) — уникнути повного скану великої таблиці
+  - Зафіксувати в коментарі до PR або короткому нотатку в `docs/chat-v2/` (без PII): які саме запити перевірені; для прод-міграцій на великих таблицях — **онлайн-орієнтовані опції** MySQL (`ALGORITHM=INPLACE`, `LOCK=NONE`) де застосовно
+  - **Опційно (низький пріоритет):** оптимізація **`ChatArchiveController`** — уникати завантаження всіх кімнат + фільтрації через Gate у PHP, якщо кількість кімнат зросте (вузький SQL-список id або кеш правил доступу) — лише якщо spike покаже вузьке місце
+- **QA evidence:** [docs/chat-v2/T26-QA.md](../docs/chat-v2/T26-QA.md) — `php artisan migrate` на чистій БД, `php artisan test` (93 passed), `npm run build` PASS; для staging/копії з об’ємом — **`EXPLAIN ANALYZE`** за нотаткою в T26-QA
+- **Трасування:** узгоджено з рекомендаціями **`docs/board-te-ua/DATABASE-SCHEMA.md`** §8 (індекси під стрічку/приват) та фактичною реалізацією API після T04/T08/T09
