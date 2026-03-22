@@ -346,7 +346,8 @@
                                     maxlength="4000"
                                     rows="3"
                                     :disabled="sending || uploadingImage || !selectedRoomId"
-                                    placeholder="Повідомлення (Жміть кнопку ⇧, щоб поправити останні повідомлення — згодом)"
+                                    placeholder="Повідомлення — Enter надішле, Shift+Enter — новий рядок"
+                                    @keydown="onChatComposerKeydown"
                                 />
                             </div>
                             <button
@@ -2355,6 +2356,19 @@ export default {
             if (this.$refs.imageInput) {
                 this.$refs.imageInput.value = '';
             }
+        },
+        onChatComposerKeydown(e) {
+            if (e.key !== 'Enter') {
+                return;
+            }
+            if (e.isComposing || e.keyCode === 229) {
+                return;
+            }
+            if (e.shiftKey) {
+                return;
+            }
+            e.preventDefault();
+            this.sendMessage();
         },
         async onChatImageSelected(e) {
             const input = e.target;

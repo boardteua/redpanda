@@ -243,13 +243,13 @@
 
 ---
 
-### [ ] T28 — Композер: Enter надсилає повідомлення, Shift+Enter — новий рядок
+### [x] T28 — Композер: Enter надсилає повідомлення, Shift+Enter — новий рядок
 
 - **Delegate:** Frontend Developer
 - **Залежність:** **T06** (композер у `ChatRoom.vue` / еквівалент)
 - **Контекст клієнта:** звична модель месенджерів; узгодити з legacy placeholder у [CHAT-MAIN-INPUT.md](../docs/board-te-ua/CHAT-MAIN-INPUT.md); **редагування надісланих повідомлень** — окремо **T36**
 - **Deliverables:** у полі вводу загального чату **Enter** (без Shift) — відправка (як кнопка «Надіслати»); **Shift+Enter** — символ нового рядка в `textarea`/полі; не ламати надсилання з мобільних клавіатур за можливості; коротка згадка в UI (placeholder або підказка) за потреби
-- **QA evidence:** `npm run build` PASS; ручний чекліст (desktop): Enter / Shift+Enter; за наявності — один e2e або unit на handler клавіатури
+- **QA evidence:** [docs/chat-v2/T28-QA.md](../docs/chat-v2/T28-QA.md) — `npm run build` PASS; ручний чекліст Enter / Shift+Enter; IME не ламається (`isComposing`)
 
 ---
 
