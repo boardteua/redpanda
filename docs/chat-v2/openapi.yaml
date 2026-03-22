@@ -19,6 +19,8 @@ info:
 
     **Статус присутності (T48):** `GET /api/v1/rooms/{roomId}/presence-statuses?user_ids=…` — мапа `userId → status` з кешу; `POST /api/v1/rooms/{roomId}/presence-status` з `{"status":"online"|"away"|"inactive"}` — оновлення власного статусу (throttle `presence-status`). Деталі — [T48-QA.md](T48-QA.md).
 
+    **Підказки для списку «Люди» (T49):** `GET /api/v1/rooms/{roomId}/peer-hints?user_ids=…` — стать (`male`/`female`/`other`) лише для **зареєстрованого** переглядача, якщо у цілі поле не приховане; **гість** отримує порожній об’єкт `data`. Ролі staff/VIP — з `chat_role` у presence / `auth/user`. Деталі — [T49-QA.md](T49-QA.md).
+
     **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09). З головної з `?history=1` після входу — перехід на архів.
 
     **Архів (T09):** `GET /api/v1/archive/messages` — offset-пагінація (`page`, `per_page` ∈ {10,25,50,100}), пошук `q` (≤200 символів); деталі — [T09-QA.md](T09-QA.md).
@@ -34,7 +36,7 @@ info:
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.15.0"
+  version: "0.16.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -852,6 +854,44 @@ paths:
                 properties:
                   message:
                     type: string
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}/peer-hints:
+    get:
+      tags: [Chat]
+      summary: Підказки профілю для списку учасників (стать, T49)
+      description: |
+        Для переданих `user_ids` (до 100) повертає об’єкт `data[userId]` з полем `sex` ∈ {`male`,`female`,`other`},
+        якщо ціль — зареєстрований користувач, `profile_sex_hidden === false`, і значення дозволене.
+        **Гість** (переглядач) завжди отримує порожній `data` (без PII). Власний id у списку ігнорується (стать «я» з `GET auth/user`).
+      operationId: listRoomPeerHints
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - name: user_ids
+          in: query
+          required: true
+          description: Ідентифікатори користувачів через кому або пробіл
+          schema:
+            type: string
+            maxLength: 4096
+      responses:
+        "200":
+          description: Мапа user id → { sex }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomPeerHintsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -1855,6 +1895,23 @@ components:
             status:
               type: string
               enum: [online, away, inactive]
+
+    RoomPeerHintEntry:
+      type: object
+      required: [sex]
+      properties:
+        sex:
+          type: string
+          enum: [male, female, other]
+
+    RoomPeerHintsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/RoomPeerHintEntry"
 
     ArchiveMessagesPaginatedResponse:
       type: object

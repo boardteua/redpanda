@@ -53,6 +53,11 @@
     --rp-chat-sidebar-link-hover: #e8f0ff;
     --rp-chat-sidebar-input-bg: rgb(255 255 255 / 0.08);
     --rp-chat-sidebar-input-border: rgb(255 255 255 / 0.18);
+    /* T49 — іконки ролі / стать (список «Люди») */
+    --rp-peer-icon-admin: #fca5a5;
+    --rp-peer-icon-mod: #86efac;
+    --rp-peer-icon-vip: #fdba74;
+    --rp-peer-icon-sex: #e8dfd4;
     /* Мобільне бургер-меню панелі (референс board.te.ua — темний шоколад + жовтий акцент) */
     --rp-burger-bg: #261f1a;
     --rp-burger-self-bar-bg: #3f352c;
@@ -131,6 +136,10 @@
     --rp-chat-sidebar-link-hover: var(--rp-link-hover);
     --rp-chat-sidebar-input-bg: var(--rp-surface-elevated);
     --rp-chat-sidebar-input-border: var(--rp-border-subtle);
+    --rp-peer-icon-admin: #fca5a5;
+    --rp-peer-icon-mod: #86efac;
+    --rp-peer-icon-vip: #fdba74;
+    --rp-peer-icon-sex: #cbd5e1;
     --rp-chat-row-even: #1b2739;
     --rp-chat-row-odd: #152033;
     --rp-chat-row-inline-private-bg: #243047;
@@ -204,6 +213,10 @@
         --rp-chat-sidebar-link-hover: var(--rp-link-hover);
         --rp-chat-sidebar-input-bg: var(--rp-surface-elevated);
         --rp-chat-sidebar-input-border: var(--rp-border-subtle);
+        --rp-peer-icon-admin: #fca5a5;
+        --rp-peer-icon-mod: #86efac;
+        --rp-peer-icon-vip: #fdba74;
+        --rp-peer-icon-sex: #cbd5e1;
         --rp-chat-row-even: #1b2739;
         --rp-chat-row-odd: #152033;
         --rp-chat-row-inline-private-bg: #243047;
@@ -976,4 +989,24 @@
 .rp-chat-sidebar .rp-chat-side-room-btn.is-active {
     border-color: var(--rp-primary);
     background: color-mix(in srgb, var(--rp-primary) 22%, transparent);
+}
+
+/* T49 — роль (щит / плюс) і стать у списку «Люди» */
+.rp-peer-role-wrap--admin {
+    color: var(--rp-peer-icon-admin);
+}
+
+.rp-peer-role-wrap--moderator {
+    color: var(--rp-peer-icon-mod);
+}
+
+.rp-peer-role-wrap--vip {
+    color: var(--rp-peer-icon-vip);
+}
+
+.rp-peer-sex {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--rp-peer-icon-sex);
 }

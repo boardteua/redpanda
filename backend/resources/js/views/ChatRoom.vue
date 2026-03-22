@@ -101,6 +101,7 @@
             :is-badge-menu-open="sidebarBadgeMenuOpen"
             :room-presence-peers="roomPresencePeers"
             :peer-presence-status-by-user-id="peerPresenceStatusByUserId"
+            :peer-sex-hints-by-user-id="peerSexHintsByUserId"
             :viewer-presence-status="viewerPresenceStatus"
             :ws-degraded="wsDegraded"
             :peer-lookup-name.sync="peerLookupName"
@@ -407,6 +408,8 @@ export default {
             roomPresencePeers: [],
             /** userId (string) → online | away | inactive (T48). */
             peerPresenceStatusByUserId: {},
+            /** T49: userId → { sex } з peer-hints (для зареєстрованого переглядача). */
+            peerSexHintsByUserId: {},
             presenceLastActivityAt: 0,
             documentHiddenFlag: false,
             presenceLastSentStatus: null,
@@ -1015,7 +1018,7 @@ export default {
                 return;
             }
             try {
-                await this.fetchPeerPresenceStatuses();
+                await Promise.all([this.fetchPeerPresenceStatuses(), this.fetchPeerSexHints()]);
                 const { data } = await window.axios.get(
                     `/api/v1/rooms/${this.selectedRoomId}/messages`,
                     { params: { limit: 80 } },
@@ -1125,7 +1128,7 @@ export default {
             }
             this.presenceFetchDebounceTimer = setTimeout(() => {
                 this.presenceFetchDebounceTimer = null;
-                this.fetchPeerPresenceStatuses();
+                Promise.all([this.fetchPeerPresenceStatuses(), this.fetchPeerSexHints()]).catch(() => {});
             }, 250);
         },
         async fetchPeerPresenceStatuses() {
@@ -1141,6 +1144,28 @@ export default {
                 );
                 const map = data && data.data && typeof data.data === 'object' ? data.data : {};
                 this.peerPresenceStatusByUserId = { ...this.peerPresenceStatusByUserId, ...map };
+            } catch {
+                /* ignore */
+            }
+        },
+        async fetchPeerSexHints() {
+            if (!this.selectedRoomId || !this.roomPresencePeers.length) {
+                return;
+            }
+            if (!this.user || this.user.guest) {
+                this.peerSexHintsByUserId = {};
+
+                return;
+            }
+            const ids = this.roomPresencePeers.map((p) => p.id).join(',');
+            try {
+                await this.ensureSanctum();
+                const { data } = await window.axios.get(
+                    `/api/v1/rooms/${this.selectedRoomId}/peer-hints`,
+                    { params: { user_ids: ids } },
+                );
+                const map = data && data.data && typeof data.data === 'object' ? data.data : {};
+                this.peerSexHintsByUserId = { ...this.peerSexHintsByUserId, ...map };
             } catch {
                 /* ignore */
             }
@@ -1201,10 +1226,16 @@ export default {
                 delete nextMap[key];
                 this.peerPresenceStatusByUserId = nextMap;
             }
+            if (this.peerSexHintsByUserId[key] !== undefined) {
+                const nextHints = { ...this.peerSexHintsByUserId };
+                delete nextHints[key];
+                this.peerSexHintsByUserId = nextHints;
+            }
         },
         teardownEcho(fullDisconnect = false) {
             this.stopRoomPresenceTracking();
             this.peerPresenceStatusByUserId = {};
+            this.peerSexHintsByUserId = {};
             if (this.echo && this.echoSubscribedRoomId !== null) {
                 try {
                     this.echo.leave(`room.${this.echoSubscribedRoomId}`);
@@ -1282,6 +1313,7 @@ export default {
                 this.wsDegraded = true;
                 this.roomPresencePeers = [];
                 this.peerPresenceStatusByUserId = {};
+                this.peerSexHintsByUserId = {};
                 this.startPollIfDegraded();
             });
 

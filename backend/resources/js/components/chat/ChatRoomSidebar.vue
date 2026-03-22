@@ -157,9 +157,19 @@
                                         :aria-label="'Статус: ' + presenceLabelUa(viewerPresenceStatus)"
                                         :title="presenceLabelUa(viewerPresenceStatus)"
                                     />
-                                    <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
-                                        user.user_name
-                                    }}</span>
+                                    <span
+                                        class="min-w-0 flex-1 truncate font-medium text-[var(--rp-chat-sidebar-fg)]"
+                                        >{{ user.user_name }}</span>
+                                    <span class="ml-auto flex shrink-0 items-center gap-1">
+                                        <span
+                                            v-if="viewerSexMetaRow"
+                                            class="rp-peer-sex"
+                                            role="img"
+                                            :aria-label="'Стать: ' + viewerSexMetaRow.label"
+                                            :title="viewerSexMetaRow.label"
+                                            >{{ viewerSexMetaRow.glyph }}</span>
+                                        <ChatPeerRoleIcon :role="user.chat_role" />
+                                    </span>
                                 </div>
                                 <SidebarHamburgerTrigger
                                     :expanded="isBadgeMenuOpen('self-m')"
@@ -201,14 +211,19 @@
                                         :title="presenceLabelUa(viewerPresenceStatus)"
                                     />
                                     <span
-                                        v-if="user.badge_color"
-                                        class="h-2 w-2 shrink-0 rounded-full"
-                                        :style="{ backgroundColor: user.badge_color }"
-                                        :title="user.chat_role || ''"
-                                        aria-hidden="true"
-                                    />
-                                    <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ user.user_name }}</span>
-                                    <span class="text-xs text-[var(--rp-chat-sidebar-muted)]">(ви)</span>
+                                        class="min-w-0 flex-1 truncate font-medium text-[var(--rp-chat-sidebar-fg)]"
+                                        >{{ user.user_name }}</span>
+                                    <span class="shrink-0 text-xs text-[var(--rp-chat-sidebar-muted)]">(ви)</span>
+                                    <span class="ml-auto flex shrink-0 items-center gap-1">
+                                        <span
+                                            v-if="viewerSexMetaRow"
+                                            class="rp-peer-sex"
+                                            role="img"
+                                            :aria-label="'Стать: ' + viewerSexMetaRow.label"
+                                            :title="viewerSexMetaRow.label"
+                                            >{{ viewerSexMetaRow.glyph }}</span>
+                                        <ChatPeerRoleIcon :role="user.chat_role" />
+                                    </span>
                                 </div>
                                 <SidebarHamburgerTrigger
                                     :expanded="isBadgeMenuOpen('self-d')"
@@ -257,14 +272,7 @@
                                         "
                                         :title="presenceLabelUa(peerSidebarStatus(p))"
                                     />
-                                    <span
-                                        v-if="p.badge_color"
-                                        class="h-2 w-2 shrink-0 rounded-full"
-                                        :style="{ backgroundColor: p.badge_color }"
-                                        :title="p.chat_role || ''"
-                                        aria-hidden="true"
-                                    />
-                                    <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                    <span class="min-w-0 flex-1 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
                                         p.user_name
                                     }}</span>
                                     <span
@@ -272,6 +280,18 @@
                                         class="shrink-0 text-xs text-[var(--rp-chat-sidebar-muted)]"
                                     >
                                         (гість)
+                                    </span>
+                                    <span class="ml-auto flex shrink-0 items-center gap-1">
+                                        <span
+                                            v-if="peerSexMetaRow(p)"
+                                            class="rp-peer-sex"
+                                            role="img"
+                                            :aria-label="
+                                                'Стать ' + p.user_name + ': ' + peerSexMetaRow(p).label
+                                            "
+                                            :title="peerSexMetaRow(p).label"
+                                            >{{ peerSexMetaRow(p).glyph }}</span>
+                                        <ChatPeerRoleIcon :role="p.chat_role" />
                                     </span>
                                 </div>
                                 <SidebarHamburgerTrigger
@@ -724,12 +744,14 @@
 <script>
 import UserBadgeInlineActionPanel from '../UserBadgeInlineActionPanel.vue';
 import SidebarHamburgerTrigger from '../SidebarHamburgerTrigger.vue';
+import ChatPeerRoleIcon from './ChatPeerRoleIcon.vue';
 
 export default {
     name: 'ChatRoomSidebar',
     components: {
         UserBadgeInlineActionPanel,
         SidebarHamburgerTrigger,
+        ChatPeerRoleIcon,
     },
     props: {
         panelOpen: { type: Boolean, default: false },
@@ -743,6 +765,7 @@ export default {
         isBadgeMenuOpen: { type: Function, required: true },
         roomPresencePeers: { type: Array, default: () => [] },
         peerPresenceStatusByUserId: { type: Object, default: () => ({}) },
+        peerSexHintsByUserId: { type: Object, default: () => ({}) },
         viewerPresenceStatus: { type: String, default: 'online' },
         wsDegraded: { type: Boolean, default: false },
         peerLookupName: { type: String, default: '' },
@@ -781,7 +804,44 @@ export default {
             this.newRoomTopic = '';
         },
     },
+    computed: {
+        viewerSexMetaRow() {
+            if (!this.user || this.user.guest) {
+                return null;
+            }
+            const prof = this.user.profile;
+            if (!prof || prof.sex_hidden) {
+                return null;
+            }
+
+            return this.sexGlyphAndLabel(prof.sex);
+        },
+    },
     methods: {
+        sexGlyphAndLabel(sex) {
+            if (sex === 'male') {
+                return { glyph: '\u2642', label: 'Чоловік' };
+            }
+            if (sex === 'female') {
+                return { glyph: '\u2640', label: 'Жінка' };
+            }
+            if (sex === 'other') {
+                return { glyph: '\u26a7', label: 'Інше' };
+            }
+
+            return null;
+        },
+        peerSexMetaRow(p) {
+            if (!p || p.id == null || !this.user || this.user.guest) {
+                return null;
+            }
+            const row = this.peerSexHintsByUserId[String(p.id)];
+            if (!row || !row.sex) {
+                return null;
+            }
+
+            return this.sexGlyphAndLabel(row.sex);
+        },
         submitCreateRoom() {
             const name = (this.newRoomName || '').trim();
             if (!name) {
