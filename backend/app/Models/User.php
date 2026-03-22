@@ -13,7 +13,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['user_name', 'email', 'password', 'guest', 'vip'])]
+/**
+ * `vip` і `user_rank` не в fillable — лише довірені шляхи (сидери, майбутній адмін-API через `forceFill` / явні присвоєння після `chat-admin`).
+ */
+#[Fillable(['user_name', 'email', 'password', 'guest'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
