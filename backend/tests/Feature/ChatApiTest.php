@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Events\MessagePosted;
+use App\Events\RoomInlinePrivatePosted;
 use App\Models\ChatMessage;
 use App\Models\Room;
 use App\Models\User;
@@ -11,6 +12,7 @@ use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ChatApiTest extends TestCase
@@ -310,5 +312,101 @@ class ChatApiTest extends TestCase
         $this->assertCount(1, $channels);
         $this->assertInstanceOf(PresenceChannel::class, $channels[0]);
         $this->assertSame('presence-room.'.$public->room_id, $channels[0]->name);
+    }
+
+    public function test_inline_private_hidden_from_third_user_in_room_feed(): void
+    {
+        [$public] = $this->seedRooms();
+        $a = User::factory()->create(['user_name' => 'alice_pm']);
+        $b = User::factory()->create(['user_name' => 'bob_pm']);
+        $c = User::factory()->create(['user_name' => 'carol_pm']);
+
+        ChatMessage::query()->create([
+            'user_id' => $a->id,
+            'post_date' => 3000,
+            'post_time' => '12:00',
+            'post_user' => $a->user_name,
+            'post_message' => 'secret for bob',
+            'post_color' => 'user',
+            'post_roomid' => $public->room_id,
+            'type' => 'inline_private',
+            'post_target' => (string) $b->id,
+            'avatar' => '',
+            'file' => 0,
+            'client_message_id' => 'f1111111-1111-4111-8111-111111111111',
+        ]);
+
+        $this->assertSame(1, ChatMessage::query()->where('post_roomid', $public->room_id)->count());
+
+        Sanctum::actingAs($c);
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=20')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        Sanctum::actingAs($a);
+        $resA = $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=20');
+        $resA->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.post_message', 'secret for bob')
+            ->assertJsonPath('data.0.type', 'inline_private')
+            ->assertJsonPath('data.0.recipient_user_id', $b->id);
+
+        Sanctum::actingAs($b);
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=20')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.post_message', 'secret for bob');
+    }
+
+    public function test_post_msg_inline_private_dispatches_user_channel_broadcast_not_room(): void
+    {
+        Bus::fake([BroadcastEvent::class]);
+
+        [$public] = $this->seedRooms();
+        $a = User::factory()->create(['user_name' => 'sender_x']);
+        $b = User::factory()->create(['user_name' => 'recv_x']);
+        $clientId = 'a1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01';
+
+        $this->from(config('app.url'))
+            ->actingAs($a, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/msg recv_x hello-inline',
+                'client_message_id' => $clientId,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.type', 'inline_private')
+            ->assertJsonPath('data.recipient_user_id', $b->id)
+            ->assertJsonPath('data.post_message', 'hello-inline')
+            ->assertJsonPath('meta.slash.name', 'msg')
+            ->assertJsonPath('meta.slash.recognized', true);
+
+        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+            return $job->event instanceof RoomInlinePrivatePosted;
+        });
+        Bus::assertNotDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+            return $job->event instanceof MessagePosted;
+        });
+    }
+
+    public function test_post_msg_unknown_peer_returns_422(): void
+    {
+        [$public] = $this->seedRooms();
+        $a = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($a, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/msg no_such_user_xyz body',
+                'client_message_id' => 'b2eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
+            ])
+            ->assertStatus(422);
     }
 }

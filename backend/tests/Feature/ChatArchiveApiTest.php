@@ -65,6 +65,37 @@ class ChatArchiveApiTest extends TestCase
         ]);
     }
 
+    public function test_archive_excludes_inline_private_room_messages(): void
+    {
+        [$public] = $this->seedRooms();
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        $this->seedMessage($public, $a, 'public only');
+        ChatMessage::query()->create([
+            'user_id' => $a->id,
+            'post_date' => 1_700_000_099,
+            'post_time' => '12:00',
+            'post_user' => $a->user_name,
+            'post_message' => 'inline secret',
+            'post_color' => 'user',
+            'post_roomid' => $public->room_id,
+            'type' => 'inline_private',
+            'post_target' => (string) $b->id,
+            'avatar' => null,
+            'file' => 0,
+            'client_message_id' => 'a2222222-2222-4222-8222-222222222222',
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($a, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/archive/messages?per_page=10')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.post_message', 'public only');
+    }
+
     public function test_unauthenticated_archive_returns_401(): void
     {
         $this->seedRooms();

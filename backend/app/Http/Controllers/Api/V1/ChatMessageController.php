@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Chat\RoomInlinePrivateParser;
 use App\Chat\SlashCommandPipeline;
 use App\Events\MessagePosted;
+use App\Events\RoomInlinePrivatePosted;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StoreChatMessageRequest;
 use App\Http\Resources\ChatMessageResource;
 use App\Models\ChatMessage;
 use App\Models\Room;
+use App\Models\User;
 use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\UserPostingGate;
+use App\Services\PrivateMessageGate;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,8 +41,20 @@ class ChatMessageController extends Controller
         $limit = (int) ($validated['limit'] ?? 50);
         $before = isset($validated['before']) ? (int) $validated['before'] : null;
 
+        $uid = (int) $request->user()->id;
+
         $query = ChatMessage::query()
             ->where('post_roomid', $room->room_id)
+            ->where(function ($outer) use ($uid) {
+                $outer->where('type', 'public')
+                    ->orWhere(function ($q) use ($uid) {
+                        $q->where('type', 'inline_private')
+                            ->where(function ($inner) use ($uid) {
+                                $inner->where('user_id', $uid)
+                                    ->orWhere('post_target', (string) $uid);
+                            });
+                    });
+            })
             ->orderByDesc('post_id');
 
         if ($before !== null) {
@@ -81,6 +97,84 @@ class ChatMessageController extends Controller
 
         $raw = (string) ($request->validated('message') ?? '');
         $fileRef = $request->filled('image_id') ? (int) $request->input('image_id') : 0;
+        $inline = RoomInlinePrivateParser::tryParse($raw);
+
+        if ($inline !== null) {
+            if ($fileRef !== 0) {
+                return response()->json([
+                    'message' => 'Зображення не підтримуються для інлайн-привату /msg.',
+                ], 422);
+            }
+
+            $peer = User::query()
+                ->whereRaw('LOWER(user_name) = LOWER(?)', [$inline['nick']])
+                ->first();
+
+            if ($peer === null) {
+                return response()->json([
+                    'message' => 'Користувача з таким ніком не знайдено.',
+                ], 422);
+            }
+
+            if ((int) $peer->id === (int) $user->id) {
+                return response()->json(['message' => 'Неможливо написати собі.'], 422);
+            }
+
+            if (PrivateMessageGate::isBlocked($user, $peer)) {
+                return response()->json(['message' => 'Надсилання заблоковано (ігнор).'], 403);
+            }
+
+            $body = $this->wordFilter->filter($inline['body']);
+            $now = time();
+            $avatarUrl = $user->resolveAvatarUrl();
+
+            try {
+                $message = ChatMessage::query()->create([
+                    'user_id' => $user->id,
+                    'post_date' => $now,
+                    'post_time' => date('H:i', $now),
+                    'post_user' => $user->user_name,
+                    'post_message' => $body,
+                    'post_color' => $user->resolveChatRole()->postColorClass(),
+                    'post_roomid' => $room->room_id,
+                    'type' => 'inline_private',
+                    'post_target' => (string) $peer->id,
+                    'avatar' => $avatarUrl,
+                    'file' => 0,
+                    'client_message_id' => $clientId,
+                ]);
+            } catch (QueryException $e) {
+                if ($this->isDuplicateKey($e)) {
+                    $retry = ChatMessage::query()
+                        ->where('user_id', $user->id)
+                        ->where('client_message_id', $clientId)
+                        ->firstOrFail();
+
+                    if ((int) $retry->post_roomid !== (int) $room->room_id) {
+                        return response()->json([
+                            'message' => 'client_message_id already used for another room.',
+                        ], 422);
+                    }
+
+                    return $this->duplicateMessageResponse($retry);
+                }
+
+                throw $e;
+            }
+
+            broadcast(new RoomInlinePrivatePosted($message));
+
+            return ChatMessageResource::make($message)
+                ->additional([
+                    'meta' => [
+                        'duplicate' => false,
+                        'slash' => ['name' => 'msg', 'recognized' => true],
+                    ],
+                ])
+                ->response()
+                ->setStatusCode(Response::HTTP_CREATED);
+        }
+
         $pipe = $this->slashPipeline->transform($raw, $user->user_name);
         $pipe['message'] = $this->wordFilter->filter($pipe['message']);
         $now = time();

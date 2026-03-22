@@ -146,18 +146,19 @@
                                 v-for="(m, msgIdx) in messages"
                                 :key="m.post_id"
                                 class="flex gap-2 px-2 py-1.5 text-[0.9375rem] leading-snug sm:px-3 sm:py-2"
-                                :class="
+                                :class="[
                                     msgIdx % 2 === 0
                                         ? 'bg-[var(--rp-chat-row-even)]'
-                                        : 'bg-[var(--rp-chat-row-odd)]'
-                                "
+                                        : 'bg-[var(--rp-chat-row-odd)]',
+                                    m.type === 'inline_private' ? 'rp-chat-feed-row--inline-private' : '',
+                                ]"
                             >
                                 <button
-                                    v-if="user"
+                                    v-if="user && m.post_user !== user.user_name"
                                     type="button"
                                     class="rp-focusable h-fit shrink-0 rounded-full border-0 bg-transparent p-0"
-                                    :aria-label="'Меню користувача: ' + m.post_user"
-                                    @click.stop="openFeedAuthorMenu($event, m)"
+                                    :aria-label="'Приват у полі вводу: ' + m.post_user"
+                                    @click.stop="insertFeedInlinePrivatePrefix(m.post_user)"
                                 >
                                     <UserAvatar
                                         :src="m.avatar"
@@ -177,20 +178,12 @@
                                     <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                                         <p class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
                                             <button
-                                                v-if="user && m.post_user !== user.user_name"
+                                                v-if="user"
                                                 type="button"
                                                 class="rp-focusable mr-1.5 inline font-semibold hover:underline"
                                                 :style="nickColorStyle(m)"
-                                                @click.stop="openFeedAuthorMenu($event, m)"
-                                            >
-                                                {{ m.post_user }}
-                                            </button>
-                                            <button
-                                                v-else-if="user && m.post_user === user.user_name"
-                                                type="button"
-                                                class="rp-focusable mr-1.5 inline font-semibold"
-                                                :style="nickColorStyle(m)"
-                                                @click.stop="openFeedAuthorMenu($event, m)"
+                                                :aria-label="'Згадати у полі вводу: ' + m.post_user"
+                                                @click.stop="insertFeedReplyPrefix(m.post_user)"
                                             >
                                                 {{ m.post_user }}
                                             </button>
@@ -347,6 +340,7 @@
                                 </button>
                                 <textarea
                                     id="chat-composer"
+                                    ref="chatComposer"
                                     v-model="composerText"
                                     class="rp-focusable rp-chat-composer-input w-full resize-y"
                                     maxlength="4000"
@@ -1141,31 +1135,6 @@ function normalizePresencePeer(raw) {
     };
 }
 
-function chatRoleFromPostColor(postColor) {
-    const map = {
-        guest: 'guest',
-        user: 'user',
-        vip: 'vip',
-        mod: 'moderator',
-        admin: 'admin',
-    };
-
-    return map[postColor] || 'user';
-}
-
-function messageToMenuTarget(m) {
-    if (!m) {
-        return null;
-    }
-
-    return {
-        id: m.user_id != null ? Number(m.user_id) : null,
-        user_name: m.post_user != null ? String(m.post_user) : '',
-        guest: m.post_color === 'guest',
-        chat_role: chatRoleFromPostColor(m.post_color),
-    };
-}
-
 function normalizeMessage(raw) {
     if (!raw || typeof raw.post_id === 'undefined') {
         return null;
@@ -1187,6 +1156,10 @@ function normalizeMessage(raw) {
         post_message: raw.post_message,
         post_color: raw.post_color,
         type: raw.type,
+        recipient_user_id:
+            raw.recipient_user_id != null && raw.recipient_user_id !== ''
+                ? Number(raw.recipient_user_id)
+                : null,
         client_message_id: raw.client_message_id,
         avatar: raw.avatar ? String(raw.avatar) : '',
         file,
@@ -1773,6 +1746,9 @@ export default {
             ch.listen('.PrivateMessagePosted', (payload) => {
                 this.onPrivateWsPayload(payload);
             });
+            ch.listen('.RoomInlinePrivatePosted', (payload) => {
+                this.mergeMessage(payload);
+            });
         },
         onPrivateWsPayload(payload) {
             if (!payload || typeof payload.id === 'undefined' || !this.user) {
@@ -1927,16 +1903,52 @@ export default {
                 returnFocusEl: el,
             };
         },
-        openFeedAuthorMenu(evt, m) {
-            if (!this.user || !m || !evt) {
+        focusComposerEnd() {
+            const el = this.$refs.chatComposer;
+            if (!el || typeof el.focus !== 'function') {
                 return;
             }
-            if (m.post_user === this.user.user_name) {
-                this.openSelfBadgeMenu(evt);
+            el.focus();
+            const len = this.composerText.length;
+            try {
+                el.setSelectionRange(len, len);
+            } catch {
+                /* */
+            }
+        },
+        appendToComposer(insertion) {
+            if (insertion == null || insertion === '') {
+                return;
+            }
+            const t = this.composerText;
+            if (t.length === 0) {
+                this.composerText = insertion;
 
                 return;
             }
-            this.openPeerBadgeMenu(evt, messageToMenuTarget(m));
+            const needsSpace = !/\s$/.test(t);
+            this.composerText = needsSpace ? `${t} ${insertion}` : t + insertion;
+        },
+        insertFeedReplyPrefix(userName) {
+            if (!this.user || userName == null || userName === '') {
+                return;
+            }
+            const nick = String(userName);
+            const prefix = `${nick} > `;
+            this.appendToComposer(prefix);
+            this.$nextTick(() => this.focusComposerEnd());
+        },
+        insertFeedInlinePrivatePrefix(userName) {
+            if (!this.user || userName == null || userName === '') {
+                return;
+            }
+            const nick = String(userName);
+            if (nick === this.user.user_name) {
+                return;
+            }
+            const prefix = `/msg ${nick} `;
+            this.appendToComposer(prefix);
+            this.$nextTick(() => this.focusComposerEnd());
         },
         closeUserInfoModal() {
             this.userInfoModalOpen = false;
@@ -2273,30 +2285,6 @@ export default {
         async sendMessage() {
             const text = this.composerText.trim();
             if ((!text && !this.pendingImageId) || !this.selectedRoomId || this.sending) {
-                return;
-            }
-            const msgMatch = text.match(/^\/msg\s+(\S+)(?:\s+(.*))?$/i);
-            if (msgMatch) {
-                const targetName = msgMatch[1];
-                const pmBody = (msgMatch[2] || '').trim();
-                this.sending = true;
-                this.loadError = '';
-                await this.ensureSanctum();
-                try {
-                    const { data } = await window.axios.get('/api/v1/users/lookup', {
-                        params: { name: targetName },
-                    });
-                    this.openPrivatePeer(data.data);
-                    this.composerText = '';
-                    if (pmBody) {
-                        await this.sendPrivateMessageFromPanel(pmBody);
-                    }
-                } catch (e) {
-                    this.loadError = e.response?.data?.message || 'Не вдалося знайти користувача для /msg.';
-                } finally {
-                    this.sending = false;
-                }
-
                 return;
             }
             this.sending = true;

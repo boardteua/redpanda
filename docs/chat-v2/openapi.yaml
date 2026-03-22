@@ -1158,6 +1158,13 @@ components:
           type: integer
         type:
           type: string
+          description: >
+            `public` — загальне повідомлення кімнати; `inline_private` — інлайн-приват у стрічці (T25),
+            видимий лише відправнику та адресату в `GET .../rooms/{id}/messages`; не потрапляє в архів.
+        recipient_user_id:
+          type: integer
+          nullable: true
+          description: Для `inline_private` — id адресата; інакше відсутнє.
         client_message_id:
           type: string
           nullable: true

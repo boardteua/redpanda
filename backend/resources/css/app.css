@@ -66,6 +66,9 @@
     /* Стрічка — чергування рядків (05-chat-viewport.png) */
     --rp-chat-row-even: #ffffff;
     --rp-chat-row-odd: #ebe4d8;
+    /* Інлайн-приват у стрічці (T25) — окремий фон + акцент зліва */
+    --rp-chat-row-inline-private-bg: #e8eef6;
+    --rp-chat-row-inline-private-border: #4a6fa5;
     --rp-chat-send-bg: #5c4336;
     --rp-chat-send-bg-hover: #4a362c;
     --rp-chat-send-fg: #fffefb;
@@ -111,6 +114,8 @@
     --rp-chat-sidebar-input-border: var(--rp-border-subtle);
     --rp-chat-row-even: #1b2739;
     --rp-chat-row-odd: #152033;
+    --rp-chat-row-inline-private-bg: #243047;
+    --rp-chat-row-inline-private-border: #7ea3d9;
     --rp-chat-send-bg: var(--rp-primary);
     --rp-chat-send-bg-hover: var(--rp-primary-hover);
     --rp-chat-send-fg: var(--rp-on-primary);
@@ -164,6 +169,8 @@
         --rp-chat-sidebar-input-border: var(--rp-border-subtle);
         --rp-chat-row-even: #1b2739;
         --rp-chat-row-odd: #152033;
+        --rp-chat-row-inline-private-bg: #243047;
+        --rp-chat-row-inline-private-border: #7ea3d9;
         --rp-chat-send-bg: var(--rp-primary);
         --rp-chat-send-bg-hover: var(--rp-primary-hover);
         --rp-chat-send-fg: var(--rp-on-primary);
@@ -178,6 +185,11 @@
         --rp-burger-footer-card-fg: #1a120a;
         --rp-burger-footer-muted: #5c534a;
     }
+}
+
+.rp-chat-feed-row--inline-private {
+    background: var(--rp-chat-row-inline-private-bg) !important;
+    box-shadow: inset 3px 0 0 0 var(--rp-chat-row-inline-private-border);
 }
 
 @media (prefers-reduced-motion: reduce) {

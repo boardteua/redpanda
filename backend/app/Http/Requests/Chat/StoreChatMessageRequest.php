@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Chat;
 
+use App\Chat\RoomInlinePrivateParser;
 use App\Models\Image;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -43,6 +44,10 @@ class StoreChatMessageRequest extends FormRequest
             }
 
             $msg = trim((string) ($this->input('message') ?? ''));
+            $inline = RoomInlinePrivateParser::tryParse((string) ($this->input('message') ?? ''));
+            if ($inline !== null && $this->filled('image_id')) {
+                $validator->errors()->add('image_id', 'Неможливо додати зображення до інлайн-привату /msg.');
+            }
             if ($msg === '' && ! $this->filled('image_id')) {
                 $validator->errors()->add('message', 'Введіть текст або додайте зображення.');
             }
