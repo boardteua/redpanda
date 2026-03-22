@@ -190,9 +190,10 @@
             <button
                 type="button"
                 class="rp-focusable rp-chat-composer-rail-btn rounded-full"
-                disabled
-                title="Смайли (згодом, T33)"
-                aria-label="Смайли"
+                :disabled="!selectedRoomId"
+                title="Смайли"
+                aria-label="Відкрити вибір смайлів"
+                @click="emojiModalOpen = true"
             >
                 <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
                     <path
@@ -288,10 +289,12 @@
             @close="myImagesModalOpen = false"
             @select="onLibraryImageSelected"
         />
+        <ChatEmojiModal :open="emojiModalOpen" @close="emojiModalOpen = false" @select="onEmojiPicked" />
     </form>
 </template>
 
 <script>
+import ChatEmojiModal from './ChatEmojiModal.vue';
 import ChatMyImagesModal from './ChatMyImagesModal.vue';
 import {
     COMPOSER_BG_PALETTE,
@@ -304,7 +307,7 @@ import {
 
 export default {
     name: 'ChatRoomComposer',
-    components: { ChatMyImagesModal },
+    components: { ChatEmojiModal, ChatMyImagesModal },
     props: {
         selectedRoomId: {
             default: null,
@@ -325,6 +328,7 @@ export default {
             uploadingImage: false,
             imageUploadError: '',
             myImagesModalOpen: false,
+            emojiModalOpen: false,
         };
     },
     computed: {
@@ -389,6 +393,13 @@ export default {
             }
             const needsSpace = !/\s$/.test(t);
             this.composerText = needsSpace ? `${t} ${insertion}` : t + insertion;
+        },
+        onEmojiPicked({ code }) {
+            if (!code) {
+                return;
+            }
+            this.appendToComposer(`:${code}:`);
+            this.$nextTick(() => this.focusComposerEnd());
         },
         focusComposerEnd() {
             const el = this.$refs.chatComposer;
