@@ -42,7 +42,9 @@ info:
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)); непрочитані приватні — [T56-QA.md](T56-QA.md).
     **Друзі (T50):** `GET /api/v1/friends` — усі прийняті друзі (без фільтра онлайн); `DELETE /api/v1/friends/{userId}` — прибрати з друзів або скасувати вихідний запит (throttle `private-post`).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.16.5"
+
+    **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
+  version: "0.16.6"
   license:
     name: Proprietary
     url: https://example.com/
@@ -1812,6 +1814,12 @@ components:
           type: integer
           nullable: true
           description: Творець кімнати (**T54**); `null` для legacy-рядків
+        created_by_me:
+          type: boolean
+          description: Чи є поточний користувач творцем цієї кімнати (**T58**)
+        is_room_moderator:
+          type: boolean
+          description: Чи має поточний користувач права модерації повідомлень у цій кімнаті як творець (**T58**); зараз еквівалентно `created_by_me`
         messages_count:
           type: integer
           nullable: true

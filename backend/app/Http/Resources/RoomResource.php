@@ -14,12 +14,18 @@ class RoomResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $uid = $request->user()?->id;
+        $creatorId = $this->created_by_user_id;
+        $isCreator = $uid !== null && $creatorId !== null && (int) $creatorId === (int) $uid;
+
         return [
             'room_id' => $this->room_id,
             'room_name' => $this->room_name,
             'topic' => $this->topic,
             'access' => (int) $this->access,
-            'created_by_user_id' => $this->created_by_user_id !== null ? (int) $this->created_by_user_id : null,
+            'created_by_user_id' => $creatorId !== null ? (int) $creatorId : null,
+            'created_by_me' => $isCreator,
+            'is_room_moderator' => $isCreator,
             'messages_count' => isset($this->messages_count) ? (int) $this->messages_count : null,
         ];
     }

@@ -1038,6 +1038,22 @@ export default {
             if (role === 'moderator') {
                 return m.post_color !== 'admin';
             }
+            // Творець кімнати (T58): чужі публічні повідомлення в своїй кімнаті — без постів staff.
+            if (
+                m.post_roomid != null
+                && Number(m.post_roomid) === Number(this.selectedRoomId)
+            ) {
+                const room = this.rooms.find((r) => Number(r.room_id) === Number(this.selectedRoomId));
+                const cid = room && room.created_by_user_id;
+                if (cid != null && Number(cid) === Number(this.user.id)) {
+                    if (m.post_color === 'admin' || m.post_color === 'mod') {
+                        return false;
+                    }
+                    if (Number(m.user_id) !== Number(this.user.id)) {
+                        return true;
+                    }
+                }
+            }
             if (Number(m.user_id) !== Number(this.user.id)) {
                 return false;
             }
