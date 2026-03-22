@@ -5,6 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Кімнати чату.
+ *
+ * `access`: публічна ({@see self::ACCESS_PUBLIC}), лише зареєстровані ({@see self::ACCESS_REGISTERED}).
+ * Усі значення `>= {@see self::ACCESS_VIP}` наразі мають однакові правила (VIP-зона) у {@see RoomPolicy::interact}
+ * та у фільтрі списку кімнат. Нові рівні (наприклад лише staff) потребуватимуть окремих констант і оновлення policy.
+ */
 class Room extends Model
 {
     public const ACCESS_PUBLIC = 0;

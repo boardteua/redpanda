@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Image;
 use App\Models\Room;
 use App\Models\User;
+use App\Support\ChatThrottleRules;
 use App\Policies\ImagePolicy;
 use App\Policies\RoomPolicy;
 use App\Policies\UserPolicy;
@@ -69,17 +70,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('image-upload', function (Request $request) {
+            /** @var User $user маршрут під auth:sanctum */
             $user = $request->user();
-            if ($user === null) {
-                return Limit::perMinute(5)->by('ip:'.$request->ip());
-            }
-            $perMinute = match (true) {
-                $user->guest => 5,
-                $user->isVip() || $user->canModerate() => 30,
-                default => 20,
-            };
 
-            return Limit::perMinute($perMinute)->by('u:'.$user->id);
+            return Limit::perMinute(ChatThrottleRules::imageUploadsPerMinute($user))
+                ->by('u:'.$user->id);
         });
 
         RateLimiter::for('image-read', function (Request $request) {
@@ -89,18 +84,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('chat-post', function (Request $request) {
+            /** @var User $user маршрут під auth:sanctum */
             $user = $request->user();
-            if ($user === null) {
-                return Limit::perMinute(10)->by('ip:'.$request->ip());
-            }
-            $perMinute = match (true) {
-                $user->guest => 15,
-                $user->canModerate() => 90,
-                $user->isVip() => 60,
-                default => 30,
-            };
 
-            return Limit::perMinute($perMinute)->by('u:'.$user->id);
+            return Limit::perMinute(ChatThrottleRules::postsPerMinute($user))
+                ->by('u:'.$user->id);
         });
 
         RateLimiter::for('private-read', function (Request $request) {

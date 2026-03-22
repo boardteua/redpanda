@@ -10,6 +10,7 @@
 - Ліміти: `chat-post` і `image-upload` у `AppServiceProvider` залежать від гостя / VIP / staff.
 - Гості: без завантаження зображень у чат і без `image_id` у повідомленні; коротший ліміт довжини тексту.
 - API: `UserResource` і `GET .../users/lookup` — `chat_role`, `badge_color`; presence — ті самі поля; `post_color` у повідомленнях — `guest|user|vip|mod|admin`.
+- Ліміти `chat-post` / `image-upload`: `App\Support\ChatThrottleRules` + unit-тести `tests/Unit/ChatThrottleRulesTest.php` (пороги не дублюються в `AppServiceProvider`).
 
 ## Доказ
 
