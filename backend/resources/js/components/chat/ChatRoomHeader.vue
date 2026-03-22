@@ -7,17 +7,17 @@
                 {{ chatBreadcrumb }}
             </p>
         </div>
-        <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
-            <div class="min-w-0 flex-1 basis-[min(100%,12rem)]">
+        <div class="flex min-w-0 flex-nowrap items-center justify-between gap-2">
+            <div class="min-w-0 flex-1">
                 <p
                     v-if="chatTopicLine"
-                    class="line-clamp-2 text-sm leading-snug text-[var(--rp-text-muted)]"
+                    class="truncate text-sm leading-snug text-[var(--rp-text-muted)]"
                     :title="chatTopicLine"
                 >
                     {{ chatTopicLine }}
                 </p>
             </div>
-            <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <div class="flex shrink-0 flex-nowrap items-center justify-end gap-2">
                 <span
                     v-if="wsDegraded"
                     class="max-w-[11rem] rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-chat-toolbar-bg)] px-2 py-1 text-xs text-[var(--rp-text-muted)] md:max-w-none"
