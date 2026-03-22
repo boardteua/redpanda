@@ -11,7 +11,7 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `presence-status`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `presence-status`).
 
     **Прочитане в кімнаті (T47):** `GET .../rooms/{roomId}/messages` — `meta.last_read_post_id`; опційно `since_read=true` → `meta.first_unread_post_id` у межах сторінки; `POST .../rooms/{roomId}/read` з `last_read_post_id` (монотонно). Деталі — [T47-QA.md](T47-QA.md).
 
@@ -21,7 +21,7 @@ info:
 
     **Підказки для списку «Люди» (T49):** `GET /api/v1/rooms/{roomId}/peer-hints?user_ids=…` — стать (`male`/`female`/`other`) лише для **зареєстрованого** переглядача, якщо у цілі поле не приховане; **гість** отримує порожній об’єкт `data`. Ролі staff/VIP — з `chat_role` у presence / `auth/user`. Деталі — [T49-QA.md](T49-QA.md).
 
-    **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09). З головної з `?history=1` після входу — перехід на архів.
+    **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09); **`/chat/staff-users`** — пошук і керування користувачами для персоналу (T52). З головної з `?history=1` після входу — перехід на архів.
 
     **Архів (T09):** `GET /api/v1/archive/messages` — offset-пагінація (`page`, `per_page` ∈ {10,25,50,100}), пошук `q` (≤200 символів); деталі — [T09-QA.md](T09-QA.md).
 
@@ -33,11 +33,13 @@ info:
 
     **Ролі чату (T21):** на `users` — `vip` (boolean), `user_rank` (0 користувач, 1 модератор, 2 адмін); `rooms.access` — `0` публічна, `1` лише зареєстровані, `≥2` VIP-кімната (доступ VIP або модератор/адмін). `POST /api/v1/mod/users/{id}/mute|kick` — `can:moderate` (`user_rank ≥ 1`, не гість); керування банами IP і словами фільтра — `can:chat-admin` (`user_rank ≥ 2`). Ліміти `chat-post` / `image-upload` залежать від ролі (гість/VIP/staff). Поля `chat_role` та `badge_color` у `User` і lookup — [T21-QA.md](T21-QA.md).
 
+    **Персонал: користувачі (T52):** `GET /api/v1/mod/users` — пошук за підрядком у `user_name`, за числовим `id`, за `email` лише для **адміна** (якщо в рядку є `@`); throttle `mod-user-read`. `PATCH /api/v1/mod/users/{id}` — `vip` (мод+адмін, ціль з нижчим рангом), `user_rank` — лише **адмін**; `PATCH /api/v1/mod/users/{id}/profile` — мод: лише `profile.occupation` та `profile.about`; адмін: повний набір як у `PATCH /me/profile` (без зміни e-mail/пароля). Деталі — [T52-QA.md](T52-QA.md).
+
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     **Друзі (T50):** `GET /api/v1/friends` — усі прийняті друзі (без фільтра онлайн); `DELETE /api/v1/friends/{userId}` — прибрати з друзів або скасувати вихідний запит (throttle `private-post`).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.16.2"
+  version: "0.16.3"
   license:
     name: Proprietary
     url: https://example.com/
@@ -232,6 +234,124 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users:
+    get:
+      tags: [Moderation]
+      summary: Пошук користувачів для персоналу (T52)
+      description: |
+        `can:moderate`. Пошук без SQL LIKE-екранування підрядка: `instr(lower(user_name), lower(q))`, опційно `id` якщо `q` — лише цифри;
+        для **адміна** додатково збіг по `email`, якщо в `q` є `@`. Поле `email` у відповіді — лише для адміна та лише для не-гостей.
+      operationId: modStaffUserSearch
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 191
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Сторінка результатів
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserSearchResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/{userId}:
+    patch:
+      tags: [Moderation]
+      summary: Зміна VIP та рангу користувача (T52)
+      description: |
+        `can:moderate`; ціль має мати **нижчий** `user_rank`, ніж актор; не на себе.
+        Поле `user_rank` приймається лише від **адміна** (`can:chat-admin`); новий ранг не може бути вищим за ранг актора.
+      operationId: modStaffUserPatchRoles
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffUserRolesPatchRequest"
+      responses:
+        "200":
+          description: Оновлений рядок користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/{userId}/profile:
+    patch:
+      tags: [Moderation]
+      summary: Редагування профілю користувача персоналом (T52)
+      description: |
+        `can:moderate`; ціль — зареєстрований користувач (не гість), нижчий ранг за актора.
+        **Модератор:** лише `profile.occupation`, `profile.about`. **Адмін:** розширені поля профілю, соцмережі, звукові преференції (як `MeProfilePatchRequest`).
+      operationId: modStaffUserPatchProfile
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffUserProfilePatchRequest"
+      responses:
+        "200":
+          description: Оновлений рядок користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -1560,6 +1680,105 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/ModUserRestrictionData"
+
+    StaffUserProfileSummary:
+      type: object
+      description: Лише для `guest === false` у рядку пошуку / відповіді PATCH
+      properties:
+        country: { type: string, nullable: true }
+        region: { type: string, nullable: true }
+        age: { type: integer, nullable: true }
+        sex:
+          type: string
+          nullable: true
+          enum: [male, female, other, prefer_not]
+        country_hidden: { type: boolean }
+        region_hidden: { type: boolean }
+        age_hidden: { type: boolean }
+        sex_hidden: { type: boolean }
+        occupation: { type: string, nullable: true }
+        about: { type: string, nullable: true }
+
+    StaffUserListRow:
+      type: object
+      required:
+        - id
+        - user_name
+        - guest
+        - user_rank
+        - vip
+        - chat_role
+        - badge_color
+        - can_manage
+      properties:
+        id: { type: integer }
+        user_name: { type: string }
+        guest: { type: boolean }
+        user_rank: { type: integer, minimum: 0, maximum: 2 }
+        vip: { type: boolean }
+        chat_role:
+          type: string
+          enum: [guest, user, vip, moderator, admin]
+        badge_color: { type: string, nullable: true }
+        mute_until: { type: integer, nullable: true }
+        kick_until: { type: integer, nullable: true }
+        can_manage: { type: boolean }
+        email:
+          type: string
+          nullable: true
+          description: Лише для адміна; для гостя відсутнє
+        profile:
+          allOf:
+            - $ref: "#/components/schemas/StaffUserProfileSummary"
+          nullable: true
+
+    StaffUserSearchMeta:
+      type: object
+      required: [current_page, last_page, per_page, total]
+      properties:
+        current_page: { type: integer, minimum: 1 }
+        last_page: { type: integer, minimum: 0 }
+        per_page: { type: integer, minimum: 1 }
+        total: { type: integer, minimum: 0 }
+
+    StaffUserSearchResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StaffUserListRow"
+        meta:
+          $ref: "#/components/schemas/StaffUserSearchMeta"
+
+    StaffUserSingleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/StaffUserListRow"
+
+    StaffUserRolesPatchRequest:
+      type: object
+      minProperties: 1
+      properties:
+        vip: { type: boolean }
+        user_rank:
+          type: integer
+          enum: [0, 1, 2]
+          description: Лише адміністратор
+
+    StaffUserProfilePatchRequest:
+      type: object
+      minProperties: 1
+      properties:
+        profile:
+          $ref: "#/components/schemas/UserProfile"
+        social_links:
+          $ref: "#/components/schemas/SocialLinks"
+        notification_sound_prefs:
+          $ref: "#/components/schemas/NotificationSoundPrefs"
 
     RoomListResponse:
       type: object

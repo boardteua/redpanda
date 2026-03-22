@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomPeerHintsController;
 use App\Http\Controllers\Api\V1\RoomPresenceStatusController;
 use App\Http\Controllers\Api\V1\RoomReadController;
+use App\Http\Controllers\Api\V1\StaffUserController;
 use App\Http\Controllers\Api\V1\UserAvatarController;
 use App\Http\Controllers\Api\V1\UserLookupController;
 use App\Http\Middleware\RejectBannedIp;
@@ -108,7 +109,13 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
             Route::delete('filter-words/{filterWord}', [ModerationController::class, 'destroyFilterWord']);
         });
 
+        Route::middleware(['can:moderate', 'throttle:mod-user-read'])->prefix('mod')->group(function (): void {
+            Route::get('users', [StaffUserController::class, 'index']);
+        });
+
         Route::middleware(['can:moderate', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
+            Route::patch('users/{user}/profile', [StaffUserController::class, 'updateProfile']);
+            Route::patch('users/{user}', [StaffUserController::class, 'update']);
             Route::post('users/{user}/mute', [ModerationController::class, 'muteUser']);
             Route::post('users/{user}/kick', [ModerationController::class, 'kickUser']);
         });

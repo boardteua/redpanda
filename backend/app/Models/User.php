@@ -118,6 +118,21 @@ class User extends Authenticatable
         return $this->isVip() || $this->canModerate();
     }
 
+    /**
+     * Чи може персонал модерації (mute/kick, staff UI) застосовувати дії до цього користувача.
+     */
+    public function canReceiveStaffManagementFrom(User $actor): bool
+    {
+        if ($actor->guest || ! $actor->canModerate()) {
+            return false;
+        }
+        if ((int) $this->id === (int) $actor->id) {
+            return false;
+        }
+
+        return (int) $this->user_rank < (int) $actor->user_rank;
+    }
+
     public function resolveChatRole(): ChatRole
     {
         if ($this->guest) {

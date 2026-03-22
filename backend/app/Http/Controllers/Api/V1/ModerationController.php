@@ -156,7 +156,7 @@ class ModerationController extends Controller
         if ((int) $actor->id === (int) $target->id) {
             abort(422, 'Неможливо застосувати до власного облікового запису.');
         }
-        if ((int) $target->user_rank >= (int) $actor->user_rank) {
+        if (! $target->canReceiveStaffManagementFrom($actor)) {
             abort(403, 'Недостатньо прав для дії щодо цього користувача.');
         }
     }

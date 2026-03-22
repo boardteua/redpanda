@@ -26,6 +26,9 @@ export function buildUserBadgeMenuItems(mode, viewer, target) {
         if (v && v.chat_role === 'admin') {
             add('settings', 'Налаштування чату');
         }
+        if (v && isStaffRole(v.chat_role)) {
+            add('staff-users', 'Користувачі (персонал)');
+        }
         if (v && !v.guest) {
             add('profile', 'Профіль');
         }

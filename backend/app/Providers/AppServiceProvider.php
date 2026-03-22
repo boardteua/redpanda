@@ -133,6 +133,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(120)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
         });
 
+        RateLimiter::for('mod-user-read', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(90)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
+
         RateLimiter::for('me-profile', function (Request $request) {
             $user = $request->user();
 

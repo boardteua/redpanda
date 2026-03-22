@@ -1691,6 +1691,15 @@ export default {
 
                 return;
             }
+            if (id === 'staff-users') {
+                const q = {};
+                if (this.selectedRoomId != null) {
+                    q.room = String(this.selectedRoomId);
+                }
+                this.$router.push({ name: 'staff-users', query: q }).catch(() => {});
+
+                return;
+            }
             if (id === 'profile') {
                 this.profileModalOpen = true;
 
