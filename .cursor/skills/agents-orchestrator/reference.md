@@ -67,7 +67,23 @@ echo "Pipeline: $TASK_COUNT open tasks"
 
 **Implementation (one task only):**
 
-> Spawn the appropriate developer (Frontend Developer, Backend Architect, engineering-senior-developer, Mobile App Builder, DevOps Automator, etc.) to implement **TASK N only** from the task list, following the ArchitectUX foundation. Mark the task complete when implementation is finished.
+> Spawn the appropriate developer (Frontend Developer, Backend Architect, engineering-senior-developer, Mobile App Builder, DevOps Automator, etc.) to implement **TASK N only** from the task list, following the ArchitectUX foundation. **Mandatory:** at task start, the delegate must **consult Context7** (`plugin-context7-plugin-context7`) for any framework/library/CLI aspect that is not trivially verified in-repo; check MCP tool schemas before calling. Mark the task complete when implementation is finished.
+
+### Context7 at task kickoff
+
+Use **as soon as a Txx is picked** (orchestrator or implementer):
+
+> **Consult Context7 before coding:** identify which libraries/frameworks this task touches (e.g. Laravel, Sanctum, Vue, Vite, Echo). Use MCP **Context7** to resolve IDs and fetch **current** docs/examples; align with this repo’s declared versions (`backend/composer.json`, `backend/package.json`). If the task is UI-only with no new APIs, state “Context7: N/A” in one line and proceed.
+
+Orchestrator: paste this block into the first message of the task or into the delegate brief so the agent **must** either run Context7 or explicitly justify N/A.
+
+### Context7 in dev handoffs
+
+Use in any **Phase 3** developer brief when APIs or tooling are non-trivial (or by default for full-stack tasks):
+
+> Before implementing, you **must** use **Context7** for the relevant libraries (Laravel, Vue, Vite, testing tools, etc.): resolve library IDs and fetch current documentation/examples so code matches the project’s actual stack versions. Do not rely on memory for version-specific APIs.
+
+Orchestrator: include this line in custom handoffs when the task is likely to hit version-sensitive APIs; for **every** new task, default to including **Context7 at task kickoff** unless the scope is purely internal refactors with zero external API surface.
 
 **QA — use the path that matches the task** (UI only, API only, or both):
 
@@ -125,6 +141,7 @@ grep "^### \[x\]" project-tasks/*-tasklist.md
 ### Step 1 — Development
 
 - Pick specialist by task type; ensure **one task** in focus
+- Where libraries or CLI setup matter, require **Context7 MCP** for current docs/examples (see *Context7 in dev handoffs* above)
 - Confirm deliverables and task marked done in the task list when appropriate
 
 ### Step 2 — QA
@@ -261,7 +278,7 @@ Use names as **roles** to assign work; exact tooling depends on Cursor/project s
 ## Single-shot launch (user-facing)
 
 ```
-Run the full pipeline for project-specs/[project]-setup.md: project-manager-senior → ArchitectUX → [Developer ↔ QA per task: EvidenceQA for UI, API Tester skill for HTTP API tasks; after each task **QA PASS**: **git commit**, then **Code Reviewer** skill on that task’s changes] → testing-reality-checker. Each task must pass QA and post-commit review (no 🔴 blockers) before advancing.
+Run the full pipeline for project-specs/[project]-setup.md: project-manager-senior → ArchitectUX → [Developer ↔ QA per task: developers use **Context7 MCP** for library/setup accuracy where needed; EvidenceQA for UI, API Tester skill for HTTP API tasks; after each task **QA PASS**: **git commit**, then **Code Reviewer** skill on that task’s changes] → testing-reality-checker. Each task must pass QA and post-commit review (no 🔴 blockers) before advancing.
 ```
 
 **Chat v2 — new client scope mid-flight:** run **senior-project-manager** first to append **Txx** to `project-tasks/chat-v2-tasklist.md`, then continue Dev ↔ QA on the new or next open task.

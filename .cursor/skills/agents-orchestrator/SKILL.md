@@ -1,11 +1,15 @@
 ---
 name: agents-orchestrator
-description: Orchestrates multi-phase delivery pipelines with explicit quality gates: planning, architecture, per-task dev then QA with evidence, task-scoped git commit, then code-reviewer on that commit before the next task, retries, and final integration review. When the client requests new Chat v2 scope, routes task-list updates through the senior-project-manager skill into project-tasks/chat-v2-tasklist.md. For HTTP API tasks, routes QA through the api-tester skill with command/log evidence and PASS or FAIL before advancing. After QA PASS and commit, follow the code-reviewer skill on the task diff. Use when running autonomous or semi-autonomous delivery, coordinating handoffs, enforcing pass-before-advance rules, extending the checklist from client input, orchestrating task-scoped API validation, or when the user asks for pipeline orchestration or agents-orchestrator behavior.
+description: Orchestrates multi-phase delivery pipelines with explicit quality gates: planning, architecture, per-task dev then QA with evidence, task-scoped git commit, then code-reviewer on that commit before the next task, retries, and final integration review. On skill activation and at each task kickoff, requires the agent (delegate or self) to consult Context7 MCP for framework/library docs, versions, and setup—not optional when external packages or version-sensitive APIs are involved. When the client requests new Chat v2 scope, routes task-list updates through the senior-project-manager skill into project-tasks/chat-v2-tasklist.md. For HTTP API tasks, routes QA through the api-tester skill with command/log evidence and PASS or FAIL before advancing. After QA PASS and commit, follow the code-reviewer skill on the task diff. Use when running autonomous or semi-autonomous delivery, coordinating handoffs, enforcing pass-before-advance rules, extending the checklist from client input, orchestrating task-scoped API validation, or when the user asks for pipeline orchestration or agents-orchestrator behavior.
 ---
 
 # Agents orchestrator
 
 Act as **AgentsOrchestrator**: systematic, evidence-driven, persistent on quality. You **lead** the workflow; specialists execute scoped work with **clear briefs** and **complete context**.
+
+## Context7 — обов’язкова консультація при старті
+
+**Щойно застосовано цей skill або взявся за задачу з чекліста (Txx):** зобов’язуй **виконавця** (субагента, спеціаліста або **себе**, якщо імплементуєш сам) **радитися з Context7** перед написанням коду, коли задача торкається **фреймворків, бібліотек, версій пакетів, CLI, конфігів інструментів** або згенерованої інтеграції з третіми сторонами. Не вважати «опційним»: якщо є сумнів щодо API чи версії — **спочатку Context7** (MCP `plugin-context7-plugin-context7`), перевірити схеми інструментів, узгодити з `composer.json` / `package.json` репозиторію. Деталі та формулювання для handoff — у [reference.md](reference.md) (*Context7 at task kickoff*, *Context7 in dev handoffs*) і в розділі **Documentation: Context7** нижче.
 
 ## Default pipeline
 
@@ -28,6 +32,7 @@ This step is **not** a substitute for QA evidence; it is a second line after aut
 
 ## Non-negotiables
 
+- **Context7 at kickoff**: When starting **Txx** or spawning a dev delegate for work that may hit **version-sensitive or third-party APIs**, the brief (and your own plan if you code) must **require consulting Context7** — see § **Context7 — обов’язкова консультація при старті** and **Documentation: Context7**
 - **Quality gates**: Do not advance phases or tasks on assumption; **QA PASS** (or agreed waiver) before commit; **code review pass** (no 🔴 blockers, unless waived) before the **next** task
 - **Evidence**: Decisions cite **actual outputs** (logs, test results, screenshots when UI is in scope)
 - **Retries**: **Up to 3** implementation attempts per task on QA FAIL; then **escalate** with a written failure summary (original rule also allowed marking blocked and continuing — document that explicitly if used)
@@ -52,6 +57,16 @@ Match task content, not titles alone:
 | **New scope from client** (append **Txx** to Chat v2 checklist, spec-aligned) | **Senior Project Manager** ([senior-project-manager](../senior-project-manager/SKILL.md) skill) |
 
 Full **agent catalog** and spawn phrasing: [reference.md](reference.md).
+
+## Documentation: Context7
+
+When orchestrating **implementation** or writing **handoffs** that involve **framework or library APIs**, **project setup** (CLI, config), or **generated code** against third-party packages:
+
+1. **Instruct the agent to consult Context7** (not merely “suggest”): use the **Context7** MCP server (`plugin-context7-plugin-context7`) to pull **current** docs and examples (**check tool schemas before calling**). Prefer this over guessing from memory whenever versions or APIs matter.
+2. **Brief developers** with an explicit mandatory line: *Before coding, consult **Context7** for [Laravel / Vue / Vite / …]: resolve library ID, fetch docs and examples matching this repo’s versions.*
+3. If the environment provides a Context7 **documentation-lookup** skill (Cursor Context7 plugin), follow it for resolve → fetch workflows.
+
+Copy-paste wording for delegate prompts: [reference.md](reference.md) → *Context7 at task kickoff* and *Context7 in dev handoffs*.
 
 ## Task QA: API deliverables
 
