@@ -490,7 +490,7 @@
     box-sizing: border-box;
     min-height: 3.25rem;
     resize: vertical;
-    padding: 0.5rem 2.5rem 0.5rem 2.375rem;
+    padding: 0.5rem 0.625rem;
     font-size: 0.9375rem;
     line-height: 1.45;
     color: var(--rp-text);
@@ -539,6 +539,8 @@
     background: transparent;
     color: var(--rp-text-muted);
     cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
     transition:
         background 0.12s ease,
         color 0.12s ease;
@@ -568,6 +570,120 @@
     min-width: 0.5rem;
 }
 
+/* T29: нижній ряд композера — смайл, поле, зображення, надіслати */
+.rp-chat-composer-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem 0.5rem;
+}
+
+@media (min-width: 640px) {
+    .rp-chat-composer-row {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        padding-bottom: 0.625rem;
+    }
+}
+
+.rp-chat-composer-rail-btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    border: 1px solid var(--rp-chat-chrome-border);
+    border-radius: 0.375rem;
+    background: var(--rp-chat-row-even);
+    color: var(--rp-text-muted);
+    cursor: pointer;
+    transition:
+        background 0.12s ease,
+        border-color 0.12s ease,
+        color 0.12s ease;
+}
+
+.rp-chat-composer-rail-btn:hover:not(:disabled) {
+    border-color: var(--rp-border);
+    color: var(--rp-text);
+    background: color-mix(in srgb, var(--rp-text) 5%, var(--rp-chat-row-even));
+}
+
+.rp-chat-composer-rail-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+.rp-chat-composer-rail-btn:focus {
+    outline: none;
+}
+
+.rp-chat-composer-rail-btn:focus-visible {
+    outline: 2px solid var(--rp-focus-ring);
+    outline-offset: 2px;
+}
+
+/* Велика кнопка надсилання (референс — не лише кругла іконка) */
+.rp-chat-send-primary {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.375rem;
+    background: var(--rp-chat-send-bg);
+    color: var(--rp-chat-send-fg);
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+    transition:
+        background 0.15s ease,
+        transform 0.12s ease;
+}
+
+.rp-chat-send-primary:hover:not(:disabled) {
+    background: var(--rp-chat-send-bg-hover);
+}
+
+.rp-chat-send-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.rp-chat-send-primary:focus {
+    outline: none;
+}
+
+.rp-chat-send-primary:focus-visible {
+    outline: 2px solid var(--rp-focus-ring);
+    outline-offset: 2px;
+}
+
+.rp-chat-send-primary__label {
+    display: none;
+}
+
+@media (min-width: 480px) {
+    .rp-chat-send-primary__label {
+        display: inline;
+    }
+
+    .rp-chat-send-primary {
+        min-width: 7.5rem;
+    }
+}
+
 /* Єдине вікно чату (аналог div#external_wrap) */
 .rp-chat-external-wrap {
     display: flex;
@@ -590,84 +706,8 @@
 }
 
 .rp-chat-composer-slot {
-    position: relative;
     flex: 1;
     min-width: 0;
-}
-
-.rp-chat-composer-inner-btn {
-    position: absolute;
-    top: 50%;
-    z-index: 2;
-    transform: translateY(-50%);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    padding: 0;
-    border: none;
-    border-radius: 0.25rem;
-    background: transparent;
-    color: var(--rp-text-muted);
-    cursor: pointer;
-}
-
-.rp-chat-composer-inner-btn:hover:not(:disabled) {
-    color: var(--rp-text);
-    background: color-mix(in srgb, var(--rp-text) 6%, transparent);
-}
-
-.rp-chat-composer-inner-btn:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-}
-
-.rp-chat-composer-inner-btn:focus {
-    outline: none;
-}
-
-.rp-chat-composer-inner-btn:focus-visible {
-    outline: 2px solid var(--rp-focus-ring);
-    outline-offset: 1px;
-}
-
-.rp-chat-send-fab {
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    width: 2.75rem;
-    height: 2.75rem;
-    align-self: flex-end;
-    margin-bottom: 0.125rem;
-    border: none;
-    border-radius: 9999px;
-    background: var(--rp-chat-send-bg);
-    color: var(--rp-chat-send-fg);
-    cursor: pointer;
-    box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
-    transition:
-        background 0.15s ease,
-        transform 0.12s ease;
-}
-
-.rp-chat-send-fab:hover:not(:disabled) {
-    background: var(--rp-chat-send-bg-hover);
-}
-
-.rp-chat-send-fab:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
-.rp-chat-send-fab:focus {
-    outline: none;
-}
-
-.rp-chat-send-fab:focus-visible {
-    outline: 2px solid var(--rp-focus-ring);
-    outline-offset: 2px;
 }
 
 /* Поля в темному сайдбарі (світла тема додатку) */
