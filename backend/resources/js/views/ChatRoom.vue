@@ -779,7 +779,7 @@
                         </p>
                         <ul v-else class="space-y-2">
                             <li
-                                v-for="f in friendsAccepted"
+                                v-for="f in friendsAcceptedWithMenuPeer"
                                 :key="f.user.id"
                                 class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
                             >
@@ -795,9 +795,9 @@
                                         }}</span>
                                     </div>
                                     <SidebarHamburgerTrigger
-                                        :expanded="badgeMenuOpenForPeer(peerTargetFromFriendRow(f.user))"
+                                        :expanded="badgeMenuOpenForPeer(f.menuPeer)"
                                         :aria-label="'Меню дій для ' + f.user.user_name"
-                                        @activate="openPeerBadgeMenu($event, peerTargetFromFriendRow(f.user))"
+                                        @activate="openPeerBadgeMenu($event, f.menuPeer)"
                                     />
                                 </div>
                                 <button
@@ -822,7 +822,7 @@
                         </p>
                         <ul v-else class="mb-4 space-y-2">
                             <li
-                                v-for="r in friendsIncoming"
+                                v-for="r in friendsIncomingWithMenuPeer"
                                 :key="'in-' + r.user.id"
                                 class="rp-chat-side-card flex flex-wrap items-center gap-2 rounded-md border px-2 py-2"
                             >
@@ -838,9 +838,9 @@
                                         }}</span>
                                     </div>
                                     <SidebarHamburgerTrigger
-                                        :expanded="badgeMenuOpenForPeer(peerTargetFromFriendRow(r.user))"
+                                        :expanded="badgeMenuOpenForPeer(r.menuPeer)"
                                         :aria-label="'Меню дій для ' + r.user.user_name"
-                                        @activate="openPeerBadgeMenu($event, peerTargetFromFriendRow(r.user))"
+                                        @activate="openPeerBadgeMenu($event, r.menuPeer)"
                                     />
                                 </div>
                                 <button
@@ -870,7 +870,7 @@
                         </p>
                         <ul v-else class="space-y-1">
                             <li
-                                v-for="r in friendsOutgoing"
+                                v-for="r in friendsOutgoingWithMenuPeer"
                                 :key="'out-' + r.user.id"
                                 class="text-sm text-[var(--rp-chat-sidebar-fg)]"
                             >
@@ -884,9 +884,9 @@
                                         <span class="truncate">{{ r.user.user_name }}</span>
                                     </div>
                                     <SidebarHamburgerTrigger
-                                        :expanded="badgeMenuOpenForPeer(peerTargetFromFriendRow(r.user))"
+                                        :expanded="badgeMenuOpenForPeer(r.menuPeer)"
                                         :aria-label="'Меню дій для ' + r.user.user_name"
-                                        @activate="openPeerBadgeMenu($event, peerTargetFromFriendRow(r.user))"
+                                        @activate="openPeerBadgeMenu($event, r.menuPeer)"
                                     />
                                 </div>
                             </li>
@@ -910,34 +910,34 @@
                         Немає нових повідомлень
                     </p>
                     <ul v-else class="space-y-2">
-                        <li v-for="(c, idx) in conversations" :key="conversationRowKey(c, idx)">
+                        <li v-for="row in privateConversationRows" :key="row.key">
                             <div
-                                v-if="c.peer && c.peer.id"
+                                v-if="row.menuPeer"
                                 class="rp-chat-side-room-btn flex w-full items-stretch gap-2 rounded-md border-2 px-3 py-2"
                             >
                                 <div class="flex shrink-0 items-start gap-1 pt-0.5">
                                     <UserAvatar
-                                        :name="c.peer.user_name"
+                                        :name="row.c.peer.user_name"
                                         variant="sidebar"
                                         decorative
                                     />
                                     <SidebarHamburgerTrigger
-                                        :expanded="badgeMenuOpenForPeer(peerTargetFromConversationPeer(c.peer))"
-                                        :aria-label="'Меню дій для ' + c.peer.user_name"
-                                        @activate="openPeerBadgeMenu($event, peerTargetFromConversationPeer(c.peer))"
+                                        :expanded="badgeMenuOpenForPeer(row.menuPeer)"
+                                        :aria-label="'Меню дій для ' + row.c.peer.user_name"
+                                        @activate="openPeerBadgeMenu($event, row.menuPeer)"
                                     />
                                 </div>
                                 <button
                                     type="button"
                                     class="rp-focusable min-w-0 flex-1 text-left"
-                                    @click="openPrivatePeer(c.peer)"
+                                    @click="openPrivatePeer(row.c.peer)"
                                 >
                                     <span class="block font-semibold text-[var(--rp-chat-sidebar-fg)]">{{
-                                        c.peer.user_name
+                                        row.c.peer.user_name
                                     }}</span>
                                     <span
                                         class="mt-0.5 block truncate text-xs text-[var(--rp-chat-sidebar-muted)]"
-                                    >{{ (c.last_message && c.last_message.body) || '—' }}</span>
+                                    >{{ (row.c.last_message && row.c.last_message.body) || '—' }}</span>
                                 </button>
                             </div>
                             <p
@@ -997,7 +997,7 @@
                     </p>
                     <ul v-else class="space-y-2">
                         <li
-                            v-for="row in ignores"
+                            v-for="row in ignoresWithMenuPeer"
                             :key="row.user.id"
                             class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
                         >
@@ -1013,9 +1013,9 @@
                                     }}</span>
                                 </div>
                                 <SidebarHamburgerTrigger
-                                    :expanded="badgeMenuOpenForPeer(peerTargetFromFriendRow(row.user))"
+                                    :expanded="badgeMenuOpenForPeer(row.menuPeer)"
                                     :aria-label="'Меню дій для ' + row.user.user_name"
-                                    @activate="openPeerBadgeMenu($event, peerTargetFromFriendRow(row.user))"
+                                    @activate="openPeerBadgeMenu($event, row.menuPeer)"
                                 />
                             </div>
                             <button
@@ -1117,6 +1117,32 @@ const SIDEBAR_TAB_ICONS = {
     ignore:
         '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm4.5 1c.83 0 1.5-.67 1.5-1.5S17.33 10 16.5 10 15 10.67 15 11.5s.67 1.5 1.5 1.5zM19 3l-4 4 1.5 1.5L20.5 4 19 3z"/></svg>',
 };
+
+function peerTargetFromConversationPeerPayload(p) {
+    if (!p) {
+        return null;
+    }
+
+    return {
+        id: p.id != null ? Number(p.id) : null,
+        user_name: p.user_name != null ? String(p.user_name) : '',
+        guest: Boolean(p.guest),
+        chat_role: p.chat_role != null ? String(p.chat_role) : 'user',
+    };
+}
+
+function peerTargetFromFriendUserPayload(u) {
+    if (!u) {
+        return null;
+    }
+
+    return {
+        id: Number(u.id),
+        user_name: u.user_name,
+        guest: false,
+        chat_role: 'user',
+    };
+}
 
 /**
  * Початковий стан бічної панелі (друзі, приват, ігнор).
@@ -1285,6 +1311,44 @@ export default {
                 { id: 'rooms', title: 'Кімнати', icon: SIDEBAR_TAB_ICONS.rooms },
                 { id: 'ignore', title: 'Ігнор', icon: SIDEBAR_TAB_ICONS.ignore },
             ];
+        },
+        privateConversationRows() {
+            const list = this.conversations || [];
+
+            return list.map((c, idx) => {
+                const key =
+                    c && c.peer && c.peer.id != null ? `peer-${c.peer.id}` : `conv-${idx}`;
+                const menuPeer =
+                    c && c.peer && c.peer.id != null
+                        ? peerTargetFromConversationPeerPayload(c.peer)
+                        : null;
+
+                return { c, idx, key, menuPeer };
+            });
+        },
+        friendsAcceptedWithMenuPeer() {
+            return (this.friendsAccepted || []).map((f) => ({
+                ...f,
+                menuPeer: peerTargetFromFriendUserPayload(f.user),
+            }));
+        },
+        friendsIncomingWithMenuPeer() {
+            return (this.friendsIncoming || []).map((r) => ({
+                ...r,
+                menuPeer: peerTargetFromFriendUserPayload(r.user),
+            }));
+        },
+        friendsOutgoingWithMenuPeer() {
+            return (this.friendsOutgoing || []).map((r) => ({
+                ...r,
+                menuPeer: peerTargetFromFriendUserPayload(r.user),
+            }));
+        },
+        ignoresWithMenuPeer() {
+            return (this.ignores || []).map((row) => ({
+                ...row,
+                menuPeer: peerTargetFromFriendUserPayload(row.user),
+            }));
         },
     },
     watch: {
@@ -1834,13 +1898,6 @@ export default {
                 this.friendsIgnoresLoadError = 'Не вдалося завантажити друзів або список ігнору.';
             }
         },
-        conversationRowKey(c, idx) {
-            if (c && c.peer && c.peer.id != null) {
-                return `peer-${c.peer.id}`;
-            }
-
-            return `conv-${idx}`;
-        },
         openPrivatePeer(peer) {
             if (!peer || !peer.id) {
                 return;
@@ -1881,28 +1938,10 @@ export default {
             }
         },
         peerTargetFromFriendRow(u) {
-            if (!u) {
-                return null;
-            }
-
-            return {
-                id: Number(u.id),
-                user_name: u.user_name,
-                guest: false,
-                chat_role: 'user',
-            };
+            return peerTargetFromFriendUserPayload(u);
         },
         peerTargetFromConversationPeer(p) {
-            if (!p) {
-                return null;
-            }
-
-            return {
-                id: p.id != null ? Number(p.id) : null,
-                user_name: p.user_name != null ? String(p.user_name) : '',
-                guest: Boolean(p.guest),
-                chat_role: p.chat_role != null ? String(p.chat_role) : 'user',
-            };
+            return peerTargetFromConversationPeerPayload(p);
         },
         sameBadgeMenuPeer(a, b) {
             if (!a || !b) {
