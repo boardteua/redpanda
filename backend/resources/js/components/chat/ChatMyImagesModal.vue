@@ -1,94 +1,88 @@
 <template>
-    <Teleport to="body">
-        <div
-            v-if="open"
-            class="fixed inset-0 z-[78] flex items-end justify-center bg-black/40 p-4 sm:items-center"
-            role="presentation"
-            @click.self="close"
-        >
-            <div
-                ref="panel"
-                role="dialog"
-                aria-modal="true"
-                :aria-labelledby="titleId"
-                :aria-busy="loadingMore ? 'true' : 'false'"
-                class="flex max-h-[min(85vh,40rem)] w-full max-w-lg flex-col rounded-lg border border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] shadow-xl"
-                tabindex="-1"
-            >
-                <div class="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--rp-border-subtle)] p-4">
-                    <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">
-                        Останні додані картинки
-                    </h2>
-                    <button type="button" class="rp-focusable rp-btn rp-btn-ghost text-sm" @click="close">
-                        Закрити
+    <RpModal
+        :open="open"
+        :z-index="78"
+        variant="framed"
+        size="lg"
+        max-height-class="max-h-[min(85vh,40rem)]"
+        :aria-labelledby="titleId"
+        :scroll-body="false"
+        :aria-busy="loadingMore"
+        @close="close"
+    >
+        <template #header>
+            <div class="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--rp-border-subtle)] p-4">
+                <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">
+                    Останні додані картинки
+                </h2>
+                <button type="button" class="rp-focusable rp-btn rp-btn-ghost text-sm" @click="close">
+                    Закрити
+                </button>
+            </div>
+        </template>
+        <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div class="min-h-0 flex-1 overflow-y-auto p-4">
+                <p v-if="loading && items.length === 0" class="text-sm text-[var(--rp-text-muted)]">
+                    Завантаження…
+                </p>
+                <p
+                    v-else-if="error"
+                    class="text-sm text-[var(--rp-error)]"
+                    role="alert"
+                >
+                    {{ error }}
+                </p>
+                <p
+                    v-else-if="!loading && items.length === 0"
+                    class="text-sm text-[var(--rp-text-muted)]"
+                >
+                    Ще немає зображень. Додайте фото кнопкою з іконкою знімка біля поля вводу.
+                </p>
+                <div
+                    v-else
+                    class="grid grid-cols-3 gap-2 sm:grid-cols-4"
+                    role="list"
+                >
+                    <button
+                        v-for="it in items"
+                        :key="it.id"
+                        type="button"
+                        class="rp-focusable group relative aspect-square overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)]"
+                        :aria-label="'Вставити зображення: ' + (it.file_name || it.id)"
+                        role="listitem"
+                        @click="pick(it)"
+                    >
+                        <img
+                            :src="it.url"
+                            :alt="''"
+                            class="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+                            loading="lazy"
+                        />
                     </button>
                 </div>
-                <div class="min-h-0 flex-1 overflow-y-auto p-4">
-                    <p v-if="loading && items.length === 0" class="text-sm text-[var(--rp-text-muted)]">
-                        Завантаження…
-                    </p>
-                    <p
-                        v-else-if="error"
-                        class="text-sm text-[var(--rp-error)]"
-                        role="alert"
+                <div v-if="items.length > 0 && currentPage < lastPage" class="mt-4 flex justify-center">
+                    <button
+                        type="button"
+                        class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                        :disabled="loadingMore"
+                        @click="loadMore"
                     >
-                        {{ error }}
-                    </p>
-                    <p
-                        v-else-if="!loading && items.length === 0"
-                        class="text-sm text-[var(--rp-text-muted)]"
-                    >
-                        Ще немає зображень. Додайте фото кнопкою з іконкою знімка біля поля вводу.
-                    </p>
-                    <div
-                        v-else
-                        class="grid grid-cols-3 gap-2 sm:grid-cols-4"
-                        role="list"
-                    >
-                        <button
-                            v-for="it in items"
-                            :key="it.id"
-                            type="button"
-                            class="rp-focusable group relative aspect-square overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)]"
-                            :aria-label="'Вставити зображення: ' + (it.file_name || it.id)"
-                            role="listitem"
-                            @click="pick(it)"
-                        >
-                            <img
-                                :src="it.url"
-                                :alt="''"
-                                class="h-full w-full object-cover transition-opacity group-hover:opacity-90"
-                                loading="lazy"
-                            />
-                        </button>
-                    </div>
-                    <div v-if="items.length > 0 && currentPage < lastPage" class="mt-4 flex justify-center">
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost text-sm"
-                            :disabled="loadingMore"
-                            @click="loadMore"
-                        >
-                            {{ loadingMore ? 'Завантаження…' : 'Завантажити ще' }}
-                        </button>
-                    </div>
+                        {{ loadingMore ? 'Завантаження…' : 'Завантажити ще' }}
+                    </button>
                 </div>
             </div>
         </div>
-    </Teleport>
+    </RpModal>
 </template>
 
 <script>
-import {
-    captureActiveElement,
-    handleModalTabCycle,
-    restoreFocusElement,
-} from '../../utils/modalFocusTrap';
+import RpModal from '../RpModal.vue';
 
 let modalSeq = 0;
 
 export default {
     name: 'ChatMyImagesModal',
+    components: { RpModal },
     props: {
         open: {
             type: Boolean,
@@ -110,51 +104,18 @@ export default {
             error: '',
             currentPage: 1,
             lastPage: 1,
-            focusBeforeModal: null,
         };
     },
     watch: {
         open(v) {
             if (v) {
-                this.focusBeforeModal = captureActiveElement();
-                document.addEventListener('keydown', this.onModalRootKeydown, true);
                 this.resetAndLoad();
-                this.$nextTick(() => {
-                    const p = this.$refs.panel;
-                    if (p && typeof p.focus === 'function') {
-                        p.focus();
-                    }
-                });
-            } else {
-                document.removeEventListener('keydown', this.onModalRootKeydown, true);
-                restoreFocusElement(this.focusBeforeModal);
-                this.focusBeforeModal = null;
             }
         },
-    },
-    beforeDestroy() {
-        document.removeEventListener('keydown', this.onModalRootKeydown, true);
-        restoreFocusElement(this.focusBeforeModal);
     },
     methods: {
         close() {
             this.$emit('close');
-        },
-        onModalRootKeydown(e) {
-            if (!this.open) {
-                return;
-            }
-            const panel = this.$refs.panel;
-            if (!panel) {
-                return;
-            }
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                this.close();
-
-                return;
-            }
-            handleModalTabCycle(e, panel);
         },
         resetAndLoad() {
             this.items = [];

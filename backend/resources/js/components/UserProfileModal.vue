@@ -1,37 +1,33 @@
 <template>
-    <Teleport to="body">
-        <div
-            v-if="open && user && !user.guest"
-            class="fixed inset-0 z-[75] flex items-end justify-center bg-black/40 p-4 sm:items-center"
-            role="presentation"
-            @click.self="close"
-        >
-            <div
-                ref="panel"
-                role="dialog"
-                aria-modal="true"
-                :aria-labelledby="titleId"
-                class="flex max-h-[min(90vh,40rem)] w-full max-w-xl flex-col rounded-lg border border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] shadow-xl"
-                tabindex="-1"
-                @keydown.stop="onPanelKeydown"
-            >
-                <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-4 py-3">
-                    <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">Профіль</h2>
-                    <button
-                        type="button"
-                        class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--rp-text-muted)] hover:bg-[var(--rp-surface-elevated)]"
-                        aria-label="Закрити"
-                        @click="close"
-                    >
-                        <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                            <path
-                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                            />
-                        </svg>
-                    </button>
-                </div>
+    <RpModal
+        :open="Boolean(open && user && !user.guest)"
+        variant="framed"
+        size="xl"
+        max-height-class="max-h-[min(90vh,40rem)]"
+        :aria-labelledby="titleId"
+        :scroll-body="false"
+        @close="close"
+    >
+        <template #header>
+            <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-4 py-3">
+                <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">Профіль</h2>
+                <button
+                    type="button"
+                    class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--rp-text-muted)] hover:bg-[var(--rp-surface-elevated)]"
+                    aria-label="Закрити"
+                    @click="close"
+                >
+                    <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                        />
+                    </svg>
+                </button>
+            </div>
+        </template>
 
-                <div class="shrink-0 border-b border-[var(--rp-border-subtle)] px-2 pt-2">
+        <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div class="shrink-0 border-b border-[var(--rp-border-subtle)] px-2 pt-2">
                     <div class="flex flex-wrap gap-1">
                         <button
                             v-for="t in tabs"
@@ -295,19 +291,19 @@
                         </button>
                     </div>
                 </div>
-            </div>
         </div>
-    </Teleport>
+    </RpModal>
 </template>
 
 <script>
+import RpModal from './RpModal.vue';
 import UserAvatar from './UserAvatar.vue';
 
 let titleSeq = 0;
 
 export default {
     name: 'UserProfileModal',
-    components: { UserAvatar },
+    components: { RpModal, UserAvatar },
     props: {
         open: {
             type: Boolean,
@@ -386,15 +382,6 @@ export default {
                 this.tabError = '';
                 this.activeTab = 'personal';
                 this.syncFromUser();
-                document.addEventListener('keydown', this.onDocKeydown);
-                this.$nextTick(() => {
-                    const p = this.$refs.panel;
-                    if (p && typeof p.focus === 'function') {
-                        p.focus();
-                    }
-                });
-            } else {
-                document.removeEventListener('keydown', this.onDocKeydown);
             }
         },
         user: {
@@ -405,9 +392,6 @@ export default {
                 }
             },
         },
-    },
-    beforeDestroy() {
-        document.removeEventListener('keydown', this.onDocKeydown);
     },
     methods: {
         close() {
@@ -594,18 +578,6 @@ export default {
             } finally {
                 this.avatarUploading = false;
                 input.value = '';
-            }
-        },
-        onDocKeydown(e) {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                this.close();
-            }
-        },
-        onPanelKeydown(e) {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                this.close();
             }
         },
     },
