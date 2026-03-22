@@ -1,6 +1,6 @@
 <template>
     <div
-        class="flex min-h-screen flex-col bg-[var(--rp-bg)] md:h-[100dvh] md:max-h-screen md:flex-row md:overflow-hidden"
+        class="flex min-h-screen flex-col bg-[var(--rp-bg)] md:h-[100dvh] md:max-h-screen md:flex-row md:overflow-hidden md:p-2"
     >
         <!-- Затемнення (лише мобільний off-canvas) -->
         <button
@@ -12,11 +12,29 @@
         />
 
         <div
-            class="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--rp-chat-app-bg)] px-3 py-3 sm:px-4 md:min-h-0 md:overflow-hidden"
+            class="rp-chat-external-wrap min-h-0 min-w-0 max-md:flex max-md:flex-1 max-md:flex-col md:min-h-0 md:flex-1"
         >
-            <header
-                class="mb-2 flex w-full flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-header-bg)] px-2 py-2 sm:px-3"
+            <div
+                class="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--rp-chat-app-bg)] px-2 py-2 sm:px-3 md:min-h-0 md:overflow-hidden"
             >
+            <header
+                class="mb-2 flex w-full flex-shrink-0 flex-col gap-1 border-b border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-header-bg)] px-2 py-2 sm:px-3"
+            >
+                <div v-if="chatBreadcrumb || chatTopicLine" class="min-w-0">
+                    <p
+                        v-if="chatBreadcrumb"
+                        class="truncate text-[0.6875rem] font-semibold tracking-wide text-[var(--rp-text)]"
+                    >
+                        {{ chatBreadcrumb }}
+                    </p>
+                    <p
+                        v-if="chatTopicLine"
+                        class="truncate text-[0.625rem] text-[var(--rp-text-muted)]"
+                    >
+                        {{ chatTopicLine }}
+                    </p>
+                </div>
+                <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
                 <div class="flex min-w-0 flex-wrap items-center gap-3">
                     <button
                         type="button"
@@ -51,14 +69,6 @@
                             />
                         </svg>
                     </button>
-                    <div v-if="currentRoom" class="min-w-0 border-l border-[var(--rp-chat-chrome-border)] pl-3">
-                        <p class="truncate text-base font-semibold leading-tight text-[var(--rp-text)]">
-                            {{ currentRoom.room_name }}
-                        </p>
-                        <p v-if="currentRoom.topic" class="truncate text-xs text-[var(--rp-text-muted)]">
-                            {{ currentRoom.topic }}
-                        </p>
-                    </div>
                     <span
                         v-if="wsDegraded"
                         class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] px-2 py-1 text-xs text-[var(--rp-text-muted)]"
@@ -93,6 +103,7 @@
                         {{ themeLabel }}
                     </button>
                 </div>
+                </div>
             </header>
 
             <p
@@ -122,48 +133,74 @@
 
                 <div
                     v-else
-                    class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-feed-bg)] shadow-[0_1px_3px_rgb(15_23_42/0.06)]"
+                    class="flex min-h-0 flex-1 flex-col overflow-hidden border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-feed-bg)] md:border-0 md:shadow-none"
                 >
                     <h2 class="rp-sr-only">Повідомлення</h2>
                     <div class="rp-chat-feed-wash flex min-h-0 flex-1 flex-col overflow-hidden">
                         <ul
                             ref="messageList"
-                            class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2 sm:px-3 sm:py-3"
+                            class="flex min-h-0 flex-1 flex-col overflow-y-auto py-1"
                             role="log"
                             aria-live="polite"
                             aria-relevant="additions"
                         >
                             <li
-                                v-for="m in messages"
+                                v-for="(m, msgIdx) in messages"
                                 :key="m.post_id"
-                                class="rounded border border-[var(--rp-chat-message-border)] bg-[var(--rp-chat-message-bg)] px-2.5 py-1.5 text-[0.9375rem] leading-snug sm:px-3 sm:py-2"
+                                class="flex gap-2 px-2 py-1.5 text-[0.9375rem] leading-snug sm:px-3 sm:py-2"
+                                :class="
+                                    msgIdx % 2 === 0
+                                        ? 'bg-[var(--rp-chat-row-even)]'
+                                        : 'bg-[var(--rp-chat-row-odd)]'
+                                "
                             >
-                            <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[var(--rp-text-muted)]">
-                                <time class="font-mono text-[0.6875rem] tabular-nums">{{ m.post_time || '—' }}</time>
-                                <button
-                                    v-if="user && m.post_user !== user.user_name"
-                                    type="button"
-                                    class="rp-focusable font-semibold text-[var(--rp-link)] hover:underline"
-                                    @click="openPrivateByUserName(m.post_user)"
+                                <span
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] text-xs font-bold text-[var(--rp-text-muted)]"
+                                    aria-hidden="true"
                                 >
-                                    {{ m.post_user }}
-                                </button>
-                                <span v-else class="font-semibold text-[var(--rp-text)]">{{ m.post_user }}</span>
-                            </div>
-                            <p
-                                v-if="m.post_message"
-                                class="mt-1 whitespace-pre-wrap break-words text-[var(--rp-text)]"
-                            >
-                                {{ m.post_message }}
-                            </p>
-                            <figure v-if="m.image && m.image.url" class="mt-2">
-                                <img
-                                    :src="m.image.url"
-                                    alt="Вкладене зображення"
-                                    class="max-h-64 max-w-full rounded-md border border-[var(--rp-border-subtle)] object-contain"
-                                    loading="lazy"
-                                />
-                            </figure>
+                                    {{ peerInitial(m.post_user) }}
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                                        <p class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
+                                            <button
+                                                v-if="user && m.post_user !== user.user_name"
+                                                type="button"
+                                                class="rp-focusable mr-1.5 inline font-semibold hover:underline"
+                                                :style="nickColorStyle(m)"
+                                                @click="openPrivateByUserName(m.post_user)"
+                                            >
+                                                {{ m.post_user }}
+                                            </button>
+                                            <span
+                                                v-else
+                                                class="mr-1.5 inline font-semibold"
+                                                :style="nickColorStyle(m)"
+                                            >
+                                                {{ m.post_user }}
+                                            </span>
+                                            <span
+                                                v-if="m.post_message"
+                                                class="whitespace-pre-wrap break-words"
+                                            >
+                                                {{ m.post_message }}
+                                            </span>
+                                        </p>
+                                        <time
+                                            class="shrink-0 font-mono text-[0.6875rem] tabular-nums text-[var(--rp-text-muted)]"
+                                        >
+                                            {{ m.post_time || '—' }}
+                                        </time>
+                                    </div>
+                                    <figure v-if="m.image && m.image.url" class="mt-1.5">
+                                        <img
+                                            :src="m.image.url"
+                                            alt="Вкладене зображення"
+                                            class="max-h-64 max-w-full rounded-md border border-[var(--rp-chat-chrome-border)] object-contain"
+                                            loading="lazy"
+                                        />
+                                    </figure>
+                                </div>
                             </li>
                         </ul>
                         <p
@@ -201,29 +238,104 @@
                                 type="button"
                                 class="rp-focusable rp-chat-toolbar-btn"
                                 disabled
+                                title="Закреслення (згодом)"
+                                aria-disabled="true"
+                            >
+                                <span class="text-sm line-through" aria-hidden="true">S</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="rp-focusable rp-chat-toolbar-btn"
+                                disabled
                                 title="Підкреслення (згодом)"
                                 aria-disabled="true"
                             >
                                 <span class="text-sm underline" aria-hidden="true">U</span>
                             </button>
+                            <button
+                                type="button"
+                                class="rp-focusable rp-chat-toolbar-btn"
+                                disabled
+                                title="Група (згодом)"
+                                aria-disabled="true"
+                            >
+                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
+                                    />
+                                </svg>
+                            </button>
                             <span class="rp-chat-toolbar-spacer" aria-hidden="true" />
                             <button
                                 type="button"
                                 class="rp-focusable rp-chat-toolbar-btn"
-                                :disabled="sending || uploadingImage || !selectedRoomId"
-                                title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
-                                aria-label="Додати зображення"
-                                @click="$refs.imageInput && $refs.imageInput.click()"
+                                disabled
+                                title="Смайли (згодом)"
+                                aria-disabled="true"
                             >
                                 <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
                                     <path
-                                        d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+                                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"
                                     />
                                 </svg>
                             </button>
                             <button
+                                type="button"
+                                class="rp-focusable rp-chat-toolbar-btn"
+                                disabled
+                                title="Файл (згодом)"
+                                aria-disabled="true"
+                            >
+                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                        <label class="rp-sr-only" for="chat-composer">Повідомлення</label>
+                        <div class="flex items-end gap-2 px-2 pb-2 pt-1 sm:px-3 sm:pb-2.5">
+                            <div class="rp-chat-composer-slot">
+                                <button
+                                    type="button"
+                                    class="rp-focusable rp-chat-composer-inner-btn left-1.5"
+                                    disabled
+                                    title="Смайли всередині поля (згодом)"
+                                    aria-label="Смайли"
+                                >
+                                    <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                                        <path
+                                            d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"
+                                        />
+                                    </svg>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="rp-focusable rp-chat-composer-inner-btn right-1.5"
+                                    :disabled="sending || uploadingImage || !selectedRoomId"
+                                    title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
+                                    aria-label="Додати зображення до повідомлення"
+                                    @click="$refs.imageInput && $refs.imageInput.click()"
+                                >
+                                    <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                                        <path
+                                            d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+                                        />
+                                    </svg>
+                                </button>
+                                <textarea
+                                    id="chat-composer"
+                                    v-model="composerText"
+                                    class="rp-focusable rp-chat-composer-input min-h-[3.25rem] w-full resize-y"
+                                    maxlength="4000"
+                                    rows="3"
+                                    :disabled="sending || uploadingImage || !selectedRoomId"
+                                    placeholder="Повідомлення (Жміть кнопку ⇧ щоб поправити останні повідомлення)"
+                                />
+                            </div>
+                            <button
                                 type="submit"
-                                class="rp-focusable rp-chat-toolbar-btn text-[var(--rp-primary)]"
+                                class="rp-focusable rp-chat-send-fab"
                                 :disabled="
                                     sending
                                     || uploadingImage
@@ -238,16 +350,9 @@
                                 </svg>
                             </button>
                         </div>
-                        <label class="rp-sr-only" for="chat-composer">Повідомлення</label>
-                        <textarea
-                            id="chat-composer"
-                            v-model="composerText"
-                            class="rp-focusable rp-chat-composer-input mx-2 mb-1 min-h-[4.5rem] resize-y sm:mx-3 sm:mb-2"
-                            maxlength="4000"
-                            rows="3"
-                            :disabled="sending || uploadingImage || !selectedRoomId"
-                            placeholder="Повідомлення (Жміть кнопу ⇧, щоб поправити останні повідомлення — згодом). /msg нік текст — приват."
-                        />
+                        <p class="px-2 pb-1 text-[0.7rem] text-[var(--rp-text-muted)] sm:px-3">
+                            Приват: <code class="rounded bg-[var(--rp-chat-toolbar-bg)] px-1 font-mono text-[0.65rem]">/msg</code> нік текст.
+                        </p>
                         <input
                             ref="imageInput"
                             type="file"
@@ -257,7 +362,7 @@
                         />
                         <div
                             v-if="pendingImageId && pendingPreviewUrl"
-                            class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-message-bg)] p-2 sm:mx-3"
+                            class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)] p-2 sm:mx-3"
                         >
                             <img
                                 :src="pendingPreviewUrl"
@@ -288,19 +393,21 @@
         <!-- Панель #chat_panel — 320px, порядок вкладок як у CHAT-PANEL-SIDEBAR -->
         <aside
             id="chat-panel"
-            class="flex w-[320px] max-w-[100vw] flex-shrink-0 flex-col border-l border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-sidebar-bg)] max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-50 max-md:shadow-lg max-md:transition-transform max-md:duration-200 max-md:ease-out md:relative md:z-auto md:h-screen md:shadow-none md:transition-none"
+            class="rp-chat-sidebar flex w-[320px] max-w-[100vw] flex-shrink-0 flex-col border-l border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-bg)] text-[var(--rp-chat-sidebar-fg)] max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-50 max-md:shadow-lg max-md:transition-transform max-md:duration-200 max-md:ease-out md:relative md:z-auto md:min-h-0 md:self-stretch md:shadow-none md:transition-none"
             :class="[
                 isNarrowViewport && (panelOpen ? 'max-md:translate-x-0' : 'max-md:translate-x-full'),
                 !isNarrowViewport && !panelOpen ? 'md:hidden' : '',
             ]"
             aria-label="Панель чату"
         >
-            <div class="flex items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-3 py-2">
-                <h2 class="text-sm font-semibold text-[var(--rp-text)]">Панель</h2>
+            <div
+                class="flex items-center justify-between gap-2 border-b border-[var(--rp-chat-sidebar-border)] px-3 py-2"
+            >
+                <h2 class="text-sm font-semibold text-[var(--rp-chat-sidebar-fg)]">Панель</h2>
                 <button
                     ref="panelCloseBtn"
                     type="button"
-                    class="rp-focusable flex h-11 w-11 items-center justify-center rounded-md text-[var(--rp-text-muted)] hover:bg-[var(--rp-surface-elevated)] hover:text-[var(--rp-text)]"
+                    class="rp-focusable flex h-11 w-11 items-center justify-center rounded-md text-[var(--rp-chat-sidebar-icon)] hover:bg-[var(--rp-chat-sidebar-tab-active-bg)] hover:text-[var(--rp-chat-sidebar-fg)]"
                     aria-label="Закрити панель"
                     @click="closePanel"
                 >
@@ -313,7 +420,7 @@
             </div>
 
             <div
-                class="flex border-b border-[var(--rp-border-subtle)] px-1 py-2"
+                class="flex border-b border-[var(--rp-chat-sidebar-border)] px-1 py-2"
                 role="tablist"
                 aria-label="Вкладки панелі чату"
                 @keydown="onSidebarTabKeydown"
@@ -324,11 +431,11 @@
                     :id="'chat-tab-' + tab.id"
                     type="button"
                     role="tab"
-                    class="rp-focusable flex h-11 flex-1 items-center justify-center rounded-md border-2 text-[var(--rp-text)]"
+                    class="rp-focusable flex h-11 flex-1 items-center justify-center rounded-md border-2 text-[var(--rp-chat-sidebar-icon)]"
                     :class="
                         sidebarTab === tab.id
-                            ? 'border-[var(--rp-border)] bg-[var(--rp-surface-elevated)]'
-                            : 'border-transparent bg-transparent hover:bg-[var(--rp-surface-elevated)]'
+                            ? 'border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-fg)]'
+                            : 'border-transparent bg-transparent hover:bg-[var(--rp-chat-sidebar-tab-active-bg)]'
                     "
                     :aria-selected="sidebarTab === tab.id ? 'true' : 'false'"
                     :aria-controls="'chat-panel-' + tab.id"
@@ -341,7 +448,7 @@
                 </button>
             </div>
 
-            <div class="min-h-0 flex-1 overflow-y-auto p-3 text-sm text-[var(--rp-text)]">
+            <div class="min-h-0 flex-1 overflow-y-auto p-3 text-sm text-[var(--rp-chat-sidebar-fg)]">
                 <div
                     v-if="privateListLoadError || friendsIgnoresLoadError"
                     class="mb-3 space-y-2"
@@ -351,14 +458,14 @@
                     <p
                         v-if="privateListLoadError"
                         role="alert"
-                        class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-error-bg)] px-2 py-1.5 text-xs text-[var(--rp-error)]"
+                        class="rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-error-bg)] px-2 py-1.5 text-xs text-[var(--rp-error)]"
                     >
                         {{ privateListLoadError }}
                     </p>
                     <p
                         v-if="friendsIgnoresLoadError"
                         role="alert"
-                        class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-error-bg)] px-2 py-1.5 text-xs text-[var(--rp-error)]"
+                        class="rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-error-bg)] px-2 py-1.5 text-xs text-[var(--rp-error)]"
                     >
                         {{ friendsIgnoresLoadError }}
                     </p>
@@ -372,27 +479,27 @@
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'users' ? 'false' : 'true'"
                 >
-                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-chat-sidebar-muted)]">
                         Онлайн
                     </p>
                     <ul v-if="user" class="space-y-2">
                         <li
-                            class="flex items-center gap-2 rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] px-2 py-2"
+                            class="rp-chat-side-card flex items-center gap-2 rounded-md border px-2 py-2"
                         >
                             <span
-                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--rp-border-subtle)] text-xs font-bold text-[var(--rp-text-muted)]"
+                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-input-bg)] text-xs font-bold text-[var(--rp-chat-sidebar-muted)]"
                                 aria-hidden="true"
                             >
                                 {{ userInitial }}
                             </span>
-                            <span class="font-medium">{{ user.user_name }}</span>
-                            <span class="text-xs text-[var(--rp-text-muted)]">(ви)</span>
+                            <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ user.user_name }}</span>
+                            <span class="text-xs text-[var(--rp-chat-sidebar-muted)]">(ви)</span>
                         </li>
                     </ul>
-                    <p class="mt-3 text-[var(--rp-text-muted)]">
+                    <p class="mt-3 text-[var(--rp-chat-sidebar-muted)]">
                         Інших учасників онлайн поки не показуємо — з’явиться разом із presence API.
                     </p>
-                    <div class="mt-4 space-y-2 border-t border-[var(--rp-border-subtle)] pt-3">
+                    <div class="mt-4 space-y-2 border-t border-[var(--rp-chat-sidebar-border)] pt-3">
                         <label class="rp-label" for="pm-lookup">Приват за ніком</label>
                         <div class="flex flex-wrap gap-2">
                             <input
@@ -446,7 +553,7 @@
                     <template v-if="friendsSubTab === 'active'">
                         <p
                             v-if="friendsAccepted.length === 0"
-                            class="text-center text-[var(--rp-text-muted)]"
+                            class="text-center text-[var(--rp-chat-sidebar-muted)]"
                         >
                             Список друзів порожній.
                         </p>
@@ -454,9 +561,9 @@
                             <li
                                 v-for="f in friendsAccepted"
                                 :key="f.user.id"
-                                class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] px-2 py-2"
+                                class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
                             >
-                                <span class="font-medium text-[var(--rp-text)]">{{ f.user.user_name }}</span>
+                                <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ f.user.user_name }}</span>
                                 <button
                                     type="button"
                                     class="rp-focusable rp-btn rp-btn-ghost text-sm"
@@ -468,12 +575,12 @@
                         </ul>
                     </template>
                     <template v-else>
-                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-chat-sidebar-muted)]">
                             Вхідні
                         </p>
                         <p
                             v-if="friendsIncoming.length === 0"
-                            class="mb-4 text-center text-sm text-[var(--rp-text-muted)]"
+                            class="mb-4 text-center text-sm text-[var(--rp-chat-sidebar-muted)]"
                         >
                             Немає запитів у друзі
                         </p>
@@ -481,9 +588,9 @@
                             <li
                                 v-for="r in friendsIncoming"
                                 :key="'in-' + r.user.id"
-                                class="flex flex-wrap items-center gap-2 rounded-md border border-[var(--rp-border-subtle)] px-2 py-2"
+                                class="rp-chat-side-card flex flex-wrap items-center gap-2 rounded-md border px-2 py-2"
                             >
-                                <span class="font-medium text-[var(--rp-text)]">{{ r.user.user_name }}</span>
+                                <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ r.user.user_name }}</span>
                                 <button
                                     type="button"
                                     class="rp-focusable rp-btn rp-btn-primary text-xs"
@@ -500,12 +607,12 @@
                                 </button>
                             </li>
                         </ul>
-                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-chat-sidebar-muted)]">
                             Вихідні
                         </p>
                         <p
                             v-if="friendsOutgoing.length === 0"
-                            class="text-center text-sm text-[var(--rp-text-muted)]"
+                            class="text-center text-sm text-[var(--rp-chat-sidebar-muted)]"
                         >
                             Немає відправлених запитів
                         </p>
@@ -513,7 +620,7 @@
                             <li
                                 v-for="r in friendsOutgoing"
                                 :key="'out-' + r.user.id"
-                                class="text-sm text-[var(--rp-text)]"
+                                class="text-sm text-[var(--rp-chat-sidebar-fg)]"
                             >
                                 {{ r.user.user_name }}
                             </li>
@@ -532,7 +639,7 @@
                 >
                     <p
                         v-if="conversations.length === 0"
-                        class="py-6 text-center text-[var(--rp-text-muted)]"
+                        class="py-6 text-center text-[var(--rp-chat-sidebar-muted)]"
                     >
                         Немає нових повідомлень
                     </p>
@@ -541,15 +648,20 @@
                             <button
                                 v-if="c.peer && c.peer.id"
                                 type="button"
-                                class="rp-focusable w-full rounded-md border-2 border-[var(--rp-border-subtle)] px-3 py-2 text-left hover:border-[var(--rp-border)]"
+                                class="rp-focusable rp-chat-side-room-btn w-full rounded-md border-2 px-3 py-2 text-left"
                                 @click="openPrivatePeer(c.peer)"
                             >
-                                <span class="block font-semibold text-[var(--rp-text)]">{{ c.peer.user_name }}</span>
-                                <span class="mt-0.5 block truncate text-xs text-[var(--rp-text-muted)]">{{
-                                    (c.last_message && c.last_message.body) || '—'
+                                <span class="block font-semibold text-[var(--rp-chat-sidebar-fg)]">{{
+                                    c.peer.user_name
                                 }}</span>
+                                <span
+                                    class="mt-0.5 block truncate text-xs text-[var(--rp-chat-sidebar-muted)]"
+                                >{{ (c.last_message && c.last_message.body) || '—' }}</span>
                             </button>
-                            <p v-else class="rounded-md border border-dashed border-[var(--rp-border-subtle)] px-2 py-2 text-xs text-[var(--rp-text-muted)]">
+                            <p
+                                v-else
+                                class="rounded-md border border-dashed border-[var(--rp-chat-sidebar-border)] px-2 py-2 text-xs text-[var(--rp-chat-sidebar-muted)]"
+                            >
                                 Некоректний запис розмови
                             </p>
                         </li>
@@ -565,23 +677,22 @@
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'rooms' ? 'false' : 'true'"
                 >
-                    <p v-if="loadingRooms" class="text-[var(--rp-text-muted)]">Завантаження…</p>
+                    <p v-if="loadingRooms" class="text-[var(--rp-chat-sidebar-muted)]">Завантаження…</p>
                     <ul v-else class="space-y-2">
                         <li v-for="r in rooms" :key="r.room_id">
                             <button
                                 type="button"
-                                class="rp-focusable w-full rounded-md border-2 px-3 py-2 text-left transition-colors"
-                                :class="
-                                    r.room_id === selectedRoomId
-                                        ? 'border-[var(--rp-primary)] bg-[var(--rp-surface-elevated)]'
-                                        : 'border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] hover:border-[var(--rp-border)]'
-                                "
+                                class="rp-focusable rp-chat-side-room-btn w-full rounded-md border-2 px-3 py-2 text-left transition-colors"
+                                :class="r.room_id === selectedRoomId ? 'is-active' : ''"
                                 @click="selectRoom(r.room_id)"
                             >
-                                <span class="block font-semibold text-[var(--rp-text)]">{{ r.room_name }}</span>
-                                <span v-if="r.topic" class="mt-0.5 block text-xs text-[var(--rp-text-muted)]">{{
-                                    r.topic
+                                <span class="block font-semibold text-[var(--rp-chat-sidebar-fg)]">{{
+                                    r.room_name
                                 }}</span>
+                                <span
+                                    v-if="r.topic"
+                                    class="mt-0.5 block text-xs text-[var(--rp-chat-sidebar-muted)]"
+                                >{{ r.topic }}</span>
                             </button>
                         </li>
                     </ul>
@@ -598,7 +709,7 @@
                 >
                     <p
                         v-if="ignores.length === 0"
-                        class="py-6 text-center text-[var(--rp-text-muted)]"
+                        class="py-6 text-center text-[var(--rp-chat-sidebar-muted)]"
                     >
                         Список ігнор порожній
                     </p>
@@ -606,12 +717,12 @@
                         <li
                             v-for="row in ignores"
                             :key="row.user.id"
-                            class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--rp-border-subtle)] px-2 py-2"
+                            class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
                         >
-                            <span class="font-medium text-[var(--rp-text)]">{{ row.user.user_name }}</span>
+                            <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ row.user.user_name }}</span>
                             <button
                                 type="button"
-                                class="rp-focusable text-sm font-semibold text-[var(--rp-link)] hover:underline"
+                                class="rp-focusable text-sm font-semibold text-[var(--rp-chat-sidebar-link)] hover:text-[var(--rp-chat-sidebar-link-hover)] hover:underline"
                                 @click="removeIgnore(row.user.id)"
                             >
                                 Зняти
@@ -621,6 +732,7 @@
                 </div>
             </div>
         </aside>
+        </div>
 
         <PrivateChatPanel
             v-if="user && privatePeer"
@@ -770,6 +882,24 @@ export default {
 
             return n.trim().charAt(0).toUpperCase() || '?';
         },
+        chatBreadcrumb() {
+            const u = this.user && this.user.user_name;
+            const r = this.currentRoom && this.currentRoom.room_name;
+            if (u && r) {
+                return `${u} › ${r}`;
+            }
+            if (r) {
+                return r;
+            }
+            if (u) {
+                return u;
+            }
+
+            return '';
+        },
+        chatTopicLine() {
+            return this.currentRoom && this.currentRoom.topic ? this.currentRoom.topic : '';
+        },
         sidebarTabs() {
             return [
                 { id: 'users', title: 'Люди', icon: SIDEBAR_TAB_ICONS.users },
@@ -835,6 +965,30 @@ export default {
         this.stopPoll();
     },
     methods: {
+        peerInitial(name) {
+            if (!name || typeof name !== 'string') {
+                return '?';
+            }
+            const p = name.trim();
+
+            return p ? p.charAt(0).toUpperCase() : '?';
+        },
+        nickColorStyle(m) {
+            if (!m || !m.post_user) {
+                return {};
+            }
+            if (m.post_color === 'guest') {
+                return { color: 'var(--rp-text-muted)' };
+            }
+            const palette = ['#b45309', '#c2410c', '#1d4ed8', '#0f766e', '#7c3aed', '#b91c1c', '#0e7490'];
+            let h = 0;
+            const n = m.post_user;
+            for (let i = 0; i < n.length; i++) {
+                h = n.charCodeAt(i) + ((h << 5) - h);
+            }
+
+            return { color: palette[Math.abs(h) % palette.length] };
+        },
         initViewportListener() {
             if (typeof window === 'undefined' || !window.matchMedia) {
                 return;
