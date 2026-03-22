@@ -120,6 +120,12 @@ class ModerationApiTest extends TestCase
             ->withHeaders($this->statefulHeaders())
             ->getJson('/api/v1/mod/banned-ips')
             ->assertForbidden();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/mod/filter-words')
+            ->assertForbidden();
     }
 
     public function test_filter_word_min_length_two(): void
@@ -142,6 +148,29 @@ class ModerationApiTest extends TestCase
             ->withHeaders($this->statefulHeaders())
             ->postJson('/api/v1/mod/banned-ips', ['ip' => '198.51.100.99'])
             ->assertForbidden();
+    }
+
+    public function test_moderator_can_manage_filter_words(): void
+    {
+        $mod = User::factory()->moderator()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/mod/filter-words')
+            ->assertOk();
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/mod/filter-words', [
+                'word' => 'modword',
+                'action' => 'mask',
+                'match_mode' => 'substring',
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('filter_words', ['word' => 'modword']);
     }
 
     public function test_admin_can_ban_ip(): void

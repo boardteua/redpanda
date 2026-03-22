@@ -28,4 +28,15 @@ return [
 
     'presence_status_ttl_seconds' => (int) env('CHAT_PRESENCE_STATUS_TTL_SECONDS', 120),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Автомодерація стоп-слів (T53)
+    |--------------------------------------------------------------------------
+    |
+    | Якщо для правила action=temp_mute не задано mute_minutes, використовується
+    | це значення (хвилини).
+    |
+    */
+    'automod_default_mute_minutes' => (int) env('CHAT_AUTOMOD_DEFAULT_MUTE_MINUTES', 30),
+
 ];

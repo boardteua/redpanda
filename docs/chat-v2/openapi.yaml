@@ -29,7 +29,7 @@ info:
 
     **Спостережуваність (T11):** `GET /up` (liveness), `GET /health/ready` (readiness, JSON); структуровані логи — [T11-QA.md](T11-QA.md), runbook — [T11-RUNBOOK.md](T11-RUNBOOK.md).
 
-    **Модерація MVP (T12):** таблиці `banned_ips`, `filter_words`; на `users` — `user_rank`, `mute_until`, `kick_until` — [T12-QA.md](T12-QA.md).
+    **Модерація MVP (T12):** таблиці `banned_ips`, `filter_words`; на `users` — `user_rank`, `mute_until`, `kick_until` — [T12-QA.md](T12-QA.md). **T53:** `filter_words` — категорія, `match_mode` (substring | whole_word), `action` (mask | reject | flag | temp_mute), `mute_minutes`; CRUD під `can:moderate`; публічні повідомлення в кімнаті — застосування правил; приват — лише маскування (mask).
 
     **Ролі чату (T21):** на `users` — `vip` (boolean), `user_rank` (0 користувач, 1 модератор, 2 адмін); `rooms.access` — `0` публічна, `1` лише зареєстровані, `≥2` VIP-кімната (доступ VIP або модератор/адмін). `POST /api/v1/mod/users/{id}/mute|kick` — `can:moderate` (`user_rank ≥ 1`, не гість); керування банами IP і словами фільтра — `can:chat-admin` (`user_rank ≥ 2`). Ліміти `chat-post` / `image-upload` залежать від ролі (гість/VIP/staff). Поля `chat_role` та `badge_color` у `User` і lookup — [T21-QA.md](T21-QA.md).
 
@@ -169,7 +169,8 @@ paths:
   /api/v1/mod/filter-words:
     get:
       tags: [Moderation]
-      summary: Список слів фільтра
+      summary: Список слів фільтра / стоп-слів (T53)
+      description: `can:moderate` (модератор або адміністратор).
       operationId: modListFilterWords
       security:
         - sanctumSession: []
@@ -188,7 +189,8 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
     post:
       tags: [Moderation]
-      summary: Додати слово у фільтр
+      summary: Додати слово / правило (T53)
+      description: `can:moderate`. Поля `match_mode`, `action`, `mute_minutes` — див. схему запиту.
       operationId: modStoreFilterWord
       security:
         - sanctumSession: []
@@ -216,9 +218,43 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/mod/filter-words/{filterWordId}:
+    patch:
+      tags: [Moderation]
+      summary: Оновити правило стоп-слова / фільтра (T53)
+      description: `can:moderate`. Хоча б одне поле в тілі.
+      operationId: modPatchFilterWord
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/FilterWordId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModFilterWordPatchRequest"
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModFilterWordCreatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     delete:
       tags: [Moderation]
       summary: Прибрати слово з фільтра
+      description: `can:moderate`.
       operationId: modDestroyFilterWord
       security:
         - sanctumSession: []
@@ -1622,6 +1658,46 @@ components:
           type: string
           minLength: 2
           maxLength: 191
+        category:
+          type: string
+          maxLength: 64
+          nullable: true
+        match_mode:
+          type: string
+          enum: [substring, whole_word]
+        action:
+          type: string
+          enum: [mask, reject, flag, temp_mute]
+        mute_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          nullable: true
+          description: Для `action=temp_mute`; якщо пропущено — дефолт з `config('chat.automod_default_mute_minutes')` під час застосування.
+
+    ModFilterWordPatchRequest:
+      type: object
+      minProperties: 1
+      properties:
+        word:
+          type: string
+          minLength: 2
+          maxLength: 191
+        category:
+          type: string
+          maxLength: 64
+          nullable: true
+        match_mode:
+          type: string
+          enum: [substring, whole_word]
+        action:
+          type: string
+          enum: [mask, reject, flag, temp_mute]
+        mute_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          nullable: true
 
     ModFilterWordRow:
       type: object
@@ -1630,6 +1706,17 @@ components:
           type: integer
         word:
           type: string
+        category:
+          type: string
+        match_mode:
+          type: string
+          enum: [substring, whole_word]
+        action:
+          type: string
+          enum: [mask, reject, flag, temp_mute]
+        mute_minutes:
+          type: integer
+          nullable: true
         created_at:
           type: string
           format: date-time

@@ -35,6 +35,7 @@ class ChatMessage extends Model
         'post_date',
         'post_edited_at',
         'post_deleted_at',
+        'moderation_flag_at',
         'post_time',
         'post_user',
         'post_message',

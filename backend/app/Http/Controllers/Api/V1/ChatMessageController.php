@@ -18,6 +18,7 @@ use App\Models\PrivateMessage;
 use App\Models\Room;
 use App\Models\RoomReadState;
 use App\Models\User;
+use App\Services\Moderation\ChatAutomoderationService;
 use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\UserPostingGate;
 use App\Services\PrivateMessageGate;
@@ -35,6 +36,7 @@ class ChatMessageController extends Controller
         private readonly SlashCommandPipeline $slashPipeline,
         private readonly ContentWordFilter $wordFilter,
         private readonly UserPostingGate $postingGate,
+        private readonly ChatAutomoderationService $automod,
     ) {}
 
     public function index(Request $request, Room $room): AnonymousResourceCollection|JsonResponse
@@ -100,7 +102,17 @@ class ChatMessageController extends Controller
         $this->postingGate->ensureCanPost($user);
 
         $validated = $request->validated();
-        $filtered = $this->wordFilter->filter(trim((string) ($validated['message'] ?? '')));
+        $rawMsg = trim((string) ($validated['message'] ?? ''));
+        if ($message->type === 'public') {
+            $mod = $this->automod->applyToPublicMessage($rawMsg, $user);
+            if (! $mod['ok']) {
+                return response()->json(['message' => $mod['message']], 422);
+            }
+            $filtered = $mod['text'];
+            $message->moderation_flag_at = $mod['flag'] ? time() : null;
+        } else {
+            $filtered = $this->wordFilter->filter($rawMsg);
+        }
 
         if ($request->has('style')) {
             $sp = $validated['style'] ?? null;
@@ -279,7 +291,11 @@ class ChatMessageController extends Controller
         }
 
         $pipe = $this->slashPipeline->transform($raw, $user->user_name);
-        $pipe['message'] = $this->wordFilter->filter($pipe['message']);
+        $mod = $this->automod->applyToPublicMessage($pipe['message'], $user);
+        if (! $mod['ok']) {
+            return response()->json(['message' => $mod['message']], 422);
+        }
+        $pipe['message'] = $mod['text'];
         $now = time();
 
         $avatarUrl = $user->resolveAvatarUrl();
@@ -299,6 +315,7 @@ class ChatMessageController extends Controller
                 'avatar' => $avatarUrl,
                 'file' => $fileRef,
                 'client_message_id' => $clientId,
+                'moderation_flag_at' => $mod['flag'] ? $now : null,
             ]);
         } catch (QueryException $e) {
             if ($this->isDuplicateKey($e)) {

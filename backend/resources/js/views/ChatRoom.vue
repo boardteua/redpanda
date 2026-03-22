@@ -1700,6 +1700,15 @@ export default {
 
                 return;
             }
+            if (id === 'staff-stop-words') {
+                const q = {};
+                if (this.selectedRoomId != null) {
+                    q.room = String(this.selectedRoomId);
+                }
+                this.$router.push({ name: 'staff-stop-words', query: q }).catch(() => {});
+
+                return;
+            }
             if (id === 'profile') {
                 this.profileModalOpen = true;
 

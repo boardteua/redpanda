@@ -108,14 +108,15 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
             Route::get('banned-ips', [ModerationController::class, 'indexBannedIps']);
             Route::post('banned-ips', [ModerationController::class, 'storeBannedIp']);
             Route::delete('banned-ips/{bannedIp}', [ModerationController::class, 'destroyBannedIp']);
-            Route::get('filter-words', [ModerationController::class, 'indexFilterWords']);
-            Route::post('filter-words', [ModerationController::class, 'storeFilterWord']);
-            Route::delete('filter-words/{filterWord}', [ModerationController::class, 'destroyFilterWord']);
             Route::patch('users/{user}/profile', [StaffUserController::class, 'updateProfile']);
             Route::patch('users/{user}', [StaffUserController::class, 'update']);
         });
 
         Route::middleware(['can:moderate', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
+            Route::get('filter-words', [ModerationController::class, 'indexFilterWords']);
+            Route::post('filter-words', [ModerationController::class, 'storeFilterWord']);
+            Route::patch('filter-words/{filterWord}', [ModerationController::class, 'updateFilterWord']);
+            Route::delete('filter-words/{filterWord}', [ModerationController::class, 'destroyFilterWord']);
             Route::post('users/{user}/mute', [ModerationController::class, 'muteUser']);
             Route::post('users/{user}/kick', [ModerationController::class, 'kickUser']);
         });

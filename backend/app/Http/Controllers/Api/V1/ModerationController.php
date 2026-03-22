@@ -10,6 +10,7 @@ use App\Services\Moderation\ModerationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class ModerationController extends Controller
 {
@@ -58,7 +59,9 @@ class ModerationController extends Controller
 
     public function indexFilterWords(): JsonResponse
     {
-        $rows = FilterWord::query()->orderBy('id')->get(['id', 'word', 'created_at']);
+        $rows = FilterWord::query()
+            ->orderBy('id')
+            ->get(['id', 'word', 'category', 'match_mode', 'action', 'mute_minutes', 'created_at']);
 
         return response()->json(['data' => $rows]);
     }
@@ -67,32 +70,102 @@ class ModerationController extends Controller
     {
         $data = $request->validate([
             'word' => ['required', 'string', 'min:2', 'max:191', 'regex:/\S/'],
+            'category' => ['nullable', 'string', 'max:64'],
+            'match_mode' => ['sometimes', 'nullable', 'string', Rule::in([FilterWord::MATCH_SUBSTRING, FilterWord::MATCH_WHOLE_WORD])],
+            'action' => ['sometimes', 'nullable', 'string', Rule::in([
+                FilterWord::ACTION_MASK,
+                FilterWord::ACTION_REJECT,
+                FilterWord::ACTION_FLAG,
+                FilterWord::ACTION_TEMP_MUTE,
+            ])],
+            'mute_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:525600'],
         ]);
 
-        $row = $this->moderation->addFilterWord($data['word']);
+        $data = $this->normalizedFilterWordAttributes($data, forCreate: true);
+
+        $row = $this->moderation->addFilterWord($data);
 
         Log::info('moderation.filter_word.created', [
             'actor_id' => $request->user()->id,
             'filter_word_id' => $row->id,
-            'word' => $row->word,
+            'category' => $row->category,
+            'action' => $row->action,
+            'match_mode' => $row->match_mode,
         ]);
 
         return response()->json(['data' => $row], 201);
     }
 
+    public function updateFilterWord(Request $request, FilterWord $filterWord): JsonResponse
+    {
+        $data = $request->validate([
+            'word' => ['sometimes', 'string', 'min:2', 'max:191', 'regex:/\S/'],
+            'category' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'match_mode' => ['sometimes', 'nullable', 'string', Rule::in([FilterWord::MATCH_SUBSTRING, FilterWord::MATCH_WHOLE_WORD])],
+            'action' => ['sometimes', 'nullable', 'string', Rule::in([
+                FilterWord::ACTION_MASK,
+                FilterWord::ACTION_REJECT,
+                FilterWord::ACTION_FLAG,
+                FilterWord::ACTION_TEMP_MUTE,
+            ])],
+            'mute_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:525600'],
+        ]);
+
+        if ($data === []) {
+            return response()->json(['message' => 'Немає полів для оновлення.'], 422);
+        }
+
+        $merged = array_merge($filterWord->only([
+            'word', 'category', 'match_mode', 'action', 'mute_minutes',
+        ]), $data);
+        $merged = $this->normalizedFilterWordAttributes($merged, forCreate: false);
+
+        $row = $this->moderation->updateFilterWord($filterWord, $merged);
+
+        Log::info('moderation.filter_word.updated', [
+            'actor_id' => $request->user()->id,
+            'filter_word_id' => $row->id,
+            'category' => $row->category,
+            'action' => $row->action,
+            'match_mode' => $row->match_mode,
+        ]);
+
+        return response()->json(['data' => $row]);
+    }
+
     public function destroyFilterWord(Request $request, FilterWord $filterWord): JsonResponse
     {
         $id = (int) $filterWord->id;
-        $word = $filterWord->word;
         $this->moderation->removeFilterWord($id);
 
         Log::info('moderation.filter_word.removed', [
             'actor_id' => $request->user()->id,
             'filter_word_id' => $id,
-            'word' => $word,
         ]);
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizedFilterWordAttributes(array $data, bool $forCreate): array
+    {
+        $action = $data['action'] ?? FilterWord::ACTION_MASK;
+        $data['action'] = $action;
+        $data['match_mode'] = $data['match_mode'] ?? FilterWord::MATCH_SUBSTRING;
+
+        $cat = isset($data['category']) ? trim((string) $data['category']) : '';
+        $data['category'] = $cat !== '' ? $cat : 'default';
+
+        if ($action !== FilterWord::ACTION_TEMP_MUTE) {
+            $data['mute_minutes'] = null;
+        } elseif (! array_key_exists('mute_minutes', $data) && ! $forCreate) {
+            unset($data['mute_minutes']);
+        }
+
+        return $data;
     }
 
     public function muteUser(Request $request, User $user): JsonResponse

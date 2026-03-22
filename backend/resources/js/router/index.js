@@ -4,6 +4,7 @@ import ArchiveChat from '../views/ArchiveChat.vue';
 import AuthWelcome from '../views/AuthWelcome.vue';
 import ChatRoom from '../views/ChatRoom.vue';
 import StaffUsersView from '../views/StaffUsersView.vue';
+import StaffStopWordsView from '../views/StaffStopWordsView.vue';
 
 Vue.use(VueRouter);
 
@@ -29,6 +30,11 @@ export default new VueRouter({
             path: '/chat/staff-users',
             name: 'staff-users',
             component: StaffUsersView,
+        },
+        {
+            path: '/chat/staff-stop-words',
+            name: 'staff-stop-words',
+            component: StaffStopWordsView,
         },
     ],
 });

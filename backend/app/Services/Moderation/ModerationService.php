@@ -29,22 +29,28 @@ final class ModerationService
         return true;
     }
 
-    public function addFilterWord(string $word): FilterWord
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function addFilterWord(array $data): FilterWord
     {
-        $created = FilterWord::query()->create(['word' => $word]);
-        ContentWordFilter::flushCache();
+        return FilterWord::query()->create($data);
+    }
 
-        return $created;
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function updateFilterWord(FilterWord $row, array $data): FilterWord
+    {
+        $row->fill($data);
+        $row->save();
+
+        return $row->fresh();
     }
 
     public function removeFilterWord(int $id): bool
     {
-        $deleted = FilterWord::query()->whereKey($id)->delete() > 0;
-        if ($deleted) {
-            ContentWordFilter::flushCache();
-        }
-
-        return $deleted;
+        return FilterWord::query()->whereKey($id)->delete() > 0;
     }
 
     /**
