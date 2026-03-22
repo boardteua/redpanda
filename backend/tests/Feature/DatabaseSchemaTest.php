@@ -21,5 +21,6 @@ class DatabaseSchemaTest extends TestCase
         $this->assertTrue(Schema::hasTable('images'));
         $this->assertTrue(Schema::hasTable('banned_ips'));
         $this->assertTrue(Schema::hasTable('filter_words'));
+        $this->assertTrue(Schema::hasTable('room_read_states'));
     }
 }

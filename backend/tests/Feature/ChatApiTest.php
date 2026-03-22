@@ -10,6 +10,7 @@ use App\Events\RoomInlinePrivatePosted;
 use App\Models\ChatMessage;
 use App\Models\Image;
 use App\Models\Room;
+use App\Models\RoomReadState;
 use App\Models\User;
 use Illuminate\Broadcasting\BroadcastEvent;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -287,7 +288,8 @@ class ChatApiTest extends TestCase
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.post_message', 'mb')
             ->assertJsonPath('data.1.post_message', 'mc')
-            ->assertJsonPath('meta.next_cursor', fn ($v) => $v !== null);
+            ->assertJsonPath('meta.next_cursor', fn ($v) => $v !== null)
+            ->assertJsonPath('meta.last_read_post_id', null);
     }
 
     public function test_messages_index_includes_avatar_url_when_set(): void
@@ -1019,5 +1021,120 @@ class ChatApiTest extends TestCase
                 'message' => 'nope',
             ])
             ->assertForbidden();
+    }
+
+    public function test_messages_index_includes_saved_last_read_post_id(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $m = $this->seedPublicChatMessage($public, $user);
+
+        RoomReadState::query()->create([
+            'user_id' => $user->id,
+            'room_id' => $public->room_id,
+            'last_read_post_id' => $m->post_id,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=10')
+            ->assertOk()
+            ->assertJsonPath('meta.last_read_post_id', (int) $m->post_id);
+    }
+
+    public function test_messages_index_since_read_includes_first_unread_post_id(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $ma = $this->seedPublicChatMessage($public, $user, ['post_message' => 'a']);
+        $mb = $this->seedPublicChatMessage($public, $user, ['post_message' => 'b']);
+        $mc = $this->seedPublicChatMessage($public, $user, ['post_message' => 'c']);
+
+        RoomReadState::query()->create([
+            'user_id' => $user->id,
+            'room_id' => $public->room_id,
+            'last_read_post_id' => $mb->post_id,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=10&since_read=1')
+            ->assertOk()
+            ->assertJsonPath('meta.first_unread_post_id', (int) $mc->post_id);
+
+        RoomReadState::query()->where('user_id', $user->id)->update(['last_read_post_id' => $mc->post_id]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=10&since_read=1')
+            ->assertOk()
+            ->assertJsonPath('meta.first_unread_post_id', null);
+    }
+
+    public function test_post_mark_room_read_advances_and_is_monotonic(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $m1 = $this->seedPublicChatMessage($public, $user, ['post_message' => 'one']);
+        $m2 = $this->seedPublicChatMessage($public, $user, ['post_message' => 'two']);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/read', [
+                'last_read_post_id' => $m1->post_id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.last_read_post_id', (int) $m1->post_id);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/read', [
+                'last_read_post_id' => $m2->post_id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.last_read_post_id', (int) $m2->post_id);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/read', [
+                'last_read_post_id' => $m1->post_id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.last_read_post_id', (int) $m2->post_id);
+    }
+
+    public function test_post_mark_room_read_rejects_post_not_in_room(): void
+    {
+        [$public, $registered] = $this->seedRooms();
+        $user = User::factory()->create();
+        $m = $this->seedPublicChatMessage($public, $user);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$registered->room_id.'/read', [
+                'last_read_post_id' => $m->post_id,
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_post_mark_room_read_rejects_unknown_post_id(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/read', [
+                'last_read_post_id' => 999999999,
+            ])
+            ->assertStatus(422);
     }
 }

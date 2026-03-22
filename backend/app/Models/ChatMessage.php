@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -71,5 +72,25 @@ class ChatMessage extends Model
     public function attachedImage(): BelongsTo
     {
         return $this->belongsTo(Image::class, 'file');
+    }
+
+    /**
+     * Повідомлення кімнати, видимі користувачу (публічні + інлайн-приват за участю).
+     *
+     * @param  Builder<ChatMessage>  $query
+     */
+    public function scopeVisibleInRoomForUser(Builder $query, Room $room, int $userId): void
+    {
+        $query->where('post_roomid', $room->room_id)
+            ->where(function ($outer) use ($userId) {
+                $outer->where('type', 'public')
+                    ->orWhere(function ($q) use ($userId) {
+                        $q->where('type', 'inline_private')
+                            ->where(function ($inner) use ($userId) {
+                                $inner->where('user_id', $userId)
+                                    ->orWhere('post_target', (string) $userId);
+                            });
+                    });
+            });
     }
 }

@@ -61,10 +61,15 @@
                         :messages="messages"
                         :loading-messages="loadingMessages"
                         :viewer-name="user && user.user_name ? user.user_name : ''"
+                        :divider-before-post-id="newMsgDividerBeforePostId"
+                        :divider-dismissed="newMsgDividerDismissed"
+                        :bottom-dismiss-suppress-until="roomReadSuppressBottomUntil"
+                        :sync-key="feedSyncKey"
                         @inline-private="insertFeedInlinePrivatePrefix"
                         @mention="insertFeedReplyPrefix"
                         @edit="startEditMessageFromFeed"
                         @delete="openDeleteMessageConfirm"
+                        @feed-bottom-visible="onFeedBottomVisible"
                     />
 
                     <ChatRoomComposer
@@ -404,9 +409,20 @@ export default {
             profileModalOpen: false,
             deleteConfirmOpen: false,
             deleteConfirmTarget: null,
+            /** T47: перший post_id блоку «нові» після заходу в кімнату (не зміщується від WS). */
+            newMsgDividerBeforePostId: null,
+            newMsgDividerDismissed: false,
+            roomReadSuppressBottomUntil: 0,
+            markReadDebounceTimer: null,
         };
     },
     computed: {
+        feedSyncKey() {
+            const n = this.messages.length;
+            const last = n ? this.messages[n - 1].post_id : 0;
+
+            return `${n}:${last}`;
+        },
         canCreateRoom() {
             return Boolean(this.user && !this.user.guest && this.user.can_create_room);
         },
@@ -579,6 +595,10 @@ export default {
         document.body.style.overflow = '';
         this.teardownEcho(true);
         this.stopPoll();
+        if (this.markReadDebounceTimer) {
+            clearTimeout(this.markReadDebounceTimer);
+            this.markReadDebounceTimer = null;
+        }
     },
     methods: {
         initViewportListener() {
@@ -915,12 +935,55 @@ export default {
                 );
                 this.clearMessages();
                 (data.data || []).forEach((row) => this.mergeMessage(row));
+
+                const lr =
+                    data.meta && data.meta.last_read_post_id != null
+                        ? Number(data.meta.last_read_post_id)
+                        : null;
+                this.newMsgDividerDismissed = false;
+                if (lr == null || !Number.isFinite(lr)) {
+                    this.newMsgDividerBeforePostId = null;
+                } else {
+                    const rows = data.data || [];
+                    const first = rows.find((row) => Number(row.post_id) > lr);
+                    this.newMsgDividerBeforePostId = first ? Number(first.post_id) : null;
+                }
+                this.roomReadSuppressBottomUntil = Date.now() + 700;
             } catch {
                 this.loadError = 'Не вдалося завантажити повідомлення.';
             } finally {
                 this.loadingMessages = false;
                 this.$nextTick(() => this.scrollToBottom());
             }
+        },
+        onFeedBottomVisible() {
+            if (!this.selectedRoomId || !this.messages.length) {
+                return;
+            }
+            this.newMsgDividerDismissed = true;
+            const latest = this.messages[this.messages.length - 1].post_id;
+            this.scheduleMarkRoomRead(latest);
+        },
+        scheduleMarkRoomRead(postId) {
+            if (this.markReadDebounceTimer) {
+                clearTimeout(this.markReadDebounceTimer);
+            }
+            const rid = this.selectedRoomId;
+            const pid = Number(postId);
+            this.markReadDebounceTimer = setTimeout(async () => {
+                this.markReadDebounceTimer = null;
+                if (!rid || !Number.isFinite(pid)) {
+                    return;
+                }
+                try {
+                    await this.ensureSanctum();
+                    await window.axios.post(`/api/v1/rooms/${rid}/read`, {
+                        last_read_post_id: pid,
+                    });
+                } catch {
+                    /* ignore */
+                }
+            }, 450);
         },
         async pollNewMessages() {
             if (!this.selectedRoomId || !this.wsDegraded) {

@@ -66,6 +66,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(120)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
         });
 
+        RateLimiter::for('chat-mark-read', function (Request $request) {
+            /** @var User|null $user */
+            $user = $request->user();
+
+            return Limit::perMinute(90)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
+
         RateLimiter::for('archive-read', function (Request $request) {
             $user = $request->user();
 

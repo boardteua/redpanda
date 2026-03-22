@@ -11,7 +11,9 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`).
+
+    **Прочитане в кімнаті (T47):** `GET .../rooms/{roomId}/messages` — `meta.last_read_post_id`; опційно `since_read=true` → `meta.first_unread_post_id` у межах сторінки; `POST .../rooms/{roomId}/read` з `last_read_post_id` (монотонно). Деталі — [T47-QA.md](T47-QA.md).
 
     **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`** і **`.MessageUpdated`** (редагування публічного допису, T36) транслюються на той самий presence-канал. Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08).
 
@@ -807,6 +809,50 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/rooms/{roomId}/read:
+    post:
+      tags: [Chat]
+      summary: Позначити прочитане до post_id (кімната)
+      description: |
+        Оновлює для поточного користувача пару `(user, room)` поле **останнього прочитаного** `post_id` **лише вгору** (монотонно).
+        `post_id` має існувати в цій кімнаті і бути **видимим** цьому користувачу (як у `GET .../messages`).
+      operationId: postRoomRead
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostRoomReadRequest"
+      responses:
+        "200":
+          description: Поточний маркер після оновлення (або без зміни при меншому post_id)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomReadResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Невідомий post_id у цій кімнаті для цього користувача
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/rooms/{roomId}/messages:
     get:
       tags: [Chat]
@@ -814,6 +860,8 @@ paths:
       description: |
         Повертає до `limit` повідомлень старіших за `before` (якщо задано), у полі `data` — у **хронологічному** порядку (старі → новіші у межах сторінки).
         `meta.next_cursor` — мінімальний `post_id` у сторінці для наступного запиту «старіше».
+        `meta.last_read_post_id` — збережений маркер прочитаного для цієї кімнати (`null`, якщо ще не зберігали).
+        Якщо `since_read=true`, додатково `meta.first_unread_post_id` — перший `post_id` **у межах повернутої сторінки** з `post_id` > `last_read_post_id` (або `null`).
       operationId: listRoomMessages
       security:
         - sanctumSession: []
@@ -832,9 +880,14 @@ paths:
             minimum: 1
             maximum: 100
             default: 50
+        - name: since_read
+          in: query
+          description: Якщо true — додати `meta.first_unread_post_id` для поточної сторінки
+          schema:
+            type: boolean
       responses:
         "200":
-          description: Сторінка повідомлень і `meta.next_cursor`
+          description: Сторінка повідомлень і `meta` (у т.ч. `last_read_post_id`)
           content:
             application/json:
               schema:
@@ -1656,11 +1709,40 @@ components:
             $ref: "#/components/schemas/ChatMessage"
         meta:
           type: object
-          required: [next_cursor]
+          required: [next_cursor, last_read_post_id]
           properties:
             next_cursor:
               type: integer
               nullable: true
+            last_read_post_id:
+              type: integer
+              nullable: true
+              description: Останній прочитаний post_id (T47); null якщо стану ще немає
+            first_unread_post_id:
+              type: integer
+              nullable: true
+              description: Лише коли `since_read=true` у запиті; перший непрочитаний у межах сторінки
+
+    PostRoomReadRequest:
+      type: object
+      required: [last_read_post_id]
+      properties:
+        last_read_post_id:
+          type: integer
+          minimum: 1
+
+    RoomReadResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [room_id, last_read_post_id]
+          properties:
+            room_id:
+              type: integer
+            last_read_post_id:
+              type: integer
 
     ArchiveMessagesPaginatedResponse:
       type: object
