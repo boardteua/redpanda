@@ -514,4 +514,54 @@ class ChatApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['style.fg']);
     }
+
+    public function test_post_message_stores_angle_brackets_as_literal_text(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $payload = '<img src=x onerror=alert(1)> hi & "quotes"';
+        $clientId = 'c7eebc99-9c0b-4ef8-bb6d-6bb9bd380a01';
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => $payload,
+                'client_message_id' => $clientId,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.post_message', $payload);
+    }
+
+    public function test_post_message_rejects_over_max_length_for_registered_user(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => str_repeat('a', 4001),
+                'client_message_id' => 'd7eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['message']);
+    }
+
+    public function test_post_message_rejects_over_max_length_for_guest(): void
+    {
+        [$public] = $this->seedRooms();
+        $guest = User::factory()->guest()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($guest, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => str_repeat('b', 2001),
+                'client_message_id' => 'e7eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['message']);
+    }
 }
