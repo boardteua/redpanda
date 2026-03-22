@@ -194,6 +194,25 @@ import { createEcho } from '../lib/echo';
 import { normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 
 const THEME_KEY = 'redpanda-theme';
+/** Збереження останньої вкладки сайдбару; відсутній/невалідний ключ → «Люди». */
+const SIDEBAR_TAB_STORAGE_KEY = 'redpanda-chat-sidebar-tab';
+const SIDEBAR_TAB_IDS = ['users', 'friends', 'private', 'rooms', 'ignore'];
+
+function readStoredSidebarTab() {
+    if (typeof localStorage === 'undefined') {
+        return 'users';
+    }
+    try {
+        const raw = localStorage.getItem(SIDEBAR_TAB_STORAGE_KEY);
+        if (raw && SIDEBAR_TAB_IDS.includes(raw)) {
+            return raw;
+        }
+    } catch {
+        /* */
+    }
+
+    return 'users';
+}
 
 const SIDEBAR_TAB_ICONS = {
     users:
@@ -358,7 +377,7 @@ export default {
             themeUi: 'system',
             loggingOut: false,
             panelOpen: true,
-            sidebarTab: 'rooms',
+            sidebarTab: readStoredSidebarTab(),
             friendsSubTab: 'active',
             isNarrowViewport: false,
             mqHandler: null,
@@ -480,6 +499,13 @@ export default {
         },
         sidebarTab(to) {
             this.badgeMenu = null;
+            try {
+                if (typeof localStorage !== 'undefined' && SIDEBAR_TAB_IDS.includes(to)) {
+                    localStorage.setItem(SIDEBAR_TAB_STORAGE_KEY, to);
+                }
+            } catch {
+                /* */
+            }
             if (to === 'private') {
                 this.loadConversations();
             }
