@@ -360,7 +360,7 @@
                             :aria-selected="friendsSubTab === 'active' ? 'true' : 'false'"
                             @click="$emit('update:friendsSubTab', 'active')"
                         >
-                            Активний
+                            Мої друзі
                         </button>
                         <button
                             type="button"
@@ -378,11 +378,18 @@
                         >
                             Список друзів порожній.
                         </p>
+                        <p
+                            v-if="friendsAccepted.length === 0"
+                            class="mt-2 text-center text-xs text-[var(--rp-chat-sidebar-muted)]"
+                        >
+                            Додайте користувачів через меню «⋯» у списку «Люди».
+                        </p>
                         <ul v-else class="space-y-2">
                             <li
                                 v-for="f in friendsAcceptedWithMenuPeer"
                                 :key="f.user.id"
                                 class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
+                                :class="presenceRowClass(friendListPresenceStatus(f.user))"
                             >
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <div class="flex min-w-0 flex-1 items-center gap-1">
@@ -391,6 +398,18 @@
                                                 :name="f.user.user_name"
                                                 variant="sidebar"
                                                 decorative
+                                            />
+                                            <span
+                                                class="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
+                                                :class="presenceDotClass(friendListPresenceStatus(f.user))"
+                                                role="img"
+                                                :aria-label="
+                                                    'Статус ' +
+                                                    f.user.user_name +
+                                                    ': ' +
+                                                    presenceLabelUa(friendListPresenceStatus(f.user))
+                                                "
+                                                :title="presenceLabelUa(friendListPresenceStatus(f.user))"
                                             />
                                             <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
                                                 f.user.user_name
@@ -864,6 +883,17 @@ export default {
             return this.normalizedPresenceStatus(
                 this.peerPresenceStatusByUserId[String(p.id)],
             );
+        },
+        /** T50: у «Мої друзі» показуємо всіх обраних; якщо статусу в кімнаті немає — вважаємо не в мережі (не плутаємо з онлайн). */
+        friendListPresenceStatus(u) {
+            if (!u || u.id == null) {
+                return 'inactive';
+            }
+            const raw = this.peerPresenceStatusByUserId[String(u.id)];
+
+            return raw === undefined || raw === null
+                ? 'inactive'
+                : this.normalizedPresenceStatus(raw);
         },
         presenceRowClass(status) {
             const s = this.normalizedPresenceStatus(status);

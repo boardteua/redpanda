@@ -34,7 +34,17 @@ export function buildUserBadgeMenuItems(mode, viewer, target) {
         add('private', 'Приватний чат');
         add('ignore', 'Ігнор');
         if (v && !t.guest) {
-            add('friend', 'Додати до друзів');
+            const rel = t.friendship;
+            if (rel === 'accepted') {
+                add('unfriend', 'Прибрати з друзів');
+            } else if (rel === 'pending_out') {
+                add('cancel-friend', 'Скасувати запит у друзі');
+            } else if (rel === 'pending_in') {
+                add('accept-friend', 'Прийняти запит у друзі');
+                add('reject-friend', 'Відхилити запит');
+            } else {
+                add('friend', 'Додати до друзів');
+            }
         }
         if (v && isStaffRole(v.chat_role) && t.id != null && v.id != null && Number(t.id) !== Number(v.id)) {
             sep();

@@ -74,4 +74,58 @@ class FriendApiTest extends TestCase
             ->assertStatus(422)
             ->assertJsonFragment(['message' => 'Неможливо додати гостя до друзів.']);
     }
+
+    public function test_destroy_removes_accepted_friendship(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        Friendship::query()->create([
+            'requester_id' => $a->id,
+            'addressee_id' => $b->id,
+            'status' => Friendship::STATUS_ACCEPTED,
+        ]);
+
+        Sanctum::actingAs($a);
+        $this->deleteJson('/api/v1/friends/'.$b->id)
+            ->assertOk()
+            ->assertJsonFragment(['message' => 'Користувача прибрано з друзів.']);
+
+        $this->assertDatabaseMissing('friendships', [
+            'requester_id' => $a->id,
+            'addressee_id' => $b->id,
+        ]);
+    }
+
+    public function test_destroy_cancels_outgoing_pending(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        Friendship::query()->create([
+            'requester_id' => $a->id,
+            'addressee_id' => $b->id,
+            'status' => Friendship::STATUS_PENDING,
+        ]);
+
+        Sanctum::actingAs($a);
+        $this->deleteJson('/api/v1/friends/'.$b->id)
+            ->assertOk()
+            ->assertJsonFragment(['message' => 'Запит скасовано.']);
+
+        $this->assertDatabaseMissing('friendships', [
+            'requester_id' => $a->id,
+            'addressee_id' => $b->id,
+        ]);
+    }
+
+    public function test_destroy_returns_404_when_no_row(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        Sanctum::actingAs($a);
+        $this->deleteJson('/api/v1/friends/'.$b->id)
+            ->assertStatus(404);
+    }
 }

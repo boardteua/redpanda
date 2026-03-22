@@ -163,4 +163,50 @@ class FriendController extends Controller
 
         return response()->json(['message' => 'Запит відхилено.']);
     }
+
+    /**
+     * Скасувати вихідний запит, прибрати прийняту дружбу або видалити запис про відхилений запит (T50).
+     */
+    public function destroy(Request $request, User $user): JsonResponse
+    {
+        $self = $request->user();
+        if ((int) $user->id === (int) $self->id) {
+            return response()->json(['message' => 'Неможливо застосувати до себе.'], 422);
+        }
+
+        $forward = Friendship::query()
+            ->where('requester_id', $self->id)
+            ->where('addressee_id', $user->id)
+            ->first();
+
+        $reverse = Friendship::query()
+            ->where('requester_id', $user->id)
+            ->where('addressee_id', $self->id)
+            ->first();
+
+        $row = $forward ?? $reverse;
+        if ($row === null) {
+            return response()->json(['message' => 'Зв’язок дружби з цим користувачем не знайдено.'], 404);
+        }
+
+        if ($row->status === Friendship::STATUS_ACCEPTED) {
+            $row->delete();
+
+            return response()->json(['message' => 'Користувача прибрано з друзів.']);
+        }
+
+        if ($row->status === Friendship::STATUS_PENDING) {
+            $row->delete();
+
+            return response()->json(['message' => 'Запит скасовано.']);
+        }
+
+        if ($row->status === Friendship::STATUS_REJECTED) {
+            $row->delete();
+
+            return response()->json(['message' => 'Запис видалено.']);
+        }
+
+        return response()->json(['message' => 'Неможливо видалити цей запис.'], 422);
+    }
 }

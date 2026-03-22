@@ -92,6 +92,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::get('friends/requests/outgoing', [FriendController::class, 'outgoing']);
         Route::post('friends/{user}/accept', [FriendController::class, 'accept']);
         Route::post('friends/{user}/reject', [FriendController::class, 'reject']);
+        Route::middleware('throttle:private-post')->delete('friends/{user}', [FriendController::class, 'destroy']);
         Route::post('friends/{user}', [FriendController::class, 'store']);
 
         Route::get('ignores', [IgnoreController::class, 'index']);

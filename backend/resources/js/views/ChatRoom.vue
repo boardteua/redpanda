@@ -1522,12 +1522,33 @@ export default {
 
                 return;
             }
+            const t = { ...target };
+            if (t.id != null) {
+                t.friendship = this.friendshipStateForUserId(t.id);
+            }
             this.badgeMenu = {
                 mode: 'other',
-                target: { ...target },
+                target: t,
                 rowKey,
                 returnFocusEl: el,
             };
+        },
+        friendshipStateForUserId(id) {
+            if (id == null) {
+                return null;
+            }
+            const n = Number(id);
+            if (this.friendsAccepted.some((f) => Number(f.user.id) === n)) {
+                return 'accepted';
+            }
+            if (this.friendsIncoming.some((r) => Number(r.user.id) === n)) {
+                return 'pending_in';
+            }
+            if (this.friendsOutgoing.some((r) => Number(r.user.id) === n)) {
+                return 'pending_out';
+            }
+
+            return null;
         },
         insertFeedReplyPrefix(userName) {
             if (!this.user || userName == null || userName === '') {
@@ -1690,6 +1711,25 @@ export default {
 
                 return;
             }
+            if (id === 'unfriend' || id === 'cancel-friend') {
+                this.removeOrCancelFriendshipFromMenuTarget(bm.target);
+
+                return;
+            }
+            if (id === 'accept-friend') {
+                if (bm.target && bm.target.id != null) {
+                    this.acceptFriend(bm.target.id);
+                }
+
+                return;
+            }
+            if (id === 'reject-friend') {
+                if (bm.target && bm.target.id != null) {
+                    this.rejectFriend(bm.target.id);
+                }
+
+                return;
+            }
             if (id === 'mute') {
                 this.modMuteFromMenuTarget(bm.target);
 
@@ -1741,8 +1781,27 @@ export default {
                 await window.axios.post(`/api/v1/friends/${t.id}`);
                 this.loadError = '';
                 await this.loadFriendsAndIgnores();
+                this.sidebarTab = 'friends';
+                this.friendsSubTab = 'pending';
             } catch (e) {
                 this.loadError = e.response?.data?.message || 'Не вдалося надіслати запит у друзі.';
+            }
+        },
+        async removeOrCancelFriendshipFromMenuTarget(t) {
+            if (!t || t.id == null) {
+                return;
+            }
+            const wasOutgoingPending = this.friendshipStateForUserId(t.id) === 'pending_out';
+            await this.ensureSanctum();
+            try {
+                await window.axios.delete(`/api/v1/friends/${t.id}`);
+                this.loadError = '';
+                await this.loadFriendsAndIgnores();
+                this.sidebarTab = 'friends';
+                this.friendsSubTab = wasOutgoingPending ? 'pending' : 'active';
+            } catch (e) {
+                this.loadError =
+                    e.response?.data?.message || 'Не вдалося оновити список друзів.';
             }
         },
         async modMuteFromMenuTarget(t) {
@@ -1882,6 +1941,8 @@ export default {
             try {
                 await window.axios.post(`/api/v1/friends/${userId}/accept`);
                 await this.loadFriendsAndIgnores();
+                this.sidebarTab = 'friends';
+                this.friendsSubTab = 'active';
             } catch (e) {
                 this.loadError = e.response?.data?.message || 'Не вдалося прийняти запит.';
             }
@@ -1891,6 +1952,8 @@ export default {
             try {
                 await window.axios.post(`/api/v1/friends/${userId}/reject`);
                 await this.loadFriendsAndIgnores();
+                this.sidebarTab = 'friends';
+                this.friendsSubTab = 'pending';
             } catch (e) {
                 this.loadError = e.response?.data?.message || 'Не вдалося відхилити запит.';
             }
