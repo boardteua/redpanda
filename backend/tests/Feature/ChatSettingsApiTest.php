@@ -105,4 +105,24 @@ class ChatSettingsApiTest extends TestCase
             ->getJson('/api/v1/chat/settings')
             ->assertUnauthorized();
     }
+
+    public function test_admin_cannot_set_message_count_room_to_non_public_room(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $vipRoom = Room::query()->create([
+            'room_name' => 'VIP only',
+            'topic' => null,
+            'access' => Room::ACCESS_VIP,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'public_message_count_scope' => ChatSetting::SCOPE_DEFAULT_ROOM_ONLY,
+                'message_count_room_id' => $vipRoom->room_id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['message_count_room_id']);
+    }
 }

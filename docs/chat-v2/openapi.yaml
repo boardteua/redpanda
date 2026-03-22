@@ -1346,6 +1346,7 @@ components:
         message_count_room_id:
           type: integer
           nullable: true
+          description: Лише `rooms` з `access === 0` (публічна); інакше 422.
 
     PatchChatMessageRequest:
       type: object
