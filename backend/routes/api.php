@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatArchiveController;
 use App\Http\Controllers\Api\V1\ChatImageController;
 use App\Http\Controllers\Api\V1\ChatMessageController;
+use App\Http\Controllers\Api\V1\ChatSettingsController;
 use App\Http\Controllers\Api\V1\FriendController;
 use App\Http\Controllers\Api\V1\IgnoreController;
 use App\Http\Controllers\Api\V1\MeAccountController;
@@ -37,7 +38,10 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::middleware('throttle:chat-read')->group(function (): void {
             Route::get('rooms', [RoomController::class, 'index']);
             Route::get('rooms/{room}/messages', [ChatMessageController::class, 'index']);
+            Route::get('chat/settings', [ChatSettingsController::class, 'show']);
         });
+
+        Route::middleware(['can:chat-admin', 'throttle:mod-actions'])->patch('chat/settings', [ChatSettingsController::class, 'update']);
 
         Route::middleware('throttle:archive-read')->get('archive/messages', [ChatArchiveController::class, 'index']);
 

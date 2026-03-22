@@ -137,11 +137,11 @@
             @close="closeUserInfoModal"
             @cycle-theme="cycleTheme"
         />
-        <SimpleStubModal
-            :open="adminSettingsStubOpen"
-            title="Налаштування чату"
-            body="Екран адміністратора чату ще в розробці (TODO після узгодження з бекендом). Тут з’являться кімнати, модерація та глобальні параметри."
-            @close="adminSettingsStubOpen = false"
+        <ChatSettingsModal
+            :open="chatSettingsModalOpen"
+            :rooms="rooms"
+            :ensure-sanctum="ensureSanctum"
+            @close="chatSettingsModalOpen = false"
         />
         <UserProfileModal
             :open="profileModalOpen"
@@ -186,7 +186,7 @@ import ChatRoomSidebar from '../components/chat/ChatRoomSidebar.vue';
 import ConfirmDialogModal from '../components/ConfirmDialogModal.vue';
 import CommandsHelpModal from '../components/CommandsHelpModal.vue';
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
-import SimpleStubModal from '../components/SimpleStubModal.vue';
+import ChatSettingsModal from '../components/ChatSettingsModal.vue';
 import UserProfileModal from '../components/UserProfileModal.vue';
 import UserInfoModal from '../components/UserInfoModal.vue';
 import { createEcho } from '../lib/echo';
@@ -352,7 +352,7 @@ export default {
         ConfirmDialogModal,
         CommandsHelpModal,
         PrivateChatPanel,
-        SimpleStubModal,
+        ChatSettingsModal,
         UserProfileModal,
         UserInfoModal,
     },
@@ -390,7 +390,7 @@ export default {
             userInfoModalOpen: false,
             userInfoModalMode: 'self',
             userInfoModalTarget: null,
-            adminSettingsStubOpen: false,
+            chatSettingsModalOpen: false,
             profileModalOpen: false,
             deleteConfirmOpen: false,
             deleteConfirmTarget: null,
@@ -1334,7 +1334,7 @@ export default {
                 return;
             }
             if (id === 'settings') {
-                this.adminSettingsStubOpen = true;
+                this.chatSettingsModalOpen = true;
 
                 return;
             }

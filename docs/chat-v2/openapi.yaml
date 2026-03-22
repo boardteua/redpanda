@@ -548,6 +548,57 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/chat/settings:
+    get:
+      tags: [Chat]
+      summary: Глобальні опції чату (зріз для клієнта)
+      description: |
+        Поріг **N** і область лічби публічних повідомлень для права створення кімнат (**T51** / **T44**).
+        Доступно будь-якому авторизованому користувачу (у т.ч. гостю); без PII.
+      operationId: getChatSettings
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Поточні значення
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags: [Chat]
+      summary: Оновити глобальні опції чату
+      description: Лише **адміністратор чату** (`chat-admin`).
+      operationId: patchChatSettings
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchChatSettingsRequest"
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/archive/messages:
     get:
       tags: [Chat]
@@ -1255,6 +1306,46 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Room"
+
+    ChatSettingsData:
+      type: object
+      required:
+        - room_create_min_public_messages
+        - public_message_count_scope
+      properties:
+        room_create_min_public_messages:
+          type: integer
+          minimum: 0
+          description: Мінімальна кількість публічних повідомлень; право створення кімнати при лічильнику **> N** (**T44**).
+        public_message_count_scope:
+          type: string
+          enum: [all_public_rooms, default_room_only]
+          description: Усі публічні кімнати vs одна обрана кімната для лічби.
+        message_count_room_id:
+          type: integer
+          nullable: true
+          description: Якщо scope = `default_room_only` — `room_id` публічної кімнати; інакше null.
+
+    ChatSettingsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatSettingsData"
+
+    PatchChatSettingsRequest:
+      type: object
+      properties:
+        room_create_min_public_messages:
+          type: integer
+          minimum: 0
+          maximum: 99999999
+        public_message_count_scope:
+          type: string
+          enum: [all_public_rooms, default_room_only]
+        message_count_room_id:
+          type: integer
+          nullable: true
 
     PatchChatMessageRequest:
       type: object
