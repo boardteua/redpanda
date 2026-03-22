@@ -624,9 +624,31 @@
                             Додати кімнату
                         </button>
                     </div>
+                    <div class="mb-3">
+                        <label class="rp-label" for="chat-panel-rooms-search">Пошук кімнат</label>
+                        <input
+                            id="chat-panel-rooms-search"
+                            v-model="roomSearchInput"
+                            type="search"
+                            autocomplete="off"
+                            class="rp-input rp-focusable w-full"
+                            placeholder="Назва або опис…"
+                            aria-label="Швидкий пошук по кімнатах"
+                            aria-describedby="chat-panel-rooms-search-hint"
+                        />
+                        <p id="chat-panel-rooms-search-hint" class="rp-sr-only">
+                            Фільтрує список за назвою та описом кімнати без перезавантаження сторінки.
+                        </p>
+                    </div>
                     <p v-if="loadingRooms" class="text-[var(--rp-chat-sidebar-muted)]">Завантаження…</p>
+                    <p
+                        v-else-if="roomSearchNoResults"
+                        class="py-6 text-center text-[var(--rp-chat-sidebar-muted)]"
+                    >
+                        Немає кімнат за запитом
+                    </p>
                     <ul v-else class="space-y-2">
-                        <li v-for="r in rooms" :key="r.room_id" class="flex items-stretch gap-1">
+                        <li v-for="r in filteredRooms" :key="r.room_id" class="flex items-stretch gap-1">
                             <button
                                 type="button"
                                 class="rp-focusable rp-chat-side-room-btn min-w-0 flex-1 rounded-md border-2 px-3 py-2 text-left transition-colors"
@@ -786,7 +808,43 @@ export default {
         ignores: { type: Array, default: () => [] },
         ignoresWithMenuPeer: { type: Array, default: () => [] },
     },
+    data() {
+        return {
+            /** T59: введення до debounce */
+            roomSearchInput: '',
+            /** T59: значення для фільтра після debounce (мс див. watch) */
+            roomSearchDebounced: '',
+            roomSearchDebounceTimer: null,
+        };
+    },
     computed: {
+        /** T59: кімнати за назвою та topic (клієнтський фільтр). */
+        filteredRooms() {
+            const list = this.rooms || [];
+            const q = (this.roomSearchDebounced || '').trim().toLowerCase();
+            if (!q) {
+                return list;
+            }
+
+            return list.filter((r) => {
+                const name = String(r.room_name || '').toLowerCase();
+                const topic = String(r.topic || '').toLowerCase();
+
+                return name.includes(q) || topic.includes(q);
+            });
+        },
+        roomSearchNoResults() {
+            if (this.loadingRooms) {
+                return false;
+            }
+            const q = (this.roomSearchDebounced || '').trim();
+            const list = this.rooms || [];
+            if (!q || list.length === 0) {
+                return false;
+            }
+
+            return this.filteredRooms.length === 0;
+        },
         privateUnreadBadgeText() {
             const n = this.privateUnreadTotal;
             if (!n) {
@@ -821,6 +879,22 @@ export default {
                 };
             });
         },
+    },
+    watch: {
+        roomSearchInput(val) {
+            if (this.roomSearchDebounceTimer) {
+                clearTimeout(this.roomSearchDebounceTimer);
+            }
+            this.roomSearchDebounceTimer = setTimeout(() => {
+                this.roomSearchDebounced = String(val || '').trim();
+                this.roomSearchDebounceTimer = null;
+            }, 250);
+        },
+    },
+    beforeDestroy() {
+        if (this.roomSearchDebounceTimer) {
+            clearTimeout(this.roomSearchDebounceTimer);
+        }
     },
     methods: {
         formatPrivateUnread(n) {
