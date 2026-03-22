@@ -196,6 +196,9 @@ export default {
             if (menu && menu.contains(e.target)) {
                 return;
             }
+            if (e.target.closest && e.target.closest('[data-rp-user-badge-menu-trigger]')) {
+                return;
+            }
             this.$emit('close');
         },
         onDocKeydown(e) {
