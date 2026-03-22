@@ -545,95 +545,38 @@
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'users' ? 'false' : 'true'"
                 >
-                    <!-- Мобільний референс: рядок «я» + жовтий блок швидких дій -->
-                    <div v-if="user" class="mb-4 space-y-2 md:hidden">
-                        <div class="flex items-center gap-1">
-                            <div
-                                class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5"
-                                style="background: var(--rp-burger-self-bar-bg)"
-                            >
-                                <UserAvatar
-                                    :src="user.avatar_url || ''"
-                                    :name="user.user_name"
-                                    variant="sidebar"
-                                    decorative
+                    <!-- Мобільний рядок «я» + інлайн-сендвіч (жовтий блок під рядком, як у референсі board.te.ua) -->
+                    <div v-if="user" class="mb-4 md:hidden">
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center gap-1">
+                                <div
+                                    class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5"
+                                    style="background: var(--rp-burger-self-bar-bg)"
+                                >
+                                    <UserAvatar
+                                        :src="user.avatar_url || ''"
+                                        :name="user.user_name"
+                                        variant="sidebar"
+                                        decorative
+                                    />
+                                    <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                        user.user_name
+                                    }}</span>
+                                </div>
+                                <SidebarHamburgerTrigger
+                                    :expanded="sidebarBadgeMenuOpen('self-m')"
+                                    aria-label="Меню дій для вашого профілю"
+                                    @activate="openSelfBadgeMenu($event, 'self-m')"
                                 />
-                                <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
-                                    user.user_name
-                                }}</span>
                             </div>
-                            <SidebarHamburgerTrigger
-                                :expanded="badgeMenuOpenSelf()"
-                                aria-label="Меню дій для вашого профілю"
-                                @activate="openSelfBadgeMenu"
+                            <UserBadgeInlineActionPanel
+                                v-if="sidebarBadgeMenuOpen('self-m') && user"
+                                :mode="badgeMenu.mode"
+                                :viewer="user"
+                                :target="null"
+                                @pick="onSidebarBadgeMenuPick"
+                                @close="closeSidebarBadgeMenu"
                             />
-                        </div>
-                        <div
-                            class="overflow-hidden rounded-xl shadow-sm"
-                            style="
-                                background: var(--rp-burger-accent-bg);
-                                color: var(--rp-burger-accent-fg);
-                                border: 1px solid var(--rp-burger-accent-divider);
-                            "
-                        >
-                            <button
-                                type="button"
-                                class="rp-focusable flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-medium transition-colors"
-                                style="color: var(--rp-burger-accent-fg)"
-                                @click="openBurgerQuickInfo"
-                            >
-                                Інформація
-                            </button>
-                            <div class="h-px" style="background: var(--rp-burger-accent-divider)" />
-                            <button
-                                type="button"
-                                class="rp-focusable flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-medium transition-colors hover:brightness-95"
-                                style="color: var(--rp-burger-accent-fg)"
-                                @click="openBurgerQuickCommands"
-                            >
-                                <svg
-                                    class="h-5 w-5 shrink-0 opacity-90"
-                                    aria-hidden="true"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"
-                                    />
-                                </svg>
-                                Команди
-                            </button>
-                            <div class="h-px" style="background: var(--rp-burger-accent-divider)" />
-                            <button
-                                v-if="user && !user.guest"
-                                type="button"
-                                class="rp-focusable flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-medium transition-colors hover:brightness-95"
-                                style="color: var(--rp-burger-accent-fg)"
-                                @click="openBurgerQuickProfile"
-                            >
-                                <svg
-                                    class="h-5 w-5 shrink-0 opacity-90"
-                                    aria-hidden="true"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                                    />
-                                </svg>
-                                Профіль
-                            </button>
-                            <template v-if="user && user.chat_role === 'admin'">
-                                <div class="h-px" style="background: var(--rp-burger-accent-divider)" />
-                                <button
-                                    type="button"
-                                    class="rp-focusable flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-medium transition-colors hover:brightness-95"
-                                    style="color: var(--rp-burger-accent-fg)"
-                                    @click="openBurgerQuickAdminSettings"
-                                >
-                                    Налаштування чату
-                                </button>
-                            </template>
                         </div>
                     </div>
                     <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-chat-sidebar-muted)]">
@@ -660,11 +603,19 @@
                                     <span class="text-xs text-[var(--rp-chat-sidebar-muted)]">(ви)</span>
                                 </div>
                                 <SidebarHamburgerTrigger
-                                    :expanded="badgeMenuOpenSelf()"
+                                    :expanded="sidebarBadgeMenuOpen('self-d')"
                                     aria-label="Меню дій для вашого профілю"
-                                    @activate="openSelfBadgeMenu"
+                                    @activate="openSelfBadgeMenu($event, 'self-d')"
                                 />
                             </div>
+                            <UserBadgeInlineActionPanel
+                                v-if="sidebarBadgeMenuOpen('self-d') && user"
+                                :mode="badgeMenu.mode"
+                                :viewer="user"
+                                :target="null"
+                                @pick="onSidebarBadgeMenuPick"
+                                @close="closeSidebarBadgeMenu"
+                            />
                         </li>
                     </ul>
                     <ul
@@ -675,7 +626,7 @@
                         <li
                             v-for="p in roomPresencePeers"
                             :key="'presence-' + p.id"
-                            class="rp-chat-side-card rounded-md border px-2 py-2"
+                            class="rp-chat-side-card flex flex-col rounded-md border px-2 py-2"
                         >
                             <div class="flex items-center gap-1">
                                 <div class="flex min-w-0 flex-1 items-center gap-2">
@@ -703,11 +654,19 @@
                                     </span>
                                 </div>
                                 <SidebarHamburgerTrigger
-                                    :expanded="badgeMenuOpenForPeer(p)"
+                                    :expanded="sidebarBadgeMenuOpen(sidebarPresenceMenuRowKey(p))"
                                     :aria-label="'Меню дій для ' + p.user_name"
-                                    @activate="openPeerBadgeMenu($event, p)"
+                                    @activate="openPeerBadgeMenu($event, p, sidebarPresenceMenuRowKey(p))"
                                 />
                             </div>
+                            <UserBadgeInlineActionPanel
+                                v-if="sidebarBadgeMenuOpen(sidebarPresenceMenuRowKey(p)) && user"
+                                :mode="badgeMenu.mode"
+                                :viewer="user"
+                                :target="badgeMenu.target"
+                                @pick="onSidebarBadgeMenuPick"
+                                @close="closeSidebarBadgeMenu"
+                            />
                         </li>
                     </ul>
                     <p
@@ -781,32 +740,42 @@
                             <li
                                 v-for="f in friendsAcceptedWithMenuPeer"
                                 :key="f.user.id"
-                                class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
+                                class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
                             >
-                                <div class="flex min-w-0 flex-1 items-center gap-1">
-                                    <div class="flex min-w-0 flex-1 items-center gap-2">
-                                        <UserAvatar
-                                            :name="f.user.user_name"
-                                            variant="sidebar"
-                                            decorative
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex min-w-0 flex-1 items-center gap-1">
+                                        <div class="flex min-w-0 flex-1 items-center gap-2">
+                                            <UserAvatar
+                                                :name="f.user.user_name"
+                                                variant="sidebar"
+                                                decorative
+                                            />
+                                            <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                                f.user.user_name
+                                            }}</span>
+                                        </div>
+                                        <SidebarHamburgerTrigger
+                                            :expanded="sidebarBadgeMenuOpen('friend-' + f.user.id)"
+                                            :aria-label="'Меню дій для ' + f.user.user_name"
+                                            @activate="openPeerBadgeMenu($event, f.menuPeer, 'friend-' + f.user.id)"
                                         />
-                                        <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
-                                            f.user.user_name
-                                        }}</span>
                                     </div>
-                                    <SidebarHamburgerTrigger
-                                        :expanded="badgeMenuOpenForPeer(f.menuPeer)"
-                                        :aria-label="'Меню дій для ' + f.user.user_name"
-                                        @activate="openPeerBadgeMenu($event, f.menuPeer)"
-                                    />
+                                    <button
+                                        type="button"
+                                        class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-sm"
+                                        @click="openPrivatePeer(f.user)"
+                                    >
+                                        Приват
+                                    </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-sm"
-                                    @click="openPrivatePeer(f.user)"
-                                >
-                                    Приват
-                                </button>
+                                <UserBadgeInlineActionPanel
+                                    v-if="sidebarBadgeMenuOpen('friend-' + f.user.id) && user"
+                                    :mode="badgeMenu.mode"
+                                    :viewer="user"
+                                    :target="badgeMenu.target"
+                                    @pick="onSidebarBadgeMenuPick"
+                                    @close="closeSidebarBadgeMenu"
+                                />
                             </li>
                         </ul>
                     </template>
@@ -824,39 +793,49 @@
                             <li
                                 v-for="r in friendsIncomingWithMenuPeer"
                                 :key="'in-' + r.user.id"
-                                class="rp-chat-side-card flex flex-wrap items-center gap-2 rounded-md border px-2 py-2"
+                                class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
                             >
-                                <div class="flex min-w-0 flex-1 basis-full items-center gap-1 sm:basis-auto">
-                                    <div class="flex min-w-0 flex-1 items-center gap-2">
-                                        <UserAvatar
-                                            :name="r.user.user_name"
-                                            variant="sidebar"
-                                            decorative
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <div class="flex min-w-0 flex-1 basis-full items-center gap-1 sm:basis-auto">
+                                        <div class="flex min-w-0 flex-1 items-center gap-2">
+                                            <UserAvatar
+                                                :name="r.user.user_name"
+                                                variant="sidebar"
+                                                decorative
+                                            />
+                                            <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                                r.user.user_name
+                                            }}</span>
+                                        </div>
+                                        <SidebarHamburgerTrigger
+                                            :expanded="sidebarBadgeMenuOpen('fin-' + r.user.id)"
+                                            :aria-label="'Меню дій для ' + r.user.user_name"
+                                            @activate="openPeerBadgeMenu($event, r.menuPeer, 'fin-' + r.user.id)"
                                         />
-                                        <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
-                                            r.user.user_name
-                                        }}</span>
                                     </div>
-                                    <SidebarHamburgerTrigger
-                                        :expanded="badgeMenuOpenForPeer(r.menuPeer)"
-                                        :aria-label="'Меню дій для ' + r.user.user_name"
-                                        @activate="openPeerBadgeMenu($event, r.menuPeer)"
-                                    />
+                                    <button
+                                        type="button"
+                                        class="rp-focusable rp-btn rp-btn-primary shrink-0 text-xs"
+                                        @click="acceptFriend(r.user.id)"
+                                    >
+                                        Прийняти
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-xs"
+                                        @click="rejectFriend(r.user.id)"
+                                    >
+                                        Відхилити
+                                    </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    class="rp-focusable rp-btn rp-btn-primary shrink-0 text-xs"
-                                    @click="acceptFriend(r.user.id)"
-                                >
-                                    Прийняти
-                                </button>
-                                <button
-                                    type="button"
-                                    class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-xs"
-                                    @click="rejectFriend(r.user.id)"
-                                >
-                                    Відхилити
-                                </button>
+                                <UserBadgeInlineActionPanel
+                                    v-if="sidebarBadgeMenuOpen('fin-' + r.user.id) && user"
+                                    :mode="badgeMenu.mode"
+                                    :viewer="user"
+                                    :target="badgeMenu.target"
+                                    @pick="onSidebarBadgeMenuPick"
+                                    @close="closeSidebarBadgeMenu"
+                                />
                             </li>
                         </ul>
                         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-chat-sidebar-muted)]">
@@ -874,19 +853,29 @@
                                 :key="'out-' + r.user.id"
                                 class="text-sm text-[var(--rp-chat-sidebar-fg)]"
                             >
-                                <div class="flex items-center gap-1 rounded-md py-1">
-                                    <div class="flex min-w-0 flex-1 items-center gap-2">
-                                        <UserAvatar
-                                            :name="r.user.user_name"
-                                            variant="sidebar"
-                                            decorative
+                                <div class="flex flex-col gap-2 rounded-md py-1">
+                                    <div class="flex items-center gap-1">
+                                        <div class="flex min-w-0 flex-1 items-center gap-2">
+                                            <UserAvatar
+                                                :name="r.user.user_name"
+                                                variant="sidebar"
+                                                decorative
+                                            />
+                                            <span class="truncate">{{ r.user.user_name }}</span>
+                                        </div>
+                                        <SidebarHamburgerTrigger
+                                            :expanded="sidebarBadgeMenuOpen('fout-' + r.user.id)"
+                                            :aria-label="'Меню дій для ' + r.user.user_name"
+                                            @activate="openPeerBadgeMenu($event, r.menuPeer, 'fout-' + r.user.id)"
                                         />
-                                        <span class="truncate">{{ r.user.user_name }}</span>
                                     </div>
-                                    <SidebarHamburgerTrigger
-                                        :expanded="badgeMenuOpenForPeer(r.menuPeer)"
-                                        :aria-label="'Меню дій для ' + r.user.user_name"
-                                        @activate="openPeerBadgeMenu($event, r.menuPeer)"
+                                    <UserBadgeInlineActionPanel
+                                        v-if="sidebarBadgeMenuOpen('fout-' + r.user.id) && user"
+                                        :mode="badgeMenu.mode"
+                                        :viewer="user"
+                                        :target="badgeMenu.target"
+                                        @pick="onSidebarBadgeMenuPick"
+                                        @close="closeSidebarBadgeMenu"
                                     />
                                 </div>
                             </li>
@@ -915,16 +904,11 @@
                                 v-if="row.menuPeer"
                                 class="rp-chat-side-room-btn flex w-full items-stretch gap-2 rounded-md border-2 px-3 py-2"
                             >
-                                <div class="flex shrink-0 items-start gap-1 pt-0.5">
+                                <div class="flex shrink-0 items-start pt-0.5">
                                     <UserAvatar
                                         :name="row.c.peer.user_name"
                                         variant="sidebar"
                                         decorative
-                                    />
-                                    <SidebarHamburgerTrigger
-                                        :expanded="badgeMenuOpenForPeer(row.menuPeer)"
-                                        :aria-label="'Меню дій для ' + row.c.peer.user_name"
-                                        @activate="openPeerBadgeMenu($event, row.menuPeer)"
                                     />
                                 </div>
                                 <button
@@ -999,32 +983,42 @@
                         <li
                             v-for="row in ignoresWithMenuPeer"
                             :key="row.user.id"
-                            class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
+                            class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
                         >
-                            <div class="flex min-w-0 flex-1 items-center gap-1">
-                                <div class="flex min-w-0 flex-1 items-center gap-2">
-                                    <UserAvatar
-                                        :name="row.user.user_name"
-                                        variant="sidebar"
-                                        decorative
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex min-w-0 flex-1 items-center gap-1">
+                                    <div class="flex min-w-0 flex-1 items-center gap-2">
+                                        <UserAvatar
+                                            :name="row.user.user_name"
+                                            variant="sidebar"
+                                            decorative
+                                        />
+                                        <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                            row.user.user_name
+                                        }}</span>
+                                    </div>
+                                    <SidebarHamburgerTrigger
+                                        :expanded="sidebarBadgeMenuOpen('ign-' + row.user.id)"
+                                        :aria-label="'Меню дій для ' + row.user.user_name"
+                                        @activate="openPeerBadgeMenu($event, row.menuPeer, 'ign-' + row.user.id)"
                                     />
-                                    <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
-                                        row.user.user_name
-                                    }}</span>
                                 </div>
-                                <SidebarHamburgerTrigger
-                                    :expanded="badgeMenuOpenForPeer(row.menuPeer)"
-                                    :aria-label="'Меню дій для ' + row.user.user_name"
-                                    @activate="openPeerBadgeMenu($event, row.menuPeer)"
-                                />
+                                <button
+                                    type="button"
+                                    class="rp-focusable shrink-0 text-sm font-semibold text-[var(--rp-chat-sidebar-link)] hover:text-[var(--rp-chat-sidebar-link-hover)] hover:underline"
+                                    @click="removeIgnore(row.user.id)"
+                                >
+                                    Зняти
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                class="rp-focusable shrink-0 text-sm font-semibold text-[var(--rp-chat-sidebar-link)] hover:text-[var(--rp-chat-sidebar-link-hover)] hover:underline"
-                                @click="removeIgnore(row.user.id)"
-                            >
-                                Зняти
-                            </button>
+                            <UserBadgeInlineActionPanel
+                                v-if="sidebarBadgeMenuOpen('ign-' + row.user.id) && user"
+                                :mode="badgeMenu.mode"
+                                :viewer="user"
+                                :target="badgeMenu.target"
+                                @pick="onSidebarBadgeMenuPick"
+                                @close="closeSidebarBadgeMenu"
+                            />
                         </li>
                     </ul>
                 </div>
@@ -1045,16 +1039,6 @@
         </aside>
         </div>
 
-        <UserBadgeContextMenu
-            v-if="badgeMenu && user"
-            :anchor-rect="badgeMenu.anchorRect"
-            :mode="badgeMenu.mode"
-            :viewer="user"
-            :target="badgeMenu.target"
-            :return-focus-el="badgeMenu.returnFocusEl"
-            @close="badgeMenu = null"
-            @pick="onBadgeMenuPick"
-        />
         <CommandsHelpModal :open="commandsHelpOpen" @close="commandsHelpOpen = false" />
         <UserInfoModal
             :open="userInfoModalOpen"
@@ -1098,7 +1082,7 @@ import CommandsHelpModal from '../components/CommandsHelpModal.vue';
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
 import SimpleStubModal from '../components/SimpleStubModal.vue';
 import UserProfileModal from '../components/UserProfileModal.vue';
-import UserBadgeContextMenu from '../components/UserBadgeContextMenu.vue';
+import UserBadgeInlineActionPanel from '../components/UserBadgeInlineActionPanel.vue';
 import SidebarHamburgerTrigger from '../components/SidebarHamburgerTrigger.vue';
 import UserInfoModal from '../components/UserInfoModal.vue';
 import { createEcho } from '../lib/echo';
@@ -1224,7 +1208,7 @@ export default {
         PrivateChatPanel,
         SimpleStubModal,
         UserProfileModal,
-        UserBadgeContextMenu,
+        UserBadgeInlineActionPanel,
         SidebarHamburgerTrigger,
         UserInfoModal,
     },
@@ -1359,11 +1343,20 @@ export default {
             this.syncBodyScrollLock(this.panelOpen && this.isNarrowViewport);
         },
         sidebarTab(to) {
+            this.badgeMenu = null;
             if (to === 'private') {
                 this.loadConversations();
             }
             if (to === 'friends' || to === 'ignore') {
                 this.loadFriendsAndIgnores();
+            }
+        },
+        badgeMenu(to) {
+            document.removeEventListener('mousedown', this.onSidebarBadgeMenuDocMouseDown, true);
+            document.removeEventListener('keydown', this.onSidebarBadgeMenuDocKeydown, true);
+            if (to) {
+                document.addEventListener('mousedown', this.onSidebarBadgeMenuDocMouseDown, true);
+                document.addEventListener('keydown', this.onSidebarBadgeMenuDocKeydown, true);
             }
         },
         /** Зміна акаунту / вихід без повного reload: перепідписати приватний канал user.{id}. */
@@ -1399,6 +1392,8 @@ export default {
         window.addEventListener('keydown', this.onGlobalKeydown);
     },
     beforeDestroy() {
+        document.removeEventListener('mousedown', this.onSidebarBadgeMenuDocMouseDown, true);
+        document.removeEventListener('keydown', this.onSidebarBadgeMenuDocKeydown, true);
         window.removeEventListener('keydown', this.onGlobalKeydown);
         this.teardownMediaQuery();
         document.body.style.overflow = '';
@@ -1937,42 +1932,67 @@ export default {
                 this.loadError = e.response?.data?.message || 'Користувача не знайдено.';
             }
         },
-        peerTargetFromFriendRow(u) {
-            return peerTargetFromFriendUserPayload(u);
+        sidebarBadgeMenuOpen(rowKey) {
+            return Boolean(this.badgeMenu && this.badgeMenu.rowKey === rowKey);
         },
-        peerTargetFromConversationPeer(p) {
-            return peerTargetFromConversationPeerPayload(p);
-        },
-        sameBadgeMenuPeer(a, b) {
-            if (!a || !b) {
-                return false;
+        sidebarPresenceMenuRowKey(p) {
+            if (!p) {
+                return 'presence-null';
             }
-            if (a.id != null && b.id != null) {
-                return Number(a.id) === Number(b.id);
+            if (p.id != null) {
+                return `presence-${p.id}`;
             }
 
-            return String(a.user_name || '') === String(b.user_name || '');
-        },
-        badgeMenuOpenSelf() {
-            return Boolean(this.badgeMenu && this.badgeMenu.mode === 'self');
-        },
-        badgeMenuOpenForPeer(target) {
-            if (!this.badgeMenu || this.badgeMenu.mode !== 'other' || !this.badgeMenu.target || !target) {
-                return false;
-            }
+            const slug = String(p.user_name || 'guest')
+                .replace(/\s+/g, '_')
+                .replace(/[^a-zA-Z0-9_-]/g, '')
+                .slice(0, 48);
 
-            return this.sameBadgeMenuPeer(this.badgeMenu.target, target);
+            return `presence-g-${slug || 'x'}`;
         },
-        openSelfBadgeMenu(evt) {
-            if (!this.user || !evt || !evt.currentTarget) {
+        closeSidebarBadgeMenu() {
+            const rf = this.badgeMenu && this.badgeMenu.returnFocusEl;
+            this.badgeMenu = null;
+            this.$nextTick(() => {
+                if (rf && typeof rf.focus === 'function') {
+                    try {
+                        rf.focus();
+                    } catch {
+                        /* */
+                    }
+                }
+            });
+        },
+        onSidebarBadgeMenuDocMouseDown(e) {
+            if (!this.badgeMenu) {
+                return;
+            }
+            if (e.target.closest && e.target.closest('[data-rp-user-badge-menu-trigger]')) {
+                return;
+            }
+            if (e.target.closest && e.target.closest('[data-rp-user-badge-inline-menu]')) {
+                return;
+            }
+            this.closeSidebarBadgeMenu();
+        },
+        onSidebarBadgeMenuDocKeydown(e) {
+            if (e.key !== 'Escape' || !this.badgeMenu) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            this.closeSidebarBadgeMenu();
+        },
+        onSidebarBadgeMenuPick(id) {
+            this.onBadgeMenuPick(id);
+            this.badgeMenu = null;
+        },
+        openSelfBadgeMenu(evt, rowKey) {
+            if (!this.user || !evt || !evt.currentTarget || !rowKey) {
                 return;
             }
             const el = evt.currentTarget;
-            if (
-                this.badgeMenu &&
-                this.badgeMenu.mode === 'self' &&
-                this.badgeMenu.returnFocusEl === el
-            ) {
+            if (this.badgeMenu && this.badgeMenu.rowKey === rowKey && this.badgeMenu.returnFocusEl === el) {
                 this.badgeMenu = null;
 
                 return;
@@ -1980,22 +2000,16 @@ export default {
             this.badgeMenu = {
                 mode: 'self',
                 target: null,
-                anchorRect: el.getBoundingClientRect(),
+                rowKey,
                 returnFocusEl: el,
             };
         },
-        openPeerBadgeMenu(evt, target) {
-            if (!this.user || !target || !evt || !evt.currentTarget) {
+        openPeerBadgeMenu(evt, target, rowKey) {
+            if (!this.user || !target || !evt || !evt.currentTarget || !rowKey) {
                 return;
             }
             const el = evt.currentTarget;
-            if (
-                this.badgeMenu &&
-                this.badgeMenu.mode === 'other' &&
-                this.badgeMenu.returnFocusEl === el &&
-                this.badgeMenu.target &&
-                this.sameBadgeMenuPeer(this.badgeMenu.target, target)
-            ) {
+            if (this.badgeMenu && this.badgeMenu.rowKey === rowKey && this.badgeMenu.returnFocusEl === el) {
                 this.badgeMenu = null;
 
                 return;
@@ -2003,7 +2017,7 @@ export default {
             this.badgeMenu = {
                 mode: 'other',
                 target: { ...target },
-                anchorRect: el.getBoundingClientRect(),
+                rowKey,
                 returnFocusEl: el,
             };
         },
@@ -2057,24 +2071,6 @@ export default {
         closeUserInfoModal() {
             this.userInfoModalOpen = false;
             this.userInfoModalTarget = null;
-        },
-        openBurgerQuickInfo() {
-            this.userInfoModalMode = 'self';
-            this.userInfoModalTarget = null;
-            this.userInfoModalOpen = true;
-        },
-        openBurgerQuickCommands() {
-            this.commandsHelpOpen = true;
-        },
-        openBurgerQuickProfile() {
-            if (this.user && !this.user.guest) {
-                this.profileModalOpen = true;
-            }
-        },
-        openBurgerQuickAdminSettings() {
-            if (this.user && this.user.chat_role === 'admin') {
-                this.adminSettingsStubOpen = true;
-            }
         },
         onBadgeMenuPick(id) {
             const bm = this.badgeMenu;
