@@ -11,7 +11,9 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`, `oembed-read`).
+
+    **oEmbed-проксі (T55):** `GET /api/v1/oembed` — лише автентифікований користувач (Sanctum SPA); безпечний проксі до провайдерів з реєстру oEmbed, кеш, SSRF-захист, санітизація `html` (лише `iframe` з дозволених хостів). Деталі — [T55-oembed.md](T55-oembed.md).
 
     **Кімнати CRUD (T54):** `PATCH /api/v1/rooms/{roomId}` — назва/опис для творця або staff; поле `access` — лише модератор/адмін. `DELETE` — творець або staff, **422** (`room_has_messages`), якщо в кімнаті є повідомлення (захист історії). Деталі — [T54-QA.md](T54-QA.md).
 
@@ -44,7 +46,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.16.6"
+  version: "0.16.7"
   license:
     name: Proprietary
     url: https://example.com/
@@ -907,6 +909,68 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/oembed:
+    get:
+      tags: [Chat]
+      summary: oEmbed-метадані через серверний проксі (T55)
+      description: |
+        Параметр **`url`** — публічне `http`/`https` посилання на ресурс; має відповідати **хоча б одній** схемі з реєстру провайдерів (`backend/data/oembed-providers.json`).
+        Вихідний HTTP-запит виконується **лише** на `endpoint` обраного провайдера з реєстру, не на довільний хост з `url`.
+        Поле **`html`** (якщо є) — лише безпечні `iframe` з білого списку хостів; `<script>` та інша розмітка відкидаються.
+        Кеш на бекенді за ключем нормалізованого `url` і TTL з `cache_age` відповіді (у межах конфігу).
+        Throttle: **`oembed-read`** (на користувача).
+      operationId: getOembedProxy
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 2048
+          description: URL ресурсу для вбудовування (має матчитися реєстру oEmbed).
+        - name: maxwidth
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2000
+        - name: maxheight
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2000
+      responses:
+        "200":
+          description: Підмножина полів oEmbed JSON
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: Напр. `private, max-age=300`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OEmbedProxyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: URL небезпечний / не з реєстру / не вдалося підібрати провайдера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "502":
+          description: Провайдер недоступний або некоректна відповідь
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -2808,6 +2872,56 @@ components:
         message:
           type: string
           example: client_message_id already used for another room.
+
+    OEmbedProxyResponse:
+      type: object
+      description: >
+        Піднабір полів oEmbed. `html` присутній лише якщо залишилися дозволені `iframe`;
+        інша розмітка від провайдера відкидається.
+      properties:
+        type:
+          type: string
+          example: video
+        version:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        author_name:
+          type: string
+          nullable: true
+        author_url:
+          type: string
+          nullable: true
+        provider_name:
+          type: string
+          nullable: true
+        provider_url:
+          type: string
+          nullable: true
+        cache_age:
+          type: integer
+          nullable: true
+        thumbnail_url:
+          type: string
+          nullable: true
+        thumbnail_width:
+          type: integer
+          nullable: true
+        thumbnail_height:
+          type: integer
+          nullable: true
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        html:
+          type: string
+          nullable: true
+          description: Лише санітизовані `iframe` (https, білий список хостів)
 
     ErrorMessage:
       type: object

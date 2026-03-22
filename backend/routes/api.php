@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\IgnoreController;
 use App\Http\Controllers\Api\V1\MeAccountController;
 use App\Http\Controllers\Api\V1\MeProfileController;
 use App\Http\Controllers\Api\V1\ModerationController;
+use App\Http\Controllers\Api\V1\OEmbedController;
 use App\Http\Controllers\Api\V1\PrivateMessageController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomPeerHintsController;
@@ -83,6 +84,8 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
             ->name('api.v1.chat-images.file');
 
         Route::get('users/lookup', [UserLookupController::class, 'show']);
+
+        Route::middleware('throttle:oembed-read')->get('oembed', [OEmbedController::class, 'show']);
 
         Route::middleware('throttle:private-read')->group(function (): void {
             Route::get('private/conversations', [PrivateMessageController::class, 'conversations']);

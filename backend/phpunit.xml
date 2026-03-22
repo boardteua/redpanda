@@ -32,5 +32,6 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="OEMBED_TESTING_SKIP_DNS_HOSTS" value="www.youtube.com,youtube.com,example.com"/>
     </php>
 </phpunit>
