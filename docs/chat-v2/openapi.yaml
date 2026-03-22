@@ -1161,6 +1161,7 @@ components:
           description: >
             `public` — загальне повідомлення кімнати; `inline_private` — інлайн-приват у стрічці (T25),
             видимий лише відправнику та адресату в `GET .../rooms/{id}/messages`; не потрапляє в архів.
+            Для `inline_private` сервер також створює рядок у `private_messages` (той самий `client_message_id`), щоб узгодити з приватним API.
         recipient_user_id:
           type: integer
           nullable: true

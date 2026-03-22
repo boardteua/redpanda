@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Events\MessagePosted;
+use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
 use App\Models\ChatMessage;
 use App\Models\Room;
@@ -387,12 +388,41 @@ class ChatApiTest extends TestCase
             ->assertJsonPath('meta.slash.name', 'msg')
             ->assertJsonPath('meta.slash.recognized', true);
 
+        $this->assertDatabaseHas('private_messages', [
+            'sender_id' => $a->id,
+            'recipient_id' => $b->id,
+            'body' => 'hello-inline',
+            'client_message_id' => $clientId,
+        ]);
+
         Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof RoomInlinePrivatePosted;
+        });
+        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+            return $job->event instanceof PrivateMessageCreated;
         });
         Bus::assertNotDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof MessagePosted;
         });
+    }
+
+    public function test_inline_msg_rejects_client_id_already_used_by_private_api(): void
+    {
+        [$public] = $this->seedRooms();
+        $a = User::factory()->create(['user_name' => 'inline_dup_a']);
+        $b = User::factory()->create(['user_name' => 'inline_dup_b']);
+        $clientId = 'c3eebc99-9c0b-4ef8-bb6d-6bb9bd380a03';
+
+        Sanctum::actingAs($a);
+        $this->postJson('/api/v1/private/peers/'.$b->id.'/messages', [
+            'message' => 'from panel',
+            'client_message_id' => $clientId,
+        ])->assertCreated();
+
+        $this->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+            'message' => '/msg inline_dup_b overlap',
+            'client_message_id' => $clientId,
+        ])->assertStatus(422);
     }
 
     public function test_post_msg_unknown_peer_returns_422(): void

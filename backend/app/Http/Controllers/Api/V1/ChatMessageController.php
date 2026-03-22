@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api\V1;
 use App\Chat\RoomInlinePrivateParser;
 use App\Chat\SlashCommandPipeline;
 use App\Events\MessagePosted;
+use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StoreChatMessageRequest;
 use App\Http\Resources\ChatMessageResource;
 use App\Models\ChatMessage;
+use App\Models\PrivateMessage;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\Moderation\ContentWordFilter;
@@ -19,6 +21,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class ChatMessageController extends Controller
@@ -129,39 +132,67 @@ class ChatMessageController extends Controller
             $avatarUrl = $user->resolveAvatarUrl();
 
             try {
-                $message = ChatMessage::query()->create([
-                    'user_id' => $user->id,
-                    'post_date' => $now,
-                    'post_time' => date('H:i', $now),
-                    'post_user' => $user->user_name,
-                    'post_message' => $body,
-                    'post_color' => $user->resolveChatRole()->postColorClass(),
-                    'post_roomid' => $room->room_id,
-                    'type' => 'inline_private',
-                    'post_target' => (string) $peer->id,
-                    'avatar' => $avatarUrl,
-                    'file' => 0,
-                    'client_message_id' => $clientId,
-                ]);
+                $message = null;
+                $privateRow = null;
+
+                DB::transaction(function () use ($user, $peer, $room, $body, $now, $avatarUrl, $clientId, &$message, &$privateRow): void {
+                    $message = ChatMessage::query()->create([
+                        'user_id' => $user->id,
+                        'post_date' => $now,
+                        'post_time' => date('H:i', $now),
+                        'post_user' => $user->user_name,
+                        'post_message' => $body,
+                        'post_color' => $user->resolveChatRole()->postColorClass(),
+                        'post_roomid' => $room->room_id,
+                        'type' => 'inline_private',
+                        'post_target' => (string) $peer->id,
+                        'avatar' => $avatarUrl,
+                        'file' => 0,
+                        'client_message_id' => $clientId,
+                    ]);
+
+                    $privateRow = PrivateMessage::query()->create([
+                        'sender_id' => $user->id,
+                        'recipient_id' => $peer->id,
+                        'body' => $body,
+                        'sent_at' => $now,
+                        'sent_time' => date('H:i', $now),
+                        'client_message_id' => $clientId,
+                    ]);
+                });
             } catch (QueryException $e) {
                 if ($this->isDuplicateKey($e)) {
                     $retry = ChatMessage::query()
                         ->where('user_id', $user->id)
                         ->where('client_message_id', $clientId)
-                        ->firstOrFail();
+                        ->first();
 
-                    if ((int) $retry->post_roomid !== (int) $room->room_id) {
+                    if ($retry !== null) {
+                        if ((int) $retry->post_roomid !== (int) $room->room_id) {
+                            return response()->json([
+                                'message' => 'client_message_id already used for another room.',
+                            ], 422);
+                        }
+
+                        return $this->duplicateMessageResponse($retry);
+                    }
+
+                    if (PrivateMessage::query()
+                        ->where('sender_id', $user->id)
+                        ->where('client_message_id', $clientId)
+                        ->exists()) {
                         return response()->json([
-                            'message' => 'client_message_id already used for another room.',
+                            'message' => 'client_message_id already used for a private message.',
                         ], 422);
                     }
 
-                    return $this->duplicateMessageResponse($retry);
+                    throw $e;
                 }
 
                 throw $e;
             }
 
+            broadcast(new PrivateMessageCreated($privateRow));
             broadcast(new RoomInlinePrivatePosted($message));
 
             return ChatMessageResource::make($message)
