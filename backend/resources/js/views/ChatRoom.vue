@@ -717,6 +717,13 @@ export default {
                 return null;
             }
         },
+        /** Оновлює `user` (зокрема `can_create_room` після нового публічного повідомлення — T44). */
+        async refreshAuthUser() {
+            const u = await this.fetchUser();
+            if (u) {
+                this.user = u;
+            }
+        },
         onProfileModalUpdated(nextUser) {
             if (nextUser) {
                 this.user = nextUser;
@@ -1702,6 +1709,9 @@ export default {
                     }
                     if (status === 201 || status === 200) {
                         comp.resetAfterSend();
+                        if (data.data && data.data.type === 'public') {
+                            await this.refreshAuthUser();
+                        }
                     }
                 }
             } catch (e) {
