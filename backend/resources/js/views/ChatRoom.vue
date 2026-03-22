@@ -238,10 +238,8 @@
                                 title="Колір тла повідомлення (згодом)"
                                 aria-disabled="true"
                             >
-                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M6 4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H6zm0 2h12v12H6V6zm2 2v8h8V8H8z"
-                                    />
+                                <svg class="h-[18px] w-[18px]" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="12" r="8" />
                                 </svg>
                             </button>
                             <button
@@ -251,7 +249,9 @@
                                 title="Колір тексту (згодом)"
                                 aria-disabled="true"
                             >
-                                <span class="text-sm font-bold" aria-hidden="true">A</span>
+                                <svg class="h-[18px] w-[18px]" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="7.25" stroke="currentColor" stroke-width="2" />
+                                </svg>
                             </button>
                             <button
                                 type="button"
@@ -284,15 +284,6 @@
                                 type="button"
                                 class="rp-focusable rp-chat-toolbar-btn"
                                 disabled
-                                title="Закреслення (згодом)"
-                                aria-disabled="true"
-                            >
-                                <span class="text-sm line-through" aria-hidden="true">S</span>
-                            </button>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                disabled
                                 title="Група (згодом)"
                                 aria-disabled="true"
                             >
@@ -303,21 +294,19 @@
                                 </svg>
                             </button>
                             <span class="rp-chat-toolbar-spacer" aria-hidden="true" />
-                            <router-link
-                                :to="{
-                                    name: 'archive',
-                                    query: selectedRoomId ? { room: String(selectedRoomId) } : {},
-                                }"
+                            <button
+                                type="button"
                                 class="rp-focusable rp-chat-toolbar-btn"
-                                title="Архів чату"
+                                disabled
+                                title="Довідник команд (згодом)"
+                                aria-disabled="true"
                             >
-                                <span class="rp-sr-only">Архів чату</span>
                                 <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
                                     <path
-                                        d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"
+                                        d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17l-2 2V4h16v12zM11 5h2v2h-2V5zm0 3h2v6h-2V8z"
                                     />
                                 </svg>
-                            </router-link>
+                            </button>
                             <button
                                 type="button"
                                 class="rp-focusable rp-chat-toolbar-btn"
@@ -331,29 +320,32 @@
                                     />
                                 </svg>
                             </button>
-                            <button
-                                type="button"
+                            <router-link
+                                :to="{
+                                    name: 'archive',
+                                    query: selectedRoomId ? { room: String(selectedRoomId) } : {},
+                                }"
                                 class="rp-focusable rp-chat-toolbar-btn"
-                                disabled
-                                title="Чат-рулетка (згодом)"
-                                aria-disabled="true"
+                                title="Архів чату"
                             >
+                                <span class="rp-sr-only">Архів чату</span>
                                 <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
                                     <path
-                                        d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM7.5 18c-.83 0-1.5-.67-1.5-1.5S6.67 15 7.5 15s1.5.67 1.5 1.5S8.33 18 7.5 18zm0-9C6.67 9 6 8.33 6 7.5S6.67 6 7.5 6 9 6.67 9 7.5 8.33 9 7.5 9zm5 4.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm5 4.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm0-9c-.83 0-1.5-.67-1.5-1.5S16.67 6 17.5 6s1.5.67 1.5 1.5S18.33 9 17.5 9z"
+                                        d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"
                                     />
                                 </svg>
-                            </button>
+                            </router-link>
                             <button
                                 type="button"
                                 class="rp-focusable rp-chat-toolbar-btn"
-                                title="Відкрити панель чату"
-                                @click="beginOpeningPanel"
+                                title="Вийти з чату"
+                                :disabled="loggingOut"
+                                @click="logout"
                             >
-                                <span class="rp-sr-only">Відкрити панель чату</span>
+                                <span class="rp-sr-only">Вийти</span>
                                 <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
                                     <path
-                                        d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
+                                        d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"
                                     />
                                 </svg>
                             </button>
@@ -362,7 +354,7 @@
                         <div class="rp-chat-composer-row">
                             <button
                                 type="button"
-                                class="rp-focusable rp-chat-composer-rail-btn"
+                                class="rp-focusable rp-chat-composer-rail-btn rounded-full"
                                 disabled
                                 title="Смайли (згодом, T33)"
                                 aria-label="Смайли"
@@ -378,45 +370,47 @@
                                     id="chat-composer"
                                     ref="chatComposer"
                                     v-model="composerText"
-                                    class="rp-focusable rp-chat-composer-input w-full resize-y"
+                                    class="rp-focusable rp-chat-composer-input w-full"
                                     maxlength="4000"
-                                    rows="3"
+                                    rows="1"
                                     :disabled="sending || uploadingImage || !selectedRoomId"
-                                    placeholder="Текст повідомлення… Enter — надіслати, Shift+Enter — новий рядок"
+                                    placeholder="Повідомлення — Enter надішле, Shift+Enter — новий рядок"
                                     @keydown="onChatComposerKeydown"
+                                    @input="syncComposerInputHeight"
                                 />
                             </div>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-composer-rail-btn"
-                                :disabled="sending || uploadingImage || !selectedRoomId"
-                                title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
-                                aria-label="Додати зображення до повідомлення"
-                                @click="$refs.imageInput && $refs.imageInput.click()"
-                            >
-                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
-                                    />
-                                </svg>
-                            </button>
-                            <button
-                                type="submit"
-                                class="rp-focusable rp-chat-send-primary"
-                                :disabled="
-                                    sending
-                                    || uploadingImage
-                                    || !selectedRoomId
-                                    || (!composerText.trim() && !pendingImageId)
-                                "
-                                title="Надіслати повідомлення"
-                                aria-label="Надіслати повідомлення"
-                            >
-                                <svg class="h-5 w-5 shrink-0" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                                </svg>
-                                <span class="rp-chat-send-primary__label" aria-hidden="true">Надіслати</span>
-                            </button>
+                            <div class="rp-chat-composer-trailing">
+                                <button
+                                    type="button"
+                                    class="rp-focusable rp-chat-composer-rail-btn"
+                                    :disabled="sending || uploadingImage || !selectedRoomId"
+                                    title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
+                                    aria-label="Додати зображення до повідомлення"
+                                    @click="$refs.imageInput && $refs.imageInput.click()"
+                                >
+                                    <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                                        <path
+                                            d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+                                        />
+                                    </svg>
+                                </button>
+                                <button
+                                    type="submit"
+                                    class="rp-focusable rp-chat-send-primary"
+                                    :disabled="
+                                        sending
+                                        || uploadingImage
+                                        || !selectedRoomId
+                                        || (!composerText.trim() && !pendingImageId)
+                                    "
+                                    title="Надіслати повідомлення"
+                                    aria-label="Надіслати повідомлення"
+                                >
+                                    <svg class="h-5 w-5 shrink-0" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                         <p class="px-2 pb-1 text-[0.7rem] text-[var(--rp-text-muted)] sm:px-3">
                             Приват: <code class="rounded bg-[var(--rp-chat-toolbar-bg)] px-1 font-mono text-[0.65rem]">/msg</code> нік текст.
@@ -1441,6 +1435,7 @@ export default {
         document.documentElement.setAttribute('data-theme', this.themeUi);
         this.initViewportListener();
         await this.bootstrap();
+        this.syncComposerInputHeight();
         window.addEventListener('keydown', this.onGlobalKeydown);
     },
     beforeDestroy() {
@@ -2416,10 +2411,25 @@ export default {
                 return;
             }
             if (e.shiftKey) {
+                this.$nextTick(() => this.syncComposerInputHeight());
+
                 return;
             }
             e.preventDefault();
             this.sendMessage();
+        },
+        /** Однорядковий вигляд за замовчуванням; розширення після Shift+Enter (T28). */
+        syncComposerInputHeight() {
+            this.$nextTick(() => {
+                const el = this.$refs.chatComposer;
+                if (!el || typeof el.style === 'undefined') {
+                    return;
+                }
+                el.style.height = 'auto';
+                const minPx = 44;
+                const maxPx = 112;
+                el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
+            });
         },
         async onChatImageSelected(e) {
             const input = e.target;
@@ -2479,6 +2489,7 @@ export default {
                 this.loadError = msg;
             } finally {
                 this.sending = false;
+                this.$nextTick(() => this.syncComposerInputHeight());
             }
         },
     },
