@@ -6,7 +6,7 @@
         <button
             v-if="panelOpen && isNarrowViewport"
             type="button"
-            class="rp-focusable fixed inset-0 z-40 bg-black/40 md:hidden"
+            class="rp-focusable fixed inset-0 z-40 bg-black/55 md:hidden"
             aria-label="Закрити панель чату"
             @click="closePanel"
         />
@@ -59,14 +59,12 @@
                         class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md border-2 border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] text-[var(--rp-text)] md:hidden"
                         :aria-expanded="panelOpen ? 'true' : 'false'"
                         aria-controls="chat-panel"
-                        title="Люди"
+                        title="Меню"
                         @click="togglePanel"
                     >
-                        <span class="rp-sr-only">Відкрити або сховати панель чату</span>
+                        <span class="rp-sr-only">Відкрити або сховати меню чату</span>
                         <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                            <path
-                                d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
-                            />
+                            <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
                         </svg>
                     </button>
                     <span
@@ -417,19 +415,67 @@
         <!-- Панель #chat_panel — 320px, порядок вкладок як у CHAT-PANEL-SIDEBAR -->
         <aside
             id="chat-panel"
-            class="rp-chat-sidebar flex w-[320px] max-w-[100vw] flex-shrink-0 flex-col border-l border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-bg)] text-[var(--rp-chat-sidebar-fg)] max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-50 max-md:shadow-lg max-md:transition-transform max-md:duration-200 max-md:ease-out md:relative md:z-auto md:min-h-0 md:self-stretch md:shadow-none md:transition-none"
+            class="rp-chat-sidebar rp-chat-burger-drawer flex w-[320px] max-w-[100vw] flex-shrink-0 flex-col border-l border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-bg)] text-[var(--rp-chat-sidebar-fg)] max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-50 max-md:shadow-2xl max-md:transition-transform max-md:duration-200 max-md:ease-out md:relative md:z-auto md:min-h-0 md:self-stretch md:max-w-[320px] md:shadow-none md:transition-none"
             :class="[
                 isNarrowViewport && (panelOpen ? 'max-md:translate-x-0' : 'max-md:translate-x-full'),
                 !isNarrowViewport && !panelOpen ? 'md:hidden' : '',
             ]"
             aria-label="Панель чату"
         >
+            <!-- Мобільне бургер-меню: X зліва, вкладки іконками справа (референс) -->
             <div
-                class="flex items-center justify-between gap-2 border-b border-[var(--rp-chat-sidebar-border)] px-3 py-2"
+                class="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-2 py-3 md:hidden"
+            >
+                <button
+                    ref="panelCloseBtnMobile"
+                    type="button"
+                    class="rp-focusable flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
+                    aria-label="Закрити панель"
+                    @click="closePanel"
+                >
+                    <svg class="h-9 w-9" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                        />
+                    </svg>
+                </button>
+                <div
+                    class="flex min-w-0 flex-1 justify-end gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    role="tablist"
+                    aria-label="Вкладки панелі чату"
+                    @keydown="onSidebarTabKeydown"
+                >
+                    <button
+                        v-for="tab in sidebarTabs"
+                        :key="'m-' + tab.id"
+                        :id="'chat-tab-m-' + tab.id"
+                        type="button"
+                        role="tab"
+                        class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/95"
+                        :class="
+                            sidebarTab === tab.id
+                                ? 'bg-white/20 ring-1 ring-white/35'
+                                : 'bg-white/5 hover:bg-white/12'
+                        "
+                        :aria-selected="sidebarTab === tab.id ? 'true' : 'false'"
+                        :aria-controls="'chat-panel-' + tab.id"
+                        :tabindex="sidebarTab === tab.id ? 0 : -1"
+                        :title="tab.title"
+                        @click="selectSidebarTab(tab.id)"
+                    >
+                        <span class="rp-sr-only">{{ tab.title }}</span>
+                        <span class="inline-flex [&_svg]:h-6 [&_svg]:w-6" v-html="tab.icon" />
+                    </button>
+                </div>
+            </div>
+
+            <!-- Десктоп: заголовок + закриття -->
+            <div
+                class="hidden shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-chat-sidebar-border)] px-3 py-2 md:flex"
             >
                 <h2 class="text-sm font-semibold text-[var(--rp-chat-sidebar-fg)]">Панель</h2>
                 <button
-                    ref="panelCloseBtn"
+                    ref="panelCloseBtnDesktop"
                     type="button"
                     class="rp-focusable flex h-11 w-11 items-center justify-center rounded-md text-[var(--rp-chat-sidebar-icon)] hover:bg-[var(--rp-chat-sidebar-tab-active-bg)] hover:text-[var(--rp-chat-sidebar-fg)]"
                     aria-label="Закрити панель"
@@ -444,15 +490,15 @@
             </div>
 
             <div
-                class="flex border-b border-[var(--rp-chat-sidebar-border)] px-1 py-2"
+                class="hidden shrink-0 border-b border-[var(--rp-chat-sidebar-border)] px-1 py-2 md:flex"
                 role="tablist"
                 aria-label="Вкладки панелі чату"
                 @keydown="onSidebarTabKeydown"
             >
                 <button
                     v-for="tab in sidebarTabs"
-                    :key="tab.id"
-                    :id="'chat-tab-' + tab.id"
+                    :key="'d-' + tab.id"
+                    :id="'chat-tab-d-' + tab.id"
                     type="button"
                     role="tab"
                     class="rp-focusable flex h-11 flex-1 items-center justify-center rounded-md border-2 text-[var(--rp-chat-sidebar-icon)]"
@@ -472,7 +518,9 @@
                 </button>
             </div>
 
-            <div class="min-h-0 flex-1 overflow-y-auto p-3 text-sm text-[var(--rp-chat-sidebar-fg)]">
+            <div
+                class="rp-chat-burger-scroll min-h-0 flex-1 overflow-y-auto p-3 text-sm text-[var(--rp-chat-sidebar-fg)]"
+            >
                 <div
                     v-if="privateListLoadError || friendsIgnoresLoadError"
                     class="mb-3 space-y-2"
@@ -499,10 +547,96 @@
                     v-show="sidebarTab === 'users'"
                     id="chat-panel-users"
                     role="tabpanel"
-                    aria-labelledby="chat-tab-users"
+                    :aria-labelledby="panelTabLabelledby('users')"
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'users' ? 'false' : 'true'"
                 >
+                    <!-- Мобільний референс: рядок «я» + жовтий блок швидких дій -->
+                    <div v-if="user" class="mb-4 space-y-2 md:hidden">
+                        <button
+                            type="button"
+                            class="rp-focusable flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:brightness-110"
+                            style="background: var(--rp-burger-self-bar-bg)"
+                            @click="openSelfBadgeMenu($event)"
+                        >
+                            <UserAvatar
+                                :src="user.avatar_url || ''"
+                                :name="user.user_name"
+                                variant="sidebar"
+                                decorative
+                            />
+                            <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                user.user_name
+                            }}</span>
+                        </button>
+                        <div
+                            class="overflow-hidden rounded-xl shadow-sm"
+                            style="
+                                background: var(--rp-burger-accent-bg);
+                                color: var(--rp-burger-accent-fg);
+                                border: 1px solid var(--rp-burger-accent-divider);
+                            "
+                        >
+                            <button
+                                type="button"
+                                class="rp-focusable flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-medium transition-colors"
+                                style="color: var(--rp-burger-accent-fg)"
+                                @click="openBurgerQuickInfo"
+                            >
+                                Інформація
+                            </button>
+                            <div class="h-px" style="background: var(--rp-burger-accent-divider)" />
+                            <button
+                                type="button"
+                                class="rp-focusable flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-medium transition-colors hover:brightness-95"
+                                style="color: var(--rp-burger-accent-fg)"
+                                @click="openBurgerQuickCommands"
+                            >
+                                <svg
+                                    class="h-5 w-5 shrink-0 opacity-90"
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                >
+                                    <path
+                                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"
+                                    />
+                                </svg>
+                                Команди
+                            </button>
+                            <div class="h-px" style="background: var(--rp-burger-accent-divider)" />
+                            <button
+                                v-if="user && !user.guest"
+                                type="button"
+                                class="rp-focusable flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-medium transition-colors hover:brightness-95"
+                                style="color: var(--rp-burger-accent-fg)"
+                                @click="openBurgerQuickProfile"
+                            >
+                                <svg
+                                    class="h-5 w-5 shrink-0 opacity-90"
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                >
+                                    <path
+                                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                                    />
+                                </svg>
+                                Профіль
+                            </button>
+                            <template v-if="user && user.chat_role === 'admin'">
+                                <div class="h-px" style="background: var(--rp-burger-accent-divider)" />
+                                <button
+                                    type="button"
+                                    class="rp-focusable flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-medium transition-colors hover:brightness-95"
+                                    style="color: var(--rp-burger-accent-fg)"
+                                    @click="openBurgerQuickAdminSettings"
+                                >
+                                    Налаштування чату
+                                </button>
+                            </template>
+                        </div>
+                    </div>
                     <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-chat-sidebar-muted)]">
                         Онлайн
                     </p>
@@ -633,7 +767,7 @@
                     v-show="sidebarTab === 'friends'"
                     id="chat-panel-friends"
                     role="tabpanel"
-                    aria-labelledby="chat-tab-friends"
+                    :aria-labelledby="panelTabLabelledby('friends')"
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'friends' ? 'false' : 'true'"
                 >
@@ -775,7 +909,7 @@
                     v-show="sidebarTab === 'private'"
                     id="chat-panel-private"
                     role="tabpanel"
-                    aria-labelledby="chat-tab-private"
+                    :aria-labelledby="panelTabLabelledby('private')"
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'private' ? 'false' : 'true'"
                 >
@@ -831,7 +965,7 @@
                     v-show="sidebarTab === 'rooms'"
                     id="chat-panel-rooms"
                     role="tabpanel"
-                    aria-labelledby="chat-tab-rooms"
+                    :aria-labelledby="panelTabLabelledby('rooms')"
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'rooms' ? 'false' : 'true'"
                 >
@@ -861,7 +995,7 @@
                     v-show="sidebarTab === 'ignore'"
                     id="chat-panel-ignore"
                     role="tabpanel"
-                    aria-labelledby="chat-tab-ignore"
+                    :aria-labelledby="panelTabLabelledby('ignore')"
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'ignore' ? 'false' : 'true'"
                 >
@@ -900,6 +1034,19 @@
                             </button>
                         </li>
                     </ul>
+                </div>
+            </div>
+
+            <div
+                class="shrink-0 border-t border-white/10 px-4 py-4 md:hidden"
+                style="background: var(--rp-burger-bg)"
+            >
+                <div
+                    class="mx-auto max-w-[16rem] rounded-lg px-4 py-3 text-center shadow-md"
+                    style="background: var(--rp-burger-footer-card-bg); color: var(--rp-burger-footer-card-fg)"
+                >
+                    <p class="font-serif text-lg font-semibold tracking-tight">redpanda</p>
+                    <p class="mt-1 text-xs" style="color: var(--rp-burger-footer-muted)">Чат нового покоління</p>
                 </div>
             </div>
         </aside>
@@ -1299,11 +1446,17 @@ export default {
         },
         focusPanelCloseButton() {
             this.$nextTick(() => {
-                const btn = this.$refs.panelCloseBtn;
+                const btn =
+                    (this.isNarrowViewport && this.$refs.panelCloseBtnMobile) ||
+                    this.$refs.panelCloseBtnDesktop ||
+                    this.$refs.panelCloseBtnMobile;
                 if (btn && typeof btn.focus === 'function') {
                     btn.focus();
                 }
             });
+        },
+        panelTabLabelledby(panelKey) {
+            return (this.isNarrowViewport ? 'chat-tab-m-' : 'chat-tab-d-') + panelKey;
         },
         /** Відкрити панель і перевести фокус на кнопку закриття (off-canvas). */
         beginOpeningPanel() {
@@ -1342,7 +1495,8 @@ export default {
         selectSidebarTab(id) {
             this.sidebarTab = id;
             this.$nextTick(() => {
-                const el = document.getElementById(`chat-tab-${id}`);
+                const domId = (this.isNarrowViewport ? 'chat-tab-m-' : 'chat-tab-d-') + id;
+                const el = document.getElementById(domId);
                 if (el && typeof el.focus === 'function') {
                     el.focus();
                 }
@@ -1836,6 +1990,24 @@ export default {
         closeUserInfoModal() {
             this.userInfoModalOpen = false;
             this.userInfoModalTarget = null;
+        },
+        openBurgerQuickInfo() {
+            this.userInfoModalMode = 'self';
+            this.userInfoModalTarget = null;
+            this.userInfoModalOpen = true;
+        },
+        openBurgerQuickCommands() {
+            this.commandsHelpOpen = true;
+        },
+        openBurgerQuickProfile() {
+            if (this.user && !this.user.guest) {
+                this.profileStubOpen = true;
+            }
+        },
+        openBurgerQuickAdminSettings() {
+            if (this.user && this.user.chat_role === 'admin') {
+                this.adminSettingsStubOpen = true;
+            }
         },
         onBadgeMenuPick(id) {
             const bm = this.badgeMenu;

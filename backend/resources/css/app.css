@@ -53,6 +53,16 @@
     --rp-chat-sidebar-link-hover: #e8f0ff;
     --rp-chat-sidebar-input-bg: rgb(255 255 255 / 0.08);
     --rp-chat-sidebar-input-border: rgb(255 255 255 / 0.18);
+    /* Мобільне бургер-меню панелі (референс board.te.ua — темний шоколад + жовтий акцент) */
+    --rp-burger-bg: #261f1a;
+    --rp-burger-self-bar-bg: #3f352c;
+    --rp-burger-accent-bg: #f7e008;
+    --rp-burger-accent-fg: #1c130a;
+    --rp-burger-accent-hover: #e6d000;
+    --rp-burger-accent-divider: rgb(28 19 10 / 0.12);
+    --rp-burger-footer-card-bg: #faf8f4;
+    --rp-burger-footer-card-fg: #1a120a;
+    --rp-burger-footer-muted: #5c534a;
     /* Стрічка — чергування рядків (05-chat-viewport.png) */
     --rp-chat-row-even: #ffffff;
     --rp-chat-row-odd: #ebe4d8;
@@ -105,6 +115,15 @@
     --rp-chat-send-bg-hover: var(--rp-primary-hover);
     --rp-chat-send-fg: var(--rp-on-primary);
     --rp-chat-role-admin: #cbd5e1;
+    --rp-burger-bg: #261f1a;
+    --rp-burger-self-bar-bg: #3f352c;
+    --rp-burger-accent-bg: #f7e008;
+    --rp-burger-accent-fg: #1c130a;
+    --rp-burger-accent-hover: #e6d000;
+    --rp-burger-accent-divider: rgb(28 19 10 / 0.12);
+    --rp-burger-footer-card-bg: #faf8f4;
+    --rp-burger-footer-card-fg: #1a120a;
+    --rp-burger-footer-muted: #5c534a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -149,6 +168,15 @@
         --rp-chat-send-bg-hover: var(--rp-primary-hover);
         --rp-chat-send-fg: var(--rp-on-primary);
         --rp-chat-role-admin: #cbd5e1;
+        --rp-burger-bg: #261f1a;
+        --rp-burger-self-bar-bg: #3f352c;
+        --rp-burger-accent-bg: #f7e008;
+        --rp-burger-accent-fg: #1c130a;
+        --rp-burger-accent-hover: #e6d000;
+        --rp-burger-accent-divider: rgb(28 19 10 / 0.12);
+        --rp-burger-footer-card-bg: #faf8f4;
+        --rp-burger-footer-card-fg: #1a120a;
+        --rp-burger-footer-muted: #5c534a;
     }
 }
 
@@ -685,6 +713,36 @@
 
 .rp-chat-sidebar .rp-chat-side-room-btn:hover {
     border-color: var(--rp-chat-sidebar-icon);
+}
+
+/* Мобільний off-canvas: повноекранна «шухляда», контент скролиться між шапкою та футером */
+@media (max-width: 767px) {
+    .rp-chat-burger-drawer {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 100vw;
+        border-left-width: 0;
+        background: var(--rp-burger-bg) !important;
+        color: var(--rp-chat-sidebar-fg);
+    }
+
+    .rp-chat-burger-drawer .rp-chat-burger-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .rp-chat-burger-drawer .rp-chat-side-card {
+        border-color: rgb(255 255 255 / 0.1);
+        background: rgb(255 255 255 / 0.06);
+    }
+
+    .rp-chat-burger-drawer .rp-chat-side-room-btn {
+        border-color: rgb(255 255 255 / 0.12);
+        background: rgb(255 255 255 / 0.05);
+    }
 }
 
 .rp-chat-sidebar .rp-chat-side-room-btn.is-active {
