@@ -15,7 +15,7 @@
             class="rp-chat-external-wrap min-h-0 min-w-0 max-md:flex max-md:flex-1 max-md:flex-col md:min-h-0 md:flex-1"
         >
             <div
-                class="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--rp-chat-app-bg)] px-3 py-2 md:px-0 md:py-0 md:min-h-0 md:overflow-hidden"
+                class="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--rp-chat-app-bg)] px-3 py-2 md:px-0 md:py-2 md:min-h-0 md:overflow-hidden"
             >
             <ChatRoomHeader
                 ref="chatRoomHeader"
