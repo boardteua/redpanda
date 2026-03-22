@@ -38,7 +38,7 @@
                     >{{ body }}</pre>
                 </div>
                 <p class="shrink-0 border-t border-[var(--rp-border-subtle)] px-4 py-2 text-xs text-[var(--rp-text-muted)]">
-                    Джерело: документація проєкту (статичний текст). Парсер команд у чаті може відрізнятися.
+                    Текст дзеркалить docs/board-te-ua/commands.md (статичний). Парсер slash-команд у чаті може відрізнятися.
                 </p>
             </div>
         </div>
@@ -46,7 +46,7 @@
 </template>
 
 <script>
-import commandsMd from '@repo-docs/board-te-ua/commands.md?raw';
+import commandsMd from '../../markdown/board-te-ua-commands.md?raw';
 
 export default {
     name: 'CommandsHelpModal',
