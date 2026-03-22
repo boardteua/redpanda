@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\MeProfileController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\PrivateMessageController;
 use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\RoomPresenceStatusController;
 use App\Http\Controllers\Api\V1\RoomReadController;
 use App\Http\Controllers\Api\V1\UserAvatarController;
 use App\Http\Controllers\Api\V1\UserLookupController;
@@ -45,6 +46,15 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::middleware('throttle:chat-mark-read')->post(
             'rooms/{room}/read',
             [RoomReadController::class, 'store'],
+        );
+
+        Route::middleware('throttle:chat-read')->get(
+            'rooms/{room}/presence-statuses',
+            [RoomPresenceStatusController::class, 'index'],
+        );
+        Route::middleware('throttle:presence-status')->post(
+            'rooms/{room}/presence-status',
+            [RoomPresenceStatusController::class, 'store'],
         );
 
         Route::middleware(['can:chat-admin', 'throttle:mod-actions'])->patch('chat/settings', [ChatSettingsController::class, 'update']);

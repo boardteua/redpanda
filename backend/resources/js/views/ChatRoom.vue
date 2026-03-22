@@ -100,6 +100,8 @@
             :badge-menu="badgeMenu"
             :is-badge-menu-open="sidebarBadgeMenuOpen"
             :room-presence-peers="roomPresencePeers"
+            :peer-presence-status-by-user-id="peerPresenceStatusByUserId"
+            :viewer-presence-status="viewerPresenceStatus"
             :ws-degraded="wsDegraded"
             :peer-lookup-name.sync="peerLookupName"
             :friends-sub-tab.sync="friendsSubTab"
@@ -207,6 +209,10 @@ const THEME_KEY = 'redpanda-theme';
 /** Збереження останньої вкладки сайдбару; відсутній/невалідний ключ → «Люди». */
 const SIDEBAR_TAB_STORAGE_KEY = 'redpanda-chat-sidebar-tab';
 const SIDEBAR_TAB_IDS = ['users', 'friends', 'private', 'rooms', 'ignore'];
+
+/** Пороги idle (сек) — узгоджено з `config/chat.php` (T48). */
+const PRESENCE_AWAY_IDLE_SEC = 180;
+const PRESENCE_INACTIVE_IDLE_SEC = 600;
 
 function readStoredSidebarTab() {
     if (typeof localStorage === 'undefined') {
@@ -399,6 +405,18 @@ export default {
             panelFocusReturnEl: null,
             /** Інші учасники поточної кімнати (Echo presence), без поточного користувача. */
             roomPresencePeers: [],
+            /** userId (string) → online | away | inactive (T48). */
+            peerPresenceStatusByUserId: {},
+            presenceLastActivityAt: 0,
+            documentHiddenFlag: false,
+            presenceLastSentStatus: null,
+            presenceLastPostedAt: null,
+            presenceTickTimer: null,
+            presenceActivityDebounceTimer: null,
+            presenceFetchDebounceTimer: null,
+            onPresenceVisibilityBound: null,
+            onPresenceUserActivityBound: null,
+            presenceUserActivityListenerOpts: null,
             ...createChatRoomSidebarState(),
             badgeMenu: null,
             commandsHelpOpen: false,
@@ -425,6 +443,13 @@ export default {
         },
         canCreateRoom() {
             return Boolean(this.user && !this.user.guest && this.user.can_create_room);
+        },
+        /** Реактивний статус «я» для індикатора в сайдбарі (T48). */
+        viewerPresenceStatus() {
+            void this.presenceLastActivityAt;
+            void this.documentHiddenFlag;
+
+            return this.computeLocalPresenceStatus();
         },
         themeLabel() {
             if (this.themeUi === 'light') {
@@ -990,6 +1015,7 @@ export default {
                 return;
             }
             try {
+                await this.fetchPeerPresenceStatuses();
                 const { data } = await window.axios.get(
                     `/api/v1/rooms/${this.selectedRoomId}/messages`,
                     { params: { limit: 80 } },
@@ -1012,6 +1038,134 @@ export default {
                 this.pollTimer = null;
             }
         },
+        computeLocalPresenceStatus() {
+            if (typeof window === 'undefined') {
+                return 'online';
+            }
+            const idleSec = (Date.now() - (this.presenceLastActivityAt || 0)) / 1000;
+            if (idleSec >= PRESENCE_INACTIVE_IDLE_SEC) {
+                return 'inactive';
+            }
+            if (this.documentHiddenFlag) {
+                return 'away';
+            }
+            if (idleSec >= PRESENCE_AWAY_IDLE_SEC) {
+                return 'away';
+            }
+
+            return 'online';
+        },
+        startRoomPresenceTracking() {
+            if (typeof window === 'undefined' || !this.user || this.selectedRoomId == null) {
+                return;
+            }
+            if (this.presenceTickTimer !== null) {
+                return;
+            }
+            this.presenceLastActivityAt = Date.now();
+            this.documentHiddenFlag = document.visibilityState !== 'visible';
+            this.onPresenceVisibilityBound = () => {
+                this.documentHiddenFlag = document.visibilityState !== 'visible';
+                if (!this.documentHiddenFlag) {
+                    this.presenceLastActivityAt = Date.now();
+                }
+                this.postSelfPresenceStatusIfNeeded(this.computeLocalPresenceStatus());
+            };
+            document.addEventListener('visibilitychange', this.onPresenceVisibilityBound);
+            this.onPresenceUserActivityBound = () => {
+                this.presenceLastActivityAt = Date.now();
+                if (this.presenceActivityDebounceTimer) {
+                    clearTimeout(this.presenceActivityDebounceTimer);
+                }
+                this.presenceActivityDebounceTimer = setTimeout(() => {
+                    this.presenceActivityDebounceTimer = null;
+                    this.postSelfPresenceStatusIfNeeded(this.computeLocalPresenceStatus());
+                }, 400);
+            };
+            this.presenceUserActivityListenerOpts = { passive: true };
+            ['mousedown', 'keydown', 'touchstart', 'wheel'].forEach((evt) => {
+                window.addEventListener(evt, this.onPresenceUserActivityBound, this.presenceUserActivityListenerOpts);
+            });
+            this.presenceTickTimer = window.setInterval(() => {
+                this.postSelfPresenceStatusIfNeeded(this.computeLocalPresenceStatus());
+            }, 15000);
+            this.postSelfPresenceStatusIfNeeded(this.computeLocalPresenceStatus());
+        },
+        stopRoomPresenceTracking() {
+            if (this.presenceTickTimer !== null) {
+                clearInterval(this.presenceTickTimer);
+                this.presenceTickTimer = null;
+            }
+            if (this.presenceActivityDebounceTimer) {
+                clearTimeout(this.presenceActivityDebounceTimer);
+                this.presenceActivityDebounceTimer = null;
+            }
+            if (this.presenceFetchDebounceTimer) {
+                clearTimeout(this.presenceFetchDebounceTimer);
+                this.presenceFetchDebounceTimer = null;
+            }
+            if (this.onPresenceVisibilityBound) {
+                document.removeEventListener('visibilitychange', this.onPresenceVisibilityBound);
+                this.onPresenceVisibilityBound = null;
+            }
+            if (this.onPresenceUserActivityBound) {
+                const o = this.presenceUserActivityListenerOpts || { passive: true };
+                ['mousedown', 'keydown', 'touchstart', 'wheel'].forEach((evt) => {
+                    window.removeEventListener(evt, this.onPresenceUserActivityBound, o);
+                });
+                this.onPresenceUserActivityBound = null;
+                this.presenceUserActivityListenerOpts = null;
+            }
+            this.presenceLastSentStatus = null;
+            this.presenceLastPostedAt = null;
+        },
+        scheduleFetchPeerPresenceStatuses() {
+            if (this.presenceFetchDebounceTimer) {
+                clearTimeout(this.presenceFetchDebounceTimer);
+            }
+            this.presenceFetchDebounceTimer = setTimeout(() => {
+                this.presenceFetchDebounceTimer = null;
+                this.fetchPeerPresenceStatuses();
+            }, 250);
+        },
+        async fetchPeerPresenceStatuses() {
+            if (!this.selectedRoomId || !this.roomPresencePeers.length) {
+                return;
+            }
+            const ids = this.roomPresencePeers.map((p) => p.id).join(',');
+            try {
+                await this.ensureSanctum();
+                const { data } = await window.axios.get(
+                    `/api/v1/rooms/${this.selectedRoomId}/presence-statuses`,
+                    { params: { user_ids: ids } },
+                );
+                const map = data && data.data && typeof data.data === 'object' ? data.data : {};
+                this.peerPresenceStatusByUserId = { ...this.peerPresenceStatusByUserId, ...map };
+            } catch {
+                /* ignore */
+            }
+        },
+        async postSelfPresenceStatusIfNeeded(computedStatus) {
+            if (!this.user || this.selectedRoomId == null) {
+                return;
+            }
+            const now = Date.now();
+            const needHeartbeat =
+                this.presenceLastPostedAt == null || now - this.presenceLastPostedAt >= 45000;
+            if (computedStatus === this.presenceLastSentStatus && !needHeartbeat) {
+                return;
+            }
+            await this.ensureSanctum();
+            try {
+                await window.axios.post(`/api/v1/rooms/${this.selectedRoomId}/presence-status`, {
+                    status: computedStatus,
+                });
+                this.presenceLastSentStatus = computedStatus;
+                this.presenceLastPostedAt = now;
+            } catch {
+                /* ignore */
+            }
+        },
         syncPresenceHere(users) {
             const myId = this.user && this.user.id != null ? Number(this.user.id) : null;
             const list = (users || [])
@@ -1019,6 +1173,7 @@ export default {
                 .filter((p) => p && myId !== null && p.id !== myId);
             list.sort((a, b) => a.user_name.localeCompare(b.user_name, 'uk'));
             this.roomPresencePeers = list;
+            this.$nextTick(() => this.scheduleFetchPeerPresenceStatuses());
         },
         addPresencePeer(raw) {
             const p = normalizePresencePeer(raw);
@@ -1032,6 +1187,7 @@ export default {
             const next = [...this.roomPresencePeers, p];
             next.sort((a, b) => a.user_name.localeCompare(b.user_name, 'uk'));
             this.roomPresencePeers = next;
+            this.scheduleFetchPeerPresenceStatuses();
         },
         removePresencePeer(raw) {
             const id = raw && raw.id != null ? Number(raw.id) : null;
@@ -1039,8 +1195,16 @@ export default {
                 return;
             }
             this.roomPresencePeers = this.roomPresencePeers.filter((x) => x.id !== id);
+            const key = String(id);
+            if (this.peerPresenceStatusByUserId[key] !== undefined) {
+                const nextMap = { ...this.peerPresenceStatusByUserId };
+                delete nextMap[key];
+                this.peerPresenceStatusByUserId = nextMap;
+            }
         },
         teardownEcho(fullDisconnect = false) {
+            this.stopRoomPresenceTracking();
+            this.peerPresenceStatusByUserId = {};
             if (this.echo && this.echoSubscribedRoomId !== null) {
                 try {
                     this.echo.leave(`room.${this.echoSubscribedRoomId}`);
@@ -1078,6 +1242,7 @@ export default {
                 if (!echo) {
                     this.wsDegraded = true;
                     this.startPollIfDegraded();
+                    this.startRoomPresenceTracking();
 
                     return;
                 }
@@ -1110,11 +1275,13 @@ export default {
             channel.subscribed(() => {
                 this.wsDegraded = false;
                 this.stopPoll();
+                this.startRoomPresenceTracking();
             });
 
             channel.error(() => {
                 this.wsDegraded = true;
                 this.roomPresencePeers = [];
+                this.peerPresenceStatusByUserId = {};
                 this.startPollIfDegraded();
             });
 
@@ -1128,6 +1295,17 @@ export default {
 
             channel.listen('.MessageDeleted', (payload) => {
                 this.mergeMessage(payload);
+            });
+
+            channel.listen('.PresenceStatusUpdated', (payload) => {
+                if (!payload || payload.user_id == null || !payload.status) {
+                    return;
+                }
+                const uid = String(payload.user_id);
+                this.peerPresenceStatusByUserId = {
+                    ...this.peerPresenceStatusByUserId,
+                    [uid]: payload.status,
+                };
             });
 
             this.echoChannel = channel;

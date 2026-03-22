@@ -13,4 +13,19 @@ return [
     */
     'message_edit_window_hours' => (int) env('CHAT_MESSAGE_EDIT_WINDOW_HOURS', 24),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Статус присутності в кімнаті (T48)
+    |--------------------------------------------------------------------------
+    |
+    | Клієнт обчислює online / away / inactive за idle та видимістю вкладки;
+    | значення зберігаються у кеші з TTL для синхронізації списку «Люди».
+    |
+    */
+    'presence_away_idle_seconds' => (int) env('CHAT_PRESENCE_AWAY_IDLE_SECONDS', 180),
+
+    'presence_inactive_idle_seconds' => (int) env('CHAT_PRESENCE_INACTIVE_IDLE_SECONDS', 600),
+
+    'presence_status_ttl_seconds' => (int) env('CHAT_PRESENCE_STATUS_TTL_SECONDS', 120),
+
 ];

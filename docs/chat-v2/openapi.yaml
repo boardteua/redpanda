@@ -11,11 +11,13 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `presence-status`).
 
     **Прочитане в кімнаті (T47):** `GET .../rooms/{roomId}/messages` — `meta.last_read_post_id`; опційно `since_read=true` → `meta.first_unread_post_id` у межах сторінки; `POST .../rooms/{roomId}/read` з `last_read_post_id` (монотонно). Деталі — [T47-QA.md](T47-QA.md).
 
-    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`** і **`.MessageUpdated`** (редагування публічного допису, T36) транслюються на той самий presence-канал. Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08).
+    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`**, **`.MessageUpdated`**, **`.MessageDeleted`**, **`.PresenceStatusUpdated`** (статус учасника online/away/inactive, T48) транслюються на той самий presence-канал. Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08).
+
+    **Статус присутності (T48):** `GET /api/v1/rooms/{roomId}/presence-statuses?user_ids=…` — мапа `userId → status` з кешу; `POST /api/v1/rooms/{roomId}/presence-status` з `{"status":"online"|"away"|"inactive"}` — оновлення власного статусу (throttle `presence-status`). Деталі — [T48-QA.md](T48-QA.md).
 
     **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09). З головної з `?history=1` після входу — перехід на архів.
 
@@ -32,7 +34,7 @@ info:
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.14.0"
+  version: "0.15.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -850,6 +852,81 @@ paths:
                 properties:
                   message:
                     type: string
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}/presence-statuses:
+    get:
+      tags: [Chat]
+      summary: Статуси присутності за списком user id (T48)
+      description: |
+        Повертає для переданих `user_ids` (до 100 id) збережені в кеші статуси **online**, **away**, **inactive**,
+        якщо запис ще не прострочений (TTL з `config/chat.php`, `presence_status_ttl_seconds`).
+        Використовується SPA разом з Echo presence для списку «Люди».
+      operationId: listRoomPresenceStatuses
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - name: user_ids
+          in: query
+          required: true
+          description: Ідентифікатори користувачів через кому або пробіл (напр. `1,2,5`)
+          schema:
+            type: string
+            maxLength: 4096
+      responses:
+        "200":
+          description: Мапа рядкових user id → статус
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomPresenceStatusesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}/presence-status:
+    post:
+      tags: [Chat]
+      summary: Оновити власний статус присутності в кімнаті (T48)
+      description: |
+        Зберігає статус поточного користувача в кеші та транслює **`.PresenceStatusUpdated`** на presence-канал кімнати
+        (лише якщо значення змінилось). Throttle — `presence-status`.
+      operationId: postRoomPresenceStatus
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostRoomPresenceStatusRequest"
+      responses:
+        "200":
+          description: Підтвердження збереженого статусу
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomPresenceStatusPostResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -1743,6 +1820,41 @@ components:
               type: integer
             last_read_post_id:
               type: integer
+
+    RoomPresenceStatusesResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [online, away, inactive]
+          description: Ключі — рядкові user id
+
+    PostRoomPresenceStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [online, away, inactive]
+
+    RoomPresenceStatusPostResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [room_id, user_id, status]
+          properties:
+            room_id:
+              type: integer
+            user_id:
+              type: integer
+            status:
+              type: string
+              enum: [online, away, inactive]
 
     ArchiveMessagesPaginatedResponse:
       type: object

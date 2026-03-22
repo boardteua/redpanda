@@ -141,6 +141,7 @@
                             <div class="flex items-center gap-1">
                                 <div
                                     class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5"
+                                    :class="presenceRowClass(viewerPresenceStatus)"
                                     style="background: var(--rp-burger-self-bar-bg)"
                                 >
                                     <UserAvatar
@@ -148,6 +149,13 @@
                                         :name="user.user_name"
                                         variant="sidebar"
                                         decorative
+                                    />
+                                    <span
+                                        class="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
+                                        :class="presenceDotClass(viewerPresenceStatus)"
+                                        role="img"
+                                        :aria-label="'Статус: ' + presenceLabelUa(viewerPresenceStatus)"
+                                        :title="presenceLabelUa(viewerPresenceStatus)"
                                     />
                                     <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
                                         user.user_name
@@ -173,7 +181,10 @@
                         Онлайн
                     </p>
                     <ul v-if="user" class="space-y-2">
-                        <li class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2">
+                        <li
+                            class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
+                            :class="presenceRowClass(viewerPresenceStatus)"
+                        >
                             <div class="flex items-center gap-1">
                                 <div class="flex min-w-0 flex-1 items-center gap-2">
                                     <UserAvatar
@@ -181,6 +192,13 @@
                                         :name="user.user_name"
                                         variant="sidebar"
                                         decorative
+                                    />
+                                    <span
+                                        class="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
+                                        :class="presenceDotClass(viewerPresenceStatus)"
+                                        role="img"
+                                        :aria-label="'Статус: ' + presenceLabelUa(viewerPresenceStatus)"
+                                        :title="presenceLabelUa(viewerPresenceStatus)"
                                     />
                                     <span
                                         v-if="user.badge_color"
@@ -217,6 +235,7 @@
                             v-for="p in roomPresencePeers"
                             :key="'presence-' + p.id"
                             class="rp-chat-side-card flex flex-col rounded-md border px-2 py-2"
+                            :class="presenceRowClass(peerSidebarStatus(p))"
                         >
                             <div class="flex items-center gap-1">
                                 <div class="flex min-w-0 flex-1 items-center gap-2">
@@ -225,6 +244,18 @@
                                         :name="p.user_name"
                                         variant="sidebar"
                                         decorative
+                                    />
+                                    <span
+                                        class="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
+                                        :class="presenceDotClass(peerSidebarStatus(p))"
+                                        role="img"
+                                        :aria-label="
+                                            'Статус ' +
+                                            p.user_name +
+                                            ': ' +
+                                            presenceLabelUa(peerSidebarStatus(p))
+                                        "
+                                        :title="presenceLabelUa(peerSidebarStatus(p))"
                                     />
                                     <span
                                         v-if="p.badge_color"
@@ -711,6 +742,8 @@ export default {
         badgeMenu: { type: Object, default: null },
         isBadgeMenuOpen: { type: Function, required: true },
         roomPresencePeers: { type: Array, default: () => [] },
+        peerPresenceStatusByUserId: { type: Object, default: () => ({}) },
+        viewerPresenceStatus: { type: String, default: 'online' },
         wsDegraded: { type: Boolean, default: false },
         peerLookupName: { type: String, default: '' },
         friendsSubTab: { type: String, required: true },
@@ -760,6 +793,51 @@ export default {
         panelTabLabelledby(panelKey) {
             return (this.isNarrowViewport ? 'chat-tab-m-' : 'chat-tab-d-') + panelKey;
         },
+        normalizedPresenceStatus(raw) {
+            return raw === 'away' || raw === 'inactive' ? raw : 'online';
+        },
+        peerSidebarStatus(p) {
+            if (!p || p.id == null) {
+                return 'online';
+            }
+
+            return this.normalizedPresenceStatus(
+                this.peerPresenceStatusByUserId[String(p.id)],
+            );
+        },
+        presenceRowClass(status) {
+            const s = this.normalizedPresenceStatus(status);
+            if (s === 'inactive') {
+                return 'rp-presence-row--inactive';
+            }
+            if (s === 'away') {
+                return 'rp-presence-row--away';
+            }
+
+            return '';
+        },
+        presenceDotClass(status) {
+            const s = this.normalizedPresenceStatus(status);
+            if (s === 'inactive') {
+                return 'bg-gray-500';
+            }
+            if (s === 'away') {
+                return 'bg-amber-500';
+            }
+
+            return 'bg-green-600';
+        },
+        presenceLabelUa(status) {
+            const s = this.normalizedPresenceStatus(status);
+            if (s === 'away') {
+                return 'Відійшов';
+            }
+            if (s === 'inactive') {
+                return 'Неактивний';
+            }
+
+            return 'Онлайн';
+        },
         presenceRowKey(p) {
             if (!p) {
                 return 'presence-null';
@@ -801,3 +879,14 @@ export default {
 };
 </script>
 
+<style scoped>
+/* T48: відійшов / неактивний — знебарвлення рядка в списку «Люди». */
+.rp-presence-row--away,
+.rp-presence-row--inactive {
+    filter: grayscale(1);
+}
+
+.rp-presence-row--inactive {
+    opacity: 0.9;
+}
+</style>
