@@ -106,3 +106,43 @@ export function chatMessageBodyClassList(style) {
 
     return list;
 }
+
+/**
+ * Inline-стиль кольору ніка в стрічці (ролі + стабільна палітра для звичайних користувачів).
+ * @param {{ post_user?: string, post_color?: string }|null|undefined} m
+ * @returns {Record<string, string>}
+ */
+export function nickColorStyleForPost(m) {
+    if (!m || !m.post_user) {
+        return {};
+    }
+    if (m.post_color === 'guest') {
+        return { color: 'var(--rp-text-muted)' };
+    }
+    if (m.post_color === 'vip') {
+        return { color: '#c2410c' };
+    }
+    if (m.post_color === 'mod') {
+        return { color: '#15803d' };
+    }
+    if (m.post_color === 'admin') {
+        return { color: 'var(--rp-chat-role-admin)' };
+    }
+    /* Темні відтінки ≥ ~4.5:1 на білому для жирного ~15px (WCAG AA) */
+    const palette = [
+        '#9a3412',
+        '#c2410c',
+        '#1e3a8a',
+        '#115e59',
+        '#5b21b6',
+        '#991b1b',
+        '#155e75',
+    ];
+    let h = 0;
+    const n = m.post_user;
+    for (let i = 0; i < n.length; i++) {
+        h = n.charCodeAt(i) + ((h << 5) - h);
+    }
+
+    return { color: palette[Math.abs(h) % palette.length] };
+}

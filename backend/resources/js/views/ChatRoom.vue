@@ -142,82 +142,15 @@
                             aria-live="polite"
                             aria-relevant="additions"
                         >
-                            <li
+                            <ChatFeedMessageRow
                                 v-for="(m, msgIdx) in messages"
                                 :key="m.post_id"
-                                class="flex gap-2 px-2 py-1.5 text-[0.9375rem] leading-snug sm:px-3 sm:py-2"
-                                :class="[
-                                    msgIdx % 2 === 0
-                                        ? 'bg-[var(--rp-chat-row-even)]'
-                                        : 'bg-[var(--rp-chat-row-odd)]',
-                                    m.type === 'inline_private' ? 'rp-chat-feed-row--inline-private' : '',
-                                ]"
-                            >
-                                <button
-                                    v-if="user && m.post_user !== user.user_name"
-                                    type="button"
-                                    class="rp-focusable h-fit shrink-0 rounded-full border-0 bg-transparent p-0"
-                                    :aria-label="'Приват у полі вводу: ' + m.post_user"
-                                    @click.stop="insertFeedInlinePrivatePrefix(m.post_user)"
-                                >
-                                    <UserAvatar
-                                        :src="m.avatar"
-                                        :name="m.post_user"
-                                        variant="feed"
-                                        decorative
-                                    />
-                                </button>
-                                <UserAvatar
-                                    v-else
-                                    :src="m.avatar"
-                                    :name="m.post_user"
-                                    variant="feed"
-                                    decorative
-                                />
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                                        <p class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
-                                            <button
-                                                v-if="user"
-                                                type="button"
-                                                class="rp-focusable mr-1.5 inline font-semibold hover:underline"
-                                                :style="nickColorStyle(m)"
-                                                :aria-label="'Згадати у полі вводу: ' + m.post_user"
-                                                @click.stop="insertFeedReplyPrefix(m.post_user)"
-                                            >
-                                                {{ m.post_user }}
-                                            </button>
-                                            <span
-                                                v-else
-                                                class="mr-1.5 inline font-semibold"
-                                                :style="nickColorStyle(m)"
-                                            >
-                                                {{ m.post_user }}
-                                            </span>
-                                            <span
-                                                v-if="m.post_message"
-                                                class="inline-block whitespace-pre-wrap break-words rounded px-0.5"
-                                                :class="chatMessageBodyClassList(m.post_style)"
-                                            >
-                                                {{ m.post_message }}
-                                            </span>
-                                        </p>
-                                        <time
-                                            class="shrink-0 font-mono text-[0.6875rem] tabular-nums text-[var(--rp-text-muted)]"
-                                        >
-                                            {{ m.post_time || '—' }}
-                                        </time>
-                                    </div>
-                                    <figure v-if="m.image && m.image.url" class="mt-1.5">
-                                        <img
-                                            :src="m.image.url"
-                                            alt="Вкладене зображення"
-                                            class="max-h-64 max-w-full rounded-md border border-[var(--rp-chat-chrome-border)] object-contain"
-                                            loading="lazy"
-                                        />
-                                    </figure>
-                                </div>
-                            </li>
+                                :message="m"
+                                :index="msgIdx"
+                                :viewer-name="user && user.user_name ? user.user_name : ''"
+                                @inline-private="insertFeedInlinePrivatePrefix"
+                                @mention="insertFeedReplyPrefix"
+                            />
                         </ul>
                         <p
                             v-if="messages.length === 0 && !loadingMessages"
@@ -1189,6 +1122,7 @@
 </template>
 
 <script>
+import ChatFeedMessageRow from '../components/chat/ChatFeedMessageRow.vue';
 import CommandsHelpModal from '../components/CommandsHelpModal.vue';
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
 import SimpleStubModal from '../components/SimpleStubModal.vue';
@@ -1202,7 +1136,6 @@ import {
     readComposerStyleFromStorage,
     persistComposerStyle,
     normalizePostStyleFromApi,
-    chatMessageBodyClassList as buildChatMessageBodyClassList,
 } from '../utils/chatMessageStyle';
 
 const THEME_KEY = 'redpanda-theme';
@@ -1341,6 +1274,7 @@ function normalizeMessage(raw) {
 export default {
     name: 'ChatRoom',
     components: {
+        ChatFeedMessageRow,
         CommandsHelpModal,
         PrivateChatPanel,
         SimpleStubModal,
@@ -1561,9 +1495,6 @@ export default {
         this.stopPoll();
     },
     methods: {
-        chatMessageBodyClassList(style) {
-            return buildChatMessageBodyClassList(style);
-        },
         toggleFormatPanel(which) {
             if (which === 'fg' && this.composerStyle.bg) {
                 return;
@@ -1620,40 +1551,6 @@ export default {
             }
 
             return o;
-        },
-        nickColorStyle(m) {
-            if (!m || !m.post_user) {
-                return {};
-            }
-            if (m.post_color === 'guest') {
-                return { color: 'var(--rp-text-muted)' };
-            }
-            if (m.post_color === 'vip') {
-                return { color: '#c2410c' };
-            }
-            if (m.post_color === 'mod') {
-                return { color: '#15803d' };
-            }
-            if (m.post_color === 'admin') {
-                return { color: 'var(--rp-chat-role-admin)' };
-            }
-            /* Темні відтінки ≥ ~4.5:1 на білому для жирного ~15px (WCAG AA) */
-            const palette = [
-                '#9a3412',
-                '#c2410c',
-                '#1e3a8a',
-                '#115e59',
-                '#5b21b6',
-                '#991b1b',
-                '#155e75',
-            ];
-            let h = 0;
-            const n = m.post_user;
-            for (let i = 0; i < n.length; i++) {
-                h = n.charCodeAt(i) + ((h << 5) - h);
-            }
-
-            return { color: palette[Math.abs(h) % palette.length] };
         },
         initViewportListener() {
             if (typeof window === 'undefined' || !window.matchMedia) {
