@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\StaffUserController;
 use App\Http\Controllers\Api\V1\UserAvatarController;
 use App\Http\Controllers\Api\V1\UserLookupController;
 use App\Http\Middleware\RejectBannedIp;
+use App\Http\Middleware\RejectDisabledAccount;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): void {
@@ -26,7 +27,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
     Route::middleware('throttle:auth-login')->post('auth/login', [AuthController::class, 'login']);
     Route::middleware('throttle:auth-guest')->post('auth/guest', [AuthController::class, 'guest']);
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['auth:sanctum', RejectDisabledAccount::class])->group(function (): void {
         Route::get('auth/user', [AuthController::class, 'user']);
         Route::post('auth/logout', [AuthController::class, 'logout']);
 
@@ -105,12 +106,15 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
 
         Route::middleware(['can:chat-admin', 'throttle:mod-user-read'])->prefix('mod')->group(function (): void {
             Route::get('users', [StaffUserController::class, 'index']);
+            Route::get('users/{user}', [StaffUserController::class, 'show']);
         });
 
         Route::middleware(['can:chat-admin', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
             Route::get('banned-ips', [ModerationController::class, 'indexBannedIps']);
             Route::post('banned-ips', [ModerationController::class, 'storeBannedIp']);
             Route::delete('banned-ips/{bannedIp}', [ModerationController::class, 'destroyBannedIp']);
+            Route::post('users/bulk', [StaffUserController::class, 'bulk']);
+            Route::post('users', [StaffUserController::class, 'store']);
             Route::patch('users/{user}/profile', [StaffUserController::class, 'updateProfile']);
             Route::patch('users/{user}', [StaffUserController::class, 'update']);
         });

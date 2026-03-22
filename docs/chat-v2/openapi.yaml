@@ -279,10 +279,10 @@ paths:
   /api/v1/mod/users:
     get:
       tags: [Moderation]
-      summary: Пошук користувачів для адміна чату (T52)
+      summary: Каталог / пошук користувачів для адміна чату (T52, T57)
       description: |
-        `can:chat-admin`. Пошук без SQL LIKE-екранування підрядка: `instr(lower(user_name), lower(q))`, опційно `id` якщо `q` — лише цифри;
-        збіг по `email`, якщо в `q` є `@`. Поле `email` у відповіді — для не-гостей.
+        `can:chat-admin`. Потрібно **одне з**: непорожній `q`, `browse=true`, або будь-який фільтр (`guest`, `user_rank`, `vip`, `muted`, `kicked`, `disabled`).
+        Пошук: `instr(lower(user_name), lower(q))`, опційно `id` якщо `q` — лише цифри; збіг по `email`, якщо в `q` є `@`.
       operationId: modStaffUserSearch
       security:
         - sanctumSession: []
@@ -290,11 +290,55 @@ paths:
       parameters:
         - name: q
           in: query
-          required: true
+          required: false
           schema:
             type: string
-            minLength: 1
             maxLength: 191
+        - name: browse
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: guest
+          in: query
+          schema:
+            type: boolean
+        - name: user_rank
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1, 2]
+        - name: vip
+          in: query
+          schema:
+            type: boolean
+        - name: muted
+          in: query
+          description: Активний мут зараз (`mute_until` > now)
+          schema:
+            type: boolean
+        - name: kicked
+          in: query
+          description: Активний kick зараз (`kick_until` > now)
+          schema:
+            type: boolean
+        - name: disabled
+          in: query
+          description: Обліковий запис вимкнено (`account_disabled_at` не null)
+          schema:
+            type: boolean
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [id, user_name, created_at]
+            default: id
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
         - name: page
           in: query
           schema:
@@ -306,7 +350,7 @@ paths:
           schema:
             type: integer
             minimum: 1
-            maximum: 50
+            maximum: 100
             default: 20
       responses:
         "200":
@@ -323,14 +367,102 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Moderation]
+      summary: Створити зареєстрованого користувача (T57)
+      description: |
+        `can:chat-admin`. Якщо `password` не передано — генерується випадковий пароль; один раз повертається в `meta.generated_password`.
+      operationId: modStaffUserCreate
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffUserCreateRequest"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserCreateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/bulk:
+    post:
+      tags: [Moderation]
+      summary: Масові дії над користувачами (T57)
+      description: |
+        `can:chat-admin`. До 50 id за запит; транзакція — усі або помилка. Для `mute`/`kick` обов’язково `minutes` (1–525600).
+        Дії: `set_vip`, `clear_vip`, `set_rank` (+`user_rank`), `mute`, `clear_mute`, `kick`, `clear_kick`, `disable_account`, `enable_account`.
+      operationId: modStaffUserBulk
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffUserBulkRequest"
+      responses:
+        "200":
+          description: Успіх
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserBulkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/mod/users/{userId}:
+    get:
+      tags: [Moderation]
+      summary: Один користувач для адміна (T57)
+      description: `can:chat-admin`.
+      operationId: modStaffUserShow
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: Рядок користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     patch:
       tags: [Moderation]
-      summary: Зміна VIP та рангу користувача (T52)
+      summary: Зміна VIP, рангу та soft-disable облікового запису (T52, T57)
       description: |
         `can:chat-admin`; ціль має мати **нижчий** `user_rank`, ніж актор; не на себе.
-        Новий ранг не може бути вищим за ранг актора.
+        Новий ранг не може бути вищим за ранг актора. `account_disabled` — лише для не-гостя (встановлює `account_disabled_at`).
       operationId: modStaffUserPatchRoles
       security:
         - sanctumSession: []
@@ -1880,6 +2012,9 @@ components:
         - vip
         - chat_role
         - badge_color
+        - muted_active
+        - kicked_active
+        - account_disabled
         - can_manage
       properties:
         id: { type: integer }
@@ -1893,6 +2028,9 @@ components:
         badge_color: { type: string, nullable: true }
         mute_until: { type: integer, nullable: true }
         kick_until: { type: integer, nullable: true }
+        muted_active: { type: boolean }
+        kicked_active: { type: boolean }
+        account_disabled: { type: boolean }
         can_manage: { type: boolean }
         email:
           type: string
@@ -1939,6 +2077,80 @@ components:
           type: integer
           enum: [0, 1, 2]
           description: Ендпоінт лише для `can:chat-admin`
+        account_disabled:
+          type: boolean
+          description: Soft-disable логіну для зареєстрованого користувача
+
+    StaffUserCreateRequest:
+      type: object
+      required: [user_name, email]
+      properties:
+        user_name:
+          type: string
+          minLength: 2
+          maxLength: 191
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          description: Якщо не вказано — згенеровано на сервері
+
+    StaffUserCreateResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/StaffUserListRow"
+        meta:
+          type: object
+          properties:
+            generated_password:
+              type: string
+              description: Лише коли пароль згенеровано автоматично
+
+    StaffUserBulkRequest:
+      type: object
+      required: [user_ids, action]
+      properties:
+        user_ids:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: integer
+        action:
+          type: string
+          enum:
+            - set_vip
+            - clear_vip
+            - set_rank
+            - mute
+            - clear_mute
+            - kick
+            - clear_kick
+            - disable_account
+            - enable_account
+        minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          description: Обов’язково для `mute` та `kick`
+        user_rank:
+          type: integer
+          enum: [0, 1, 2]
+          description: Обов’язково для `set_rank`
+
+    StaffUserBulkResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [ok, affected]
+          properties:
+            ok: { type: boolean }
+            affected: { type: integer }
 
     StaffUserProfilePatchRequest:
       type: object

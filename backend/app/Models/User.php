@@ -68,6 +68,7 @@ class User extends Authenticatable
             'profile_sex_hidden' => 'boolean',
             'social_links' => 'array',
             'notification_sound_prefs' => 'array',
+            'account_disabled_at' => 'datetime',
         ];
     }
 

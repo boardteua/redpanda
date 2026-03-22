@@ -1,6 +1,6 @@
 # Chat v2 — task list (Agents Orchestrator)
 
-**Правила:** одна задача в роботі; після реалізації — **код-рев’ю** (див. `docs/chat-v2/AGENT-ORCHESTRATION.md`), потім QA з **PASS** лише за доказом (логи, тести, скріншоти для UI). До **3** спроб на задачу; далі — escalate. Відкриті задачі: рядки `### [ ]`; закриті: `### [x]`.
+**Правила:** одна задача в роботі; після реалізації — **код-рев’ю** (див. `docs/chat-v2/AGENT-ORCHESTRATION.md`), потім QA з **PASS** лише за доказом (логи, тести, скріншоти для UI). Якщо QA передбачає **live-чат (Echo / WebSocket)** — перед PASS перевірити середовище: **`php artisan reverb:start`**, **`php artisan queue:work`** (при `QUEUE_CONNECTION=database`), узгоджені **`VITE_REVERB_*`**; повний регламент — розділ **«Локальне середовище real-time при завершенні задачі»** у `docs/chat-v2/AGENT-ORCHESTRATION.md`. До **3** спроб на задачу; далі — escalate. Відкриті задачі: рядки `### [ ]`; закриті: `### [x]`.
 
 **Специфікація:** [project-specs/chat-v2-setup.md](../project-specs/chat-v2-setup.md)  
 **Оркестрація:** [docs/chat-v2/AGENT-ORCHESTRATION.md](../docs/chat-v2/AGENT-ORCHESTRATION.md)
@@ -577,7 +577,7 @@
 
 ---
 
-### [ ] T57 — Менеджер користувачів (staff): каталог усіх користувачів, фільтри, пагінація, bulk-дії, CRUD
+### [x] T57 — Менеджер користувачів (staff): каталог усіх користувачів, фільтри, пагінація, bulk-дії, CRUD
 
 - **Delegate:** Full stack (Backend Architect + Frontend Developer)
 - **Залежність:** **T52** (базовий пошук і PATCH ролей/профілю), **T21** (RBAC), **T24** (поля профілю)
@@ -587,7 +587,7 @@
   - **Backend — bulk:** новий ендпоінт (напр. `POST /api/v1/mod/users/bulk`) — **`can:chat-admin`**; валідація списку `user_ids` (верхня межа N), **ідемпотентність де можлива**, **транзакція** або чіткий partial-success контракт; дії (узгодити мінімум у PR): напр. зняти/виставити **VIP**, **mute/kick** з параметрами як у одиночних мод-діях, **зміна рангу** лише на цілі з нижчим рангом (логіка як **T52**); **аудит** у structured logs (без зайвого PII); PHPUnit на 403 для не-адміна.
   - **Backend — CRUD:** **Create** — `POST /api/v1/mod/users` (**лише адмін**); створення зареєстрованого користувача (`user_name`, `email`, пароль або генерація + політика першого входу — без логування секретів); **Read** — за потреби `GET /api/v1/mod/users/{user}`; **Update** — реюз `PATCH` з **T52** або розширення; **Delete** — **не** hard-delete без рішення в PR (**soft-disable** або лише CRU); заборона діяти проти себе і вищих за ранг.
   - **Frontend:** таблиця з чекбоксами, фільтри, пагінація, порожній стан; панель **bulk** (підтвердження через **T39**); увесь цей розділ каталогу/CRUD — **лише адмін** (узгоджено з **T52**: модератор панелі не бачить); **a11y**; оновити **`docs/chat-v2/openapi.yaml`**.
-- **QA evidence:** `docs/chat-v2/T57-QA.md` — `php artisan test` (список, bulk, create/disable; **403 не-адміна**), `npm run build` PASS; скрін каталогу + bulk.
+- **QA evidence:** [docs/chat-v2/T57-QA.md](../docs/chat-v2/T57-QA.md) — `php artisan test` (список, bulk, create/disable; **403 не-адміна**), `npm run build` PASS; скрін каталогу + bulk — за потреби оператора.
 - **Відкрите питання (зафіксувати в PR):** чи потрібен **імпорт** з legacy окремо від **T13**.
 
 ---

@@ -166,4 +166,114 @@ class StaffUserManagementApiTest extends TestCase
             ])
             ->assertStatus(422);
     }
+
+    public function test_staff_user_index_requires_query_or_browse_or_filters(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/mod/users')
+            ->assertStatus(422);
+    }
+
+    public function test_admin_can_browse_user_catalog(): void
+    {
+        $admin = User::factory()->admin()->create();
+        User::factory()->count(3)->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/mod/users?browse=1&per_page=10')
+            ->assertOk()
+            ->assertJsonStructure(['data', 'meta' => ['total', 'current_page']]);
+    }
+
+    public function test_moderator_cannot_bulk_or_create_users(): void
+    {
+        $mod = User::factory()->moderator()->create();
+        $victim = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/mod/users/bulk', [
+                'user_ids' => [$victim->id],
+                'action' => 'set_vip',
+            ])
+            ->assertForbidden();
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/mod/users', [
+                'user_name' => 'new_staff_user',
+                'email' => 'new_staff_user@example.com',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_admin_bulk_set_vip_and_show_user(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $a = User::factory()->create(['vip' => false]);
+        $b = User::factory()->create(['vip' => false]);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/mod/users/bulk', [
+                'user_ids' => [$a->id, $b->id],
+                'action' => 'set_vip',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.affected', 2);
+
+        $this->assertTrue($a->fresh()->vip);
+        $this->assertTrue($b->fresh()->vip);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson("/api/v1/mod/users/{$a->id}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $a->id)
+            ->assertJsonPath('data.vip', true);
+    }
+
+    public function test_admin_store_user_returns_generated_password_when_omitted(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $res = $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/mod/users', [
+                'user_name' => 'created_by_admin',
+                'email' => 'created_by_admin@example.com',
+            ]);
+
+        $res->assertCreated()
+            ->assertJsonPath('data.user_name', 'created_by_admin')
+            ->assertJsonStructure(['meta' => ['generated_password']]);
+
+        $this->assertNotEmpty($res->json('meta.generated_password'));
+    }
+
+    public function test_admin_can_soft_disable_registered_user_via_patch(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $victim = User::factory()->create(['account_disabled_at' => null]);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson("/api/v1/mod/users/{$victim->id}", ['account_disabled' => true])
+            ->assertOk()
+            ->assertJsonPath('data.account_disabled', true);
+
+        $this->assertNotNull($victim->fresh()->account_disabled_at);
+    }
 }

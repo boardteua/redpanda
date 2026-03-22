@@ -13,7 +13,7 @@
                         Користувачі (персонал)
                     </h1>
                     <p class="mt-0.5 text-sm text-[var(--rp-text-muted)]">
-                        Пошук, VIP, ранг і профіль — лише для адміністратора чату.
+                        Каталог, фільтри, масові дії та створення — лише для адміністратора чату.
                     </p>
                 </div>
             </div>
@@ -33,7 +33,26 @@
             </div>
 
             <template v-else>
-                <div class="rp-panel space-y-3">
+                <div class="rp-panel space-y-4">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            class="rp-focusable rp-btn rp-btn-secondary text-sm"
+                            :disabled="loading"
+                            @click="openCreateModal"
+                        >
+                            Новий користувач
+                        </button>
+                        <button
+                            type="button"
+                            class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                            :disabled="loading"
+                            @click="reloadCatalog"
+                        >
+                            Оновити список
+                        </button>
+                    </div>
+
                     <div class="flex flex-wrap gap-2">
                         <label class="rp-label rp-sr-only" for="staff-user-q">Пошук</label>
                         <input
@@ -54,10 +73,207 @@
                         >
                             Шукати
                         </button>
+                        <button
+                            type="button"
+                            class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-sm"
+                            :disabled="loading"
+                            @click="clearSearchToCatalog"
+                        >
+                            Каталог
+                        </button>
                     </div>
-                    <p class="text-xs text-[var(--rp-text-muted)]">
-                        Можна шукати за ніком, числовим id або фрагментом e-mail (якщо в запиті є «@»).
+
+                    <div
+                        class="grid gap-3 border-t border-[var(--rp-border-subtle)] pt-3 sm:grid-cols-2 lg:grid-cols-3"
+                    >
+                        <div>
+                            <label class="rp-label text-xs" for="f-guest">Гість</label>
+                            <select
+                                id="f-guest"
+                                v-model="filterGuest"
+                                class="rp-input rp-focusable mt-1 w-full text-sm"
+                                :disabled="loading"
+                                @change="applyFilters"
+                            >
+                                <option value="">
+                                    Усі
+                                </option>
+                                <option value="1">
+                                    Лише гості
+                                </option>
+                                <option value="0">
+                                    Без гостей
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="rp-label text-xs" for="f-rank">Ранг</label>
+                            <select
+                                id="f-rank"
+                                v-model="filterRank"
+                                class="rp-input rp-focusable mt-1 w-full text-sm"
+                                :disabled="loading"
+                                @change="applyFilters"
+                            >
+                                <option value="">
+                                    Усі
+                                </option>
+                                <option value="0">
+                                    Користувач (0)
+                                </option>
+                                <option value="1">
+                                    Модератор (1)
+                                </option>
+                                <option value="2">
+                                    Адмін (2)
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="rp-label text-xs" for="f-vip">VIP</label>
+                            <select
+                                id="f-vip"
+                                v-model="filterVip"
+                                class="rp-input rp-focusable mt-1 w-full text-sm"
+                                :disabled="loading"
+                                @change="applyFilters"
+                            >
+                                <option value="">
+                                    Усі
+                                </option>
+                                <option value="1">
+                                    VIP
+                                </option>
+                                <option value="0">
+                                    Не VIP
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="rp-label text-xs" for="f-muted">Мут зараз</label>
+                            <select
+                                id="f-muted"
+                                v-model="filterMuted"
+                                class="rp-input rp-focusable mt-1 w-full text-sm"
+                                :disabled="loading"
+                                @change="applyFilters"
+                            >
+                                <option value="">
+                                    Усі
+                                </option>
+                                <option value="1">
+                                    Активний
+                                </option>
+                                <option value="0">
+                                    Ні
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="rp-label text-xs" for="f-kick">Kick зараз</label>
+                            <select
+                                id="f-kick"
+                                v-model="filterKicked"
+                                class="rp-input rp-focusable mt-1 w-full text-sm"
+                                :disabled="loading"
+                                @change="applyFilters"
+                            >
+                                <option value="">
+                                    Усі
+                                </option>
+                                <option value="1">
+                                    Активний
+                                </option>
+                                <option value="0">
+                                    Ні
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="rp-label text-xs" for="f-dis">Обліковий запис</label>
+                            <select
+                                id="f-dis"
+                                v-model="filterDisabled"
+                                class="rp-input rp-focusable mt-1 w-full text-sm"
+                                :disabled="loading"
+                                @change="applyFilters"
+                            >
+                                <option value="">
+                                    Усі
+                                </option>
+                                <option value="1">
+                                    Вимкнено
+                                </option>
+                                <option value="0">
+                                    Активні
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="rp-label text-xs" for="f-sort">Сортування</label>
+                            <select
+                                id="f-sort"
+                                v-model="sortField"
+                                class="rp-input rp-focusable mt-1 w-full text-sm"
+                                :disabled="loading"
+                                @change="applyFilters"
+                            >
+                                <option value="id">
+                                    Id
+                                </option>
+                                <option value="user_name">
+                                    Нік
+                                </option>
+                                <option value="created_at">
+                                    Створено
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="rp-label text-xs" for="f-dir">Порядок</label>
+                            <select
+                                id="f-dir"
+                                v-model="sortDirection"
+                                class="rp-input rp-focusable mt-1 w-full text-sm"
+                                :disabled="loading"
+                                @change="applyFilters"
+                            >
+                                <option value="desc">
+                                    Спадний
+                                </option>
+                                <option value="asc">
+                                    Зростання
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    v-if="selectedIds.length"
+                    class="rp-panel flex flex-wrap items-end gap-3 border border-[var(--rp-border-subtle)]"
+                    role="region"
+                    aria-label="Масові дії"
+                >
+                    <p class="text-sm text-[var(--rp-text)]">
+                        Обрано: <strong>{{ selectedIds.length }}</strong>
                     </p>
+                    <button
+                        type="button"
+                        class="rp-focusable rp-btn rp-btn-secondary text-sm"
+                        :disabled="loading"
+                        @click="openBulkModal"
+                    >
+                        Масова дія…
+                    </button>
+                    <button
+                        type="button"
+                        class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                        :disabled="loading"
+                        @click="clearSelection"
+                    >
+                        Скинути вибір
+                    </button>
                 </div>
 
                 <p v-if="loadError" class="rp-banner" role="alert">
@@ -72,9 +288,19 @@
                 </p>
 
                 <div v-else class="overflow-x-auto rounded-md border border-[var(--rp-border-subtle)]">
-                    <table class="w-full min-w-[36rem] border-collapse text-left text-sm text-[var(--rp-text)]">
+                    <table class="w-full min-w-[42rem] border-collapse text-left text-sm text-[var(--rp-text)]">
                         <thead class="bg-[var(--rp-surface-elevated)] text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
                             <tr>
+                                <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-2 py-2">
+                                    <span class="rp-sr-only">Вибір</span>
+                                    <input
+                                        type="checkbox"
+                                        class="rp-focusable h-4 w-4 rounded border border-[var(--rp-border-subtle)]"
+                                        aria-label="Обрати всіх керованих на сторінці"
+                                        :checked="allManageableSelected"
+                                        @change="toggleSelectAllPage"
+                                    />
+                                </th>
                                 <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">
                                     Id
                                 </th>
@@ -83,6 +309,9 @@
                                 </th>
                                 <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">
                                     Роль
+                                </th>
+                                <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">
+                                    Статус
                                 </th>
                                 <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">
                                     VIP
@@ -102,6 +331,16 @@
                                 ]"
                                 @click="selectRow(r)"
                             >
+                                <td class="px-2 py-2" @click.stop>
+                                    <input
+                                        type="checkbox"
+                                        class="rp-focusable h-4 w-4 rounded border border-[var(--rp-border-subtle)]"
+                                        :disabled="!r.can_manage"
+                                        :checked="selectedIds.includes(r.id)"
+                                        :aria-label="`Обрати ${r.user_name}`"
+                                        @change="toggleRowSelected(r)"
+                                    />
+                                </td>
                                 <td class="px-3 py-2 font-mono text-xs">
                                     {{ r.id }}
                                 </td>
@@ -111,6 +350,15 @@
                                 <td class="px-3 py-2">
                                     {{ roleLabel(r.chat_role) }}
                                 </td>
+                                <td class="px-3 py-2 text-xs">
+                                    <span v-if="r.account_disabled" class="text-[var(--rp-error)]">вимкн.</span>
+                                    <span v-if="r.muted_active" class="ml-1 text-[var(--rp-text-muted)]">мут</span>
+                                    <span v-if="r.kicked_active" class="ml-1 text-[var(--rp-text-muted)]">kick</span>
+                                    <span
+                                        v-if="!r.account_disabled && !r.muted_active && !r.kicked_active"
+                                        class="text-[var(--rp-text-muted)]"
+                                    >—</span>
+                                </td>
                                 <td class="px-3 py-2">
                                     {{ r.vip ? 'Так' : 'Ні' }}
                                 </td>
@@ -119,8 +367,8 @@
                                 </td>
                             </tr>
                             <tr v-if="rows.length === 0">
-                                <td colspan="5" class="px-3 py-8 text-center text-[var(--rp-text-muted)]">
-                                    Немає результатів. Введіть запит і натисніть «Шукати».
+                                <td colspan="7" class="px-3 py-8 text-center text-[var(--rp-text-muted)]">
+                                    Немає рядків за поточними умовами.
                                 </td>
                             </tr>
                         </tbody>
@@ -133,7 +381,7 @@
                     aria-label="Пагінація"
                 >
                     <p class="text-sm text-[var(--rp-text-muted)]">
-                        Сторінка {{ meta.current_page }} з {{ meta.last_page }}
+                        Сторінка {{ meta.current_page }} з {{ meta.last_page }} (усього {{ meta.total }})
                     </p>
                     <div class="flex flex-wrap gap-2">
                         <button
@@ -233,7 +481,7 @@
 
                         <div class="space-y-2 border-t border-[var(--rp-border-subtle)] pt-4">
                             <p class="text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
-                                Ролі та VIP
+                                Ролі, VIP та обліковий запис
                             </p>
                             <label class="flex cursor-pointer items-center gap-2 text-sm">
                                 <input
@@ -243,6 +491,18 @@
                                     :disabled="savingRoles || selected.guest"
                                 />
                                 VIP
+                            </label>
+                            <label
+                                v-if="!selected.guest"
+                                class="flex cursor-pointer items-center gap-2 text-sm"
+                            >
+                                <input
+                                    v-model="draftAccountDisabled"
+                                    type="checkbox"
+                                    class="rp-focusable h-4 w-4 rounded border border-[var(--rp-border-subtle)]"
+                                    :disabled="savingRoles"
+                                />
+                                Обліковий запис вимкнено (не може увійти)
                             </label>
                             <div v-if="viewerIsAdmin" class="max-w-xs">
                                 <label class="rp-label" for="staff-rank">Ранг (user_rank)</label>
@@ -269,21 +529,178 @@
                                 :disabled="savingRoles || selected.guest"
                                 @click="saveRoles"
                             >
-                                Зберегти ролі
+                                Зберегти ролі та статус облікового запису
                             </button>
                         </div>
                     </template>
                 </div>
             </template>
         </main>
+
+        <RpModal
+            :open="bulkModalOpen"
+            variant="framed"
+            title="Масова дія"
+            @close="closeBulkModal"
+        >
+            <div class="space-y-3 p-4">
+                <div>
+                    <label class="rp-label" for="bulk-action">Дія</label>
+                    <select
+                        id="bulk-action"
+                        v-model="bulkAction"
+                        class="rp-input rp-focusable mt-1 w-full"
+                    >
+                        <option value="set_vip">
+                            Увімкнути VIP
+                        </option>
+                        <option value="clear_vip">
+                            Вимкнути VIP
+                        </option>
+                        <option value="set_rank">
+                            Змінити ранг
+                        </option>
+                        <option value="mute">
+                            Мут (хв)
+                        </option>
+                        <option value="clear_mute">
+                            Зняти мут
+                        </option>
+                        <option value="kick">
+                            Kick (хв)
+                        </option>
+                        <option value="clear_kick">
+                            Зняти kick
+                        </option>
+                        <option value="disable_account">
+                            Вимкнути обліковий запис
+                        </option>
+                        <option value="enable_account">
+                            Увімкнути обліковий запис
+                        </option>
+                    </select>
+                </div>
+                <div v-if="bulkAction === 'set_rank'">
+                    <label class="rp-label" for="bulk-rank">Новий ранг</label>
+                    <select
+                        id="bulk-rank"
+                        v-model.number="bulkRank"
+                        class="rp-input rp-focusable mt-1 w-full"
+                    >
+                        <option :value="0">
+                            0 — користувач
+                        </option>
+                        <option :value="1">
+                            1 — модератор
+                        </option>
+                        <option :value="2">
+                            2 — адмін
+                        </option>
+                    </select>
+                </div>
+                <div v-if="bulkNeedsMinutes">
+                    <label class="rp-label" for="bulk-min">Хвилин</label>
+                    <input
+                        id="bulk-min"
+                        v-model.number="bulkMinutes"
+                        type="number"
+                        min="1"
+                        max="525600"
+                        class="rp-input rp-focusable mt-1 w-full"
+                    />
+                </div>
+            </div>
+            <template #footer>
+                <div
+                    class="flex flex-col-reverse gap-2 border-t border-[var(--rp-border-subtle)] px-4 py-4 sm:flex-row sm:justify-end"
+                >
+                    <button type="button" class="rp-focusable rp-btn rp-btn-ghost text-sm" @click="closeBulkModal">
+                        Скасувати
+                    </button>
+                    <button
+                        type="button"
+                        class="rp-focusable rp-btn rp-btn-primary text-sm"
+                        :disabled="bulkSubmitting"
+                        @click="submitBulk"
+                    >
+                        Застосувати
+                    </button>
+                </div>
+            </template>
+        </RpModal>
+
+        <RpModal
+            :open="createModalOpen"
+            variant="framed"
+            title="Новий користувач"
+            @close="closeCreateModal"
+        >
+            <div class="space-y-3 p-4">
+                <div>
+                    <label class="rp-label" for="c-name">Нік</label>
+                    <input
+                        id="c-name"
+                        v-model.trim="createUserName"
+                        type="text"
+                        maxlength="191"
+                        class="rp-input rp-focusable mt-1 w-full"
+                        autocomplete="off"
+                    />
+                </div>
+                <div>
+                    <label class="rp-label" for="c-mail">E-mail</label>
+                    <input
+                        id="c-mail"
+                        v-model.trim="createEmail"
+                        type="email"
+                        maxlength="255"
+                        class="rp-input rp-focusable mt-1 w-full"
+                        autocomplete="off"
+                    />
+                </div>
+                <div>
+                    <label class="rp-label" for="c-pass">Пароль (необов’язково)</label>
+                    <input
+                        id="c-pass"
+                        v-model="createPassword"
+                        type="password"
+                        class="rp-input rp-focusable mt-1 w-full"
+                        autocomplete="new-password"
+                    />
+                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                        Якщо залишити порожнім — згенерується автоматично (покажемо один раз після створення).
+                    </p>
+                </div>
+            </div>
+            <template #footer>
+                <div
+                    class="flex flex-col-reverse gap-2 border-t border-[var(--rp-border-subtle)] px-4 py-4 sm:flex-row sm:justify-end"
+                >
+                    <button type="button" class="rp-focusable rp-btn rp-btn-ghost text-sm" @click="closeCreateModal">
+                        Скасувати
+                    </button>
+                    <button
+                        type="button"
+                        class="rp-focusable rp-btn rp-btn-primary text-sm"
+                        :disabled="createSubmitting"
+                        @click="submitCreateUser"
+                    >
+                        Створити
+                    </button>
+                </div>
+            </template>
+        </RpModal>
     </div>
 </template>
 
 <script>
+import RpModal from '../components/RpModal.vue';
+
 const THEME_KEY = 'redpanda-theme';
 
 export default {
     name: 'StaffUsersView',
+    components: { RpModal },
     data() {
         return {
             user: null,
@@ -296,15 +713,36 @@ export default {
             page: 1,
             searchInput: '',
             appliedSearch: '',
+            listUsesSearch: false,
+            filterGuest: '',
+            filterRank: '',
+            filterVip: '',
+            filterMuted: '',
+            filterKicked: '',
+            filterDisabled: '',
+            sortField: 'id',
+            sortDirection: 'desc',
             selected: null,
+            selectedIds: [],
             draftVip: false,
             draftRank: 0,
+            draftAccountDisabled: false,
             draftAbout: '',
             draftOccupation: '',
             draftCountry: '',
             draftRegion: '',
             savingRoles: false,
             savingProfile: false,
+            bulkModalOpen: false,
+            bulkAction: 'set_vip',
+            bulkMinutes: 60,
+            bulkRank: 0,
+            bulkSubmitting: false,
+            createModalOpen: false,
+            createUserName: '',
+            createEmail: '',
+            createPassword: '',
+            createSubmitting: false,
         };
     },
     computed: {
@@ -325,6 +763,19 @@ export default {
             const r = this.$route.query.room;
 
             return r != null && r !== '' ? { room: String(r) } : {};
+        },
+        manageableOnPage() {
+            return this.rows.filter((r) => r.can_manage);
+        },
+        manageableIdsOnPage() {
+            return this.manageableOnPage.map((r) => r.id);
+        },
+        allManageableSelected() {
+            const ids = this.manageableIdsOnPage;
+            return ids.length > 0 && ids.every((id) => this.selectedIds.includes(id));
+        },
+        bulkNeedsMinutes() {
+            return this.bulkAction === 'mute' || this.bulkAction === 'kick';
         },
     },
     watch: {
@@ -380,14 +831,48 @@ export default {
 
                 return;
             }
-            if (this.appliedSearch) {
-                await this.loadPage(1);
+            await this.reloadCatalog();
+        },
+        buildListParams() {
+            const params = {
+                page: this.page,
+                per_page: 20,
+                sort: this.sortField,
+                direction: this.sortDirection,
+            };
+
+            if (this.listUsesSearch && this.appliedSearch) {
+                params.q = this.appliedSearch;
+            } else {
+                params.browse = 1;
             }
+
+            if (this.filterGuest !== '') {
+                params.guest = this.filterGuest === '1';
+            }
+            if (this.filterRank !== '') {
+                params.user_rank = Number(this.filterRank);
+            }
+            if (this.filterVip !== '') {
+                params.vip = this.filterVip === '1';
+            }
+            if (this.filterMuted !== '') {
+                params.muted = this.filterMuted === '1';
+            }
+            if (this.filterKicked !== '') {
+                params.kicked = this.filterKicked === '1';
+            }
+            if (this.filterDisabled !== '') {
+                params.disabled = this.filterDisabled === '1';
+            }
+
+            return params;
         },
         selectRow(r) {
             this.selected = r;
             this.draftVip = !!r.vip;
             this.draftRank = Number(r.user_rank) || 0;
+            this.draftAccountDisabled = !!r.account_disabled;
             const p = r.profile || {};
             this.draftAbout = p.about != null ? String(p.about) : '';
             this.draftOccupation = p.occupation != null ? String(p.occupation) : '';
@@ -405,40 +890,58 @@ export default {
             }
         },
         async loadPage(p) {
-            if (!this.appliedSearch) {
-                this.loadError = 'Спочатку введіть пошуковий запит.';
-
-                return;
-            }
             this.loading = true;
             this.loadError = '';
+            this.page = p;
             try {
                 const { data } = await window.axios.get('/api/v1/mod/users', {
-                    params: { q: this.appliedSearch, page: p, per_page: 20 },
+                    params: { ...this.buildListParams(), page: p },
                 });
                 this.rows = Array.isArray(data.data) ? data.data : [];
                 this.meta = data.meta || null;
-                this.page = p;
-                this.selected = null;
+                this.pruneSelectionToRows();
             } catch (e) {
                 this.rows = [];
                 this.meta = null;
                 this.loadError =
                     (e.response && e.response.data && e.response.data.message) ||
-                    'Не вдалося виконати пошук.';
+                    'Не вдалося завантажити список.';
             } finally {
                 this.loading = false;
             }
         },
+        pruneSelectionToRows() {
+            const allowed = new Set(this.rows.map((r) => r.id));
+            this.selectedIds = this.selectedIds.filter((id) => allowed.has(id));
+        },
         applySearch() {
+            this.listUsesSearch = true;
             this.appliedSearch = this.searchInput;
             this.page = 1;
             this.loadError = '';
             if (!this.appliedSearch) {
-                this.loadError = 'Введіть непорожній запит.';
+                this.loadError = 'Введіть непорожній запит або поверніться до каталогу.';
 
                 return;
             }
+            this.loadPage(1);
+        },
+        clearSearchToCatalog() {
+            this.listUsesSearch = false;
+            this.appliedSearch = '';
+            this.searchInput = '';
+            this.page = 1;
+            this.loadError = '';
+            this.loadPage(1);
+        },
+        async reloadCatalog() {
+            this.listUsesSearch = false;
+            this.appliedSearch = '';
+            this.page = 1;
+            await this.loadPage(1);
+        },
+        applyFilters() {
+            this.page = 1;
             this.loadPage(1);
         },
         goPage(p) {
@@ -446,6 +949,108 @@ export default {
                 return;
             }
             this.loadPage(p);
+        },
+        toggleRowSelected(r) {
+            if (!r.can_manage) {
+                return;
+            }
+            const i = this.selectedIds.indexOf(r.id);
+            if (i >= 0) {
+                this.selectedIds.splice(i, 1);
+            } else {
+                this.selectedIds.push(r.id);
+            }
+        },
+        toggleSelectAllPage(ev) {
+            const on = ev.target.checked;
+            const ids = this.manageableIdsOnPage;
+            if (on) {
+                const set = new Set([...this.selectedIds, ...ids]);
+                this.selectedIds = Array.from(set);
+            } else {
+                const drop = new Set(ids);
+                this.selectedIds = this.selectedIds.filter((id) => !drop.has(id));
+            }
+        },
+        clearSelection() {
+            this.selectedIds = [];
+        },
+        openBulkModal() {
+            this.bulkModalOpen = true;
+        },
+        closeBulkModal() {
+            this.bulkModalOpen = false;
+        },
+        async submitBulk() {
+            if (!this.selectedIds.length) {
+                return;
+            }
+            this.bulkSubmitting = true;
+            this.statusMsg = '';
+            try {
+                const body = {
+                    user_ids: [...this.selectedIds],
+                    action: this.bulkAction,
+                };
+                if (this.bulkNeedsMinutes) {
+                    body.minutes = Math.max(1, Number(this.bulkMinutes) || 0);
+                }
+                if (this.bulkAction === 'set_rank') {
+                    body.user_rank = Number(this.bulkRank);
+                }
+                await window.axios.post('/api/v1/mod/users/bulk', body);
+                this.statusMsg = 'Масову дію застосовано.';
+                this.clearSelection();
+                this.closeBulkModal();
+                await this.loadPage(this.page);
+            } catch (e) {
+                this.statusMsg =
+                    (e.response && e.response.data && e.response.data.message) ||
+                    'Не вдалося виконати масову дію.';
+            } finally {
+                this.bulkSubmitting = false;
+            }
+        },
+        openCreateModal() {
+            this.createUserName = '';
+            this.createEmail = '';
+            this.createPassword = '';
+            this.createModalOpen = true;
+        },
+        closeCreateModal() {
+            this.createModalOpen = false;
+        },
+        async submitCreateUser() {
+            if (!this.createUserName || !this.createEmail) {
+                this.statusMsg = 'Вкажіть нік і e-mail.';
+
+                return;
+            }
+            this.createSubmitting = true;
+            this.statusMsg = '';
+            try {
+                const body = {
+                    user_name: this.createUserName,
+                    email: this.createEmail,
+                };
+                if (this.createPassword) {
+                    body.password = this.createPassword;
+                }
+                const { data } = await window.axios.post('/api/v1/mod/users', body);
+                let msg = `Створено користувача «${data.data.user_name}».`;
+                if (data.meta && data.meta.generated_password) {
+                    msg += ` Згенерований пароль (збережіть): ${data.meta.generated_password}`;
+                }
+                this.statusMsg = msg;
+                this.closeCreateModal();
+                await this.loadPage(1);
+            } catch (e) {
+                this.statusMsg =
+                    (e.response && e.response.data && e.response.data.message) ||
+                    'Не вдалося створити користувача.';
+            } finally {
+                this.createSubmitting = false;
+            }
         },
         async saveRoles() {
             if (!this.selected || !this.selected.can_manage) {
@@ -458,12 +1063,15 @@ export default {
                 if (this.viewerIsAdmin) {
                     body.user_rank = this.draftRank;
                 }
+                if (!this.selected.guest) {
+                    body.account_disabled = this.draftAccountDisabled;
+                }
                 const { data } = await window.axios.patch(`/api/v1/mod/users/${this.selected.id}`, body);
                 this.mergeRow(data.data);
-                this.statusMsg = 'Ролі збережено.';
+                this.statusMsg = 'Збережено.';
             } catch (e) {
                 this.statusMsg =
-                    (e.response && e.response.data && e.response.data.message) || 'Не вдалося зберегти ролі.';
+                    (e.response && e.response.data && e.response.data.message) || 'Не вдалося зберегти.';
             } finally {
                 this.savingRoles = false;
             }

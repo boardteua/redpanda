@@ -48,6 +48,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->account_disabled_at !== null) {
+            throw ValidationException::withMessages([
+                'user_name' => [__('auth.failed')],
+            ]);
+        }
+
         Auth::guard('web')->login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 

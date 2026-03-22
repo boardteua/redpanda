@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class AuthApiTest extends TestCase
@@ -81,6 +82,39 @@ class AuthApiTest extends TestCase
 
         $registered = User::factory()->create(['guest' => false]);
         $this->assertTrue(Gate::forUser($registered)->allows('actAsRegisteredMember', $registered));
+    }
+
+    public function test_api_logs_out_disabled_account_on_next_request(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['account_disabled_at' => now()])->save();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/auth/user')
+            ->assertForbidden();
+
+        $this->assertGuest('web');
+    }
+
+    public function test_login_rejects_disabled_account(): void
+    {
+        User::factory()->create([
+            'user_name' => 'disabled_user',
+            'email' => 'disabled@example.com',
+            'password' => Hash::make('password-secure-1'),
+            'guest' => false,
+            'account_disabled_at' => now(),
+        ]);
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/login', [
+                'user_name' => 'disabled_user',
+                'password' => 'password-secure-1',
+            ])
+            ->assertUnprocessable();
     }
 
     public function test_guest_cannot_use_password_login(): void
