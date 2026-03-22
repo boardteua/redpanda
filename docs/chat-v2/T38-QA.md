@@ -15,6 +15,10 @@
 
 - **Композер** (форма, тулбар, палітри, textarea, зображення) → `ChatRoomComposer.vue`; стан тексту/стилю/прев’ю картинки всередині; батько викликає `getSendPayload()` / `resetAfterSend()` у `sendMessage`; палітри та `buildStylePayloadForApi` → `chatMessageStyle.js`.
 
+### Слайс 4
+
+- **Сайдбар** (`aside` 320px, таби, люди/друзі/приват/кімнати/ігнор) → `ChatRoomSidebar.vue`; refs `panelCloseBtnMobile` / `panelCloseBtnDesktop` для `focusPanelCloseButton` у батькові через `ref="chatRoomSidebar"`; клавіатура табів і `presenceRowKey` всередині дитини; `.sync` для `peerLookupName` та `friendsSubTab`.
+
 ## Вердикт
 
 - [x] **PASS** (після `npm run build`)
@@ -36,6 +40,7 @@
 7. **Хедер:** вихід, архів, бургер/панель, перемикач теми, бейдж degraded WS — як раніше.
 8. **Вузький екран:** вибір іншої кімнати в сайдбарі закриває панель і повертає фокус на кнопку меню в хедері.
 9. **Композер:** B/I/U, фон/колір тексту, Enter / Shift+Enter, вкладення фото, тулбар «Архів» / «Вийти».
+10. **Сайдбар:** усі вкладки, меню бейджів, приват за ніком, зміна кімнати, друзі/ігнор; off-canvas + фокус на кнопку закриття.
 
 ## Артефакти
 
