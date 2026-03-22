@@ -443,6 +443,91 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/me/profile:
+    get:
+      tags: [Auth]
+      summary: Профіль зареєстрованого користувача (повне тіло як UserResponse)
+      description: Гість отримує **403**. Дані профілю, соцмереж та звуків збігаються з полями в `GET /api/v1/auth/user` для `guest === false`.
+      operationId: getMeProfile
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags: [Auth]
+      summary: Оновити персональні дані, соцмережі та преференції звуків
+      description: Гість **403**. Часткове оновлення (лише передані блоки). Пароль і e-mail — через `PATCH /api/v1/me/account`.
+      operationId: patchMeProfile
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeProfilePatchRequest"
+      responses:
+        "200":
+          description: Оновлений користувач
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/me/account:
+    patch:
+      tags: [Auth]
+      summary: Зміна e-mail та/або пароля
+      description: |
+        Лише зареєстрований користувач (**403** для гостя).
+        Потрібен валідний `current_password`. Має бути вказано новий `email` (відмінний від поточного) або новий `password` (з `password_confirmation`).
+        Після зміни e-mail `email_verified_at` скидається (верифікація — за політикою застосунку).
+      operationId: patchMeAccount
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeAccountPatchRequest"
+      responses:
+        "200":
+          description: Оновлений користувач
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/rooms:
     get:
       tags: [Chat]
@@ -776,6 +861,91 @@ components:
           nullable: true
           description: Якщо null/відсутнє — сервер генерує нік.
 
+    UserProfile:
+      type: object
+      description: Лише для `guest === false` у `User`
+      properties:
+        country:
+          type: string
+          nullable: true
+        region:
+          type: string
+          nullable: true
+        age:
+          type: integer
+          nullable: true
+          minimum: 13
+          maximum: 120
+        sex:
+          type: string
+          nullable: true
+          enum: [male, female, other, prefer_not]
+        country_hidden:
+          type: boolean
+        region_hidden:
+          type: boolean
+        age_hidden:
+          type: boolean
+        sex_hidden:
+          type: boolean
+        occupation:
+          type: string
+          nullable: true
+        about:
+          type: string
+          nullable: true
+
+    SocialLinks:
+      type: object
+      description: Рядки-посилання або ніки; порожні значення допустимі
+      properties:
+        facebook: { type: string, maxLength: 500 }
+        instagram: { type: string, maxLength: 500 }
+        telegram: { type: string, maxLength: 500 }
+        twitter: { type: string, maxLength: 500 }
+        youtube: { type: string, maxLength: 500 }
+        tiktok: { type: string, maxLength: 500 }
+        discord: { type: string, maxLength: 500 }
+        website: { type: string, maxLength: 500 }
+
+    NotificationSoundPrefs:
+      type: object
+      properties:
+        public_messages:
+          type: boolean
+        mentions:
+          type: boolean
+        private:
+          type: boolean
+        volume_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+
+    MeProfilePatchRequest:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/UserProfile"
+        social_links:
+          $ref: "#/components/schemas/SocialLinks"
+        notification_sound_prefs:
+          $ref: "#/components/schemas/NotificationSoundPrefs"
+
+    MeAccountPatchRequest:
+      type: object
+      required: [current_password]
+      properties:
+        current_password:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        password_confirmation:
+          type: string
+
     User:
       type: object
       properties:
@@ -800,6 +970,19 @@ components:
           type: string
           nullable: true
           description: "Колір плашки: адмін `#1a1a1a`, мод `#16a34a`, VIP `#ea580c`; null для guest/user"
+        profile:
+          allOf:
+            - $ref: "#/components/schemas/UserProfile"
+          nullable: true
+          description: Лише якщо `guest === false`
+        social_links:
+          allOf:
+            - $ref: "#/components/schemas/SocialLinks"
+          nullable: true
+        notification_sound_prefs:
+          allOf:
+            - $ref: "#/components/schemas/NotificationSoundPrefs"
+          nullable: true
 
     UserResponse:
       type: object

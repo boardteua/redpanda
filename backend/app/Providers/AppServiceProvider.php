@@ -5,10 +5,10 @@ namespace App\Providers;
 use App\Models\Image;
 use App\Models\Room;
 use App\Models\User;
-use App\Support\ChatThrottleRules;
 use App\Policies\ImagePolicy;
 use App\Policies\RoomPolicy;
 use App\Policies\UserPolicy;
+use App\Support\ChatThrottleRules;
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -107,6 +107,18 @@ class AppServiceProvider extends ServiceProvider
             $user = $request->user();
 
             return Limit::perMinute(120)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
+
+        RateLimiter::for('me-profile', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(60)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
+
+        RateLimiter::for('me-account', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(10)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
         });
     }
 }

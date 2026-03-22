@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\ChatImageController;
 use App\Http\Controllers\Api\V1\ChatMessageController;
 use App\Http\Controllers\Api\V1\FriendController;
 use App\Http\Controllers\Api\V1\IgnoreController;
+use App\Http\Controllers\Api\V1\MeAccountController;
+use App\Http\Controllers\Api\V1\MeProfileController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\PrivateMessageController;
 use App\Http\Controllers\Api\V1\RoomController;
@@ -24,6 +26,13 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::post('auth/logout', [AuthController::class, 'logout']);
 
         Route::middleware('throttle:image-upload')->post('me/avatar', [UserAvatarController::class, 'store']);
+
+        Route::middleware('throttle:me-profile')->group(function (): void {
+            Route::get('me/profile', [MeProfileController::class, 'show']);
+            Route::patch('me/profile', [MeProfileController::class, 'update']);
+        });
+
+        Route::middleware('throttle:me-account')->patch('me/account', [MeAccountController::class, 'update']);
 
         Route::middleware('throttle:chat-read')->group(function (): void {
             Route::get('rooms', [RoomController::class, 'index']);

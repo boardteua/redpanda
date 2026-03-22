@@ -16,7 +16,24 @@ use Laravel\Sanctum\HasApiTokens;
 /**
  * `vip` і `user_rank` не в fillable — лише довірені шляхи (сидери, майбутній адмін-API через `forceFill` / явні присвоєння після `chat-admin`).
  */
-#[Fillable(['user_name', 'email', 'password', 'guest'])]
+#[Fillable([
+    'user_name',
+    'email',
+    'password',
+    'guest',
+    'profile_country',
+    'profile_region',
+    'profile_age',
+    'profile_sex',
+    'profile_country_hidden',
+    'profile_region_hidden',
+    'profile_age_hidden',
+    'profile_sex_hidden',
+    'profile_occupation',
+    'profile_about',
+    'social_links',
+    'notification_sound_prefs',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -44,6 +61,13 @@ class User extends Authenticatable
             'user_rank' => 'integer',
             'mute_until' => 'integer',
             'kick_until' => 'integer',
+            'profile_age' => 'integer',
+            'profile_country_hidden' => 'boolean',
+            'profile_region_hidden' => 'boolean',
+            'profile_age_hidden' => 'boolean',
+            'profile_sex_hidden' => 'boolean',
+            'social_links' => 'array',
+            'notification_sound_prefs' => 'array',
         ];
     }
 
@@ -127,5 +151,35 @@ class User extends Authenticatable
         }
 
         return route('api.v1.chat-images.file', ['image' => $this->avatar_image_id], true);
+    }
+
+    /**
+     * @return array{facebook: string, instagram: string, telegram: string, twitter: string, youtube: string, tiktok: string, discord: string, website: string}
+     */
+    public static function defaultSocialLinkKeys(): array
+    {
+        return [
+            'facebook' => '',
+            'instagram' => '',
+            'telegram' => '',
+            'twitter' => '',
+            'youtube' => '',
+            'tiktok' => '',
+            'discord' => '',
+            'website' => '',
+        ];
+    }
+
+    /**
+     * @return array{public_messages: bool, mentions: bool, private: bool, volume_percent: int}
+     */
+    public static function defaultNotificationSoundPrefs(): array
+    {
+        return [
+            'public_messages' => true,
+            'mentions' => true,
+            'private' => true,
+            'volume_percent' => 80,
+        ];
     }
 }

@@ -18,7 +18,7 @@ class UserResource extends JsonResource
     {
         $role = $this->resolveChatRole();
 
-        return [
+        $base = [
             'id' => $this->id,
             'user_name' => $this->user_name,
             'guest' => (bool) $this->guest,
@@ -27,5 +27,32 @@ class UserResource extends JsonResource
             'chat_role' => $role->value,
             'badge_color' => $role->badgeColor(),
         ];
+
+        if ($this->guest) {
+            return $base;
+        }
+
+        $social = array_merge(User::defaultSocialLinkKeys(), $this->social_links ?? []);
+        $sounds = array_replace(
+            User::defaultNotificationSoundPrefs(),
+            $this->notification_sound_prefs ?? []
+        );
+
+        return array_merge($base, [
+            'profile' => [
+                'country' => $this->profile_country,
+                'region' => $this->profile_region,
+                'age' => $this->profile_age,
+                'sex' => $this->profile_sex,
+                'country_hidden' => (bool) $this->profile_country_hidden,
+                'region_hidden' => (bool) $this->profile_region_hidden,
+                'age_hidden' => (bool) $this->profile_age_hidden,
+                'sex_hidden' => (bool) $this->profile_sex_hidden,
+                'occupation' => $this->profile_occupation,
+                'about' => $this->profile_about,
+            ],
+            'social_links' => $social,
+            'notification_sound_prefs' => $sounds,
+        ]);
     }
 }
