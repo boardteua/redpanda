@@ -52,4 +52,52 @@ class RoomPolicy
 
         return true;
     }
+
+    /**
+     * Оновлення назви та опису (**T54**): творець кімнати або модератор/адмін; legacy без творця — лише staff.
+     */
+    public function updateDetails(User $user, Room $room): bool
+    {
+        if ($user->guest) {
+            return false;
+        }
+
+        if ($user->canModerate()) {
+            return true;
+        }
+
+        if ($room->created_by_user_id === null) {
+            return false;
+        }
+
+        return (int) $room->created_by_user_id === (int) $user->id;
+    }
+
+    /**
+     * Зміна рівня доступу (VIP тощо) — лише персонал модерації (**T54**).
+     */
+    public function updateAccess(User $user, Room $room): bool
+    {
+        return ! $user->guest && $user->canModerate();
+    }
+
+    /**
+     * Видалення порожньої кімнати: творець або staff (**T54**); наявність повідомлень перевіряється в контролері (422).
+     */
+    public function delete(User $user, Room $room): bool
+    {
+        if ($user->guest) {
+            return false;
+        }
+
+        if ($user->canModerate()) {
+            return true;
+        }
+
+        if ($room->created_by_user_id === null) {
+            return false;
+        }
+
+        return (int) $room->created_by_user_id === (int) $user->id;
+    }
 }

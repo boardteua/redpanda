@@ -19,6 +19,8 @@ class RoomResource extends JsonResource
             'room_name' => $this->room_name,
             'topic' => $this->topic,
             'access' => (int) $this->access,
+            'created_by_user_id' => $this->created_by_user_id !== null ? (int) $this->created_by_user_id : null,
+            'messages_count' => isset($this->messages_count) ? (int) $this->messages_count : null,
         ];
     }
 }

@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRoomRequest;
+use App\Http\Requests\UpdateRoomRequest;
 use App\Http\Resources\RoomResource;
 use App\Models\Room;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 class RoomController extends Controller
@@ -16,7 +18,9 @@ class RoomController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $user = $request->user();
-        $query = Room::query()->orderBy('room_id');
+        $query = Room::query()
+            ->withCount('messages')
+            ->orderBy('room_id');
 
         if ($user->guest) {
             $query->where('access', Room::ACCESS_PUBLIC);
@@ -43,10 +47,76 @@ class RoomController extends Controller
             'room_name' => $validated['room_name'],
             'topic' => $validated['topic'] ?? null,
             'access' => Room::ACCESS_PUBLIC,
+            'created_by_user_id' => $user->id,
         ]);
+        $room->loadCount('messages');
 
-        return RoomResource::make($room->fresh())
+        return RoomResource::make($room)
             ->response()
             ->setStatusCode(201);
+    }
+
+    public function update(UpdateRoomRequest $request, Room $room): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! Gate::forUser($user)->allows('interact', $room)) {
+            return response()->json(['message' => 'Немає доступу до цієї кімнати.'], 403);
+        }
+
+        $validated = $request->validated();
+
+        if (array_key_exists('access', $validated)) {
+            Gate::forUser($user)->authorize('updateAccess', $room);
+        }
+
+        if (array_key_exists('room_name', $validated) || array_key_exists('topic', $validated)) {
+            Gate::forUser($user)->authorize('updateDetails', $room);
+        }
+
+        if (array_key_exists('room_name', $validated)) {
+            $room->room_name = $validated['room_name'];
+        }
+
+        if (array_key_exists('topic', $validated)) {
+            $topic = $validated['topic'];
+            $room->topic = ($topic === null || $topic === '') ? null : $topic;
+        }
+
+        if (array_key_exists('access', $validated)) {
+            $room->access = (int) $validated['access'];
+        }
+
+        $room->save();
+        $room->refresh();
+        $room->loadCount('messages');
+
+        return RoomResource::make($room)->response();
+    }
+
+    public function destroy(Request $request, Room $room): Response|JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->guest) {
+            return response()->json(['message' => 'Гості не можуть видаляти кімнати.'], 403);
+        }
+
+        if (! Gate::forUser($user)->allows('interact', $room)) {
+            return response()->json(['message' => 'Немає доступу до цієї кімнати.'], 403);
+        }
+
+        Gate::forUser($user)->authorize('delete', $room);
+
+        if ($room->messages()->exists()) {
+            return response()->json([
+                'message' => 'Неможливо видалити кімнату з повідомленнями в історії.',
+                'code' => 'room_has_messages',
+            ], 422);
+        }
+
+        $room->delete();
+
+        return response()->noContent();
     }
 }

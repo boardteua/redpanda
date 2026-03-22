@@ -3,6 +3,7 @@
         :open="open"
         variant="card"
         :title="title"
+        :z-index="zIndex"
         :aria-describedby="descId"
         @close="onCancel"
     >
@@ -61,6 +62,10 @@ export default {
         cancelLabel: {
             type: String,
             default: 'Скасувати',
+        },
+        zIndex: {
+            type: [Number, String],
+            default: 75,
         },
     },
     data() {

@@ -117,11 +117,6 @@
             :rooms="rooms"
             :loading-rooms="loadingRooms"
             :selected-room-id="selectedRoomId"
-            :can-create-room="canCreateRoom"
-            :chat-settings="chatSettings"
-            :creating-room="creatingRoom"
-            :create-room-error="createRoomError"
-            :room-create-form-key="roomCreateFormKey"
             :ignores="ignores"
             :ignores-with-menu-peer="ignoresWithMenuPeer"
             @close="closePanel"
@@ -133,7 +128,7 @@
             @lookup-private="lookupAndOpenPrivate"
             @open-private-peer="openPrivatePeer"
             @select-room="selectRoom"
-            @create-room="onCreateRoom"
+            @open-room-manage="openRoomManageModal"
             @accept-friend="acceptFriend"
             @reject-friend="rejectFriend"
             @remove-ignore="removeIgnore"
@@ -174,6 +169,32 @@
             @close="closeDeleteMessageConfirm"
             @confirm="confirmDeleteMessage"
         />
+        <RoomManageModal
+            :open="roomManageModalOpen"
+            :user="user"
+            :rooms="rooms"
+            :can-create-room="canCreateRoom"
+            :chat-settings="chatSettings"
+            :selected-room-id="selectedRoomId"
+            :creating-room="creatingRoom"
+            :saving-room="roomManageSaving"
+            :deleting-room="roomManageDeleting"
+            :form-error="roomManageError"
+            @close="roomManageModalOpen = false"
+            @create-room="onRoomModalCreate"
+            @save-room="onRoomModalSave"
+            @request-delete-room="onRoomModalRequestDelete"
+        />
+        <ConfirmDialogModal
+            :open="deleteRoomConfirmOpen"
+            :z-index="95"
+            title="Видалити кімнату?"
+            body="Кімната зникне зі списку. Це можливо лише якщо в ній ще немає повідомлень."
+            confirm-label="Видалити"
+            cancel-label="Скасувати"
+            @close="closeDeleteRoomConfirm"
+            @confirm="confirmDeleteRoom"
+        />
 
         <PrivateChatPanel
             v-if="user && privatePeer"
@@ -203,6 +224,7 @@ import PrivateChatPanel from '../components/PrivateChatPanel.vue';
 import ChatSettingsModal from '../components/ChatSettingsModal.vue';
 import UserProfileModal from '../components/UserProfileModal.vue';
 import UserInfoModal from '../components/UserInfoModal.vue';
+import RoomManageModal from '../components/chat/RoomManageModal.vue';
 import { createEcho } from '../lib/echo';
 import { normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 
@@ -373,6 +395,7 @@ export default {
         ChatSettingsModal,
         UserProfileModal,
         UserInfoModal,
+        RoomManageModal,
     },
     data() {
         return {
@@ -384,8 +407,12 @@ export default {
             loadingRooms: true,
             chatSettings: null,
             creatingRoom: false,
-            createRoomError: '',
-            roomCreateFormKey: 0,
+            roomManageModalOpen: false,
+            roomManageError: '',
+            roomManageSaving: false,
+            roomManageDeleting: false,
+            deleteRoomConfirmOpen: false,
+            pendingDeleteRoomId: null,
             loadingMessages: false,
             sending: false,
             loadError: '',
@@ -809,14 +836,17 @@ export default {
                 this.chatSettings = null;
             }
         },
-        async onCreateRoom({ room_name, topic }) {
-            this.createRoomError = '';
+        openRoomManageModal() {
+            this.roomManageError = '';
+            this.roomManageModalOpen = true;
+        },
+        async onRoomModalCreate({ room_name, topic }) {
+            this.roomManageError = '';
             this.creatingRoom = true;
             try {
                 await this.ensureSanctum();
                 const { data } = await window.axios.post('/api/v1/rooms', { room_name, topic });
                 const created = data.data;
-                this.roomCreateFormKey += 1;
                 await this.loadRooms();
                 if (created && created.room_id) {
                     this.selectedRoomId = created.room_id;
@@ -835,9 +865,98 @@ export default {
                     (e.response && e.response.data && e.response.data.message) ||
                     (st === 403 ? 'Немає права створити кімнату.' : null) ||
                     'Не вдалося створити кімнату.';
-                this.createRoomError = typeof msg === 'string' ? msg : 'Не вдалося створити кімнату.';
+                this.roomManageError = typeof msg === 'string' ? msg : 'Не вдалося створити кімнату.';
             } finally {
                 this.creatingRoom = false;
+            }
+        },
+        async onRoomModalSave(payload) {
+            const roomId = payload && payload.room_id;
+            if (roomId == null) {
+                return;
+            }
+            const body = {};
+            if (Object.prototype.hasOwnProperty.call(payload, 'room_name')) {
+                body.room_name = payload.room_name;
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'topic')) {
+                body.topic = payload.topic;
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'access')) {
+                body.access = payload.access;
+            }
+            this.roomManageError = '';
+            this.roomManageSaving = true;
+            try {
+                await this.ensureSanctum();
+                await window.axios.patch(`/api/v1/rooms/${roomId}`, body);
+                await this.loadRooms();
+            } catch (e) {
+                const st = e.response && e.response.status;
+                const msg =
+                    (e.response && e.response.data && e.response.data.message) ||
+                    (st === 403 ? 'Недостатньо прав для зміни цієї кімнати.' : null) ||
+                    'Не вдалося зберегти зміни.';
+                this.roomManageError = typeof msg === 'string' ? msg : 'Не вдалося зберегти зміни.';
+            } finally {
+                this.roomManageSaving = false;
+            }
+        },
+        onRoomModalRequestDelete(roomId) {
+            if (roomId == null) {
+                return;
+            }
+            this.pendingDeleteRoomId = roomId;
+            this.deleteRoomConfirmOpen = true;
+        },
+        closeDeleteRoomConfirm() {
+            this.deleteRoomConfirmOpen = false;
+            this.pendingDeleteRoomId = null;
+        },
+        async confirmDeleteRoom() {
+            const id = this.pendingDeleteRoomId;
+            if (id == null) {
+                this.closeDeleteRoomConfirm();
+
+                return;
+            }
+            this.roomManageError = '';
+            this.roomManageDeleting = true;
+            try {
+                await this.ensureSanctum();
+                await window.axios.delete(`/api/v1/rooms/${id}`);
+                const wasSelected = this.selectedRoomId === id;
+                await this.loadRooms();
+                this.closeDeleteRoomConfirm();
+                if (wasSelected) {
+                    if (this.rooms.length > 0) {
+                        this.selectedRoomId = this.rooms[0].room_id;
+                        await this.$router
+                            .replace({ path: '/chat', query: { room: String(this.selectedRoomId) } })
+                            .catch(() => {});
+                        await this.applyRoomSelection();
+                    } else {
+                        this.selectedRoomId = null;
+                        this.clearMessages();
+                        await this.$router.replace({ path: '/chat' }).catch(() => {});
+                    }
+                }
+            } catch (e) {
+                const st = e.response && e.response.status;
+                const code = e.response && e.response.data && e.response.data.code;
+                let msg =
+                    (e.response && e.response.data && e.response.data.message) ||
+                    (st === 403 ? 'Немає права видалити цю кімнату.' : null) ||
+                    'Не вдалося видалити кімнату.';
+                if (st === 422 && code === 'room_has_messages') {
+                    msg =
+                        e.response.data.message ||
+                        'Неможливо видалити кімнату з повідомленнями в історії.';
+                }
+                this.roomManageError = typeof msg === 'string' ? msg : 'Не вдалося видалити кімнату.';
+                this.closeDeleteRoomConfirm();
+            } finally {
+                this.roomManageDeleting = false;
             }
         },
         async loadRooms() {

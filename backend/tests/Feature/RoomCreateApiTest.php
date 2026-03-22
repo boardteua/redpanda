@@ -132,6 +132,7 @@ class RoomCreateApiTest extends TestCase
             'room_name' => 'Кімната з тесту',
             'topic' => 'Короткий опис',
             'access' => Room::ACCESS_PUBLIC,
+            'created_by_user_id' => $user->id,
         ]);
     }
 
