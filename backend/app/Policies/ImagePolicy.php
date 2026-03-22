@@ -15,6 +15,10 @@ class ImagePolicy
             return true;
         }
 
+        if (User::query()->where('avatar_image_id', $image->id)->exists()) {
+            return true;
+        }
+
         $roomIds = ChatMessage::query()
             ->where('file', $image->id)
             ->distinct()

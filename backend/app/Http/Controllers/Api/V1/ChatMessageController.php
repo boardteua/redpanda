@@ -85,6 +85,8 @@ class ChatMessageController extends Controller
         $pipe['message'] = $this->wordFilter->filter($pipe['message']);
         $now = time();
 
+        $avatarUrl = $user->resolveAvatarUrl();
+
         try {
             $message = ChatMessage::query()->create([
                 'user_id' => $user->id,
@@ -96,7 +98,7 @@ class ChatMessageController extends Controller
                 'post_roomid' => $room->room_id,
                 'type' => 'public',
                 'post_target' => null,
-                'avatar' => null,
+                'avatar' => $avatarUrl,
                 'file' => $fileRef,
                 'client_message_id' => $clientId,
             ]);

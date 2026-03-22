@@ -403,6 +403,45 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/v1/me/avatar:
+    post:
+      tags: [Auth]
+      summary: Завантажити аватар профілю
+      description: |
+        Лише для зареєстрованих користувачів (`guest === false`). Гість отримує **403**.
+        Обмеження як у `POST /api/v1/images`: JPEG, PNG, GIF, WebP; max 4 МБ.
+        Відповідь — оновлений профіль у форматі `UserResponse` (поле `avatar_url` вказує на `GET /api/v1/images/{id}/file`).
+      operationId: uploadProfileAvatar
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Аватар збережено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/rooms:
     get:
       tags: [Chat]
@@ -751,7 +790,7 @@ components:
         avatar_url:
           type: string
           nullable: true
-          description: URL аватарки профілю; поки може бути null (T18)
+          description: URL аватарки профілю (`GET /api/v1/images/{id}/file`); null якщо не завантажено
 
     UserResponse:
       type: object

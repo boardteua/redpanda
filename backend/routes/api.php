@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\IgnoreController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\PrivateMessageController;
 use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\UserAvatarController;
 use App\Http\Controllers\Api\V1\UserLookupController;
 use App\Http\Middleware\RejectBannedIp;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,8 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('auth/user', [AuthController::class, 'user']);
         Route::post('auth/logout', [AuthController::class, 'logout']);
+
+        Route::middleware('throttle:image-upload')->post('me/avatar', [UserAvatarController::class, 'store']);
 
         Route::middleware('throttle:chat-read')->group(function (): void {
             Route::get('rooms', [RoomController::class, 'index']);

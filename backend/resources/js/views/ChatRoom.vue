@@ -495,6 +495,30 @@
                             <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ user.user_name }}</span>
                             <span class="text-xs text-[var(--rp-chat-sidebar-muted)]">(ви)</span>
                         </li>
+                        <li v-if="user && !user.guest" class="mt-2 space-y-1 border-t border-[var(--rp-chat-sidebar-border)] pt-2">
+                            <input
+                                ref="avatarFileInput"
+                                type="file"
+                                accept="image/jpeg,image/png,image/gif,image/webp"
+                                class="rp-sr-only"
+                                @change="onAvatarFileSelected"
+                            />
+                            <button
+                                type="button"
+                                class="rp-focusable rp-btn rp-btn-ghost w-full text-left text-xs"
+                                :disabled="avatarUploading"
+                                @click="$refs.avatarFileInput && $refs.avatarFileInput.click()"
+                            >
+                                {{ avatarUploading ? 'Завантаження…' : 'Змінити аватарку' }}
+                            </button>
+                            <p
+                                v-if="avatarUploadError"
+                                class="text-xs text-[var(--rp-error)]"
+                                role="alert"
+                            >
+                                {{ avatarUploadError }}
+                            </p>
+                        </li>
                     </ul>
                     <p class="mt-3 text-[var(--rp-chat-sidebar-muted)]">
                         Інших учасників онлайн поки не показуємо — з’явиться разом із presence API.
@@ -883,6 +907,8 @@ export default {
             pendingPreviewUrl: '',
             uploadingImage: false,
             imageUploadError: '',
+            avatarUploading: false,
+            avatarUploadError: '',
             loadError: '',
             logoutError: '',
             echo: null,
@@ -1172,6 +1198,36 @@ export default {
                 return data.data;
             } catch {
                 return null;
+            }
+        },
+        async onAvatarFileSelected(e) {
+            const input = e.target;
+            const file = input.files && input.files[0];
+            if (!file || !this.user || this.user.guest) {
+                return;
+            }
+            this.avatarUploadError = '';
+            this.avatarUploading = true;
+            await this.ensureSanctum();
+            try {
+                const form = new FormData();
+                form.append('image', file);
+                const { data } = await window.axios.post('/api/v1/me/avatar', form, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                if (data.data) {
+                    this.user = data.data;
+                }
+            } catch (err) {
+                const msg =
+                    err.response?.data?.message ||
+                    (err.response?.status === 403
+                        ? 'Гості не можуть завантажувати аватарку.'
+                        : 'Не вдалося оновити аватарку.');
+                this.avatarUploadError = msg;
+            } finally {
+                this.avatarUploading = false;
+                input.value = '';
             }
         },
         async bootstrap() {
