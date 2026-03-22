@@ -110,6 +110,27 @@ export default {
                 el.scrollTop = el.scrollHeight;
             }
         },
+        /** T60: прокрутка до повідомлення з черги модерації (`?focus_post=`). */
+        scrollToPost(postId) {
+            const el = this.$refs.scrollContainer;
+            if (!el || postId == null) {
+                return;
+            }
+            const sel = `[data-rp-post-id="${Number(postId)}"]`;
+            const row = el.querySelector(sel);
+            if (!row || typeof row.scrollIntoView !== 'function') {
+                return;
+            }
+            row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            if (typeof row.focus === 'function') {
+                try {
+                    row.setAttribute('tabindex', '-1');
+                    row.focus({ preventScroll: true });
+                } catch {
+                    /* */
+                }
+            }
+        },
         setupBottomObserver() {
             this.teardownBottomObserver();
             const root = this.$refs.scrollContainer;

@@ -31,6 +31,7 @@ export function buildUserBadgeMenuItems(mode, viewer, target) {
         }
         if (v && isStaffRole(v.chat_role)) {
             add('staff-stop-words', 'Стоп-слова / фільтр');
+            add('staff-flagged', 'Черга на модерацію');
         }
         if (v && !v.guest) {
             add('profile', 'Профіль');

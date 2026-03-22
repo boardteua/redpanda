@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\BannedIp;
+use App\Models\ChatMessage;
 use App\Models\FilterWord;
 use App\Models\User;
 use App\Services\Moderation\ModerationService;
@@ -55,6 +56,105 @@ class ModerationController extends Controller
         ]);
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * T60: черга повідомлень з `moderation_flag_at` (у т.ч. видалені — для зняття прапорця).
+     */
+    public function indexFlaggedMessages(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'room_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $perPage = isset($validated['per_page'])
+            ? (int) $validated['per_page']
+            : 25;
+        $perPage = max(1, min(100, $perPage));
+
+        $q = ChatMessage::query()
+            ->whereNotNull('moderation_flag_at')
+            ->with([
+                'user:id,user_name',
+                'room:room_id,room_name',
+            ])
+            ->orderByDesc('moderation_flag_at')
+            ->orderByDesc('post_id');
+
+        if ($request->filled('room_id')) {
+            $q->where('post_roomid', (int) $validated['room_id']);
+        }
+
+        $page = $q->paginate($perPage);
+
+        $data = $page->getCollection()->map(fn (ChatMessage $m) => $this->transformFlaggedMessage($m))->values();
+
+        return response()->json([
+            'data' => $data,
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * T60: зняти прапорець модерації (`moderation_flag_at` → null).
+     */
+    public function clearModerationFlag(Request $request, ChatMessage $message): JsonResponse
+    {
+        if ($message->moderation_flag_at === null) {
+            return response()->json(['message' => 'Повідомлення без прапорця модерації.'], 422);
+        }
+
+        $message->moderation_flag_at = null;
+        $message->save();
+
+        Log::info('moderation.flagged_message.cleared', [
+            'actor_id' => $request->user()->id,
+            'post_id' => $message->post_id,
+            'post_roomid' => $message->post_roomid,
+        ]);
+
+        return response()->json([
+            'data' => [
+                'post_id' => $message->post_id,
+                'moderation_flag_at' => null,
+            ],
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function transformFlaggedMessage(ChatMessage $m): array
+    {
+        $deleted = $m->post_deleted_at !== null && (int) $m->post_deleted_at > 0;
+        $body = (string) $m->post_message;
+        if ($deleted) {
+            $snippet = '';
+        } else {
+            $snippet = mb_strlen($body) > 160 ? mb_substr($body, 0, 160).'…' : $body;
+        }
+
+        $author = $m->user !== null ? (string) $m->user->user_name : (string) $m->post_user;
+
+        return [
+            'post_id' => $m->post_id,
+            'post_roomid' => $m->post_roomid,
+            'room_name' => $m->room !== null ? (string) $m->room->room_name : '',
+            'author_name' => $author,
+            'snippet' => $snippet,
+            'post_time' => $m->post_time,
+            'post_date' => $m->post_date,
+            'moderation_flag_at' => $m->moderation_flag_at,
+            'post_deleted_at' => $m->post_deleted_at,
+            'is_deleted' => $deleted,
+        ];
     }
 
     public function indexFilterWords(): JsonResponse

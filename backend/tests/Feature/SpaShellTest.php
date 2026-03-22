@@ -49,4 +49,12 @@ class SpaShellTest extends TestCase
             ->assertSee('<div id="app"></div>', false)
             ->assertSee('type="module"', false);
     }
+
+    public function test_staff_flagged_route_returns_spa_shell(): void
+    {
+        $this->get('/chat/staff-flagged')
+            ->assertOk()
+            ->assertSee('<div id="app"></div>', false)
+            ->assertSee('type="module"', false);
+    }
 }

@@ -2,6 +2,7 @@
     <li
         class="flex gap-2 px-2 py-1.5 text-[0.9375rem] leading-snug sm:px-3 sm:py-2"
         :class="rowClassList"
+        :data-rp-post-id="message.post_id"
     >
         <button
             v-if="viewerName && !isDeleted && message.post_user !== viewerName"

@@ -11,7 +11,7 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `presence-status`, `room-create`, `room-manage`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`).
 
     **Кімнати CRUD (T54):** `PATCH /api/v1/rooms/{roomId}` — назва/опис для творця або staff; поле `access` — лише модератор/адмін. `DELETE` — творець або staff, **422** (`room_has_messages`), якщо в кімнаті є повідомлення (захист історії). Деталі — [T54-QA.md](T54-QA.md).
 
@@ -23,7 +23,7 @@ info:
 
     **Підказки для списку «Люди» (T49):** `GET /api/v1/rooms/{roomId}/peer-hints?user_ids=…` — стать (`male`/`female`/`other`) лише для **зареєстрованого** переглядача, якщо у цілі поле не приховане; **гість** отримує порожній об’єкт `data`. Ролі staff/VIP — з `chat_role` у presence / `auth/user`. Деталі — [T49-QA.md](T49-QA.md).
 
-    **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09); **`/chat/staff-users`** — пошук і керування користувачами для персоналу (T52). З головної з `?history=1` після входу — перехід на архів.
+    **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09); **`/chat/staff-users`** — пошук і керування користувачами для персоналу (T52); **`/chat/staff-flagged`** — черга повідомлень з прапорцем модерації (T60). З головної з `?history=1` після входу — перехід на архів.
 
     **Архів (T09):** `GET /api/v1/archive/messages` — offset-пагінація (`page`, `per_page` ∈ {10,25,50,100}), пошук `q` (≤200 символів); деталі — [T09-QA.md](T09-QA.md).
 
@@ -31,7 +31,7 @@ info:
 
     **Спостережуваність (T11):** `GET /up` (liveness), `GET /health/ready` (readiness, JSON); структуровані логи — [T11-QA.md](T11-QA.md), runbook — [T11-RUNBOOK.md](T11-RUNBOOK.md).
 
-    **Модерація MVP (T12):** таблиці `banned_ips`, `filter_words`; на `users` — `user_rank`, `mute_until`, `kick_until` — [T12-QA.md](T12-QA.md). **T53:** `filter_words` — категорія, `match_mode` (substring | whole_word), `action` (mask | reject | flag | temp_mute), `mute_minutes`; CRUD під `can:moderate`; публічні повідомлення в кімнаті — застосування правил; приват — лише маскування (mask).
+    **Модерація MVP (T12):** таблиці `banned_ips`, `filter_words`; на `users` — `user_rank`, `mute_until`, `kick_until` — [T12-QA.md](T12-QA.md). **T53:** `filter_words` — категорія, `match_mode` (substring | whole_word), `action` (mask | reject | flag | temp_mute), `mute_minutes`; CRUD під `can:moderate`; публічні повідомлення в кімнаті — застосування правил; приват — лише маскування (mask). **T60:** `GET /api/v1/mod/flagged-messages` (throttle `mod-flagged-read`) і `PATCH /api/v1/mod/flagged-messages/{postId}` — зняття `moderation_flag_at` (`mod-actions`); деталі — [T60-QA.md](T60-QA.md).
 
     **Ролі чату (T21):** на `users` — `vip` (boolean), `user_rank` (0 користувач, 1 модератор, 2 адмін); `rooms.access` — `0` публічна, `1` лише зареєстровані, `≥2` VIP-кімната (доступ VIP або модератор/адмін). `POST /api/v1/mod/users/{id}/mute|kick` — `can:moderate` (`user_rank ≥ 1`, не гість); керування банами IP і словами фільтра — `can:chat-admin` (`user_rank ≥ 2`). Ліміти `chat-post` / `image-upload` залежать від ролі (гість/VIP/staff). Поля `chat_role` та `badge_color` у `User` і lookup — [T21-QA.md](T21-QA.md).
 
@@ -168,6 +168,88 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/flagged-messages:
+    get:
+      tags: [Moderation]
+      summary: Черга повідомлень з прапорцем модерації (T60)
+      description: |
+        `can:moderate`, throttle `mod-flagged-read`. Лише рядки з непорожнім `moderation_flag_at`.
+        Відповідь без зайвого PII: уривок тексту (`snippet` до 160 символів); для видалених повідомлень `snippet` порожній, `is_deleted` true.
+      operationId: modListFlaggedMessages
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: room_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: Фільтр за `chat.post_roomid`
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Сторінка в `data`, пагінація в `meta`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModFlaggedMessageListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/flagged-messages/{message}:
+    patch:
+      tags: [Moderation]
+      summary: Зняти прапорець модерації з повідомлення (T60)
+      description: `can:moderate`, throttle `mod-actions`. Встановлює `moderation_flag_at` у `null`.
+      operationId: modClearMessageModerationFlag
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - name: message
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: `chat.post_id`
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModClearModerationFlagResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -1953,6 +2035,64 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ModFilterWordRow"
+
+    ModFlaggedMessageItem:
+      type: object
+      required:
+        - post_id
+        - post_roomid
+        - room_name
+        - author_name
+        - snippet
+        - post_time
+        - post_date
+        - moderation_flag_at
+        - is_deleted
+      properties:
+        post_id: { type: integer }
+        post_roomid: { type: integer }
+        room_name: { type: string }
+        author_name: { type: string }
+        snippet: { type: string }
+        post_time:
+          type: string
+          nullable: true
+        post_date: { type: integer }
+        moderation_flag_at: { type: integer }
+        post_deleted_at:
+          type: integer
+          nullable: true
+        is_deleted: { type: boolean }
+
+    ModFlaggedMessageListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModFlaggedMessageItem"
+        meta:
+          type: object
+          required: [current_page, last_page, per_page, total]
+          properties:
+            current_page: { type: integer }
+            last_page: { type: integer }
+            per_page: { type: integer }
+            total: { type: integer }
+
+    ModClearModerationFlagResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [post_id, moderation_flag_at]
+          properties:
+            post_id: { type: integer }
+            moderation_flag_at:
+              type: integer
+              nullable: true
 
     ModFilterWordCreatedResponse:
       type: object

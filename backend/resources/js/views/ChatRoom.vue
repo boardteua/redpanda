@@ -428,6 +428,8 @@ export default {
             deleteRoomConfirmOpen: false,
             pendingDeleteRoomId: null,
             loadingMessages: false,
+            /** Після першого bootstrap — щоб `$route.query` watcher не зрізав `focus_post` до завантаження. */
+            chatBootstrapDone: false,
             sending: false,
             loadError: '',
             logoutError: '',
@@ -651,6 +653,30 @@ export default {
                 this.closeRoomEditModal();
             }
         },
+        '$route.query': {
+            handler() {
+                if (!this.chatBootstrapDone || this.$route.path !== '/chat') {
+                    return;
+                }
+                const newQ = this.$route.query || {};
+                const newRoom = newQ.room != null ? Number(newQ.room) : null;
+                if (
+                    newRoom
+                    && Number.isFinite(newRoom)
+                    && newRoom !== this.selectedRoomId
+                    && this.rooms.some((r) => r.room_id === newRoom)
+                ) {
+                    this.selectedRoomId = newRoom;
+                    this.applyRoomSelection();
+
+                    return;
+                }
+                if (newQ.focus_post != null && String(newQ.focus_post).trim() !== '') {
+                    this.$nextTick(() => this.tryApplyFocusPostFromQuery());
+                }
+            },
+            deep: true,
+        },
     },
     created() {
         this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
@@ -830,28 +856,37 @@ export default {
             }
         },
         async bootstrap() {
-            this.user = await this.fetchUser();
-            if (!this.user) {
-                this.$router.replace({ path: '/' });
+            try {
+                this.user = await this.fetchUser();
+                if (!this.user) {
+                    await this.$router.replace({ path: '/' });
 
-                return;
+                    return;
+                }
+
+                await Promise.all([this.loadRooms(), this.loadChatSettings()]);
+                const qRoom = this.$route.query.room;
+                const fromQuery = qRoom ? Number(qRoom) : null;
+                if (fromQuery && this.rooms.some((r) => r.room_id === fromQuery)) {
+                    this.selectedRoomId = fromQuery;
+                } else if (this.rooms.length > 0) {
+                    this.selectedRoomId = this.rooms[0].room_id;
+                }
+
+                if (this.selectedRoomId) {
+                    const q = { room: String(this.selectedRoomId) };
+                    const fp = this.$route.query.focus_post;
+                    if (fp != null && String(fp).trim() !== '') {
+                        q.focus_post = String(fp);
+                    }
+                    await this.$router.replace({ path: '/chat', query: q }).catch(() => {});
+                    await this.applyRoomSelection();
+                }
+
+                await Promise.all([this.loadConversations(), this.loadFriendsAndIgnores()]);
+            } finally {
+                this.chatBootstrapDone = true;
             }
-
-            await Promise.all([this.loadRooms(), this.loadChatSettings()]);
-            const qRoom = this.$route.query.room;
-            const fromQuery = qRoom ? Number(qRoom) : null;
-            if (fromQuery && this.rooms.some((r) => r.room_id === fromQuery)) {
-                this.selectedRoomId = fromQuery;
-            } else if (this.rooms.length > 0) {
-                this.selectedRoomId = this.rooms[0].room_id;
-            }
-
-            if (this.selectedRoomId) {
-                this.$router.replace({ path: '/chat', query: { room: String(this.selectedRoomId) } }).catch(() => {});
-                await this.applyRoomSelection();
-            }
-
-            await Promise.all([this.loadConversations(), this.loadFriendsAndIgnores()]);
         },
         async loadChatSettings() {
             try {
@@ -1128,6 +1163,66 @@ export default {
                 feed.scrollToBottom();
             }
         },
+        /** T60: після завантаження — `focus_post` у query або низ стрічки. */
+        afterMessagesLoadedScroll() {
+            const fpRaw = this.$route.query.focus_post;
+            const pid =
+                fpRaw != null && String(fpRaw).trim() !== ''
+                    ? Number(fpRaw)
+                    : null;
+            if (pid != null && Number.isFinite(pid) && this.messages.some((m) => Number(m.post_id) === pid)) {
+                const feed = this.$refs.chatFeed;
+                if (feed && typeof feed.scrollToPost === 'function') {
+                    feed.scrollToPost(pid);
+                }
+                this.stripFocusPostFromRoute();
+
+                return;
+            }
+            if (pid != null && Number.isFinite(pid)) {
+                this.stripFocusPostFromRoute();
+            }
+            this.scrollToBottom();
+        },
+        stripFocusPostFromRoute() {
+            if (this.$route.query.focus_post == null) {
+                return;
+            }
+            const q = { ...this.$route.query };
+            delete q.focus_post;
+            if (!q.room && this.selectedRoomId != null) {
+                q.room = String(this.selectedRoomId);
+            }
+            this.$router.replace({ path: '/chat', query: q }).catch(() => {});
+        },
+        tryApplyFocusPostFromQuery() {
+            if (!this.chatBootstrapDone || this.$route.path !== '/chat' || this.loadError) {
+                return;
+            }
+            const fpRaw = this.$route.query.focus_post;
+            if (fpRaw == null || String(fpRaw).trim() === '') {
+                return;
+            }
+            if (this.loadingMessages) {
+                return;
+            }
+            const pid = Number(fpRaw);
+            if (!Number.isFinite(pid)) {
+                this.stripFocusPostFromRoute();
+
+                return;
+            }
+            if (!this.messages.some((m) => Number(m.post_id) === pid)) {
+                this.stripFocusPostFromRoute();
+
+                return;
+            }
+            const feed = this.$refs.chatFeed;
+            if (feed && typeof feed.scrollToPost === 'function') {
+                feed.scrollToPost(pid);
+            }
+            this.stripFocusPostFromRoute();
+        },
         async loadMessages() {
             if (!this.selectedRoomId) {
                 return;
@@ -1158,7 +1253,7 @@ export default {
                 this.loadError = 'Не вдалося завантажити повідомлення.';
             } finally {
                 this.loadingMessages = false;
-                this.$nextTick(() => this.scrollToBottom());
+                this.$nextTick(() => this.afterMessagesLoadedScroll());
             }
         },
         onFeedBottomVisible() {
@@ -1901,6 +1996,15 @@ export default {
                     q.room = String(this.selectedRoomId);
                 }
                 this.$router.push({ name: 'staff-stop-words', query: q }).catch(() => {});
+
+                return;
+            }
+            if (id === 'staff-flagged') {
+                const q = {};
+                if (this.selectedRoomId != null) {
+                    q.room = String(this.selectedRoomId);
+                }
+                this.$router.push({ name: 'staff-flagged', query: q }).catch(() => {});
 
                 return;
             }

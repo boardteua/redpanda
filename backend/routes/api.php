@@ -119,7 +119,12 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
             Route::patch('users/{user}', [StaffUserController::class, 'update']);
         });
 
+        Route::middleware(['can:moderate', 'throttle:mod-flagged-read'])->prefix('mod')->group(function (): void {
+            Route::get('flagged-messages', [ModerationController::class, 'indexFlaggedMessages']);
+        });
+
         Route::middleware(['can:moderate', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
+            Route::patch('flagged-messages/{message}', [ModerationController::class, 'clearModerationFlag']);
             Route::get('filter-words', [ModerationController::class, 'indexFilterWords']);
             Route::post('filter-words', [ModerationController::class, 'storeFilterWord']);
             Route::patch('filter-words/{filterWord}', [ModerationController::class, 'updateFilterWord']);
