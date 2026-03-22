@@ -2,10 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     classifyUrl,
+    EMBED_RESOLVERS,
     isSafeHttpUrl,
     parseChatMessageBody,
     spotifyEmbedUrl,
     trimUrlTrailing,
+    tryFacebookPostEmbed,
+    tryTelegramPostEmbed,
+    tryThreadsPostEmbed,
+    tryTwitterStatusEmbed,
     youtubeVideoId,
 } from './chatMessageBodyParse.js';
 
@@ -65,4 +70,52 @@ test('suffix after trimmed URL preserved as text', () => {
     const segs = parseChatMessageBody('(https://ex.com/).');
     const joined = segs.map((s) => (s.type === 'text' ? s.value : s.href || s.src)).join('');
     assert.ok(joined.includes('https://ex.com'));
+});
+
+test('EMBED_RESOLVERS is ordered and has known ids', () => {
+    const ids = EMBED_RESOLVERS.map((r) => r.id);
+    assert.ok(ids.includes('youtube'));
+    assert.ok(ids.includes('twitter'));
+    assert.ok(ids.includes('threads'));
+    assert.ok(ids.includes('telegram'));
+    assert.ok(ids.includes('facebook'));
+    assert.ok(ids.indexOf('youtube') < ids.indexOf('twitter'));
+});
+
+test('X / Twitter status URL → platform embed', () => {
+    const u = 'https://x.com/elonmusk/status/1234567890123456789';
+    const e = tryTwitterStatusEmbed(u);
+    assert.ok(e);
+    assert.equal(e.provider, 'twitter');
+    assert.ok(e.iframeSrc.includes('platform.twitter.com/embed/Tweet.html?id=1234567890123456789'));
+    assert.equal(classifyUrl(u).kind, 'embed');
+});
+
+test('Threads post URL → threads.net embed', () => {
+    const u = 'https://www.threads.net/@meta/post/AbCdEfGh12345';
+    const e = tryThreadsPostEmbed(u);
+    assert.ok(e);
+    assert.equal(e.provider, 'threads');
+    assert.ok(e.iframeSrc.includes('threads.net/embed/post/AbCdEfGh12345'));
+});
+
+test('Telegram public post → t.me ?embed=1', () => {
+    const u = 'https://t.me/telegram/42';
+    const e = tryTelegramPostEmbed(u);
+    assert.ok(e);
+    assert.equal(e.provider, 'telegram');
+    assert.equal(e.iframeSrc, 'https://t.me/telegram/42?embed=1');
+});
+
+test('Facebook story_fbid → plugins/post.php', () => {
+    const u = 'https://www.facebook.com/story.php?story_fbid=999&id=1';
+    const e = tryFacebookPostEmbed(u);
+    assert.ok(e);
+    assert.equal(e.provider, 'facebook');
+    assert.ok(e.iframeSrc.includes('facebook.com/plugins/post.php?href='));
+});
+
+test('plain Facebook profile is not forced embed', () => {
+    assert.equal(tryFacebookPostEmbed('https://www.facebook.com/zuck'), null);
+    assert.equal(classifyUrl('https://www.facebook.com/zuck').kind, 'link');
 });

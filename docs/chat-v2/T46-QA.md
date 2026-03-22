@@ -4,7 +4,7 @@
 
 ## Автоматичні перевірки
 
-- `npm run test:msg-parse` (Node built-in test runner) — PASS: літерали з `<script>`, http-посилання, `.png`, YouTube/Spotify, суфікс після URL.
+- `npm run test:msg-parse` (Node built-in test runner) — PASS: літерали з `<script>`, http-посилання, `.png`, YouTube/Spotify, суфікс після URL; реєстр `EMBED_RESOLVERS`; X/Twitter, Threads, Telegram, Facebook (плюс негативний кейс профілю Facebook).
 - `npm run build` (Vite 7) — PASS.
 - `php artisan test` — PASS (контракт API без змін; `post_message` лишається plain text).
 

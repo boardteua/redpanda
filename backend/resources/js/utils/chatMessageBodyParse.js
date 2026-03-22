@@ -1,12 +1,21 @@
 /**
- * Парсинг plain-text тіла повідомлення для T46: URL → посилання / прев’ю картинки / дозволені ембеди.
+ * Парсинг plain-text тіла повідомлення (T46+): URL → посилання / прев’ю картинки / дозволені ембеди.
  * Текст не інтерпретується як HTML; споживач рендерить сегменти без v-html для type=text.
+ *
+ * Масштабованість: нові соцмережі — додати запис у {@link EMBED_RESOLVERS} (порядок = пріоритет).
+ * Довгостроково можна підʼєднати реєстр oEmbed (див. /iamcal/oembed, npm `oembed-providers`) на бекенді
+ * й підставляти `html` з відповіді замість жорстких iframe-src — Context7 libraryId: `/iamcal/oembed`.
  */
 
 const URL_RE = /https?:\/\/[^\s<>"']+/gi;
 
 /** Символи, що часто «чіпляються» до URL у тексті (дужки, пунктуація). */
 const URL_TRAILING_JUNK = new Set([')', '.', ',', ';', '!', '?', ']', '"', "'", '»', '…']);
+
+/**
+ * @typedef {{ kind: 'embed', iframeSrc: string, provider: string }} EmbedClassification
+ * @typedef {{ kind: 'image' } | { kind: 'link' } | EmbedClassification} UrlClassification
+ */
 
 /**
  * @param {string} raw
@@ -154,21 +163,208 @@ function appleEmbedSrc(url) {
 }
 
 /**
+ * X / Twitter: статус за числовим id.
  * @param {string} trimmed
- * @returns {{ kind: 'embed', iframeSrc: string, provider: string } | { kind: 'image' } | { kind: 'link' }}
+ * @returns {EmbedClassification|null}
+ */
+export function tryTwitterStatusEmbed(trimmed) {
+    try {
+        const u = new URL(trimmed);
+        const host = u.hostname.replace(/^www\./, '').toLowerCase();
+        if (host !== 'twitter.com' && host !== 'x.com' && host !== 'mobile.twitter.com' && host !== 'mobile.x.com') {
+            return null;
+        }
+        const path = u.pathname;
+        let m = path.match(/\/status(?:es)?\/(\d{10,25})\b/);
+        if (!m) {
+            m = path.match(/\/i\/web\/status\/(\d{10,25})\b/);
+        }
+        if (!m) {
+            return null;
+        }
+        const id = m[1];
+        return {
+            kind: 'embed',
+            iframeSrc: `https://platform.twitter.com/embed/Tweet.html?id=${encodeURIComponent(id)}`,
+            provider: 'twitter',
+        };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Meta Threads: /(@user/)post/{postId}
+ * @param {string} trimmed
+ * @returns {EmbedClassification|null}
+ */
+export function tryThreadsPostEmbed(trimmed) {
+    try {
+        const u = new URL(trimmed);
+        const host = u.hostname.replace(/^www\./, '').toLowerCase();
+        if (host !== 'threads.net' && host !== 'threads.com') {
+            return null;
+        }
+        const m = u.pathname.match(/\/(?:@[\w.]+\/)?post\/([A-Za-z0-9_-]+)\/?/);
+        if (!m) {
+            return null;
+        }
+        const postId = m[1];
+        if (postId.length < 5 || postId.length > 80) {
+            return null;
+        }
+        return {
+            kind: 'embed',
+            iframeSrc: `https://www.threads.net/embed/post/${encodeURIComponent(postId)}/`,
+            provider: 'threads',
+        };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Публічний пост каналу/бота: t.me/name/123 → iframe з ?embed=1
+ * @param {string} trimmed
+ * @returns {EmbedClassification|null}
+ */
+export function tryTelegramPostEmbed(trimmed) {
+    try {
+        const u = new URL(trimmed);
+        const host = u.hostname.replace(/^www\./, '').toLowerCase();
+        if (host !== 't.me' && host !== 'telegram.me') {
+            return null;
+        }
+        const parts = u.pathname.split('/').filter(Boolean);
+        if (parts.length !== 2) {
+            return null;
+        }
+        const [slug, msgId] = parts;
+        const reserved = new Set([
+            's',
+            '+',
+            'joinchat',
+            'iv',
+            'addstickers',
+            'c',
+            'login',
+            'proxy',
+            'share',
+        ]);
+        if (reserved.has(slug.toLowerCase())) {
+            return null;
+        }
+        if (!/^\d+$/.test(msgId)) {
+            return null;
+        }
+        if (!/^[\w\d_]{3,64}$/i.test(slug)) {
+            return null;
+        }
+        return {
+            kind: 'embed',
+            iframeSrc: `https://t.me/${encodeURIComponent(slug)}/${encodeURIComponent(msgId)}?embed=1`,
+            provider: 'telegram',
+        };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Facebook / fb.me: офіційний post plugin (href у query).
+ * @param {string} trimmed
+ * @returns {EmbedClassification|null}
+ */
+export function tryFacebookPostEmbed(trimmed) {
+    try {
+        const u = new URL(trimmed);
+        const h = u.hostname.toLowerCase();
+        const isFacebook =
+            h === 'fb.me' || h.endsWith('.facebook.com') || h === 'facebook.com';
+        if (!isFacebook) {
+            return null;
+        }
+        const p = u.pathname;
+        const q = u.searchParams;
+        const looksLikePost =
+            q.has('story_fbid') ||
+            /\/posts\/[^/]+/.test(p) ||
+            p.includes('/permalink.php') ||
+            p.includes('/story.php') ||
+            p.includes('/photo.php') ||
+            /\/videos\/\d/.test(p) ||
+            /\/reel\//.test(p) ||
+            /\/watch\//.test(p) ||
+            /\/groups\/[^/]+\/permalink\//.test(p) ||
+            (h === 'fb.me' && p.length > 1);
+        if (!looksLikePost) {
+            return null;
+        }
+        const href = encodeURIComponent(u.href.split('#')[0]);
+        return {
+            kind: 'embed',
+            iframeSrc: `https://www.facebook.com/plugins/post.php?href=${href}&show_text=true&width=500`,
+            provider: 'facebook',
+        };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Резолвери ембедів (перший успішний виграє). Додавайте нові сюди — без зміни `classifyUrl`.
+ * @type {ReadonlyArray<{ id: string, resolve: (trimmed: string) => EmbedClassification | null }>}
+ */
+export const EMBED_RESOLVERS = Object.freeze([
+    {
+        id: 'youtube',
+        resolve(trimmed) {
+            const src = youtubeIframeSrc(trimmed);
+            return src ? { kind: 'embed', iframeSrc: src, provider: 'youtube' } : null;
+        },
+    },
+    {
+        id: 'spotify',
+        resolve(trimmed) {
+            const src = spotifyEmbedUrl(trimmed);
+            return src ? { kind: 'embed', iframeSrc: src, provider: 'spotify' } : null;
+        },
+    },
+    {
+        id: 'apple_music',
+        resolve(trimmed) {
+            const src = appleEmbedSrc(trimmed);
+            return src ? { kind: 'embed', iframeSrc: src, provider: 'apple' } : null;
+        },
+    },
+    {
+        id: 'twitter',
+        resolve: tryTwitterStatusEmbed,
+    },
+    {
+        id: 'threads',
+        resolve: tryThreadsPostEmbed,
+    },
+    {
+        id: 'telegram',
+        resolve: tryTelegramPostEmbed,
+    },
+    {
+        id: 'facebook',
+        resolve: tryFacebookPostEmbed,
+    },
+]);
+
+/**
+ * @param {string} trimmed
+ * @returns {UrlClassification}
  */
 export function classifyUrl(trimmed) {
-    const yt = youtubeIframeSrc(trimmed);
-    if (yt) {
-        return { kind: 'embed', iframeSrc: yt, provider: 'youtube' };
-    }
-    const sp = spotifyEmbedUrl(trimmed);
-    if (sp) {
-        return { kind: 'embed', iframeSrc: sp, provider: 'spotify' };
-    }
-    const ap = appleEmbedSrc(trimmed);
-    if (ap) {
-        return { kind: 'embed', iframeSrc: ap, provider: 'apple' };
+    for (let i = 0; i < EMBED_RESOLVERS.length; i += 1) {
+        const hit = EMBED_RESOLVERS[i].resolve(trimmed);
+        if (hit) {
+            return hit;
+        }
     }
     if (isLikelyImageUrl(trimmed)) {
         return { kind: 'image' };

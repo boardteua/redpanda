@@ -51,7 +51,7 @@
                 >
                     <iframe
                         :src="seg.src"
-                        class="absolute inset-0 h-full w-full"
+                        class="absolute inset-0 h-full w-full border-0"
                         :title="embedTitle(seg)"
                         loading="lazy"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -65,7 +65,7 @@
                 >
                     <iframe
                         :src="seg.src"
-                        class="h-[152px] w-full"
+                        class="h-[152px] w-full border-0"
                         :title="embedTitle(seg)"
                         loading="lazy"
                         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
@@ -78,10 +78,20 @@
                 >
                     <iframe
                         :src="seg.src"
-                        class="h-[min(280px,45vh)] w-full sm:h-[380px]"
+                        class="h-[min(280px,45vh)] w-full border-0 sm:h-[380px]"
                         :title="embedTitle(seg)"
                         loading="lazy"
                         allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write"
+                        referrerpolicy="strict-origin-when-cross-origin"
+                    />
+                </div>
+                <div v-else :class="socialEmbedWrapperClass(seg.provider)">
+                    <iframe
+                        :src="seg.src"
+                        class="absolute inset-0 h-full w-full border-0"
+                        :title="embedTitle(seg)"
+                        loading="lazy"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; web-share"
                         referrerpolicy="strict-origin-when-cross-origin"
                     />
                 </div>
@@ -92,6 +102,14 @@
 
 <script>
 import { parseChatMessageBody } from '../../utils/chatMessageBodyParse';
+
+/** Провайдери з окремим layout уже в шаблоні вище. */
+const SOCIAL_EMBED_HEIGHT = {
+    twitter: 'h-[500px] sm:h-[540px]',
+    threads: 'h-[580px] sm:h-[640px]',
+    telegram: 'h-[400px]',
+    facebook: 'h-[520px] sm:h-[580px]',
+};
 
 export default {
     name: 'ChatMessageBody',
@@ -135,29 +153,36 @@ export default {
         },
     },
     methods: {
+        socialEmbedWrapperClass(provider) {
+            const h = SOCIAL_EMBED_HEIGHT[provider] || 'h-[420px] sm:h-[460px]';
+            return [
+                'relative w-full max-w-lg overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-surface-elevated)]',
+                h,
+            ].join(' ');
+        },
         embedTitle(seg) {
-            if (seg.provider === 'youtube') {
-                return 'Вбудоване відео YouTube';
-            }
-            if (seg.provider === 'spotify') {
-                return 'Вбудований плеєр Spotify';
-            }
-            if (seg.provider === 'apple') {
-                return 'Вбудований плеєр Apple Music';
-            }
-            return 'Вбудований медіаплеєр';
+            const t = {
+                youtube: 'Вбудоване відео YouTube',
+                spotify: 'Вбудований плеєр Spotify',
+                apple: 'Вбудований плеєр Apple Music',
+                twitter: 'Допис у X (Twitter)',
+                threads: 'Допис у Threads',
+                telegram: 'Пост у Telegram',
+                facebook: 'Допис у Facebook',
+            };
+            return t[seg.provider] || 'Вбудований медіаплеєр';
         },
         embedArchiveLabel(seg) {
-            if (seg.provider === 'youtube') {
-                return 'Відео YouTube (відкрити)';
-            }
-            if (seg.provider === 'spotify') {
-                return 'Spotify (відкрити)';
-            }
-            if (seg.provider === 'apple') {
-                return 'Apple Music (відкрити)';
-            }
-            return 'Медіа (відкрити)';
+            const t = {
+                youtube: 'Відео YouTube (відкрити)',
+                spotify: 'Spotify (відкрити)',
+                apple: 'Apple Music (відкрити)',
+                twitter: 'X / Twitter (відкрити)',
+                threads: 'Threads (відкрити)',
+                telegram: 'Telegram (відкрити)',
+                facebook: 'Facebook (відкрити)',
+            };
+            return t[seg.provider] || 'Медіа (відкрити)';
         },
     },
 };
