@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api\V1;
 use App\Chat\RoomInlinePrivateParser;
 use App\Chat\SlashCommandPipeline;
 use App\Events\MessagePosted;
+use App\Events\MessageUpdated;
 use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StoreChatMessageRequest;
+use App\Http\Requests\Chat\UpdateChatMessageRequest;
 use App\Http\Resources\ChatMessageResource;
 use App\Models\ChatMessage;
 use App\Models\PrivateMessage;
@@ -74,6 +76,36 @@ class ChatMessageController extends Controller
                 'next_cursor' => $nextCursor,
             ],
         ]);
+    }
+
+    public function update(UpdateChatMessageRequest $request, Room $room, ChatMessage $message): JsonResponse
+    {
+        $this->authorize('interact', $room);
+
+        if ((int) $message->post_roomid !== (int) $room->room_id) {
+            abort(404);
+        }
+
+        $this->authorize('update', $message);
+
+        $user = $request->user();
+        $this->postingGate->ensureCanPost($user);
+
+        $validated = $request->validated();
+        $filtered = $this->wordFilter->filter(trim((string) ($validated['message'] ?? '')));
+
+        if ($request->has('style')) {
+            $sp = $validated['style'] ?? null;
+            $message->post_style = ChatMessageBodyStyle::fromValidated(is_array($sp) ? $sp : null);
+        }
+
+        $message->post_message = $filtered;
+        $message->post_edited_at = time();
+        $message->save();
+
+        broadcast(new MessageUpdated($message))->toOthers();
+
+        return ChatMessageResource::make($message->fresh())->response();
     }
 
     public function store(StoreChatMessageRequest $request, Room $room): JsonResponse

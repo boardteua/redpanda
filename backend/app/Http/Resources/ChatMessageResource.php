@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\ChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 
 /** @mixin ChatMessage */
@@ -19,6 +20,7 @@ class ChatMessageResource extends JsonResource
             'post_id' => $this->post_id,
             'user_id' => $this->user_id,
             'post_date' => (int) $this->post_date,
+            'post_edited_at' => $this->post_edited_at !== null ? (int) $this->post_edited_at : null,
             'post_time' => $this->post_time,
             'post_user' => $this->post_user,
             'post_message' => $this->post_message,
@@ -40,6 +42,7 @@ class ChatMessageResource extends JsonResource
                     'url' => URL::route('api.v1.chat-images.file', ['image' => (int) $this->file], true),
                 ],
             ),
+            'can_edit' => Gate::forUser($request->user())->allows('update', $this->resource),
         ];
     }
 }

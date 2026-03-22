@@ -13,7 +13,7 @@ info:
 
     **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`).
 
-    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`** транслюються на той самий presence-канал (T20). Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08).
+    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`** і **`.MessageUpdated`** (редагування публічного допису, T36) транслюються на той самий presence-канал. Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08).
 
     **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09). З головної з `?history=1` після входу — перехід на архів.
 
@@ -805,6 +805,49 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/rooms/{roomId}/messages/{postId}:
+    patch:
+      tags: [Chat]
+      summary: Редагувати публічне повідомлення
+      description: |
+        Лише `type: public`. RBAC: адмін — будь-який допис у кімнаті; модератор — будь-який, крім авторства адміністратора;
+        звичайний користувач — лише власні в межах `message_edit_window_hours` з `GET /api/v1/auth/user`; VIP — власні без обмеження часу; гість — заборонено.
+        Текст проходить той самий word-filter, що й при створенні. Поле `style` опційне; якщо не передано — стиль не змінюється.
+      operationId: patchRoomMessage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - $ref: "#/components/parameters/ChatPostId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchChatMessageRequest"
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessagePatchResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Валідація
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorBody"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
 components:
   securitySchemes:
     sanctumSession:
@@ -851,6 +894,15 @@ components:
         type: integer
         minimum: 1
       description: `users.id` цілі
+
+    ChatPostId:
+      name: postId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: `chat.post_id`
 
     RoomId:
       name: roomId
@@ -1019,6 +1071,10 @@ components:
           allOf:
             - $ref: "#/components/schemas/NotificationSoundPrefs"
           nullable: true
+        message_edit_window_hours:
+          type: integer
+          minimum: 1
+          description: Години, протягом яких звичайний користувач може редагувати власні публічні повідомлення (T36); лише якщо `guest === false`
 
     UserResponse:
       type: object
@@ -1166,6 +1222,24 @@ components:
           items:
             $ref: "#/components/schemas/Room"
 
+    PatchChatMessageRequest:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Новий текст (після trim; порожній дозволено лише якщо у повідомлення вже є вкладене зображення)
+        style:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChatMessageBodyStyle"
+
+    ChatMessagePatchResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatMessage"
+
     ChatMessage:
       type: object
       properties:
@@ -1176,6 +1250,13 @@ components:
         post_date:
           type: integer
           description: Unix timestamp
+        post_edited_at:
+          type: integer
+          nullable: true
+          description: Unix час останнього редагування; null — не редагувалось
+        can_edit:
+          type: boolean
+          description: Чи дозволено поточному користувачу `PATCH` це повідомлення (T36)
         post_time:
           type: string
           nullable: true

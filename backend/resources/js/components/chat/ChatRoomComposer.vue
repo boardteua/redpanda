@@ -98,7 +98,7 @@
                 <button
                     type="button"
                     class="rp-focusable rp-chat-toolbar-btn"
-                    :disabled="isGuest || !selectedRoomId || uploadingImage"
+                    :disabled="isGuest || !selectedRoomId || uploadingImage || editPostId"
                     title="Мої зображення"
                     aria-label="Мої зображення"
                     @click="openMyImagesModal"
@@ -185,6 +185,20 @@
                 />
             </div>
         </div>
+        <div
+            v-if="editPostId"
+            class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] px-2 py-1.5 text-sm sm:px-3"
+            role="status"
+        >
+            <span class="text-[var(--rp-text-muted)]">Редагування повідомлення</span>
+            <button
+                type="button"
+                class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                @click="cancelEdit"
+            >
+                Скасувати
+            </button>
+        </div>
         <label class="rp-sr-only" for="chat-composer">Повідомлення</label>
         <div class="rp-chat-composer-row">
             <button
@@ -220,7 +234,7 @@
                 <button
                     type="button"
                     class="rp-focusable rp-chat-composer-rail-btn"
-                    :disabled="sending || uploadingImage || !selectedRoomId || isGuest"
+                    :disabled="sending || uploadingImage || !selectedRoomId || isGuest || editPostId"
                     title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
                     aria-label="Додати зображення до повідомлення"
                     @click="$refs.imageInput && $refs.imageInput.click()"
@@ -238,10 +252,10 @@
                         sending
                         || uploadingImage
                         || !selectedRoomId
-                        || (!composerText.trim() && !pendingImageId)
+                        || !canSubmitComposer
                     "
-                    title="Надіслати повідомлення"
-                    aria-label="Надіслати повідомлення"
+                    :title="editPostId ? 'Зберегти зміни' : 'Надіслати повідомлення'"
+                    :aria-label="editPostId ? 'Зберегти зміни повідомлення' : 'Надіслати повідомлення'"
                 >
                     <svg class="h-5 w-5 shrink-0" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
@@ -306,6 +320,7 @@ import {
     COMPOSER_FG_PALETTE,
     buildStylePayloadForApi,
     defaultComposerStyle,
+    normalizePostStyleFromApi,
     readComposerStyleFromStorage,
     persistComposerStyle,
 } from '../../utils/chatMessageStyle';
@@ -334,9 +349,18 @@ export default {
             imageUploadError: '',
             myImagesModalOpen: false,
             emojiModalOpen: false,
+            editPostId: null,
+            editHadFile: false,
         };
     },
     computed: {
+        canSubmitComposer() {
+            if (this.editPostId) {
+                return Boolean(this.composerText.trim()) || this.editHadFile;
+            }
+
+            return Boolean(this.composerText.trim()) || Boolean(this.pendingImageId);
+        },
         composerBgPalette() {
             return COMPOSER_BG_PALETTE;
         },
@@ -379,11 +403,65 @@ export default {
                 text: this.composerText.trim(),
                 imageId: this.pendingImageId,
                 stylePayload: buildStylePayloadForApi(this.composerStyle),
+                editPostId: this.editPostId,
+                editHadFile: this.editHadFile,
             };
+        },
+        getEditPostId() {
+            return this.editPostId;
+        },
+        loadForEdit(message) {
+            if (!message || message.post_id == null) {
+                return;
+            }
+            this.editPostId = message.post_id;
+            this.editHadFile = Boolean(message.image && message.image.id);
+            this.composerText = message.post_message != null ? String(message.post_message) : '';
+            this.clearPendingChatImage();
+            const n = normalizePostStyleFromApi(message.post_style);
+            if (n) {
+                this.composerStyle = {
+                    bold: n.bold,
+                    italic: n.italic,
+                    underline: n.underline,
+                    bg: n.bg,
+                    fg: n.fg,
+                };
+            } else {
+                this.composerStyle = defaultComposerStyle();
+            }
+            this.formatPanel = null;
+            this.imageUploadError = '';
+            this.$nextTick(() => {
+                this.syncComposerInputHeight();
+                const el = this.$refs.chatComposer;
+                if (el && typeof el.focus === 'function') {
+                    el.focus();
+                    const len = this.composerText.length;
+                    try {
+                        el.setSelectionRange(len, len);
+                    } catch {
+                        /* */
+                    }
+                }
+            });
+        },
+        cancelEdit() {
+            this.editPostId = null;
+            this.editHadFile = false;
+            this.composerText = '';
+            this.composerStyle = readComposerStyleFromStorage();
+            this.clearPendingChatImage();
+            this.imageUploadError = '';
+            this.formatPanel = null;
+            this.$nextTick(() => this.syncComposerInputHeight());
         },
         resetAfterSend() {
             this.composerText = '';
             this.clearPendingChatImage();
+            this.editPostId = null;
+            this.editHadFile = false;
+            this.formatPanel = null;
             this.$nextTick(() => this.syncComposerInputHeight());
         },
         appendToComposer(insertion) {
@@ -460,11 +538,57 @@ export default {
             this.composerStyle = { ...this.composerStyle, fg: null };
             this.formatPanel = null;
         },
+        textareaCaretLineIndex() {
+            const el = this.$refs.chatComposer;
+            if (!el || typeof el.value !== 'string') {
+                return 0;
+            }
+            const pos = el.selectionStart ?? 0;
+
+            return el.value.slice(0, pos).split('\n').length - 1;
+        },
+        textareaLineCount() {
+            const el = this.$refs.chatComposer;
+            if (!el || typeof el.value !== 'string') {
+                return 1;
+            }
+
+            return el.value.split('\n').length;
+        },
         onChatComposerKeydown(e) {
-            if (e.key !== 'Enter') {
+            if (e.isComposing || e.keyCode === 229) {
                 return;
             }
-            if (e.isComposing || e.keyCode === 229) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                if (!this.selectedRoomId || this.sending || this.uploadingImage) {
+                    return;
+                }
+                const el = this.$refs.chatComposer;
+                if (!el) {
+                    return;
+                }
+                const line = this.textareaCaretLineIndex();
+                const lines = this.textareaLineCount();
+                if (e.key === 'ArrowUp' && line !== 0) {
+                    return;
+                }
+                if (e.key === 'ArrowDown' && line !== lines - 1) {
+                    return;
+                }
+                e.preventDefault();
+                if (e.key === 'ArrowUp') {
+                    if (this.editPostId == null) {
+                        this.$emit('cycle-edit', { startLatest: true });
+                    } else {
+                        this.$emit('cycle-edit', { delta: -1 });
+                    }
+                } else if (this.editPostId != null) {
+                    this.$emit('cycle-edit', { delta: 1 });
+                }
+
+                return;
+            }
+            if (e.key !== 'Enter') {
                 return;
             }
             if (e.shiftKey) {
@@ -476,6 +600,9 @@ export default {
             this.emitSubmit();
         },
         onChatComposerPaste(e) {
+            if (this.editPostId) {
+                return;
+            }
             const file = getFirstClipboardImageFile(e.clipboardData);
             if (!file) {
                 return;

@@ -32,6 +32,7 @@ class ChatMessage extends Model
     protected $fillable = [
         'user_id',
         'post_date',
+        'post_edited_at',
         'post_time',
         'post_user',
         'post_message',

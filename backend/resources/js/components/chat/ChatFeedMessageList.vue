@@ -15,6 +15,7 @@
                 :viewer-name="viewerName"
                 @inline-private="$emit('inline-private', $event)"
                 @mention="$emit('mention', $event)"
+                @edit="$emit('edit', $event)"
             />
         </ul>
         <p

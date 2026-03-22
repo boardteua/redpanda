@@ -52,11 +52,33 @@
                         {{ message.post_message }}
                     </span>
                 </p>
-                <time
-                    class="shrink-0 font-mono text-[0.6875rem] tabular-nums text-[var(--rp-text-muted)]"
-                >
-                    {{ message.post_time || '—' }}
-                </time>
+                <div class="flex shrink-0 items-center gap-1.5">
+                    <button
+                        v-if="message.can_edit"
+                        type="button"
+                        class="rp-focusable rounded p-1 text-[var(--rp-text-muted)] hover:text-[var(--rp-text)]"
+                        title="Редагувати"
+                        aria-label="Редагувати повідомлення"
+                        @click.stop="$emit('edit', message)"
+                    >
+                        <svg class="h-4 w-4" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                            />
+                        </svg>
+                    </button>
+                    <span
+                        v-if="message.post_edited_at"
+                        class="text-[0.625rem] font-medium uppercase tracking-wide text-[var(--rp-text-muted)]"
+                    >
+                        змінено
+                    </span>
+                    <time
+                        class="font-mono text-[0.6875rem] tabular-nums text-[var(--rp-text-muted)]"
+                    >
+                        {{ message.post_time || '—' }}
+                    </time>
+                </div>
             </div>
             <figure v-if="message.image && message.image.url" class="mt-1.5">
                 <img

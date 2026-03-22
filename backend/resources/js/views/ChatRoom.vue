@@ -68,6 +68,7 @@
                         :viewer-name="user && user.user_name ? user.user_name : ''"
                         @inline-private="insertFeedInlinePrivatePrefix"
                         @mention="insertFeedReplyPrefix"
+                        @edit="startEditMessageFromFeed"
                     />
 
                     <ChatRoomComposer
@@ -78,6 +79,7 @@
                         :is-guest="Boolean(user && user.guest)"
                         :ensure-sanctum="ensureSanctum"
                         @submit-message="sendMessage"
+                        @cycle-edit="onComposerCycleEdit"
                         @logout="logout"
                     />
                 </div>
@@ -272,11 +274,15 @@ function normalizeMessage(raw) {
             ? { id: Number(raw.image.id), url: raw.image.url }
             : null;
 
-    return {
+    const base = {
         post_id: raw.post_id,
         post_roomid: raw.post_roomid,
         user_id: raw.user_id,
         post_date: raw.post_date,
+        post_edited_at:
+            raw.post_edited_at != null && raw.post_edited_at !== ''
+                ? Number(raw.post_edited_at)
+                : null,
         post_time: raw.post_time,
         post_user: raw.post_user,
         post_message: raw.post_message,
@@ -292,6 +298,11 @@ function normalizeMessage(raw) {
         file,
         image,
     };
+    if (Object.prototype.hasOwnProperty.call(raw || {}, 'can_edit')) {
+        base.can_edit = Boolean(raw.can_edit);
+    }
+
+    return base;
 }
 
 export default {
@@ -677,10 +688,39 @@ export default {
             this.messages = [];
             this.messageIds = new Set();
         },
+        inferCanEditForMessage(m) {
+            if (!this.user || this.user.guest) {
+                return false;
+            }
+            if (m.type !== 'public') {
+                return false;
+            }
+            const role = this.user.chat_role;
+            if (role === 'admin') {
+                return true;
+            }
+            if (role === 'moderator') {
+                return m.post_color !== 'admin';
+            }
+            if (Number(m.user_id) !== Number(this.user.id)) {
+                return false;
+            }
+            if (role === 'vip') {
+                return true;
+            }
+            const hours = Number(this.user.message_edit_window_hours);
+            const windowSec = (Number.isFinite(hours) && hours > 0 ? hours : 24) * 3600;
+            const age = Math.floor(Date.now() / 1000) - Number(m.post_date);
+
+            return age <= windowSec;
+        },
         mergeMessage(raw) {
             const m = normalizeMessage(raw);
-            if (!m || this.messageIds.has(m.post_id)) {
+            if (!m) {
                 return;
+            }
+            if (m.can_edit === undefined) {
+                m.can_edit = this.inferCanEditForMessage(m);
             }
             const rid = this.selectedRoomId;
             if (
@@ -688,6 +728,21 @@ export default {
                 && m.post_roomid != null
                 && Number(m.post_roomid) !== Number(rid)
             ) {
+                return;
+            }
+            const existingIdx = this.messages.findIndex((x) => x.post_id === m.post_id);
+            if (existingIdx !== -1) {
+                const prev = this.messages[existingIdx];
+                const next = { ...prev, ...m };
+                if (!Object.prototype.hasOwnProperty.call(raw || {}, 'can_edit')) {
+                    next.can_edit = prev.can_edit;
+                }
+                this.$set(this.messages, existingIdx, next);
+                this.$nextTick(() => this.scrollToBottom());
+
+                return;
+            }
+            if (this.messageIds.has(m.post_id)) {
                 return;
             }
             this.messageIds.add(m.post_id);
@@ -854,6 +909,10 @@ export default {
             });
 
             channel.listen('.MessagePosted', (payload) => {
+                this.mergeMessage(payload);
+            });
+
+            channel.listen('.MessageUpdated', (payload) => {
                 this.mergeMessage(payload);
             });
 
@@ -1058,6 +1117,51 @@ export default {
             const prefix = `${nick} > `;
             comp.appendToComposer(prefix);
             this.$nextTick(() => comp.focusComposerEnd());
+        },
+        startEditMessageFromFeed(message) {
+            const comp = this.$refs.chatComposer;
+            if (!comp || typeof comp.loadForEdit !== 'function') {
+                return;
+            }
+            comp.loadForEdit(message);
+        },
+        onComposerCycleEdit(payload) {
+            const comp = this.$refs.chatComposer;
+            if (!comp || typeof comp.loadForEdit !== 'function') {
+                return;
+            }
+            const editable = this.messages
+                .filter((m) => m.type === 'public' && m.can_edit)
+                .sort((a, b) => a.post_id - b.post_id);
+            if (editable.length === 0) {
+                return;
+            }
+            if (payload && payload.startLatest) {
+                comp.loadForEdit(editable[editable.length - 1]);
+
+                return;
+            }
+            const delta = payload && payload.delta ? Number(payload.delta) : 0;
+            if (!delta) {
+                return;
+            }
+            const cur = typeof comp.getEditPostId === 'function' ? comp.getEditPostId() : null;
+            let idx = editable.findIndex((m) => m.post_id === cur);
+            if (delta < 0) {
+                if (idx === -1) {
+                    idx = editable.length;
+                }
+                idx += delta;
+            } else {
+                if (idx === -1) {
+                    return;
+                }
+                idx += delta;
+            }
+            if (idx < 0 || idx >= editable.length) {
+                return;
+            }
+            comp.loadForEdit(editable[idx]);
         },
         insertFeedInlinePrivatePrefix(userName) {
             if (!this.user || userName == null || userName === '') {
@@ -1362,33 +1466,58 @@ export default {
             if (!comp || typeof comp.getSendPayload !== 'function') {
                 return;
             }
-            const { text, imageId, stylePayload } = comp.getSendPayload();
-            if ((!text && !imageId) || !this.selectedRoomId || this.sending) {
+            const { text, imageId, stylePayload, editPostId, editHadFile } = comp.getSendPayload();
+            if (!this.selectedRoomId || this.sending) {
+                return;
+            }
+            if (editPostId == null && !text && !imageId) {
+                return;
+            }
+            if (editPostId != null && !text && !editHadFile) {
                 return;
             }
             this.sending = true;
             await this.ensureSanctum();
-            const clientMessageId = crypto.randomUUID();
             try {
-                const body = {
-                    message: text,
-                    client_message_id: clientMessageId,
-                };
-                if (imageId) {
-                    body.image_id = imageId;
-                }
-                if (stylePayload) {
-                    body.style = stylePayload;
-                }
-                const { data, status } = await window.axios.post(
-                    `/api/v1/rooms/${this.selectedRoomId}/messages`,
-                    body,
-                );
-                if (data.data) {
-                    this.mergeMessage(data.data);
-                }
-                if (status === 201 || status === 200) {
-                    comp.resetAfterSend();
+                if (editPostId != null) {
+                    const patchBody = { message: text };
+                    patchBody.style = stylePayload || {
+                        bold: false,
+                        italic: false,
+                        underline: false,
+                    };
+                    const { data, status } = await window.axios.patch(
+                        `/api/v1/rooms/${this.selectedRoomId}/messages/${editPostId}`,
+                        patchBody,
+                    );
+                    if (data.data) {
+                        this.mergeMessage(data.data);
+                    }
+                    if (status === 200) {
+                        comp.resetAfterSend();
+                    }
+                } else {
+                    const clientMessageId = crypto.randomUUID();
+                    const body = {
+                        message: text,
+                        client_message_id: clientMessageId,
+                    };
+                    if (imageId) {
+                        body.image_id = imageId;
+                    }
+                    if (stylePayload) {
+                        body.style = stylePayload;
+                    }
+                    const { data, status } = await window.axios.post(
+                        `/api/v1/rooms/${this.selectedRoomId}/messages`,
+                        body,
+                    );
+                    if (data.data) {
+                        this.mergeMessage(data.data);
+                    }
+                    if (status === 201 || status === 200) {
+                        comp.resetAfterSend();
+                    }
                 }
             } catch (e) {
                 const msg = e.response?.data?.message || 'Не вдалося надіслати.';

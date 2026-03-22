@@ -66,7 +66,8 @@ class MeProfileApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.profile.country', 'UA')
             ->assertJsonPath('data.profile.about', 'Hello')
-            ->assertJsonPath('data.notification_sound_prefs.volume_percent', 80);
+            ->assertJsonPath('data.notification_sound_prefs.volume_percent', 80)
+            ->assertJsonPath('data.message_edit_window_hours', 24);
 
         $this->from(config('app.url'))
             ->actingAs($user, 'web')

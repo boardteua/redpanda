@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\ChatMessage;
 use App\Models\Image;
 use App\Models\Room;
 use App\Models\User;
+use App\Policies\ChatMessagePolicy;
 use App\Policies\ImagePolicy;
 use App\Policies\RoomPolicy;
 use App\Policies\UserPolicy;
@@ -44,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Room::class, RoomPolicy::class);
         Gate::policy(Image::class, ImagePolicy::class);
+        Gate::policy(ChatMessage::class, ChatMessagePolicy::class);
 
         RateLimiter::for('auth-register', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());

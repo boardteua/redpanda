@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Events\MessagePosted;
+use App\Events\MessageUpdated;
 use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
 use App\Models\ChatMessage;
@@ -13,6 +14,8 @@ use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -32,6 +35,30 @@ class ChatApiTest extends TestCase
     private function statefulHeaders(): array
     {
         return ['Referer' => config('app.url')];
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function seedPublicChatMessage(Room $room, User $author, array $overrides = []): ChatMessage
+    {
+        $now = (int) ($overrides['post_date'] ?? time());
+
+        return ChatMessage::query()->create(array_merge([
+            'user_id' => $author->id,
+            'post_date' => $now,
+            'post_time' => date('H:i', $now),
+            'post_user' => $author->user_name,
+            'post_message' => 'seeded',
+            'post_style' => null,
+            'post_color' => 'user',
+            'post_roomid' => $room->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => null,
+            'file' => 0,
+            'client_message_id' => (string) Str::uuid(),
+        ], $overrides));
     }
 
     private function seedRooms(): array
@@ -563,5 +590,182 @@ class ChatApiTest extends TestCase
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['message']);
+    }
+
+    public function test_patch_message_owner_updates_text_and_broadcasts(): void
+    {
+        Bus::fake([BroadcastEvent::class]);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_message' => 'alpha']);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'beta',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.post_message', 'beta')
+            ->assertJsonPath('data.can_edit', true);
+
+        $this->assertNotNull(ChatMessage::query()->find($msg->post_id)?->post_edited_at);
+
+        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+            return $job->event instanceof MessageUpdated;
+        });
+    }
+
+    public function test_patch_message_guest_forbidden(): void
+    {
+        [$public] = $this->seedRooms();
+        $author = User::factory()->create();
+        $guest = User::factory()->guest()->create();
+        $msg = $this->seedPublicChatMessage($public, $author);
+
+        $this->from(config('app.url'))
+            ->actingAs($guest, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'x',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_patch_message_cannot_edit_other_user(): void
+    {
+        [$public] = $this->seedRooms();
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $a);
+
+        $this->from(config('app.url'))
+            ->actingAs($b, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'hijack',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_patch_message_plain_user_forbidden_after_edit_window(): void
+    {
+        Config::set('chat.message_edit_window_hours', 1);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $oldTs = time() - 7200;
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_date' => $oldTs]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'too late',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_patch_message_vip_can_edit_after_edit_window(): void
+    {
+        Config::set('chat.message_edit_window_hours', 1);
+
+        [$public] = $this->seedRooms();
+        $vip = User::factory()->vip()->create();
+        $oldTs = time() - 7200;
+        $msg = $this->seedPublicChatMessage($public, $vip, ['post_date' => $oldTs]);
+
+        $this->from(config('app.url'))
+            ->actingAs($vip, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'vip ok',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.post_message', 'vip ok');
+    }
+
+    public function test_patch_message_moderator_edits_user_message(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'mod cleaned',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.post_message', 'mod cleaned');
+    }
+
+    public function test_patch_message_moderator_cannot_edit_admin_authored_message(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create();
+        $admin = User::factory()->admin()->create();
+        $msg = $this->seedPublicChatMessage($public, $admin);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'nope',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_patch_message_admin_edits_admin_authored_message(): void
+    {
+        [$public] = $this->seedRooms();
+        $adminA = User::factory()->admin()->create();
+        $adminB = User::factory()->admin()->create();
+        $msg = $this->seedPublicChatMessage($public, $adminA);
+
+        $this->from(config('app.url'))
+            ->actingAs($adminB, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'admin fixed',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.post_message', 'admin fixed');
+    }
+
+    public function test_patch_message_wrong_room_returns_404(): void
+    {
+        [$public, $registered] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$registered->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'wrong',
+            ])
+            ->assertNotFound();
+    }
+
+    public function test_patch_inline_private_message_forbidden(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user, [
+            'type' => 'inline_private',
+            'post_target' => '1',
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'nope',
+            ])
+            ->assertForbidden();
     }
 }

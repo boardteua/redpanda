@@ -32,6 +32,8 @@ class UserResource extends JsonResource
             return $base;
         }
 
+        $base['message_edit_window_hours'] = (int) config('chat.message_edit_window_hours', 24);
+
         $social = array_merge(User::defaultSocialLinkKeys(), $this->social_links ?? []);
         $sounds = array_replace(
             User::defaultNotificationSoundPrefs(),
