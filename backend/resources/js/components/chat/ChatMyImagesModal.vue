@@ -14,7 +14,6 @@
                 :aria-busy="loadingMore ? 'true' : 'false'"
                 class="flex max-h-[min(85vh,40rem)] w-full max-w-lg flex-col rounded-lg border border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] shadow-xl"
                 tabindex="-1"
-                @keydown.stop="onPanelKeydown"
             >
                 <div class="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--rp-border-subtle)] p-4">
                     <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">
@@ -80,6 +79,12 @@
 </template>
 
 <script>
+import {
+    captureActiveElement,
+    handleModalTabCycle,
+    restoreFocusElement,
+} from '../../utils/modalFocusTrap';
+
 let modalSeq = 0;
 
 export default {
@@ -105,12 +110,14 @@ export default {
             error: '',
             currentPage: 1,
             lastPage: 1,
+            focusBeforeModal: null,
         };
     },
     watch: {
         open(v) {
             if (v) {
-                document.addEventListener('keydown', this.onDocKeydown);
+                this.focusBeforeModal = captureActiveElement();
+                document.addEventListener('keydown', this.onModalRootKeydown, true);
                 this.resetAndLoad();
                 this.$nextTick(() => {
                     const p = this.$refs.panel;
@@ -119,28 +126,35 @@ export default {
                     }
                 });
             } else {
-                document.removeEventListener('keydown', this.onDocKeydown);
+                document.removeEventListener('keydown', this.onModalRootKeydown, true);
+                restoreFocusElement(this.focusBeforeModal);
+                this.focusBeforeModal = null;
             }
         },
     },
     beforeDestroy() {
-        document.removeEventListener('keydown', this.onDocKeydown);
+        document.removeEventListener('keydown', this.onModalRootKeydown, true);
+        restoreFocusElement(this.focusBeforeModal);
     },
     methods: {
         close() {
             this.$emit('close');
         },
-        onDocKeydown(e) {
+        onModalRootKeydown(e) {
+            if (!this.open) {
+                return;
+            }
+            const panel = this.$refs.panel;
+            if (!panel) {
+                return;
+            }
             if (e.key === 'Escape') {
                 e.preventDefault();
                 this.close();
+
+                return;
             }
-        },
-        onPanelKeydown(e) {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                this.close();
-            }
+            handleModalTabCycle(e, panel);
         },
         resetAndLoad() {
             this.items = [];

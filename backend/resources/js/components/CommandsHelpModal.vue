@@ -13,7 +13,6 @@
                 aria-labelledby="commands-help-title"
                 class="flex max-h-[min(85vh,32rem)] w-full max-w-lg flex-col rounded-lg border border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] shadow-xl"
                 tabindex="-1"
-                @keydown.stop="onPanelKeydown"
             >
                 <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-4 py-3">
                     <h2 id="commands-help-title" class="text-base font-semibold text-[var(--rp-text)]">
@@ -47,6 +46,11 @@
 
 <script>
 import commandsMd from '../../markdown/board-te-ua-commands.md?raw';
+import {
+    captureActiveElement,
+    handleModalTabCycle,
+    restoreFocusElement,
+} from '../utils/modalFocusTrap';
 
 export default {
     name: 'CommandsHelpModal',
@@ -59,12 +63,14 @@ export default {
     data() {
         return {
             body: typeof commandsMd === 'string' ? commandsMd : String(commandsMd),
+            focusBeforeModal: null,
         };
     },
     watch: {
         open(v) {
             if (v) {
-                document.addEventListener('keydown', this.onDocKeydown);
+                this.focusBeforeModal = captureActiveElement();
+                document.addEventListener('keydown', this.onModalRootKeydown, true);
                 this.$nextTick(() => {
                     const p = this.$refs.panel;
                     if (p && typeof p.focus === 'function') {
@@ -72,28 +78,35 @@ export default {
                     }
                 });
             } else {
-                document.removeEventListener('keydown', this.onDocKeydown);
+                document.removeEventListener('keydown', this.onModalRootKeydown, true);
+                restoreFocusElement(this.focusBeforeModal);
+                this.focusBeforeModal = null;
             }
         },
     },
     beforeDestroy() {
-        document.removeEventListener('keydown', this.onDocKeydown);
+        document.removeEventListener('keydown', this.onModalRootKeydown, true);
+        restoreFocusElement(this.focusBeforeModal);
     },
     methods: {
         close() {
             this.$emit('close');
         },
-        onDocKeydown(e) {
+        onModalRootKeydown(e) {
+            if (!this.open) {
+                return;
+            }
+            const panel = this.$refs.panel;
+            if (!panel) {
+                return;
+            }
             if (e.key === 'Escape') {
                 e.preventDefault();
                 this.close();
+
+                return;
             }
-        },
-        onPanelKeydown(e) {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                this.close();
-            }
+            handleModalTabCycle(e, panel);
         },
     },
 };

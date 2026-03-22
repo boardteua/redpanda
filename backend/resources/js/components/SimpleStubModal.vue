@@ -13,7 +13,6 @@
                 :aria-labelledby="titleId"
                 class="w-full max-w-md rounded-lg border border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] p-4 shadow-xl"
                 tabindex="-1"
-                @keydown.stop="onPanelKeydown"
             >
                 <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">
                     {{ title }}
@@ -30,6 +29,12 @@
 </template>
 
 <script>
+import {
+    captureActiveElement,
+    handleModalTabCycle,
+    restoreFocusElement,
+} from '../utils/modalFocusTrap';
+
 let stubSeq = 0;
 
 export default {
@@ -53,12 +58,14 @@ export default {
 
         return {
             titleId: `stub-modal-title-${stubSeq}`,
+            focusBeforeModal: null,
         };
     },
     watch: {
         open(v) {
             if (v) {
-                document.addEventListener('keydown', this.onDocKeydown);
+                this.focusBeforeModal = captureActiveElement();
+                document.addEventListener('keydown', this.onModalRootKeydown, true);
                 this.$nextTick(() => {
                     const p = this.$refs.panel;
                     if (p && typeof p.focus === 'function') {
@@ -66,28 +73,35 @@ export default {
                     }
                 });
             } else {
-                document.removeEventListener('keydown', this.onDocKeydown);
+                document.removeEventListener('keydown', this.onModalRootKeydown, true);
+                restoreFocusElement(this.focusBeforeModal);
+                this.focusBeforeModal = null;
             }
         },
     },
     beforeDestroy() {
-        document.removeEventListener('keydown', this.onDocKeydown);
+        document.removeEventListener('keydown', this.onModalRootKeydown, true);
+        restoreFocusElement(this.focusBeforeModal);
     },
     methods: {
         close() {
             this.$emit('close');
         },
-        onDocKeydown(e) {
+        onModalRootKeydown(e) {
+            if (!this.open) {
+                return;
+            }
+            const panel = this.$refs.panel;
+            if (!panel) {
+                return;
+            }
             if (e.key === 'Escape') {
                 e.preventDefault();
                 this.close();
+
+                return;
             }
-        },
-        onPanelKeydown(e) {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                this.close();
-            }
+            handleModalTabCycle(e, panel);
         },
     },
 };
