@@ -25,10 +25,15 @@ class UserLookupController extends Controller
             return response()->json(['message' => 'Неможливо вибрати себе.'], 422);
         }
 
+        $role = $user->resolveChatRole();
+
         return response()->json([
             'data' => [
                 'id' => $user->id,
                 'user_name' => $user->user_name,
+                'guest' => (bool) $user->guest,
+                'chat_role' => $role->value,
+                'badge_color' => $role->badgeColor(),
             ],
         ]);
     }

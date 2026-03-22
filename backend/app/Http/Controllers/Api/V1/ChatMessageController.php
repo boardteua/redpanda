@@ -94,7 +94,7 @@ class ChatMessageController extends Controller
                 'post_time' => date('H:i', $now),
                 'post_user' => $user->user_name,
                 'post_message' => $pipe['message'],
-                'post_color' => $user->guest ? 'guest' : 'user',
+                'post_color' => $user->resolveChatRole()->postColorClass(),
                 'post_roomid' => $room->room_id,
                 'type' => 'public',
                 'post_target' => null,

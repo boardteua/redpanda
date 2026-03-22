@@ -24,6 +24,11 @@ class ChatImageController extends Controller
         ]);
 
         $user = $request->user();
+        if ($user->guest) {
+            return response()->json([
+                'message' => 'Гості не можуть завантажувати зображення в чат.',
+            ], 403);
+        }
         $postingGate->ensureCanPost($user);
         $file = $request->file('image');
         $now = time();

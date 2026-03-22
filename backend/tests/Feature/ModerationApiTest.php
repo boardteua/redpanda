@@ -124,28 +124,44 @@ class ModerationApiTest extends TestCase
 
     public function test_filter_word_min_length_two(): void
     {
-        $mod = User::factory()->moderator()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->from(config('app.url'))
-            ->actingAs($mod, 'web')
+            ->actingAs($admin, 'web')
             ->withHeaders($this->statefulHeaders())
             ->postJson('/api/v1/mod/filter-words', ['word' => 'x'])
             ->assertUnprocessable();
     }
 
-    public function test_moderator_can_ban_ip_and_clear_mute(): void
+    public function test_moderator_cannot_manage_banned_ips(): void
     {
         $mod = User::factory()->moderator()->create();
-        $victim = User::factory()->create();
-        $victim->forceFill(['mute_until' => time() + 9999])->save();
 
         $this->from(config('app.url'))
             ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/mod/banned-ips', ['ip' => '198.51.100.99'])
+            ->assertForbidden();
+    }
+
+    public function test_admin_can_ban_ip(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
             ->withHeaders($this->statefulHeaders())
             ->postJson('/api/v1/mod/banned-ips', ['ip' => '198.51.100.10'])
             ->assertCreated();
 
         $this->assertDatabaseHas('banned_ips', ['ip' => '198.51.100.10']);
+    }
+
+    public function test_moderator_can_clear_mute(): void
+    {
+        $mod = User::factory()->moderator()->create();
+        $victim = User::factory()->create();
+        $victim->forceFill(['mute_until' => time() + 9999])->save();
 
         $this->from(config('app.url'))
             ->actingAs($mod, 'web')

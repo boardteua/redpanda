@@ -16,12 +16,16 @@ Broadcast::channel('room.{roomId}', function (User $user, int|string $roomId) {
         return false;
     }
 
+    $role = $user->resolveChatRole();
+
     /** @var array<string, mixed> Presence payload for Echo.join / Pusher presence (id обов’язковий). */
     return [
         'id' => $user->id,
         'user_name' => $user->user_name,
         'guest' => (bool) $user->guest,
         'avatar_url' => $user->resolveAvatarUrl() ?? '',
+        'chat_role' => $role->value,
+        'badge_color' => $role->badgeColor(),
     ];
 });
 

@@ -67,4 +67,11 @@ class UserFactory extends Factory
             $user->forceFill(['user_rank' => User::RANK_ADMIN])->save();
         });
     }
+
+    public function vip(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->forceFill(['vip' => true])->save();
+        });
+    }
 }

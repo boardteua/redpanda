@@ -84,6 +84,7 @@ class BroadcastChannelTest extends TestCase
         $this->assertIsArray($info);
         $this->assertSame($guest->user_name, $info['user_name'] ?? null);
         $this->assertTrue((bool) ($info['guest'] ?? false));
+        $this->assertSame('guest', $info['chat_role'] ?? null);
     }
 
     public function test_guest_cannot_subscribe_to_registered_only_room_presence_channel(): void
@@ -134,5 +135,32 @@ class BroadcastChannelTest extends TestCase
         $this->authChannel($alice, 'private-user.'.$alice->id)
             ->assertOk()
             ->assertJsonStructure(['auth']);
+    }
+
+    public function test_plain_user_cannot_subscribe_to_vip_room_presence(): void
+    {
+        $vipRoom = Room::query()->create([
+            'room_name' => 'VIP lounge',
+            'topic' => null,
+            'access' => Room::ACCESS_VIP,
+        ]);
+        $user = User::factory()->create();
+
+        $this->authChannel($user, 'presence-room.'.$vipRoom->room_id)
+            ->assertForbidden();
+    }
+
+    public function test_vip_user_can_subscribe_to_vip_room_presence(): void
+    {
+        $vipRoom = Room::query()->create([
+            'room_name' => 'VIP lounge',
+            'topic' => null,
+            'access' => Room::ACCESS_VIP,
+        ]);
+        $vip = User::factory()->vip()->create();
+
+        $this->authChannel($vip, 'presence-room.'.$vipRoom->room_id)
+            ->assertOk()
+            ->assertJsonStructure(['auth', 'channel_data']);
     }
 }

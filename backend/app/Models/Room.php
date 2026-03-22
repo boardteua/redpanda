@@ -7,6 +7,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Room extends Model
 {
+    public const ACCESS_PUBLIC = 0;
+
+    /** Лише зареєстровані (не гість). */
+    public const ACCESS_REGISTERED = 1;
+
+    /** VIP або модератор/адмін. */
+    public const ACCESS_VIP = 2;
+
     protected $table = 'rooms';
 
     protected $primaryKey = 'room_id';

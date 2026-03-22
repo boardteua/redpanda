@@ -58,13 +58,16 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::post('ignores/{user}', [IgnoreController::class, 'store']);
         Route::delete('ignores/{user}', [IgnoreController::class, 'destroy']);
 
-        Route::middleware(['can:moderate', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
+        Route::middleware(['can:chat-admin', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
             Route::get('banned-ips', [ModerationController::class, 'indexBannedIps']);
             Route::post('banned-ips', [ModerationController::class, 'storeBannedIp']);
             Route::delete('banned-ips/{bannedIp}', [ModerationController::class, 'destroyBannedIp']);
             Route::get('filter-words', [ModerationController::class, 'indexFilterWords']);
             Route::post('filter-words', [ModerationController::class, 'storeFilterWord']);
             Route::delete('filter-words/{filterWord}', [ModerationController::class, 'destroyFilterWord']);
+        });
+
+        Route::middleware(['can:moderate', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
             Route::post('users/{user}/mute', [ModerationController::class, 'muteUser']);
             Route::post('users/{user}/kick', [ModerationController::class, 'kickUser']);
         });

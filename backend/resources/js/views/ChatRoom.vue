@@ -492,6 +492,13 @@
                                 variant="sidebar"
                                 decorative
                             />
+                            <span
+                                v-if="user.badge_color"
+                                class="h-2 w-2 shrink-0 rounded-full"
+                                :style="{ backgroundColor: user.badge_color }"
+                                :title="user.chat_role || ''"
+                                aria-hidden="true"
+                            />
                             <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ user.user_name }}</span>
                             <span class="text-xs text-[var(--rp-chat-sidebar-muted)]">(ви)</span>
                         </li>
@@ -535,6 +542,13 @@
                                 :name="p.user_name"
                                 variant="sidebar"
                                 decorative
+                            />
+                            <span
+                                v-if="p.badge_color"
+                                class="h-2 w-2 shrink-0 rounded-full"
+                                :style="{ backgroundColor: p.badge_color }"
+                                :title="p.chat_role || ''"
+                                aria-hidden="true"
                             />
                             <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
                                 p.user_name
@@ -902,6 +916,8 @@ function normalizePresencePeer(raw) {
         user_name: raw.user_name != null ? String(raw.user_name) : '',
         guest: Boolean(raw.guest),
         avatar_url: raw.avatar_url != null ? String(raw.avatar_url) : '',
+        chat_role: raw.chat_role != null ? String(raw.chat_role) : 'user',
+        badge_color: raw.badge_color != null ? String(raw.badge_color) : '',
     };
 }
 
@@ -1079,6 +1095,15 @@ export default {
             }
             if (m.post_color === 'guest') {
                 return { color: 'var(--rp-text-muted)' };
+            }
+            if (m.post_color === 'vip') {
+                return { color: '#c2410c' };
+            }
+            if (m.post_color === 'mod') {
+                return { color: '#15803d' };
+            }
+            if (m.post_color === 'admin') {
+                return { color: 'var(--rp-chat-role-admin)' };
             }
             /* Темні відтінки ≥ ~4.5:1 на білому для жирного ~15px (WCAG AA) */
             const palette = [

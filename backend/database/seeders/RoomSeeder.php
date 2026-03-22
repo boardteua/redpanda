@@ -16,7 +16,12 @@ class RoomSeeder extends Seeder
 
         Room::query()->firstOrCreate(
             ['room_name' => 'Для своїх'],
-            ['topic' => null, 'access' => 1],
+            ['topic' => null, 'access' => Room::ACCESS_REGISTERED],
+        );
+
+        Room::query()->firstOrCreate(
+            ['room_name' => 'VIP-зал'],
+            ['topic' => null, 'access' => Room::ACCESS_VIP],
         );
     }
 }

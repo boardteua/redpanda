@@ -40,14 +40,26 @@ class ChatImageApiTest extends TestCase
         ]);
     }
 
-    public function test_guest_can_upload_and_post_message_with_image(): void
+    public function test_guest_cannot_upload_chat_images(): void
     {
-        $room = $this->seedPublicRoom();
         $guest = User::factory()->guest()->create();
         $file = UploadedFile::fake()->image('shot.jpg', 80, 80);
 
-        $up = $this->from(config('app.url'))
+        $this->from(config('app.url'))
             ->actingAs($guest, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->post('/api/v1/images', ['image' => $file])
+            ->assertForbidden();
+    }
+
+    public function test_registered_user_can_upload_and_post_message_with_image(): void
+    {
+        $room = $this->seedPublicRoom();
+        $user = User::factory()->create();
+        $file = UploadedFile::fake()->image('shot.jpg', 80, 80);
+
+        $up = $this->from(config('app.url'))
+            ->actingAs($user, 'web')
             ->withHeaders($this->statefulHeaders())
             ->post('/api/v1/images', ['image' => $file]);
 
@@ -58,7 +70,7 @@ class ChatImageApiTest extends TestCase
         $clientId = 'a1000000-0000-4000-8000-000000000001';
 
         $post = $this->from(config('app.url'))
-            ->actingAs($guest, 'web')
+            ->actingAs($user, 'web')
             ->withHeaders($this->statefulHeaders())
             ->postJson('/api/v1/rooms/'.$room->room_id.'/messages', [
                 'message' => '',

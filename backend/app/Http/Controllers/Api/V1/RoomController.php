@@ -16,7 +16,9 @@ class RoomController extends Controller
         $query = Room::query()->orderBy('room_id');
 
         if ($user->guest) {
-            $query->where('access', 0);
+            $query->where('access', Room::ACCESS_PUBLIC);
+        } elseif (! $user->canAccessVipRooms()) {
+            $query->where('access', '<', Room::ACCESS_VIP);
         }
 
         return RoomResource::collection($query->get());

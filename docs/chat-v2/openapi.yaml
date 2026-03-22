@@ -13,7 +13,7 @@ info:
 
     **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`).
 
-    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`** транслюються на той самий presence-канал (T20). Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08).
+    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`** транслюються на той самий presence-канал (T20). Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08).
 
     **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09). З головної з `?history=1` після входу — перехід на архів.
 
@@ -23,12 +23,14 @@ info:
 
     **Спостережуваність (T11):** `GET /up` (liveness), `GET /health/ready` (readiness, JSON); структуровані логи — [T11-QA.md](T11-QA.md), runbook — [T11-RUNBOOK.md](T11-RUNBOOK.md).
 
-    **Модерація MVP (T12):** таблиці `banned_ips`, `filter_words`; на `users` — `user_rank`, `mute_until`, `kick_until`; API `/api/v1/mod/*` для `user_rank ≥ 1` — [T12-QA.md](T12-QA.md).
+    **Модерація MVP (T12):** таблиці `banned_ips`, `filter_words`; на `users` — `user_rank`, `mute_until`, `kick_until` — [T12-QA.md](T12-QA.md).
+
+    **Ролі чату (T21):** на `users` — `vip` (boolean), `user_rank` (0 користувач, 1 модератор, 2 адмін); `rooms.access` — `0` публічна, `1` лише зареєстровані, `≥2` VIP-кімната (доступ VIP або модератор/адмін). `POST /api/v1/mod/users/{id}/mute|kick` — `can:moderate` (`user_rank ≥ 1`, не гість); керування банами IP і словами фільтра — `can:chat-admin` (`user_rank ≥ 2`). Ліміти `chat-post` / `image-upload` залежать від ролі (гість/VIP/staff). Поля `chat_role` та `badge_color` у `User` і lookup — [T21-QA.md](T21-QA.md).
 
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.12.0"
+  version: "0.13.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -45,7 +47,7 @@ tags:
   - name: Health
     description: Liveness / readiness (T11)
   - name: Moderation
-    description: Бан IP, фільтр слів, mute/kick (T12, потрібен user_rank ≥ 1)
+    description: Mute/kick — модератор (`user_rank ≥ 1`); бан IP і фільтр слів — адмін (`user_rank ≥ 2`), T12+T21
 
 paths:
   /up:
@@ -445,7 +447,7 @@ paths:
     get:
       tags: [Chat]
       summary: Список кімнат, доступних користувачу
-      description: Гості отримують лише кімнати з `access === 0`.
+      description: Гості — лише `access === 0`; зареєстровані без VIP — `access < 2`; VIP або staff бачать усі кімнати, до яких є `interact`.
       operationId: listRooms
       security:
         - sanctumSession: []
@@ -790,6 +792,14 @@ components:
           type: string
           nullable: true
           description: URL аватарки профілю (`GET /api/v1/images/{id}/file`); null якщо не завантажено
+        chat_role:
+          type: string
+          enum: [guest, user, vip, moderator, admin]
+          description: Роль для UI (staff має пріоритет над VIP)
+        badge_color:
+          type: string
+          nullable: true
+          description: "Колір плашки: адмін `#1a1a1a`, мод `#16a34a`, VIP `#ea580c`; null для guest/user"
 
     UserResponse:
       type: object
@@ -810,7 +820,7 @@ components:
           nullable: true
         access:
           type: integer
-          description: "0 — усі авторизовані (гості дозволені); > 0 — лише зареєстровані"
+          description: "0 — усі авторизовані (гості дозволені); 1 — лише зареєстровані; ≥2 — VIP-кімната (VIP або модератор/адмін)"
 
     HealthReadyResponse:
       type: object

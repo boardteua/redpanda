@@ -16,12 +16,16 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $role = $this->resolveChatRole();
+
         return [
             'id' => $this->id,
             'user_name' => $this->user_name,
             'guest' => (bool) $this->guest,
             'email' => $this->email,
             'avatar_url' => $this->resolveAvatarUrl(),
+            'chat_role' => $role->value,
+            'badge_color' => $role->badgeColor(),
         ];
     }
 }

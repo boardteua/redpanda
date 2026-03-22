@@ -59,6 +59,8 @@
     --rp-chat-send-bg: #5c4336;
     --rp-chat-send-bg-hover: #4a362c;
     --rp-chat-send-fg: #fffefb;
+    /* Нік адміна в стрічці (T21) */
+    --rp-chat-role-admin: #1a1a1a;
 }
 
 :root[data-theme='dark'] {
@@ -102,6 +104,7 @@
     --rp-chat-send-bg: var(--rp-primary);
     --rp-chat-send-bg-hover: var(--rp-primary-hover);
     --rp-chat-send-fg: var(--rp-on-primary);
+    --rp-chat-role-admin: #cbd5e1;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -145,6 +148,7 @@
         --rp-chat-send-bg: var(--rp-primary);
         --rp-chat-send-bg-hover: var(--rp-primary-hover);
         --rp-chat-send-fg: var(--rp-on-primary);
+        --rp-chat-role-admin: #cbd5e1;
     }
 }
 

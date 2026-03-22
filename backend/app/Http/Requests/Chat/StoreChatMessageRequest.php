@@ -17,8 +17,18 @@ class StoreChatMessageRequest extends FormRequest
      */
     public function rules(): array
     {
+        $user = $this->user();
+        $maxLen = 4000;
+        if ($user !== null) {
+            if ($user->guest) {
+                $maxLen = 2000;
+            } elseif ($user->isVip() || $user->canModerate()) {
+                $maxLen = 8000;
+            }
+        }
+
         return [
-            'message' => ['nullable', 'string', 'max:4000'],
+            'message' => ['nullable', 'string', 'max:'.$maxLen],
             'image_id' => ['nullable', 'integer', 'min:1'],
             'client_message_id' => ['required', 'string', 'max:36', 'uuid'],
         ];
@@ -27,6 +37,11 @@ class StoreChatMessageRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
+            $user = $this->user();
+            if ($user !== null && $user->guest && $this->filled('image_id')) {
+                $validator->errors()->add('image_id', 'Гості не можуть додавати зображення до повідомлень.');
+            }
+
             $msg = trim((string) ($this->input('message') ?? ''));
             if ($msg === '' && ! $this->filled('image_id')) {
                 $validator->errors()->add('message', 'Введіть текст або додайте зображення.');
