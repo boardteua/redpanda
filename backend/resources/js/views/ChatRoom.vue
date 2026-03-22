@@ -15,10 +15,10 @@
             class="rp-chat-external-wrap min-h-0 min-w-0 max-md:flex max-md:flex-1 max-md:flex-col md:min-h-0 md:flex-1"
         >
             <div
-                class="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--rp-chat-app-bg)] px-1 py-1 sm:px-2 md:min-h-0 md:overflow-hidden"
+                class="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--rp-chat-app-bg)] px-3 py-2 md:px-0 md:py-0 md:min-h-0 md:overflow-hidden"
             >
             <header
-                class="mb-1 flex w-full flex-shrink-0 flex-col gap-0.5 border-b border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-header-bg)] px-1.5 py-1 sm:px-2"
+                class="mb-2 flex w-full flex-shrink-0 flex-col gap-1 border-b border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-header-bg)] px-2 py-2 sm:px-3"
             >
                 <div v-if="chatBreadcrumb || chatTopicLine" class="min-w-0">
                     <p
@@ -34,8 +34,8 @@
                         {{ chatTopicLine }}
                     </p>
                 </div>
-                <div class="flex min-w-0 flex-wrap items-center justify-between gap-1.5">
-                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <div class="flex min-w-0 flex-wrap items-center gap-3">
                     <button
                         type="button"
                         class="rp-focusable shrink-0 text-sm font-medium text-[var(--rp-link)] hover:text-[var(--rp-link-hover)]"
@@ -108,7 +108,7 @@
 
             <p
                 v-if="logoutError"
-                class="mb-1 text-sm text-[var(--rp-error)]"
+                class="mb-2 text-sm text-[var(--rp-error)]"
                 role="alert"
                 aria-live="polite"
             >
@@ -117,7 +117,7 @@
 
             <main
                 id="main-content"
-                class="flex min-h-0 w-full flex-1 flex-col gap-1.5 overflow-hidden pt-0.5"
+                class="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden pt-0"
                 tabindex="-1"
             >
                 <div v-if="loadError" class="rp-banner shrink-0" role="alert">
@@ -139,7 +139,7 @@
                     <div class="rp-chat-feed-wash flex min-h-0 flex-1 flex-col overflow-hidden">
                         <ul
                             ref="messageList"
-                            class="flex min-h-0 flex-1 flex-col overflow-y-auto py-0"
+                            class="flex min-h-0 flex-1 flex-col overflow-y-auto py-1"
                             role="log"
                             aria-live="polite"
                             aria-relevant="additions"
@@ -147,7 +147,7 @@
                             <li
                                 v-for="(m, msgIdx) in messages"
                                 :key="m.post_id"
-                                class="flex gap-1.5 px-1.5 py-1 text-[0.9375rem] leading-snug sm:px-2 sm:py-1.5"
+                                class="flex gap-2 px-2 py-1.5 text-[0.9375rem] leading-snug sm:px-3 sm:py-2"
                                 :class="
                                     msgIdx % 2 === 0
                                         ? 'bg-[var(--rp-chat-row-even)]'
@@ -205,7 +205,7 @@
                         </ul>
                         <p
                             v-if="messages.length === 0 && !loadingMessages"
-                            class="py-3 px-2 text-center text-sm text-[var(--rp-text-muted)]"
+                            class="p-4 text-center text-sm text-[var(--rp-text-muted)]"
                         >
                             Ще немає повідомлень. Напишіть перше нижче.
                         </p>
@@ -294,7 +294,7 @@
                             </button>
                         </div>
                         <label class="rp-sr-only" for="chat-composer">Повідомлення</label>
-                        <div class="flex items-end gap-1.5 px-1 pb-1 pt-0.5 sm:px-2 sm:pb-1.5">
+                        <div class="flex items-end gap-2 px-2 pb-2 pt-1 sm:px-3 sm:pb-2.5">
                             <div class="rp-chat-composer-slot">
                                 <button
                                     type="button"
@@ -350,7 +350,7 @@
                                 </svg>
                             </button>
                         </div>
-                        <p class="px-1 pb-0.5 text-[0.7rem] text-[var(--rp-text-muted)] sm:px-2">
+                        <p class="px-2 pb-1 text-[0.7rem] text-[var(--rp-text-muted)] sm:px-3">
                             Приват: <code class="rounded bg-[var(--rp-chat-toolbar-bg)] px-1 font-mono text-[0.65rem]">/msg</code> нік текст.
                         </p>
                         <input
@@ -362,7 +362,7 @@
                         />
                         <div
                             v-if="pendingImageId && pendingPreviewUrl"
-                            class="mx-1 mb-1 flex flex-wrap items-center gap-2 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)] p-1.5 sm:mx-2"
+                            class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)] p-2 sm:mx-3"
                         >
                             <img
                                 :src="pendingPreviewUrl"
@@ -380,7 +380,7 @@
                         </div>
                         <p
                             v-if="imageUploadError"
-                            class="mx-1 mb-1 text-sm text-[var(--rp-error)] sm:mx-2"
+                            class="mx-2 mb-2 text-sm text-[var(--rp-error)] sm:mx-3"
                             role="alert"
                         >
                             {{ imageUploadError }}
@@ -401,7 +401,7 @@
             aria-label="Панель чату"
         >
             <div
-                class="flex items-center justify-between gap-1.5 border-b border-[var(--rp-chat-sidebar-border)] px-2 py-1.5"
+                class="flex items-center justify-between gap-2 border-b border-[var(--rp-chat-sidebar-border)] px-3 py-2"
             >
                 <h2 class="text-sm font-semibold text-[var(--rp-chat-sidebar-fg)]">Панель</h2>
                 <button
@@ -420,7 +420,7 @@
             </div>
 
             <div
-                class="flex border-b border-[var(--rp-chat-sidebar-border)] px-0.5 py-1"
+                class="flex border-b border-[var(--rp-chat-sidebar-border)] px-1 py-2"
                 role="tablist"
                 aria-label="Вкладки панелі чату"
                 @keydown="onSidebarTabKeydown"
@@ -448,10 +448,10 @@
                 </button>
             </div>
 
-            <div class="min-h-0 flex-1 overflow-y-auto p-2 text-sm text-[var(--rp-chat-sidebar-fg)]">
+            <div class="min-h-0 flex-1 overflow-y-auto p-3 text-sm text-[var(--rp-chat-sidebar-fg)]">
                 <div
                     v-if="privateListLoadError || friendsIgnoresLoadError"
-                    class="mb-2 space-y-1.5"
+                    class="mb-3 space-y-2"
                     role="region"
                     aria-label="Помилки завантаження списків"
                 >
