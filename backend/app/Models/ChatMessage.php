@@ -19,12 +19,23 @@ class ChatMessage extends Model
 
     public const UPDATED_AT = null;
 
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'post_style' => 'array',
+        ];
+    }
+
     protected $fillable = [
         'user_id',
         'post_date',
         'post_time',
         'post_user',
         'post_message',
+        'post_style',
         'post_color',
         'post_roomid',
         'type',

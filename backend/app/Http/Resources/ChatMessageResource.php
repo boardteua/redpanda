@@ -22,6 +22,7 @@ class ChatMessageResource extends JsonResource
             'post_time' => $this->post_time,
             'post_user' => $this->post_user,
             'post_message' => $this->post_message,
+            'post_style' => $this->post_style,
             'post_color' => $this->post_color,
             'post_roomid' => (int) $this->post_roomid,
             'type' => $this->type,

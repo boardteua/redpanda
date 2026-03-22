@@ -55,6 +55,7 @@ class MessagePosted implements ShouldBroadcast
             'post_user' => $m->post_user,
             'avatar' => $m->avatar,
             'post_message' => $m->post_message,
+            'post_style' => $m->post_style,
             'post_color' => $m->post_color,
             'type' => $m->type,
             'client_message_id' => $m->client_message_id,

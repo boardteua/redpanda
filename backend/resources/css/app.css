@@ -74,6 +74,25 @@
     --rp-chat-send-fg: #fffefb;
     /* Нік адміна в стрічці (T21) */
     --rp-chat-role-admin: #1a1a1a;
+    /* Форматування тіла повідомлення (T30) — пресети з контрастом на чіпі */
+    --rp-chat-fmt-bg-amber: #fef08a;
+    --rp-chat-fmt-on-amber: #422006;
+    --rp-chat-fmt-bg-mint: #d9f99d;
+    --rp-chat-fmt-on-mint: #14532d;
+    --rp-chat-fmt-bg-sky: #bae6fd;
+    --rp-chat-fmt-on-sky: #0c4a6e;
+    --rp-chat-fmt-bg-lavender: #e9d5ff;
+    --rp-chat-fmt-on-lavender: #581c87;
+    --rp-chat-fmt-bg-rose: #fecdd3;
+    --rp-chat-fmt-on-rose: #881337;
+    --rp-chat-fmt-bg-sand: #fde68a;
+    --rp-chat-fmt-on-sand: #451a03;
+    --rp-chat-fmt-fg-blue: #1d4ed8;
+    --rp-chat-fmt-fg-emerald: #047857;
+    --rp-chat-fmt-fg-rose: #be123c;
+    --rp-chat-fmt-fg-violet: #6d28d9;
+    --rp-chat-fmt-fg-amber: #b45309;
+    --rp-chat-fmt-fg-slate: #334155;
 }
 
 :root[data-theme='dark'] {
@@ -120,6 +139,24 @@
     --rp-chat-send-bg-hover: var(--rp-primary-hover);
     --rp-chat-send-fg: var(--rp-on-primary);
     --rp-chat-role-admin: #cbd5e1;
+    --rp-chat-fmt-bg-amber: #854d0e;
+    --rp-chat-fmt-on-amber: #fef9c3;
+    --rp-chat-fmt-bg-mint: #365314;
+    --rp-chat-fmt-on-mint: #ecfccb;
+    --rp-chat-fmt-bg-sky: #075985;
+    --rp-chat-fmt-on-sky: #e0f2fe;
+    --rp-chat-fmt-bg-lavender: #5b21b6;
+    --rp-chat-fmt-on-lavender: #f3e8ff;
+    --rp-chat-fmt-bg-rose: #9f1239;
+    --rp-chat-fmt-on-rose: #ffe4e6;
+    --rp-chat-fmt-bg-sand: #713f12;
+    --rp-chat-fmt-on-sand: #fef3c7;
+    --rp-chat-fmt-fg-blue: #93c5fd;
+    --rp-chat-fmt-fg-emerald: #6ee7b7;
+    --rp-chat-fmt-fg-rose: #fda4af;
+    --rp-chat-fmt-fg-violet: #c4b5fd;
+    --rp-chat-fmt-fg-amber: #fcd34d;
+    --rp-chat-fmt-fg-slate: #cbd5e1;
     --rp-burger-bg: #261f1a;
     --rp-burger-self-bar-bg: #3f352c;
     --rp-burger-accent-bg: #f7e008;
@@ -566,6 +603,143 @@
 .rp-chat-toolbar-btn:focus-visible {
     outline: 2px solid var(--rp-focus-ring);
     outline-offset: 1px;
+}
+
+.rp-chat-toolbar-btn--active {
+    background: color-mix(in srgb, var(--rp-primary) 22%, transparent);
+    color: var(--rp-text);
+}
+
+.rp-chat-toolbar-btn--active:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--rp-primary) 30%, transparent);
+}
+
+/* T30 — пресети в стрічці / архіві (без HTML від клієнта) */
+.rp-chat-msg-bold {
+    font-weight: 700;
+}
+
+.rp-chat-msg-italic {
+    font-style: italic;
+}
+
+.rp-chat-msg-underline {
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+}
+
+.rp-chat-msg-bg-amber,
+.rp-chat-msg-bg-mint,
+.rp-chat-msg-bg-sky,
+.rp-chat-msg-bg-lavender,
+.rp-chat-msg-bg-rose,
+.rp-chat-msg-bg-sand {
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    padding: 0.08em 0.22em;
+    border-radius: 0.2em;
+}
+
+.rp-chat-msg-bg-amber {
+    background: var(--rp-chat-fmt-bg-amber);
+    color: var(--rp-chat-fmt-on-amber);
+}
+
+.rp-chat-msg-bg-mint {
+    background: var(--rp-chat-fmt-bg-mint);
+    color: var(--rp-chat-fmt-on-mint);
+}
+
+.rp-chat-msg-bg-sky {
+    background: var(--rp-chat-fmt-bg-sky);
+    color: var(--rp-chat-fmt-on-sky);
+}
+
+.rp-chat-msg-bg-lavender {
+    background: var(--rp-chat-fmt-bg-lavender);
+    color: var(--rp-chat-fmt-on-lavender);
+}
+
+.rp-chat-msg-bg-rose {
+    background: var(--rp-chat-fmt-bg-rose);
+    color: var(--rp-chat-fmt-on-rose);
+}
+
+.rp-chat-msg-bg-sand {
+    background: var(--rp-chat-fmt-bg-sand);
+    color: var(--rp-chat-fmt-on-sand);
+}
+
+.rp-chat-msg-fg-blue {
+    color: var(--rp-chat-fmt-fg-blue);
+}
+
+.rp-chat-msg-fg-emerald {
+    color: var(--rp-chat-fmt-fg-emerald);
+}
+
+.rp-chat-msg-fg-rose {
+    color: var(--rp-chat-fmt-fg-rose);
+}
+
+.rp-chat-msg-fg-violet {
+    color: var(--rp-chat-fmt-fg-violet);
+}
+
+.rp-chat-msg-fg-amber {
+    color: var(--rp-chat-fmt-fg-amber);
+}
+
+.rp-chat-msg-fg-slate {
+    color: var(--rp-chat-fmt-fg-slate);
+}
+
+.rp-chat-fmt-swatch--amber {
+    background: var(--rp-chat-fmt-bg-amber);
+}
+
+.rp-chat-fmt-swatch--mint {
+    background: var(--rp-chat-fmt-bg-mint);
+}
+
+.rp-chat-fmt-swatch--sky {
+    background: var(--rp-chat-fmt-bg-sky);
+}
+
+.rp-chat-fmt-swatch--lavender {
+    background: var(--rp-chat-fmt-bg-lavender);
+}
+
+.rp-chat-fmt-swatch--rose {
+    background: var(--rp-chat-fmt-bg-rose);
+}
+
+.rp-chat-fmt-swatch--sand {
+    background: var(--rp-chat-fmt-bg-sand);
+}
+
+.rp-chat-fmt-swatch-fg--blue {
+    background: var(--rp-chat-fmt-fg-blue);
+}
+
+.rp-chat-fmt-swatch-fg--emerald {
+    background: var(--rp-chat-fmt-fg-emerald);
+}
+
+.rp-chat-fmt-swatch-fg--rose {
+    background: var(--rp-chat-fmt-fg-rose);
+}
+
+.rp-chat-fmt-swatch-fg--violet {
+    background: var(--rp-chat-fmt-fg-violet);
+}
+
+.rp-chat-fmt-swatch-fg--amber {
+    background: var(--rp-chat-fmt-fg-amber);
+}
+
+.rp-chat-fmt-swatch-fg--slate {
+    background: var(--rp-chat-fmt-fg-slate);
 }
 
 .rp-chat-toolbar-spacer {

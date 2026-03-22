@@ -1151,6 +1151,10 @@ components:
           description: URL аватарки автора на момент допису; null — показувати ініціали (див. T17/T18)
         post_message:
           type: string
+        post_style:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChatMessageBodyStyle"
         post_color:
           type: string
           nullable: true
@@ -1210,6 +1214,29 @@ components:
         recognized:
           type: boolean
 
+    ChatMessageBodyStyle:
+      type: object
+      description: >
+        Пресети форматування тіла повідомлення (T30). Текст лишається plain; стиль — JSON на бекенді.
+        Поля `bg` та `fg` взаємовиключні (одночасно не приймаються).
+      properties:
+        bold:
+          type: boolean
+        italic:
+          type: boolean
+        underline:
+          type: boolean
+        bg:
+          type: string
+          nullable: true
+          enum: [amber, mint, sky, lavender, rose, sand]
+          description: Колір тла «чіпа» повідомлення
+        fg:
+          type: string
+          nullable: true
+          enum: [blue, emerald, rose, violet, amber, slate]
+          description: Колір тексту без окремого тла
+
     PostChatMessageRequest:
       type: object
       required: [client_message_id]
@@ -1226,6 +1253,10 @@ components:
         client_message_id:
           type: string
           format: uuid
+        style:
+          $ref: "#/components/schemas/ChatMessageBodyStyle"
+          nullable: true
+          description: Опційно; «липкий» стан зазвичай зберігається в localStorage на клієнті
 
     ChatMessageListResponse:
       type: object

@@ -439,4 +439,79 @@ class ChatApiTest extends TestCase
             ])
             ->assertStatus(422);
     }
+
+    public function test_post_accepts_message_style_and_returns_in_feed(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $clientId = 'f4eebc99-9c0b-4ef8-bb6d-6bb9bd380a01';
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => 'styled hello',
+                'client_message_id' => $clientId,
+                'style' => [
+                    'bold' => true,
+                    'italic' => true,
+                    'underline' => false,
+                    'bg' => 'amber',
+                    'fg' => null,
+                ],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.post_style.bold', true)
+            ->assertJsonPath('data.post_style.italic', true)
+            ->assertJsonPath('data.post_style.bg', 'amber')
+            ->assertJsonPath('data.post_style.fg', null);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=10')
+            ->assertOk()
+            ->assertJsonPath('data.0.post_style.bg', 'amber');
+    }
+
+    public function test_post_rejects_invalid_message_style_bg(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => 'x',
+                'client_message_id' => 'a5eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+                'style' => [
+                    'bold' => false,
+                    'bg' => 'not-a-preset',
+                ],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['style.bg']);
+    }
+
+    public function test_post_rejects_style_with_both_bg_and_fg(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => 'x',
+                'client_message_id' => 'b6eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+                'style' => [
+                    'bold' => true,
+                    'bg' => 'mint',
+                    'fg' => 'blue',
+                ],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['style.fg']);
+    }
 }

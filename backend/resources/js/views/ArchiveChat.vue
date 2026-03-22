@@ -134,7 +134,12 @@
                                     class="mb-2 max-h-20 max-w-full rounded border border-[var(--rp-border-subtle)] object-contain"
                                     loading="lazy"
                                 />
-                                <span class="line-clamp-3 whitespace-pre-wrap break-words">{{ m.post_message }}</span>
+                                <span
+                                    class="line-clamp-3 inline-block whitespace-pre-wrap break-words rounded px-0.5"
+                                    :class="archiveMessageClasses(m.post_style)"
+                                >
+                                    {{ m.post_message }}
+                                </span>
                             </td>
                             <td class="border-b border-[var(--rp-border-subtle)] px-3 py-2 align-top font-mono text-xs whitespace-nowrap text-[var(--rp-text-muted)]">
                                 {{ formatArchiveDate(m) }}
@@ -198,6 +203,8 @@
 </template>
 
 <script>
+import { chatMessageBodyClassList, normalizePostStyleFromApi } from '../utils/chatMessageStyle';
+
 const THEME_KEY = 'redpanda-theme';
 
 export default {
@@ -250,6 +257,9 @@ export default {
         await this.bootstrap();
     },
     methods: {
+        archiveMessageClasses(style) {
+            return chatMessageBodyClassList(style);
+        },
         syncRoomFromRoute(qRoom) {
             if (qRoom == null || qRoom === '') {
                 this.roomFilter = '';

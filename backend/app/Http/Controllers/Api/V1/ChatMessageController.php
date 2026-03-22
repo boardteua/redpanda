@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\UserPostingGate;
 use App\Services\PrivateMessageGate;
+use App\Support\ChatMessageBodyStyle;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -98,6 +99,10 @@ class ChatMessageController extends Controller
             return $this->duplicateMessageResponse($existing);
         }
 
+        $validated = $request->validated();
+        $stylePayload = isset($validated['style']) && is_array($validated['style']) ? $validated['style'] : null;
+        $postStyle = ChatMessageBodyStyle::fromValidated($stylePayload);
+
         $raw = (string) ($request->validated('message') ?? '');
         $fileRef = $request->filled('image_id') ? (int) $request->input('image_id') : 0;
         $inline = RoomInlinePrivateParser::tryParse($raw);
@@ -135,13 +140,14 @@ class ChatMessageController extends Controller
                 $message = null;
                 $privateRow = null;
 
-                DB::transaction(function () use ($user, $peer, $room, $body, $now, $avatarUrl, $clientId, &$message, &$privateRow): void {
+                DB::transaction(function () use ($user, $peer, $room, $body, $now, $avatarUrl, $clientId, $postStyle, &$message, &$privateRow): void {
                     $message = ChatMessage::query()->create([
                         'user_id' => $user->id,
                         'post_date' => $now,
                         'post_time' => date('H:i', $now),
                         'post_user' => $user->user_name,
                         'post_message' => $body,
+                        'post_style' => $postStyle,
                         'post_color' => $user->resolveChatRole()->postColorClass(),
                         'post_roomid' => $room->room_id,
                         'type' => 'inline_private',
@@ -219,6 +225,7 @@ class ChatMessageController extends Controller
                 'post_time' => date('H:i', $now),
                 'post_user' => $user->user_name,
                 'post_message' => $pipe['message'],
+                'post_style' => $postStyle,
                 'post_color' => $user->resolveChatRole()->postColorClass(),
                 'post_roomid' => $room->room_id,
                 'type' => 'public',
