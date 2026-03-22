@@ -1,6 +1,6 @@
 <template>
     <div
-        class="relative shrink-0 overflow-hidden"
+        class="rp-user-avatar relative shrink-0 overflow-hidden"
         :class="boxClass"
         :aria-hidden="decorative ? 'true' : undefined"
     >
@@ -8,13 +8,13 @@
             v-if="showImage"
             :src="src"
             :alt="decorative ? '' : altText"
-            class="h-full w-full object-cover"
+            class="rp-user-avatar__img h-full w-full object-cover"
             loading="lazy"
             @error="onImgError"
         />
         <span
             v-else
-            class="flex h-full w-full items-center justify-center text-[0.625rem] font-bold leading-none text-white sm:text-xs"
+            class="rp-user-avatar__fallback flex h-full w-full items-center justify-center text-[0.625rem] font-bold leading-none text-white sm:text-xs"
             :style="{ backgroundColor: avatarBackgroundFromName(displayName) }"
         >
             {{ initials }}
@@ -73,16 +73,16 @@ export default {
         },
         boxClass() {
             if (this.variant === 'sidebar') {
-                return 'h-9 w-9 rounded-sm border border-[var(--rp-chat-sidebar-border)]';
+                return 'rp-user-avatar--md h-9 w-9 rounded-sm border border-[var(--rp-chat-sidebar-border)]';
             }
             if (this.variant === 'table') {
-                return 'h-8 w-8 rounded-sm border border-[var(--rp-border-subtle)]';
+                return 'rp-user-avatar--sm h-8 w-8 rounded-sm border border-[var(--rp-border-subtle)]';
             }
             if (this.variant === 'private') {
-                return 'h-8 w-8 shrink-0 rounded-sm border border-[var(--rp-border-subtle)]';
+                return 'rp-user-avatar--sm h-8 w-8 shrink-0 rounded-sm border border-[var(--rp-border-subtle)]';
             }
 
-            return 'h-9 w-9 rounded-sm border border-[var(--rp-chat-chrome-border)]';
+            return 'rp-user-avatar--md h-9 w-9 rounded-sm border border-[var(--rp-chat-chrome-border)]';
         },
     },
     watch: {
@@ -98,3 +98,30 @@ export default {
     },
 };
 </script>
+
+<style scoped>
+/*
+ * Критичні розміри та колір гліфа поза Tailwind: якщо утиліти з цього SFC не
+ * потрапляють у збірку або h-full дає 0px, плейсхолдер не виглядає «зниклим».
+ */
+.rp-user-avatar__fallback {
+    box-sizing: border-box;
+    color: #fff;
+}
+
+.rp-user-avatar.rp-user-avatar--sm,
+.rp-user-avatar.rp-user-avatar--sm .rp-user-avatar__fallback {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+}
+
+.rp-user-avatar.rp-user-avatar--md,
+.rp-user-avatar.rp-user-avatar--md .rp-user-avatar__fallback {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    min-height: 2.25rem;
+}
+</style>
