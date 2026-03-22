@@ -1,6 +1,15 @@
-# T38 — QA: декомпозиція рядка стрічки чату
+# T38 — QA: декомпозиція `ChatRoom.vue`
 
-**Задача:** винесення одного рядка повідомлення з `ChatRoom.vue` у `ChatFeedMessageRow.vue` без зміни поведінки.
+**Задача:** інкрементальне винесення частин екрану чату без зміни поведінки.
+
+### Слайс 1
+
+Рядок стрічки → `ChatFeedMessageRow.vue`.
+
+### Слайс 2 (додатково)
+
+- **Хедер** → `ChatRoomHeader.vue` (refs `mobilePanelToggle` / `desktopPanelToggle` лишаються для фокусу після вибору кімнати на вузькому екрані).
+- **Список повідомлень** (прокрутка + порожній стан) → `ChatFeedMessageList.vue` з публічним методом `scrollToBottom()` замість `ref` на `<ul>` у батькові.
 
 ## Вердикт
 
@@ -20,8 +29,12 @@
 4. Повідомлення з **зображенням** — прев’ю як раніше.
 5. **Інлайн-приват** (`inline_private`) — клас рядка `rp-chat-feed-row--inline-private` зберігається.
 6. **Гість** (якщо доступно): нік без кнопки, аватарка без кнопки привату.
+7. **Хедер:** вихід, архів, бургер/панель, перемикач теми, бейдж degraded WS — як раніше.
+8. **Вузький екран:** вибір іншої кімнати в сайдбарі закриває панель і повертає фокус на кнопку меню в хедері.
 
 ## Артефакти
 
 - `backend/resources/js/components/chat/ChatFeedMessageRow.vue`
+- `backend/resources/js/components/chat/ChatFeedMessageList.vue`
+- `backend/resources/js/components/chat/ChatRoomHeader.vue`
 - `backend/resources/js/utils/chatMessageStyle.js` — `nickColorStyleForPost()`
