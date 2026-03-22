@@ -80,6 +80,10 @@ class FriendController extends Controller
             return response()->json(['message' => 'Неможливо додати себе.'], 422);
         }
 
+        if ($user->guest) {
+            return response()->json(['message' => 'Неможливо додати гостя до друзів.'], 422);
+        }
+
         $forward = Friendship::query()
             ->where('requester_id', $self->id)
             ->where('addressee_id', $user->id)

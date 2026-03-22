@@ -63,4 +63,15 @@ class FriendApiTest extends TestCase
         $this->postJson('/api/v1/friends/'.$b->id)
             ->assertStatus(409);
     }
+
+    public function test_cannot_send_friend_request_to_guest(): void
+    {
+        $a = User::factory()->create();
+        $guest = User::factory()->guest()->create();
+
+        Sanctum::actingAs($a);
+        $this->postJson('/api/v1/friends/'.$guest->id)
+            ->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Неможливо додати гостя до друзів.']);
+    }
 }

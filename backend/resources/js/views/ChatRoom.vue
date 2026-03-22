@@ -154,7 +154,22 @@
                                         : 'bg-[var(--rp-chat-row-odd)]'
                                 "
                             >
+                                <button
+                                    v-if="user"
+                                    type="button"
+                                    class="rp-focusable h-fit shrink-0 rounded-full border-0 bg-transparent p-0"
+                                    :aria-label="'Меню користувача: ' + m.post_user"
+                                    @click.stop="openFeedAuthorMenu($event, m)"
+                                >
+                                    <UserAvatar
+                                        :src="m.avatar"
+                                        :name="m.post_user"
+                                        variant="feed"
+                                        decorative
+                                    />
+                                </button>
                                 <UserAvatar
+                                    v-else
                                     :src="m.avatar"
                                     :name="m.post_user"
                                     variant="feed"
@@ -168,7 +183,16 @@
                                                 type="button"
                                                 class="rp-focusable mr-1.5 inline font-semibold hover:underline"
                                                 :style="nickColorStyle(m)"
-                                                @click="openPrivateByUserName(m.post_user)"
+                                                @click.stop="openFeedAuthorMenu($event, m)"
+                                            >
+                                                {{ m.post_user }}
+                                            </button>
+                                            <button
+                                                v-else-if="user && m.post_user === user.user_name"
+                                                type="button"
+                                                class="rp-focusable mr-1.5 inline font-semibold"
+                                                :style="nickColorStyle(m)"
+                                                @click.stop="openFeedAuthorMenu($event, m)"
                                             >
                                                 {{ m.post_user }}
                                             </button>
@@ -483,26 +507,29 @@
                         Онлайн
                     </p>
                     <ul v-if="user" class="space-y-2">
-                        <li
-                            class="rp-chat-side-card flex items-center gap-2 rounded-md border px-2 py-2"
-                        >
-                            <UserAvatar
-                                :src="user.avatar_url || ''"
-                                :name="user.user_name"
-                                variant="sidebar"
-                                decorative
-                            />
-                            <span
-                                v-if="user.badge_color"
-                                class="h-2 w-2 shrink-0 rounded-full"
-                                :style="{ backgroundColor: user.badge_color }"
-                                :title="user.chat_role || ''"
-                                aria-hidden="true"
-                            />
-                            <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ user.user_name }}</span>
-                            <span class="text-xs text-[var(--rp-chat-sidebar-muted)]">(ви)</span>
-                        </li>
-                        <li v-if="user && !user.guest" class="mt-2 space-y-1 border-t border-[var(--rp-chat-sidebar-border)] pt-2">
+                        <li class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2">
+                            <button
+                                type="button"
+                                class="rp-focusable flex w-full items-center gap-2 rounded text-left"
+                                @click="openSelfBadgeMenu($event)"
+                            >
+                                <UserAvatar
+                                    :src="user.avatar_url || ''"
+                                    :name="user.user_name"
+                                    variant="sidebar"
+                                    decorative
+                                />
+                                <span
+                                    v-if="user.badge_color"
+                                    class="h-2 w-2 shrink-0 rounded-full"
+                                    :style="{ backgroundColor: user.badge_color }"
+                                    :title="user.chat_role || ''"
+                                    aria-hidden="true"
+                                />
+                                <span class="font-medium text-[var(--rp-chat-sidebar-fg)]">{{ user.user_name }}</span>
+                                <span class="text-xs text-[var(--rp-chat-sidebar-muted)]">(ви)</span>
+                            </button>
+                            <div v-if="!user.guest" class="space-y-1 border-t border-[var(--rp-chat-sidebar-border)] pt-2">
                             <input
                                 ref="avatarFileInput"
                                 type="file"
@@ -525,6 +552,7 @@
                             >
                                 {{ avatarUploadError }}
                             </p>
+                            </div>
                         </li>
                     </ul>
                     <ul
@@ -535,30 +563,36 @@
                         <li
                             v-for="p in roomPresencePeers"
                             :key="'presence-' + p.id"
-                            class="rp-chat-side-card flex items-center gap-2 rounded-md border px-2 py-2"
+                            class="rp-chat-side-card rounded-md border px-2 py-2"
                         >
-                            <UserAvatar
-                                :src="p.avatar_url || ''"
-                                :name="p.user_name"
-                                variant="sidebar"
-                                decorative
-                            />
-                            <span
-                                v-if="p.badge_color"
-                                class="h-2 w-2 shrink-0 rounded-full"
-                                :style="{ backgroundColor: p.badge_color }"
-                                :title="p.chat_role || ''"
-                                aria-hidden="true"
-                            />
-                            <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
-                                p.user_name
-                            }}</span>
-                            <span
-                                v-if="p.guest"
-                                class="shrink-0 text-xs text-[var(--rp-chat-sidebar-muted)]"
+                            <button
+                                type="button"
+                                class="rp-focusable flex w-full items-center gap-2 text-left"
+                                @click="openPeerBadgeMenu($event, p)"
                             >
-                                (гість)
-                            </span>
+                                <UserAvatar
+                                    :src="p.avatar_url || ''"
+                                    :name="p.user_name"
+                                    variant="sidebar"
+                                    decorative
+                                />
+                                <span
+                                    v-if="p.badge_color"
+                                    class="h-2 w-2 shrink-0 rounded-full"
+                                    :style="{ backgroundColor: p.badge_color }"
+                                    :title="p.chat_role || ''"
+                                    aria-hidden="true"
+                                />
+                                <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                    p.user_name
+                                }}</span>
+                                <span
+                                    v-if="p.guest"
+                                    class="shrink-0 text-xs text-[var(--rp-chat-sidebar-muted)]"
+                                >
+                                    (гість)
+                                </span>
+                            </button>
                         </li>
                     </ul>
                     <p
@@ -634,7 +668,11 @@
                                 :key="f.user.id"
                                 class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
                             >
-                                <span class="flex min-w-0 items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="rp-focusable flex min-w-0 flex-1 items-center gap-2 text-left"
+                                    @click="openPeerBadgeMenu($event, peerTargetFromFriendRow(f.user))"
+                                >
                                     <UserAvatar
                                         :name="f.user.user_name"
                                         variant="sidebar"
@@ -643,7 +681,7 @@
                                     <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
                                         f.user.user_name
                                     }}</span>
-                                </span>
+                                </button>
                                 <button
                                     type="button"
                                     class="rp-focusable rp-btn rp-btn-ghost text-sm"
@@ -670,7 +708,11 @@
                                 :key="'in-' + r.user.id"
                                 class="rp-chat-side-card flex flex-wrap items-center gap-2 rounded-md border px-2 py-2"
                             >
-                                <span class="flex min-w-0 items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="rp-focusable flex min-w-0 flex-1 items-center gap-2 text-left"
+                                    @click="openPeerBadgeMenu($event, peerTargetFromFriendRow(r.user))"
+                                >
                                     <UserAvatar
                                         :name="r.user.user_name"
                                         variant="sidebar"
@@ -679,7 +721,7 @@
                                     <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
                                         r.user.user_name
                                     }}</span>
-                                </span>
+                                </button>
                                 <button
                                     type="button"
                                     class="rp-focusable rp-btn rp-btn-primary text-xs"
@@ -709,14 +751,20 @@
                             <li
                                 v-for="r in friendsOutgoing"
                                 :key="'out-' + r.user.id"
-                                class="flex items-center gap-2 text-sm text-[var(--rp-chat-sidebar-fg)]"
+                                class="text-sm text-[var(--rp-chat-sidebar-fg)]"
                             >
-                                <UserAvatar
-                                    :name="r.user.user_name"
-                                    variant="sidebar"
-                                    decorative
-                                />
-                                <span class="truncate">{{ r.user.user_name }}</span>
+                                <button
+                                    type="button"
+                                    class="rp-focusable flex w-full items-center gap-2 rounded-md py-1 text-left"
+                                    @click="openPeerBadgeMenu($event, peerTargetFromFriendRow(r.user))"
+                                >
+                                    <UserAvatar
+                                        :name="r.user.user_name"
+                                        variant="sidebar"
+                                        decorative
+                                    />
+                                    <span class="truncate">{{ r.user.user_name }}</span>
+                                </button>
                             </li>
                         </ul>
                     </template>
@@ -739,26 +787,35 @@
                     </p>
                     <ul v-else class="space-y-2">
                         <li v-for="(c, idx) in conversations" :key="conversationRowKey(c, idx)">
-                            <button
+                            <div
                                 v-if="c.peer && c.peer.id"
-                                type="button"
-                                class="rp-focusable rp-chat-side-room-btn flex w-full items-start gap-2 rounded-md border-2 px-3 py-2 text-left"
-                                @click="openPrivatePeer(c.peer)"
+                                class="rp-chat-side-room-btn flex w-full items-stretch gap-2 rounded-md border-2 px-3 py-2"
                             >
-                                <UserAvatar
-                                    :name="c.peer.user_name"
-                                    variant="sidebar"
-                                    decorative
-                                />
-                                <span class="min-w-0 flex-1">
+                                <button
+                                    type="button"
+                                    class="rp-focusable flex shrink-0 items-start pt-0.5"
+                                    aria-label="Меню користувача"
+                                    @click="openPeerBadgeMenu($event, peerTargetFromConversationPeer(c.peer))"
+                                >
+                                    <UserAvatar
+                                        :name="c.peer.user_name"
+                                        variant="sidebar"
+                                        decorative
+                                    />
+                                </button>
+                                <button
+                                    type="button"
+                                    class="rp-focusable min-w-0 flex-1 text-left"
+                                    @click="openPrivatePeer(c.peer)"
+                                >
                                     <span class="block font-semibold text-[var(--rp-chat-sidebar-fg)]">{{
                                         c.peer.user_name
                                     }}</span>
                                     <span
                                         class="mt-0.5 block truncate text-xs text-[var(--rp-chat-sidebar-muted)]"
                                     >{{ (c.last_message && c.last_message.body) || '—' }}</span>
-                                </span>
-                            </button>
+                                </button>
+                            </div>
                             <p
                                 v-else
                                 class="rounded-md border border-dashed border-[var(--rp-chat-sidebar-border)] px-2 py-2 text-xs text-[var(--rp-chat-sidebar-muted)]"
@@ -820,7 +877,11 @@
                             :key="row.user.id"
                             class="rp-chat-side-card flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-2"
                         >
-                            <span class="flex min-w-0 items-center gap-2">
+                            <button
+                                type="button"
+                                class="rp-focusable flex min-w-0 flex-1 items-center gap-2 text-left"
+                                @click="openPeerBadgeMenu($event, peerTargetFromFriendRow(row.user))"
+                            >
                                 <UserAvatar
                                     :name="row.user.user_name"
                                     variant="sidebar"
@@ -829,7 +890,7 @@
                                 <span class="truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
                                     row.user.user_name
                                 }}</span>
-                            </span>
+                            </button>
                             <button
                                 type="button"
                                 class="rp-focusable text-sm font-semibold text-[var(--rp-chat-sidebar-link)] hover:text-[var(--rp-chat-sidebar-link-hover)] hover:underline"
@@ -843,6 +904,37 @@
             </div>
         </aside>
         </div>
+
+        <UserBadgeContextMenu
+            v-if="badgeMenu && user"
+            :anchor-rect="badgeMenu.anchorRect"
+            :mode="badgeMenu.mode"
+            :viewer="user"
+            :target="badgeMenu.target"
+            :return-focus-el="badgeMenu.returnFocusEl"
+            @close="badgeMenu = null"
+            @pick="onBadgeMenuPick"
+        />
+        <CommandsHelpModal :open="commandsHelpOpen" @close="commandsHelpOpen = false" />
+        <UserInfoModal
+            :open="userInfoModalOpen"
+            :mode="userInfoModalMode"
+            :viewer="user"
+            :target="userInfoModalTarget"
+            @close="closeUserInfoModal"
+        />
+        <SimpleStubModal
+            :open="adminSettingsStubOpen"
+            title="Налаштування чату"
+            body="Екран адміністратора чату ще в розробці (TODO після узгодження з бекендом). Тут з’являться кімнати, модерація та глобальні параметри."
+            @close="adminSettingsStubOpen = false"
+        />
+        <SimpleStubModal
+            :open="profileStubOpen"
+            title="Профіль"
+            body="Повноцінне редагування профілю з’явиться в задачі T24 (вкладки, звуки, соцмережі). Поки що аватар можна змінити у вкладці «Люди»."
+            @close="profileStubOpen = false"
+        />
 
         <PrivateChatPanel
             v-if="user && privatePeer"
@@ -862,7 +954,11 @@
 </template>
 
 <script>
+import CommandsHelpModal from '../components/CommandsHelpModal.vue';
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
+import SimpleStubModal from '../components/SimpleStubModal.vue';
+import UserBadgeContextMenu from '../components/UserBadgeContextMenu.vue';
+import UserInfoModal from '../components/UserInfoModal.vue';
 import { createEcho } from '../lib/echo';
 
 const THEME_KEY = 'redpanda-theme';
@@ -921,6 +1017,31 @@ function normalizePresencePeer(raw) {
     };
 }
 
+function chatRoleFromPostColor(postColor) {
+    const map = {
+        guest: 'guest',
+        user: 'user',
+        vip: 'vip',
+        mod: 'moderator',
+        admin: 'admin',
+    };
+
+    return map[postColor] || 'user';
+}
+
+function messageToMenuTarget(m) {
+    if (!m) {
+        return null;
+    }
+
+    return {
+        id: m.user_id != null ? Number(m.user_id) : null,
+        user_name: m.post_user != null ? String(m.post_user) : '',
+        guest: m.post_color === 'guest',
+        chat_role: chatRoleFromPostColor(m.post_color),
+    };
+}
+
 function normalizeMessage(raw) {
     if (!raw || typeof raw.post_id === 'undefined') {
         return null;
@@ -952,7 +1073,11 @@ function normalizeMessage(raw) {
 export default {
     name: 'ChatRoom',
     components: {
+        CommandsHelpModal,
         PrivateChatPanel,
+        SimpleStubModal,
+        UserBadgeContextMenu,
+        UserInfoModal,
     },
     data() {
         return {
@@ -990,6 +1115,13 @@ export default {
             /** Інші учасники поточної кімнати (Echo presence), без поточного користувача. */
             roomPresencePeers: [],
             ...createChatRoomSidebarState(),
+            badgeMenu: null,
+            commandsHelpOpen: false,
+            userInfoModalOpen: false,
+            userInfoModalMode: 'self',
+            userInfoModalTarget: null,
+            adminSettingsStubOpen: false,
+            profileStubOpen: false,
         };
     },
     computed: {
@@ -1640,6 +1772,218 @@ export default {
                 this.loadError = '';
             } catch (e) {
                 this.loadError = e.response?.data?.message || 'Користувача не знайдено.';
+            }
+        },
+        peerTargetFromFriendRow(u) {
+            if (!u) {
+                return null;
+            }
+
+            return {
+                id: Number(u.id),
+                user_name: u.user_name,
+                guest: false,
+                chat_role: 'user',
+            };
+        },
+        peerTargetFromConversationPeer(p) {
+            if (!p) {
+                return null;
+            }
+
+            return {
+                id: p.id != null ? Number(p.id) : null,
+                user_name: p.user_name != null ? String(p.user_name) : '',
+                guest: Boolean(p.guest),
+                chat_role: p.chat_role != null ? String(p.chat_role) : 'user',
+            };
+        },
+        openSelfBadgeMenu(evt) {
+            if (!this.user || !evt || !evt.currentTarget) {
+                return;
+            }
+            const el = evt.currentTarget;
+            this.badgeMenu = {
+                mode: 'self',
+                target: null,
+                anchorRect: el.getBoundingClientRect(),
+                returnFocusEl: el,
+            };
+        },
+        openPeerBadgeMenu(evt, target) {
+            if (!this.user || !target || !evt || !evt.currentTarget) {
+                return;
+            }
+            const el = evt.currentTarget;
+            this.badgeMenu = {
+                mode: 'other',
+                target: { ...target },
+                anchorRect: el.getBoundingClientRect(),
+                returnFocusEl: el,
+            };
+        },
+        openFeedAuthorMenu(evt, m) {
+            if (!this.user || !m || !evt) {
+                return;
+            }
+            if (m.post_user === this.user.user_name) {
+                this.openSelfBadgeMenu(evt);
+
+                return;
+            }
+            this.openPeerBadgeMenu(evt, messageToMenuTarget(m));
+        },
+        closeUserInfoModal() {
+            this.userInfoModalOpen = false;
+            this.userInfoModalTarget = null;
+        },
+        onBadgeMenuPick(id) {
+            const bm = this.badgeMenu;
+            if (!bm || !this.user) {
+                return;
+            }
+            if (id === 'info') {
+                this.userInfoModalMode = bm.mode;
+                this.userInfoModalTarget = bm.mode === 'self' ? null : bm.target;
+                this.userInfoModalOpen = true;
+
+                return;
+            }
+            if (id === 'commands') {
+                this.commandsHelpOpen = true;
+
+                return;
+            }
+            if (id === 'settings') {
+                this.adminSettingsStubOpen = true;
+
+                return;
+            }
+            if (id === 'profile') {
+                this.profileStubOpen = true;
+
+                return;
+            }
+            if (id === 'private') {
+                this.openPrivateFromMenuTarget(bm.target);
+
+                return;
+            }
+            if (id === 'ignore') {
+                this.addIgnoreFromMenuTarget(bm.target);
+
+                return;
+            }
+            if (id === 'friend') {
+                this.sendFriendFromMenuTarget(bm.target);
+
+                return;
+            }
+            if (id === 'mute') {
+                this.modMuteFromMenuTarget(bm.target);
+
+                return;
+            }
+            if (id === 'kick') {
+                this.modKickFromMenuTarget(bm.target);
+
+                return;
+            }
+        },
+        openPrivateFromMenuTarget(t) {
+            if (!t) {
+                return;
+            }
+            if (t.id != null) {
+                this.openPrivatePeer({ id: t.id, user_name: t.user_name });
+
+                return;
+            }
+            if (t.user_name) {
+                this.openPrivateByUserName(t.user_name);
+            }
+        },
+        async addIgnoreFromMenuTarget(t) {
+            if (!t || t.id == null) {
+                this.loadError =
+                    'Потрібен обліковий запис із id (наприклад зі списку онлайн). Спробуйте через нік у полі «Приват за ніком» та вкладку профілю.';
+
+                return;
+            }
+            await this.ensureSanctum();
+            try {
+                await window.axios.post(`/api/v1/ignores/${t.id}`);
+                this.loadError = '';
+                await this.loadFriendsAndIgnores();
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Не вдалося додати до ігнору.';
+            }
+        },
+        async sendFriendFromMenuTarget(t) {
+            if (!t || t.id == null) {
+                this.loadError = 'Немає id користувача для запиту в друзі.';
+
+                return;
+            }
+            await this.ensureSanctum();
+            try {
+                await window.axios.post(`/api/v1/friends/${t.id}`);
+                this.loadError = '';
+                await this.loadFriendsAndIgnores();
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Не вдалося надіслати запит у друзі.';
+            }
+        },
+        async modMuteFromMenuTarget(t) {
+            if (!t || t.id == null) {
+                return;
+            }
+            const raw = window.prompt('Кляп: хвилини (0 — зняти)', '60');
+            if (raw === null) {
+                return;
+            }
+            const trimmed = raw.trim();
+            let minutes;
+            if (trimmed === '') {
+                minutes = 0;
+            } else {
+                minutes = parseInt(trimmed, 10);
+                if (Number.isNaN(minutes)) {
+                    minutes = 60;
+                }
+            }
+            await this.ensureSanctum();
+            try {
+                await window.axios.post(`/api/v1/mod/users/${t.id}/mute`, { minutes });
+                this.loadError = '';
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Не вдалося застосувати кляп.';
+            }
+        },
+        async modKickFromMenuTarget(t) {
+            if (!t || t.id == null) {
+                return;
+            }
+            const raw = window.prompt('Вигнання: хвилини (0 — зняти)', '60');
+            if (raw === null) {
+                return;
+            }
+            const trimmed = raw.trim();
+            let minutes;
+            if (trimmed === '') {
+                minutes = 0;
+            } else {
+                minutes = parseInt(trimmed, 10);
+                if (Number.isNaN(minutes)) {
+                    minutes = 60;
+                }
+            }
+            await this.ensureSanctum();
+            try {
+                await window.axios.post(`/api/v1/mod/users/${t.id}/kick`, { minutes });
+                this.loadError = '';
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Не вдалося застосувати вигнання.';
             }
         },
         async loadPrivateMessages() {
