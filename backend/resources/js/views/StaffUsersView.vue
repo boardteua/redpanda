@@ -13,7 +13,7 @@
                         Користувачі (персонал)
                     </h1>
                     <p class="mt-0.5 text-sm text-[var(--rp-text-muted)]">
-                        Пошук, зміна VIP та рангу (адмін), редагування профілю за матрицею прав.
+                        Пошук, VIP, ранг і профіль — лише для адміністратора чату.
                     </p>
                 </div>
             </div>
@@ -28,8 +28,8 @@
         </header>
 
         <main id="main-content" class="mx-auto w-full max-w-5xl flex-1 space-y-4" tabindex="-1">
-            <div v-if="!isStaff" class="rp-banner" role="alert">
-                Доступ лише для модераторів та адміністраторів.
+            <div v-if="!viewerIsAdmin" class="rp-banner" role="alert">
+                Доступ лише для адміністратора чату.
             </div>
 
             <template v-else>
@@ -42,7 +42,7 @@
                             type="search"
                             maxlength="191"
                             class="rp-input rp-focusable min-w-[12rem] flex-1"
-                            placeholder="Нік, id або e-mail (лише адмін)…"
+                            placeholder="Нік, id або e-mail…"
                             :disabled="loading"
                             @keyup.enter="applySearch"
                         />
@@ -55,8 +55,8 @@
                             Шукати
                         </button>
                     </div>
-                    <p v-if="viewerIsAdmin" class="text-xs text-[var(--rp-text-muted)]">
-                        Пошук за e-mail доступний лише адміністратору; модератор бачить нік та id.
+                    <p class="text-xs text-[var(--rp-text-muted)]">
+                        Можна шукати за ніком, числовим id або фрагментом e-mail (якщо в запиті є «@»).
                     </p>
                 </div>
 
@@ -87,11 +87,7 @@
                                 <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">
                                     VIP
                                 </th>
-                                <th
-                                    v-if="viewerIsAdmin"
-                                    scope="col"
-                                    class="border-b border-[var(--rp-border-subtle)] px-3 py-2"
-                                >
+                                <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">
                                     E-mail
                                 </th>
                             </tr>
@@ -118,15 +114,12 @@
                                 <td class="px-3 py-2">
                                     {{ r.vip ? 'Так' : 'Ні' }}
                                 </td>
-                                <td v-if="viewerIsAdmin" class="max-w-[14rem] truncate px-3 py-2 text-xs">
+                                <td class="max-w-[14rem] truncate px-3 py-2 text-xs">
                                     {{ r.email || '—' }}
                                 </td>
                             </tr>
                             <tr v-if="rows.length === 0">
-                                <td
-                                    :colspan="viewerIsAdmin ? 5 : 4"
-                                    class="px-3 py-8 text-center text-[var(--rp-text-muted)]"
-                                >
+                                <td colspan="5" class="px-3 py-8 text-center text-[var(--rp-text-muted)]">
                                     Немає результатів. Введіть запит і натисніть «Шукати».
                                 </td>
                             </tr>
@@ -287,8 +280,6 @@
 </template>
 
 <script>
-import { isStaffRole } from '../lib/userBadgeMenuItems';
-
 const THEME_KEY = 'redpanda-theme';
 
 export default {
@@ -326,9 +317,6 @@ export default {
             }
 
             return 'Тема: як у системі';
-        },
-        isStaff() {
-            return this.user && isStaffRole(this.user.chat_role);
         },
         viewerIsAdmin() {
             return this.user && this.user.chat_role === 'admin';
@@ -387,7 +375,9 @@ export default {
 
                 return;
             }
-            if (!this.isStaff) {
+            if (!this.viewerIsAdmin) {
+                await this.$router.replace({ name: 'chat', query: this.roomQuery }).catch(() => {});
+
                 return;
             }
             if (this.appliedSearch) {

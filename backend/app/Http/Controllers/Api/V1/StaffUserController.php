@@ -25,12 +25,12 @@ class StaffUserController extends Controller
         $perPage = $validated['per_page'] ?? 20;
 
         $query = User::query()
-            ->where(function ($w) use ($q, $needle, $actor): void {
+            ->where(function ($w) use ($q, $needle): void {
                 $w->whereRaw('instr(lower(user_name), ?) > 0', [$needle]);
                 if (ctype_digit($q)) {
                     $w->orWhere('id', (int) $q);
                 }
-                if ($actor->isChatAdmin() && str_contains($q, '@')) {
+                if (str_contains($q, '@')) {
                     $w->orWhereRaw('instr(lower(ifnull(email, "")), ?) > 0', [$needle]);
                 }
             })
@@ -55,10 +55,6 @@ class StaffUserController extends Controller
     {
         /** @var User $actor */
         $actor = $request->user();
-
-        if ($request->has('user_rank')) {
-            abort_unless($actor->isChatAdmin(), 403, 'Лише адміністратор може змінювати ранг.');
-        }
 
         if (! $user->canReceiveStaffManagementFrom($actor)) {
             if ((int) $user->id === (int) $actor->id) {
@@ -119,55 +115,39 @@ class StaffUserController extends Controller
             abort(422, 'Профіль гостя не редагується через цей ендпоінт.');
         }
 
-        $isAdmin = $actor->isChatAdmin();
         $sexValues = ['male', 'female', 'other', 'prefer_not'];
         $socialRule = ['sometimes', 'nullable', 'string', 'max:500'];
 
-        $rules = [
+        $validated = $request->validate([
             'profile' => ['sometimes', 'array'],
+            'profile.country' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'profile.region' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'profile.age' => ['sometimes', 'nullable', 'integer', 'min:13', 'max:120'],
+            'profile.sex' => ['sometimes', 'nullable', 'string', Rule::in($sexValues)],
+            'profile.country_hidden' => ['sometimes', 'boolean'],
+            'profile.region_hidden' => ['sometimes', 'boolean'],
+            'profile.age_hidden' => ['sometimes', 'boolean'],
+            'profile.sex_hidden' => ['sometimes', 'boolean'],
             'profile.occupation' => ['sometimes', 'nullable', 'string', 'max:191'],
             'profile.about' => ['sometimes', 'nullable', 'string', 'max:5000'],
-        ];
-
-        if ($isAdmin) {
-            $rules = array_merge($rules, [
-                'profile.country' => ['sometimes', 'nullable', 'string', 'max:100'],
-                'profile.region' => ['sometimes', 'nullable', 'string', 'max:100'],
-                'profile.age' => ['sometimes', 'nullable', 'integer', 'min:13', 'max:120'],
-                'profile.sex' => ['sometimes', 'nullable', 'string', Rule::in($sexValues)],
-                'profile.country_hidden' => ['sometimes', 'boolean'],
-                'profile.region_hidden' => ['sometimes', 'boolean'],
-                'profile.age_hidden' => ['sometimes', 'boolean'],
-                'profile.sex_hidden' => ['sometimes', 'boolean'],
-                'social_links' => ['sometimes', 'array'],
-                'social_links.facebook' => $socialRule,
-                'social_links.instagram' => $socialRule,
-                'social_links.telegram' => $socialRule,
-                'social_links.twitter' => $socialRule,
-                'social_links.youtube' => $socialRule,
-                'social_links.tiktok' => $socialRule,
-                'social_links.discord' => $socialRule,
-                'social_links.website' => $socialRule,
-                'notification_sound_prefs' => ['sometimes', 'array'],
-                'notification_sound_prefs.public_messages' => ['sometimes', 'boolean'],
-                'notification_sound_prefs.mentions' => ['sometimes', 'boolean'],
-                'notification_sound_prefs.private' => ['sometimes', 'boolean'],
-                'notification_sound_prefs.volume_percent' => ['sometimes', 'integer', 'min:0', 'max:100'],
-            ]);
-        }
-
-        $validated = $request->validate($rules);
+            'social_links' => ['sometimes', 'array'],
+            'social_links.facebook' => $socialRule,
+            'social_links.instagram' => $socialRule,
+            'social_links.telegram' => $socialRule,
+            'social_links.twitter' => $socialRule,
+            'social_links.youtube' => $socialRule,
+            'social_links.tiktok' => $socialRule,
+            'social_links.discord' => $socialRule,
+            'social_links.website' => $socialRule,
+            'notification_sound_prefs' => ['sometimes', 'array'],
+            'notification_sound_prefs.public_messages' => ['sometimes', 'boolean'],
+            'notification_sound_prefs.mentions' => ['sometimes', 'boolean'],
+            'notification_sound_prefs.private' => ['sometimes', 'boolean'],
+            'notification_sound_prefs.volume_percent' => ['sometimes', 'integer', 'min:0', 'max:100'],
+        ]);
 
         if ($validated === []) {
             abort(422, 'Немає полів для оновлення.');
-        }
-
-        if (! $isAdmin && isset($validated['profile'])) {
-            $p = $validated['profile'];
-            $allowed = array_intersect_key($p, array_flip(['occupation', 'about']));
-            if (count($allowed) !== count($p)) {
-                abort(403, 'Модератор може змінювати лише поля «рід занять» та «про мене».');
-            }
         }
 
         if (isset($validated['profile']) && is_array($validated['profile'])) {
@@ -188,14 +168,11 @@ class StaffUserController extends Controller
                 if (! array_key_exists($jsonKey, $p)) {
                     continue;
                 }
-                if (! $isAdmin && ! in_array($jsonKey, ['occupation', 'about'], true)) {
-                    continue;
-                }
                 $user->{$column} = $p[$jsonKey];
             }
         }
 
-        if ($isAdmin && isset($validated['social_links']) && is_array($validated['social_links'])) {
+        if (isset($validated['social_links']) && is_array($validated['social_links'])) {
             $merged = array_merge(User::defaultSocialLinkKeys(), $user->social_links ?? []);
             foreach (User::defaultSocialLinkKeys() as $key => $_) {
                 if (array_key_exists($key, $validated['social_links'])) {
@@ -205,7 +182,7 @@ class StaffUserController extends Controller
             $user->social_links = $merged;
         }
 
-        if ($isAdmin && isset($validated['notification_sound_prefs']) && is_array($validated['notification_sound_prefs'])) {
+        if (isset($validated['notification_sound_prefs']) && is_array($validated['notification_sound_prefs'])) {
             $user->notification_sound_prefs = array_replace(
                 User::defaultNotificationSoundPrefs(),
                 $user->notification_sound_prefs ?? [],
@@ -218,7 +195,6 @@ class StaffUserController extends Controller
         Log::info('staff.user.profile_updated', [
             'actor_id' => $actor->id,
             'target_user_id' => $user->id,
-            'admin' => $isAdmin,
             'keys' => array_keys($validated),
         ]);
 
@@ -245,7 +221,7 @@ class StaffUserController extends Controller
             'can_manage' => $user->canReceiveStaffManagementFrom($actor),
         ];
 
-        if ($actor->isChatAdmin() && ! $user->guest) {
+        if (! $user->guest) {
             $row['email'] = $user->email;
         }
 

@@ -33,13 +33,13 @@ info:
 
     **Ролі чату (T21):** на `users` — `vip` (boolean), `user_rank` (0 користувач, 1 модератор, 2 адмін); `rooms.access` — `0` публічна, `1` лише зареєстровані, `≥2` VIP-кімната (доступ VIP або модератор/адмін). `POST /api/v1/mod/users/{id}/mute|kick` — `can:moderate` (`user_rank ≥ 1`, не гість); керування банами IP і словами фільтра — `can:chat-admin` (`user_rank ≥ 2`). Ліміти `chat-post` / `image-upload` залежать від ролі (гість/VIP/staff). Поля `chat_role` та `badge_color` у `User` і lookup — [T21-QA.md](T21-QA.md).
 
-    **Персонал: користувачі (T52):** `GET /api/v1/mod/users` — пошук за підрядком у `user_name`, за числовим `id`, за `email` лише для **адміна** (якщо в рядку є `@`); throttle `mod-user-read`. `PATCH /api/v1/mod/users/{id}` — `vip` (мод+адмін, ціль з нижчим рангом), `user_rank` — лише **адмін**; `PATCH /api/v1/mod/users/{id}/profile` — мод: лише `profile.occupation` та `profile.about`; адмін: повний набір як у `PATCH /me/profile` (без зміни e-mail/пароля). Деталі — [T52-QA.md](T52-QA.md).
+    **Персонал: користувачі (T52):** `GET|PATCH /api/v1/mod/users` та `PATCH …/profile` — **`can:chat-admin`** (лише адміністратор чату); throttle `mod-user-read` / `mod-actions`. Пошук: підрядок у `user_name`, числовий `id`, за `email` якщо в `q` є `@`; у відповіді `email` для не-гостей. `PATCH …/{id}` — `vip` та `user_rank` (ціль з нижчим рангом); `PATCH …/profile` — повний набір як `PATCH /me/profile` (без зміни e-mail/пароля). **Модератор** ці ендпоінти **не** викликає; mute/kick лишаються під `can:moderate` (`POST …/mute|kick`). Деталі — [T52-QA.md](T52-QA.md).
 
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     **Друзі (T50):** `GET /api/v1/friends` — усі прийняті друзі (без фільтра онлайн); `DELETE /api/v1/friends/{userId}` — прибрати з друзів або скасувати вихідний запит (throttle `private-post`).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.16.3"
+  version: "0.16.4"
   license:
     name: Proprietary
     url: https://example.com/
@@ -240,10 +240,10 @@ paths:
   /api/v1/mod/users:
     get:
       tags: [Moderation]
-      summary: Пошук користувачів для персоналу (T52)
+      summary: Пошук користувачів для адміна чату (T52)
       description: |
-        `can:moderate`. Пошук без SQL LIKE-екранування підрядка: `instr(lower(user_name), lower(q))`, опційно `id` якщо `q` — лише цифри;
-        для **адміна** додатково збіг по `email`, якщо в `q` є `@`. Поле `email` у відповіді — лише для адміна та лише для не-гостей.
+        `can:chat-admin`. Пошук без SQL LIKE-екранування підрядка: `instr(lower(user_name), lower(q))`, опційно `id` якщо `q` — лише цифри;
+        збіг по `email`, якщо в `q` є `@`. Поле `email` у відповіді — для не-гостей.
       operationId: modStaffUserSearch
       security:
         - sanctumSession: []
@@ -290,8 +290,8 @@ paths:
       tags: [Moderation]
       summary: Зміна VIP та рангу користувача (T52)
       description: |
-        `can:moderate`; ціль має мати **нижчий** `user_rank`, ніж актор; не на себе.
-        Поле `user_rank` приймається лише від **адміна** (`can:chat-admin`); новий ранг не може бути вищим за ранг актора.
+        `can:chat-admin`; ціль має мати **нижчий** `user_rank`, ніж актор; не на себе.
+        Новий ранг не може бути вищим за ранг актора.
       operationId: modStaffUserPatchRoles
       security:
         - sanctumSession: []
@@ -323,10 +323,10 @@ paths:
   /api/v1/mod/users/{userId}/profile:
     patch:
       tags: [Moderation]
-      summary: Редагування профілю користувача персоналом (T52)
+      summary: Редагування профілю користувача адміном (T52)
       description: |
-        `can:moderate`; ціль — зареєстрований користувач (не гість), нижчий ранг за актора.
-        **Модератор:** лише `profile.occupation`, `profile.about`. **Адмін:** розширені поля профілю, соцмережі, звукові преференції (як `MeProfilePatchRequest`).
+        `can:chat-admin`; ціль — зареєстрований користувач (не гість), нижчий ранг за актора.
+        Повний набір полів профілю, соцмережі, звукові преференції (як `MeProfilePatchRequest`).
       operationId: modStaffUserPatchProfile
       security:
         - sanctumSession: []
@@ -1767,7 +1767,7 @@ components:
         user_rank:
           type: integer
           enum: [0, 1, 2]
-          description: Лише адміністратор
+          description: Ендпоінт лише для `can:chat-admin`
 
     StaffUserProfilePatchRequest:
       type: object

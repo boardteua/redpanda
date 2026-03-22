@@ -25,42 +25,59 @@ class StaffUserManagementApiTest extends TestCase
         return ['Referer' => config('app.url')];
     }
 
-    public function test_regular_user_cannot_search_mod_users(): void
+    public function test_regular_user_cannot_access_staff_user_api(): void
     {
         $user = User::factory()->create(['user_rank' => User::RANK_USER]);
+        $victim = User::factory()->create();
 
         $this->from(config('app.url'))
             ->actingAs($user, 'web')
             ->withHeaders($this->statefulHeaders())
             ->getJson('/api/v1/mod/users?q=test')
             ->assertForbidden();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson("/api/v1/mod/users/{$victim->id}", ['vip' => true])
+            ->assertForbidden();
     }
 
-    public function test_moderator_can_search_by_nick(): void
+    public function test_moderator_cannot_access_staff_user_api(): void
     {
         $mod = User::factory()->moderator()->create();
-        $target = User::factory()->create(['user_name' => 'unique_staff_find_xyz']);
+        $victim = User::factory()->create(['user_name' => 'unique_staff_find_xyz', 'vip' => false]);
 
         $this->from(config('app.url'))
             ->actingAs($mod, 'web')
             ->withHeaders($this->statefulHeaders())
             ->getJson('/api/v1/mod/users?q=unique_staff_find')
-            ->assertOk()
-            ->assertJsonPath('data.0.id', $target->id)
-            ->assertJsonMissingPath('data.0.email');
-    }
-
-    public function test_moderator_cannot_find_by_email_fragment(): void
-    {
-        $mod = User::factory()->moderator()->create();
-        User::factory()->create(['email' => 'staff_search_email@example.com']);
+            ->assertForbidden();
 
         $this->from(config('app.url'))
             ->actingAs($mod, 'web')
             ->withHeaders($this->statefulHeaders())
             ->getJson('/api/v1/mod/users?q=staff_search_email@')
-            ->assertOk()
-            ->assertJsonPath('data', []);
+            ->assertForbidden();
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson("/api/v1/mod/users/{$victim->id}", ['vip' => true])
+            ->assertForbidden();
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson("/api/v1/mod/users/{$victim->id}/profile", [
+                'profile' => [
+                    'occupation' => 'newjob',
+                    'about' => 'newbio',
+                ],
+            ])
+            ->assertForbidden();
+
+        $this->assertFalse($victim->fresh()->vip);
     }
 
     public function test_admin_search_includes_email_match_and_field(): void
@@ -77,31 +94,19 @@ class StaffUserManagementApiTest extends TestCase
             ->assertJsonPath('data.0.email', 'admin_find_mail@example.com');
     }
 
-    public function test_moderator_can_toggle_vip_on_lower_rank_user(): void
+    public function test_admin_can_toggle_vip_on_lower_rank_user(): void
     {
-        $mod = User::factory()->moderator()->create();
+        $admin = User::factory()->admin()->create();
         $victim = User::factory()->create(['vip' => false]);
 
         $this->from(config('app.url'))
-            ->actingAs($mod, 'web')
+            ->actingAs($admin, 'web')
             ->withHeaders($this->statefulHeaders())
             ->patchJson("/api/v1/mod/users/{$victim->id}", ['vip' => true])
             ->assertOk()
             ->assertJsonPath('data.vip', true);
 
         $this->assertTrue($victim->fresh()->vip);
-    }
-
-    public function test_moderator_cannot_change_user_rank(): void
-    {
-        $mod = User::factory()->moderator()->create();
-        $victim = User::factory()->create(['user_rank' => User::RANK_USER]);
-
-        $this->from(config('app.url'))
-            ->actingAs($mod, 'web')
-            ->withHeaders($this->statefulHeaders())
-            ->patchJson("/api/v1/mod/users/{$victim->id}", ['user_rank' => User::RANK_MODERATOR])
-            ->assertForbidden();
     }
 
     public function test_admin_can_change_user_rank(): void
@@ -117,42 +122,16 @@ class StaffUserManagementApiTest extends TestCase
             ->assertJsonPath('data.user_rank', User::RANK_MODERATOR);
     }
 
-    public function test_moderator_cannot_act_on_peer_admin(): void
+    public function test_admin_cannot_patch_vip_on_peer_admin(): void
     {
-        $mod = User::factory()->moderator()->create();
-        $otherMod = User::factory()->moderator()->create();
+        $admin = User::factory()->admin()->create();
+        $otherAdmin = User::factory()->admin()->create();
 
         $this->from(config('app.url'))
-            ->actingAs($mod, 'web')
+            ->actingAs($admin, 'web')
             ->withHeaders($this->statefulHeaders())
-            ->patchJson("/api/v1/mod/users/{$otherMod->id}", ['vip' => true])
+            ->patchJson("/api/v1/mod/users/{$otherAdmin->id}", ['vip' => true])
             ->assertForbidden();
-    }
-
-    public function test_moderator_can_patch_occupation_and_about_only(): void
-    {
-        $mod = User::factory()->moderator()->create();
-        $victim = User::factory()->create([
-            'profile_occupation' => 'old',
-            'profile_about' => 'bio',
-            'profile_country' => 'UA',
-        ]);
-
-        $this->from(config('app.url'))
-            ->actingAs($mod, 'web')
-            ->withHeaders($this->statefulHeaders())
-            ->patchJson("/api/v1/mod/users/{$victim->id}/profile", [
-                'profile' => [
-                    'occupation' => 'newjob',
-                    'about' => 'newbio',
-                ],
-            ])
-            ->assertOk();
-
-        $victim->refresh();
-        $this->assertSame('newjob', $victim->profile_occupation);
-        $this->assertSame('newbio', $victim->profile_about);
-        $this->assertSame('UA', $victim->profile_country);
     }
 
     public function test_admin_can_patch_full_profile_fields(): void
