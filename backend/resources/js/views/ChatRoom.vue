@@ -69,6 +69,7 @@
                         @inline-private="insertFeedInlinePrivatePrefix"
                         @mention="insertFeedReplyPrefix"
                         @edit="startEditMessageFromFeed"
+                        @delete="openDeleteMessageConfirm"
                     />
 
                     <ChatRoomComposer
@@ -151,6 +152,15 @@
             @close="profileModalOpen = false"
             @updated="onProfileModalUpdated"
         />
+        <ConfirmDialogModal
+            :open="deleteConfirmOpen"
+            title="Видалити повідомлення?"
+            body="Рядок зникне зі стрічки для всіх у кімнаті. Відновити вміст буде неможливо."
+            confirm-label="Видалити"
+            cancel-label="Скасувати"
+            @close="closeDeleteMessageConfirm"
+            @confirm="confirmDeleteMessage"
+        />
 
         <PrivateChatPanel
             v-if="user && privatePeer"
@@ -174,6 +184,7 @@ import ChatFeedMessageList from '../components/chat/ChatFeedMessageList.vue';
 import ChatRoomComposer from '../components/chat/ChatRoomComposer.vue';
 import ChatRoomHeader from '../components/chat/ChatRoomHeader.vue';
 import ChatRoomSidebar from '../components/chat/ChatRoomSidebar.vue';
+import ConfirmDialogModal from '../components/ConfirmDialogModal.vue';
 import CommandsHelpModal from '../components/CommandsHelpModal.vue';
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
 import SimpleStubModal from '../components/SimpleStubModal.vue';
@@ -284,6 +295,10 @@ function normalizeMessage(raw) {
             raw.post_edited_at != null && raw.post_edited_at !== ''
                 ? Number(raw.post_edited_at)
                 : null,
+        post_deleted_at:
+            raw.post_deleted_at != null && raw.post_deleted_at !== ''
+                ? Number(raw.post_deleted_at)
+                : null,
         post_time: raw.post_time,
         post_user: raw.post_user,
         post_message: raw.post_message,
@@ -302,6 +317,9 @@ function normalizeMessage(raw) {
     if (Object.prototype.hasOwnProperty.call(raw || {}, 'can_edit')) {
         base.can_edit = Boolean(raw.can_edit);
     }
+    if (Object.prototype.hasOwnProperty.call(raw || {}, 'can_delete')) {
+        base.can_delete = Boolean(raw.can_delete);
+    }
 
     return base;
 }
@@ -313,6 +331,7 @@ export default {
         ChatRoomComposer,
         ChatRoomHeader,
         ChatRoomSidebar,
+        ConfirmDialogModal,
         CommandsHelpModal,
         PrivateChatPanel,
         SimpleStubModal,
@@ -355,6 +374,8 @@ export default {
             userInfoModalTarget: null,
             adminSettingsStubOpen: false,
             profileModalOpen: false,
+            deleteConfirmOpen: false,
+            deleteConfirmTarget: null,
         };
     },
     computed: {
@@ -702,8 +723,14 @@ export default {
             this.messages = [];
             this.messageIds = new Set();
         },
+        inferCanDeleteForMessage(m) {
+            return this.inferCanEditForMessage(m);
+        },
         inferCanEditForMessage(m) {
             if (!this.user || this.user.guest) {
+                return false;
+            }
+            if (m.post_deleted_at != null && m.post_deleted_at !== '') {
                 return false;
             }
             if (m.type !== 'public') {
@@ -736,6 +763,16 @@ export default {
             if (m.can_edit === undefined) {
                 m.can_edit = this.inferCanEditForMessage(m);
             }
+            if (m.can_delete === undefined) {
+                m.can_delete = this.inferCanDeleteForMessage(m);
+            }
+            if (m.post_deleted_at != null && m.post_deleted_at !== '') {
+                m.post_message = '';
+                m.image = null;
+                m.file = 0;
+                m.can_edit = false;
+                m.can_delete = false;
+            }
             const rid = this.selectedRoomId;
             if (
                 rid != null
@@ -750,6 +787,16 @@ export default {
                 const next = { ...prev, ...m };
                 if (!Object.prototype.hasOwnProperty.call(raw || {}, 'can_edit')) {
                     next.can_edit = prev.can_edit;
+                }
+                if (!Object.prototype.hasOwnProperty.call(raw || {}, 'can_delete')) {
+                    next.can_delete = prev.can_delete;
+                }
+                if (next.post_deleted_at != null && next.post_deleted_at !== '') {
+                    next.post_message = '';
+                    next.image = null;
+                    next.file = 0;
+                    next.can_edit = false;
+                    next.can_delete = false;
                 }
                 this.$set(this.messages, existingIdx, next);
                 this.$nextTick(() => this.scrollToBottom());
@@ -927,6 +974,10 @@ export default {
             });
 
             channel.listen('.MessageUpdated', (payload) => {
+                this.mergeMessage(payload);
+            });
+
+            channel.listen('.MessageDeleted', (payload) => {
                 this.mergeMessage(payload);
             });
 
@@ -1132,6 +1183,42 @@ export default {
             comp.appendToComposer(prefix);
             this.$nextTick(() => comp.focusComposerEnd());
         },
+        openDeleteMessageConfirm(message) {
+            if (!message || message.post_id == null) {
+                return;
+            }
+            this.deleteConfirmTarget = message;
+            this.deleteConfirmOpen = true;
+        },
+        closeDeleteMessageConfirm() {
+            this.deleteConfirmOpen = false;
+            this.deleteConfirmTarget = null;
+        },
+        async confirmDeleteMessage() {
+            const m = this.deleteConfirmTarget;
+            this.deleteConfirmOpen = false;
+            this.deleteConfirmTarget = null;
+            if (!m || m.post_id == null || !this.selectedRoomId) {
+                return;
+            }
+            const postId = m.post_id;
+            await this.ensureSanctum();
+            try {
+                const { data } = await window.axios.delete(
+                    `/api/v1/rooms/${this.selectedRoomId}/messages/${postId}`,
+                );
+                if (data.data) {
+                    this.mergeMessage(data.data);
+                }
+                const comp = this.$refs.chatComposer;
+                if (comp && typeof comp.clearEditIfPostId === 'function') {
+                    comp.clearEditIfPostId(postId);
+                }
+                this.loadError = '';
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Не вдалося видалити повідомлення.';
+            }
+        },
         startEditMessageFromFeed(message) {
             const comp = this.$refs.chatComposer;
             if (!comp || typeof comp.loadForEdit !== 'function') {
@@ -1145,7 +1232,12 @@ export default {
                 return;
             }
             const editable = this.messages
-                .filter((m) => m.type === 'public' && m.can_edit)
+                .filter(
+                    (m) =>
+                        m.type === 'public'
+                        && m.can_edit
+                        && !(m.post_deleted_at != null && m.post_deleted_at !== ''),
+                )
                 .sort((a, b) => a.post_id - b.post_id);
             if (editable.length === 0) {
                 return;

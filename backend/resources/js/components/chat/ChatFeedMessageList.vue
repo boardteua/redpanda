@@ -16,6 +16,7 @@
                 @inline-private="$emit('inline-private', $event)"
                 @mention="$emit('mention', $event)"
                 @edit="$emit('edit', $event)"
+                @delete="$emit('delete', $event)"
             />
         </ul>
         <p

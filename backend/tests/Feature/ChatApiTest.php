@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Events\MessageDeleted;
 use App\Events\MessagePosted;
 use App\Events\MessageUpdated;
 use App\Events\PrivateMessageCreated;
@@ -758,6 +759,207 @@ class ChatApiTest extends TestCase
         $msg = $this->seedPublicChatMessage($public, $user, [
             'type' => 'inline_private',
             'post_target' => '1',
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'nope',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_delete_message_owner_soft_deletes_and_broadcasts(): void
+    {
+        Bus::fake([BroadcastEvent::class]);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_message' => 'bye']);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertOk()
+            ->assertJsonPath('data.post_message', '')
+            ->assertJsonPath('data.can_edit', false)
+            ->assertJsonPath('data.can_delete', false);
+
+        $fresh = ChatMessage::query()->find($msg->post_id);
+        $this->assertNotNull($fresh?->post_deleted_at);
+        $this->assertSame('', $fresh->post_message);
+        $this->assertSame(0, (int) $fresh->file);
+
+        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+            return $job->event instanceof MessageDeleted;
+        });
+    }
+
+    public function test_delete_message_second_time_idempotent_no_broadcast(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_message' => 'x']);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertOk();
+
+        Bus::fake([BroadcastEvent::class]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertOk()
+            ->assertJsonPath('data.can_delete', false);
+
+        Bus::assertNotDispatched(BroadcastEvent::class);
+    }
+
+    public function test_delete_message_guest_forbidden(): void
+    {
+        [$public] = $this->seedRooms();
+        $author = User::factory()->create();
+        $guest = User::factory()->guest()->create();
+        $msg = $this->seedPublicChatMessage($public, $author);
+
+        $this->from(config('app.url'))
+            ->actingAs($guest, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertForbidden();
+    }
+
+    public function test_delete_message_cannot_delete_other_user(): void
+    {
+        [$public] = $this->seedRooms();
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $a);
+
+        $this->from(config('app.url'))
+            ->actingAs($b, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertForbidden();
+    }
+
+    public function test_delete_message_plain_user_forbidden_after_edit_window(): void
+    {
+        Config::set('chat.message_edit_window_hours', 1);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $oldTs = time() - 7200;
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_date' => $oldTs]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertForbidden();
+    }
+
+    public function test_delete_message_vip_can_delete_after_edit_window(): void
+    {
+        Config::set('chat.message_edit_window_hours', 1);
+
+        [$public] = $this->seedRooms();
+        $vip = User::factory()->vip()->create();
+        $oldTs = time() - 7200;
+        $msg = $this->seedPublicChatMessage($public, $vip, ['post_date' => $oldTs]);
+
+        $this->from(config('app.url'))
+            ->actingAs($vip, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertOk()
+            ->assertJsonPath('data.post_message', '');
+    }
+
+    public function test_delete_message_moderator_deletes_user_message(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertOk();
+    }
+
+    public function test_delete_message_moderator_cannot_delete_admin_authored_message(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create();
+        $admin = User::factory()->admin()->create();
+        $msg = $this->seedPublicChatMessage($public, $admin);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertForbidden();
+    }
+
+    public function test_delete_message_admin_deletes_admin_authored_message(): void
+    {
+        [$public] = $this->seedRooms();
+        $adminA = User::factory()->admin()->create();
+        $adminB = User::factory()->admin()->create();
+        $msg = $this->seedPublicChatMessage($public, $adminA);
+
+        $this->from(config('app.url'))
+            ->actingAs($adminB, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertOk();
+    }
+
+    public function test_delete_message_wrong_room_returns_404(): void
+    {
+        [$public, $registered] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$registered->room_id.'/messages/'.$msg->post_id)
+            ->assertNotFound();
+    }
+
+    public function test_delete_inline_private_message_forbidden(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user, [
+            'type' => 'inline_private',
+            'post_target' => '1',
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertForbidden();
+    }
+
+    public function test_patch_deleted_message_forbidden(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user, [
+            'post_deleted_at' => time(),
+            'post_message' => '',
         ]);
 
         $this->from(config('app.url'))

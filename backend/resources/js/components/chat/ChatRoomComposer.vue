@@ -451,6 +451,12 @@ export default {
                 }
             });
         },
+        clearEditIfPostId(postId) {
+            if (this.editPostId == null || Number(this.editPostId) !== Number(postId)) {
+                return;
+            }
+            this.cancelEdit();
+        },
         cancelEdit() {
             this.editPostId = null;
             this.editHadFile = false;

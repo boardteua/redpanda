@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Chat\RoomInlinePrivateParser;
 use App\Chat\SlashCommandPipeline;
+use App\Events\MessageDeleted;
 use App\Events\MessagePosted;
 use App\Events\MessageUpdated;
 use App\Events\PrivateMessageCreated;
@@ -104,6 +105,32 @@ class ChatMessageController extends Controller
         $message->save();
 
         broadcast(new MessageUpdated($message))->toOthers();
+
+        return ChatMessageResource::make($message->fresh())->response();
+    }
+
+    public function destroy(Request $request, Room $room, ChatMessage $message): JsonResponse
+    {
+        $this->authorize('interact', $room);
+
+        if ((int) $message->post_roomid !== (int) $room->room_id) {
+            abort(404);
+        }
+
+        $this->authorize('delete', $message);
+
+        $user = $request->user();
+        $this->postingGate->ensureCanPost($user);
+
+        $now = time();
+        if ($message->post_deleted_at === null) {
+            $message->post_deleted_at = $now;
+            $message->post_message = '';
+            $message->file = 0;
+            $message->post_style = null;
+            $message->save();
+            broadcast(new MessageDeleted($message->fresh()))->toOthers();
+        }
 
         return ChatMessageResource::make($message->fresh())->response();
     }

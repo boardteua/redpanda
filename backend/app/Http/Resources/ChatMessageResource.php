@@ -21,9 +21,10 @@ class ChatMessageResource extends JsonResource
             'user_id' => $this->user_id,
             'post_date' => (int) $this->post_date,
             'post_edited_at' => $this->post_edited_at !== null ? (int) $this->post_edited_at : null,
+            'post_deleted_at' => $this->post_deleted_at !== null ? (int) $this->post_deleted_at : null,
             'post_time' => $this->post_time,
             'post_user' => $this->post_user,
-            'post_message' => $this->post_message,
+            'post_message' => $this->post_deleted_at !== null ? '' : $this->post_message,
             'post_style' => $this->post_style,
             'post_color' => $this->post_color,
             'post_roomid' => (int) $this->post_roomid,
@@ -36,13 +37,15 @@ class ChatMessageResource extends JsonResource
             'avatar' => $this->avatar,
             'file' => (int) $this->file,
             'image' => $this->when(
-                (int) $this->file > 0,
+                $this->post_deleted_at === null && (int) $this->file > 0,
                 fn () => [
                     'id' => (int) $this->file,
                     'url' => URL::route('api.v1.chat-images.file', ['image' => (int) $this->file], true),
                 ],
             ),
             'can_edit' => Gate::forUser($request->user())->allows('update', $this->resource),
+            'can_delete' => $this->post_deleted_at === null
+                && Gate::forUser($request->user())->allows('delete', $this->resource),
         ];
     }
 }

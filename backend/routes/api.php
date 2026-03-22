@@ -43,6 +43,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
 
         Route::middleware('throttle:chat-post')->post('rooms/{room}/messages', [ChatMessageController::class, 'store']);
         Route::middleware('throttle:chat-post')->patch('rooms/{room}/messages/{message}', [ChatMessageController::class, 'update']);
+        Route::middleware('throttle:chat-post')->delete('rooms/{room}/messages/{message}', [ChatMessageController::class, 'destroy']);
 
         Route::middleware('throttle:image-read')->get('images', [ChatImageController::class, 'index']);
         Route::middleware('throttle:image-upload')->post('images', [ChatImageController::class, 'store']);

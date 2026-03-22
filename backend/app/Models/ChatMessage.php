@@ -33,6 +33,7 @@ class ChatMessage extends Model
         'user_id',
         'post_date',
         'post_edited_at',
+        'post_deleted_at',
         'post_time',
         'post_user',
         'post_message',

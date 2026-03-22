@@ -4,7 +4,7 @@
         :class="rowClassList"
     >
         <button
-            v-if="viewerName && message.post_user !== viewerName"
+            v-if="viewerName && !isDeleted && message.post_user !== viewerName"
             type="button"
             class="rp-focusable h-fit shrink-0 rounded-full border-0 bg-transparent p-0"
             :aria-label="'Приват у полі вводу: ' + message.post_user"
@@ -28,7 +28,7 @@
             <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                 <p class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
                     <button
-                        v-if="viewerName"
+                        v-if="viewerName && !isDeleted"
                         type="button"
                         class="rp-focusable mr-1.5 inline font-semibold hover:underline"
                         :style="nickStyle"
@@ -45,7 +45,13 @@
                         {{ message.post_user }}
                     </span>
                     <span
-                        v-if="message.post_message"
+                        v-if="isDeleted"
+                        class="inline-block italic text-[var(--rp-text-muted)]"
+                    >
+                        Повідомлення видалено
+                    </span>
+                    <span
+                        v-else-if="message.post_message"
                         class="inline-block whitespace-pre-wrap break-words rounded px-0.5"
                         :class="bodyClassList"
                     >
@@ -67,6 +73,20 @@
                             />
                         </svg>
                     </button>
+                    <button
+                        v-if="message.can_delete"
+                        type="button"
+                        class="rp-focusable rounded p-1 text-[var(--rp-text-muted)] hover:text-[var(--rp-error)]"
+                        title="Видалити"
+                        aria-label="Видалити повідомлення"
+                        @click.stop="$emit('delete', message)"
+                    >
+                        <svg class="h-4 w-4" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                            />
+                        </svg>
+                    </button>
                     <span
                         v-if="message.post_edited_at"
                         class="text-[0.625rem] font-medium uppercase tracking-wide text-[var(--rp-text-muted)]"
@@ -80,7 +100,7 @@
                     </time>
                 </div>
             </div>
-            <figure v-if="message.image && message.image.url" class="mt-1.5">
+            <figure v-if="!isDeleted && message.image && message.image.url" class="mt-1.5">
                 <img
                     :src="message.image.url"
                     alt="Вкладене зображення"
@@ -113,12 +133,18 @@ export default {
         },
     },
     computed: {
+        isDeleted() {
+            const t = this.message && this.message.post_deleted_at;
+
+            return t != null && t !== '';
+        },
         rowClassList() {
             const m = this.message;
             const even = this.index % 2 === 0;
             return [
                 even ? 'bg-[var(--rp-chat-row-even)]' : 'bg-[var(--rp-chat-row-odd)]',
                 m.type === 'inline_private' ? 'rp-chat-feed-row--inline-private' : '',
+                this.isDeleted ? 'opacity-90' : '',
             ];
         },
         nickStyle() {

@@ -9,6 +9,23 @@ class ChatMessagePolicy
 {
     public function update(User $user, ChatMessage $message): bool
     {
+        if ($message->post_deleted_at !== null) {
+            return false;
+        }
+
+        return $this->canModifyPublicMessage($user, $message);
+    }
+
+    public function delete(User $user, ChatMessage $message): bool
+    {
+        return $this->canModifyPublicMessage($user, $message);
+    }
+
+    /**
+     * Хто може змінювати або видаляти публічний рядок (видалення дозволено й для вже soft-deleted — ідемпотентний DELETE).
+     */
+    private function canModifyPublicMessage(User $user, ChatMessage $message): bool
+    {
         if ($user->guest) {
             return false;
         }

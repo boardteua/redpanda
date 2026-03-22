@@ -850,6 +850,36 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+    delete:
+      tags: [Chat]
+      summary: Видалити публічне повідомлення (soft-delete)
+      description: |
+        Лише `type: public` (інлайн-приват — як `PATCH`, заборонено). RBAC ідентичний редагуванню (T36/T37).
+        Повторний `DELETE` з тими самими правами — **200** і той самий стан (ідемпотентно), без другого broadcast.
+        Тіло та вкладення очищуються; у стрічці лишається рядок-плейсхолдер (`post_deleted_at`, порожнє `post_message`).
+      operationId: deleteRoomMessage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - $ref: "#/components/parameters/ChatPostId"
+      responses:
+        "200":
+          description: Видалено або вже було видалено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageDeleteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
 components:
   securitySchemes:
     sanctumSession:
@@ -1244,6 +1274,13 @@ components:
         data:
           $ref: "#/components/schemas/ChatMessage"
 
+    ChatMessageDeleteResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatMessage"
+
     ChatMessage:
       type: object
       properties:
@@ -1261,6 +1298,13 @@ components:
         can_edit:
           type: boolean
           description: Чи дозволено поточному користувачу `PATCH` це повідомлення (T36)
+        post_deleted_at:
+          type: integer
+          nullable: true
+          description: Unix час soft-delete; null — повідомлення активне (T37)
+        can_delete:
+          type: boolean
+          description: Чи дозволено поточному користувачу `DELETE` це повідомлення; false після видалення (T37)
         post_time:
           type: string
           nullable: true
