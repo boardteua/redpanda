@@ -37,7 +37,7 @@ info:
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     **Друзі (T50):** `GET /api/v1/friends` — усі прийняті друзі (без фільтра онлайн); `DELETE /api/v1/friends/{userId}` — прибрати з друзів або скасувати вихідний запит (throttle `private-post`).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.16.1"
+  version: "0.16.2"
   license:
     name: Proprietary
     url: https://example.com/
@@ -532,6 +532,45 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/friends/{userId}:
+    delete:
+      tags: [Auth]
+      summary: Прибрати з друзів або скасувати запит у друзі (T50)
+      description: |
+        Видаляє рядок `friendships` між поточним користувачем і `userId`:
+        **accepted** — прибрати з друзів; **pending** — скасувати вихідний запит або прибрати вхідний;
+        **rejected** — очистити запис (можна надіслати новий запит). Не застосовується до себе (**422**).
+        Обмеження частоти: `private-post` (як і змінюючі запити привату).
+      operationId: destroyFriendship
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: Операція виконана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Немає рядка дружби з цим користувачем
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Некоректний запит (наприклад, спроба застосувати до себе)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -1246,6 +1285,14 @@ components:
           type: string
           nullable: true
           description: Якщо null/відсутнє — сервер генерує нік.
+
+    ApiPlainMessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: Людськочитаний текст для UI або логів
 
     UserProfile:
       type: object
