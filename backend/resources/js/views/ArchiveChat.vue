@@ -134,12 +134,14 @@
                                     class="mb-2 max-h-20 max-w-full rounded border border-[var(--rp-border-subtle)] object-contain"
                                     loading="lazy"
                                 />
-                                <span
-                                    class="line-clamp-3 inline-block whitespace-pre-wrap break-words rounded px-0.5"
-                                    :class="archiveMessageClasses(m.post_style)"
-                                >
-                                    {{ m.post_message }}
-                                </span>
+                                <div class="line-clamp-3 max-w-full">
+                                    <ChatMessageBody
+                                        class="rounded px-0.5"
+                                        :body-class="archiveMessageClasses(m.post_style)"
+                                        :text="m.post_message"
+                                        variant="archive"
+                                    />
+                                </div>
                             </td>
                             <td class="border-b border-[var(--rp-border-subtle)] px-3 py-2 align-top font-mono text-xs whitespace-nowrap text-[var(--rp-text-muted)]">
                                 {{ formatArchiveDate(m) }}
@@ -203,12 +205,14 @@
 </template>
 
 <script>
+import ChatMessageBody from '../components/chat/ChatMessageBody.vue';
 import { chatMessageBodyClassList, normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 
 const THEME_KEY = 'redpanda-theme';
 
 export default {
     name: 'ArchiveChat',
+    components: { ChatMessageBody },
     data() {
         return {
             user: null,

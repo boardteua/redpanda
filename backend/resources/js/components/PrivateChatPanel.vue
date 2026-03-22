@@ -49,7 +49,11 @@
                         <time>{{ m.sent_time || '—' }}</time>
                         <span class="ml-2 font-medium text-[var(--rp-text)]">{{ labelFor(m) }}</span>
                     </div>
-                    <p class="mt-1 whitespace-pre-wrap break-words text-[var(--rp-text)]">{{ m.body }}</p>
+                    <ChatMessageBody
+                        class="mt-1 text-[var(--rp-text)]"
+                        :text="m.body"
+                        variant="private"
+                    />
                 </div>
             </li>
         </ul>
@@ -77,8 +81,11 @@
 </template>
 
 <script>
+import ChatMessageBody from './chat/ChatMessageBody.vue';
+
 export default {
     name: 'PrivateChatPanel',
+    components: { ChatMessageBody },
     props: {
         peer: {
             type: Object,

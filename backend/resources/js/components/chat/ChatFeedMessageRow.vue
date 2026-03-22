@@ -26,7 +26,7 @@
         />
         <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                <p class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
+                <div class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
                     <button
                         v-if="viewerName && !isDeleted"
                         type="button"
@@ -50,14 +50,14 @@
                     >
                         Повідомлення видалено
                     </span>
-                    <span
+                    <ChatMessageBody
                         v-else-if="message.post_message"
-                        class="inline-block whitespace-pre-wrap break-words rounded px-0.5"
-                        :class="bodyClassList"
-                    >
-                        {{ message.post_message }}
-                    </span>
-                </p>
+                        class="inline-block max-w-full rounded px-0.5 align-baseline"
+                        :body-class="bodyClassList"
+                        :text="message.post_message"
+                        variant="feed"
+                    />
+                </div>
                 <div class="flex shrink-0 items-center gap-1.5">
                     <button
                         v-if="message.can_edit"
@@ -113,10 +113,12 @@
 </template>
 
 <script>
+import ChatMessageBody from './ChatMessageBody.vue';
 import { chatMessageBodyClassList, nickColorStyleForPost } from '../../utils/chatMessageStyle';
 
 export default {
     name: 'ChatFeedMessageRow',
+    components: { ChatMessageBody },
     props: {
         message: {
             type: Object,

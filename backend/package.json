@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:msg-parse": "node --test resources/js/utils/chatMessageBodyParse.test.mjs"
     },
     "dependencies": {
         "laravel-echo": "^2.3.1",
