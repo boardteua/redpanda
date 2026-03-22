@@ -1,5 +1,7 @@
 <template>
-    <div class="flex min-h-screen flex-col bg-[var(--rp-bg)] md:flex-row">
+    <div
+        class="flex min-h-screen flex-col bg-[var(--rp-bg)] md:h-[100dvh] md:max-h-screen md:flex-row md:overflow-hidden"
+    >
         <!-- Затемнення (лише мобільний off-canvas) -->
         <button
             v-if="panelOpen && isNarrowViewport"
@@ -9,8 +11,12 @@
             @click="closePanel"
         />
 
-        <div class="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-6 sm:px-6">
-            <header class="mb-4 flex w-full flex-wrap items-center justify-between gap-3">
+        <div
+            class="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--rp-chat-app-bg)] px-3 py-3 sm:px-4 md:min-h-0 md:overflow-hidden"
+        >
+            <header
+                class="mb-2 flex w-full flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-header-bg)] px-2 py-2 sm:px-3"
+            >
                 <div class="flex min-w-0 flex-wrap items-center gap-3">
                     <button
                         type="button"
@@ -45,11 +51,11 @@
                             />
                         </svg>
                     </button>
-                    <div v-if="currentRoom" class="min-w-0">
-                        <p class="truncate text-lg font-semibold text-[var(--rp-text)]">
+                    <div v-if="currentRoom" class="min-w-0 border-l border-[var(--rp-chat-chrome-border)] pl-3">
+                        <p class="truncate text-base font-semibold leading-tight text-[var(--rp-text)]">
                             {{ currentRoom.room_name }}
                         </p>
-                        <p v-if="currentRoom.topic" class="truncate text-sm text-[var(--rp-text-muted)]">
+                        <p v-if="currentRoom.topic" class="truncate text-xs text-[var(--rp-text-muted)]">
                             {{ currentRoom.topic }}
                         </p>
                     </div>
@@ -98,37 +104,42 @@
                 {{ logoutError }}
             </p>
 
-            <main id="main-content" class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4" tabindex="-1">
-                <div v-if="loadError" class="rp-banner" role="alert">
+            <main
+                id="main-content"
+                class="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden pt-2"
+                tabindex="-1"
+            >
+                <div v-if="loadError" class="rp-banner shrink-0" role="alert">
                     {{ loadError }}
                 </div>
                 <div
                     v-else-if="!loadingRooms && rooms.length === 0"
-                    class="rp-banner"
+                    class="rp-banner shrink-0"
                     role="status"
                 >
                     Немає доступних кімнат. Зверніться до адміністратора.
                 </div>
 
                 <div
-                    class="rp-panel flex max-w-none min-h-[12rem] flex-1 flex-col overflow-hidden"
-                    style="min-height: 50vh"
+                    v-else
+                    class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-feed-bg)] shadow-[0_1px_3px_rgb(15_23_42/0.06)]"
                 >
                     <h2 class="rp-sr-only">Повідомлення</h2>
-                    <ul
-                        ref="messageList"
-                        class="flex max-h-[min(50vh,32rem)] flex-col gap-2 overflow-y-auto p-2"
-                        role="log"
-                        aria-live="polite"
-                        aria-relevant="additions"
-                    >
-                        <li
-                            v-for="m in messages"
-                            :key="m.post_id"
-                            class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] px-3 py-2 text-sm"
+                    <div class="rp-chat-feed-wash flex min-h-0 flex-1 flex-col overflow-hidden">
+                        <ul
+                            ref="messageList"
+                            class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 py-2 sm:px-3 sm:py-3"
+                            role="log"
+                            aria-live="polite"
+                            aria-relevant="additions"
                         >
-                            <div class="flex flex-wrap items-baseline gap-2 text-[var(--rp-text-muted)]">
-                                <time class="font-mono text-xs">{{ m.post_time || '—' }}</time>
+                            <li
+                                v-for="m in messages"
+                                :key="m.post_id"
+                                class="rounded border border-[var(--rp-chat-message-border)] bg-[var(--rp-chat-message-bg)] px-2.5 py-1.5 text-[0.9375rem] leading-snug sm:px-3 sm:py-2"
+                            >
+                            <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[var(--rp-text-muted)]">
+                                <time class="font-mono text-[0.6875rem] tabular-nums">{{ m.post_time || '—' }}</time>
                                 <button
                                     v-if="user && m.post_user !== user.user_name"
                                     type="button"
@@ -153,86 +164,131 @@
                                     loading="lazy"
                                 />
                             </figure>
-                        </li>
-                    </ul>
-                    <p
-                        v-if="messages.length === 0 && !loadingMessages"
-                        class="p-4 text-center text-sm text-[var(--rp-text-muted)]"
-                    >
-                        Ще немає повідомлень. Напишіть перше нижче.
-                    </p>
-                </div>
+                            </li>
+                        </ul>
+                        <p
+                            v-if="messages.length === 0 && !loadingMessages"
+                            class="p-4 text-center text-sm text-[var(--rp-text-muted)]"
+                        >
+                            Ще немає повідомлень. Напишіть перше нижче.
+                        </p>
+                    </div>
 
-                <form class="rp-panel max-w-none flex flex-col gap-3" @submit.prevent="sendMessage">
-                    <label class="rp-label" for="chat-composer">Повідомлення</label>
-                    <textarea
-                        id="chat-composer"
-                        v-model="composerText"
-                        class="rp-input rp-focusable min-h-[5rem] resize-y font-sans"
-                        maxlength="4000"
-                        rows="3"
-                        :disabled="sending || uploadingImage || !selectedRoomId"
-                        placeholder="Текст повідомлення… (/msg нік текст — надіслати в приват)"
-                    />
-                    <input
-                        ref="imageInput"
-                        type="file"
-                        class="hidden"
-                        accept="image/jpeg,image/png,image/gif,image/webp"
-                        @change="onChatImageSelected"
-                    />
-                    <div
-                        v-if="pendingImageId && pendingPreviewUrl"
-                        class="flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] p-2"
+                    <form
+                        class="flex shrink-0 flex-col border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-composer-bg)]"
+                        @submit.prevent="sendMessage"
                     >
-                        <img
-                            :src="pendingPreviewUrl"
-                            alt=""
-                            class="max-h-24 max-w-[12rem] rounded object-contain"
-                        />
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost text-sm"
-                            :disabled="sending || uploadingImage"
-                            @click="clearPendingChatImage"
-                        >
-                            Прибрати фото
-                        </button>
-                    </div>
-                    <p v-if="imageUploadError" class="text-sm text-[var(--rp-error)]" role="alert">
-                        {{ imageUploadError }}
-                    </p>
-                    <div class="flex flex-wrap items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                        <div class="rp-chat-toolbar rounded-none" role="toolbar" aria-label="Форматування та дії">
+                            <button
+                                type="button"
+                                class="rp-focusable rp-chat-toolbar-btn"
+                                disabled
+                                title="Напівжирний (згодом)"
+                                aria-disabled="true"
+                            >
+                                <span class="text-sm font-bold" aria-hidden="true">B</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="rp-focusable rp-chat-toolbar-btn"
+                                disabled
+                                title="Курсив (згодом)"
+                                aria-disabled="true"
+                            >
+                                <span class="text-sm italic" aria-hidden="true">I</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="rp-focusable rp-chat-toolbar-btn"
+                                disabled
+                                title="Підкреслення (згодом)"
+                                aria-disabled="true"
+                            >
+                                <span class="text-sm underline" aria-hidden="true">U</span>
+                            </button>
+                            <span class="rp-chat-toolbar-spacer" aria-hidden="true" />
+                            <button
+                                type="button"
+                                class="rp-focusable rp-chat-toolbar-btn"
+                                :disabled="sending || uploadingImage || !selectedRoomId"
+                                title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
+                                aria-label="Додати зображення"
+                                @click="$refs.imageInput && $refs.imageInput.click()"
+                            >
+                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+                                    />
+                                </svg>
+                            </button>
+                            <button
+                                type="submit"
+                                class="rp-focusable rp-chat-toolbar-btn text-[var(--rp-primary)]"
+                                :disabled="
+                                    sending
+                                    || uploadingImage
+                                    || !selectedRoomId
+                                    || (!composerText.trim() && !pendingImageId)
+                                "
+                                title="Надіслати"
+                                aria-label="Надіслати повідомлення"
+                            >
+                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <label class="rp-sr-only" for="chat-composer">Повідомлення</label>
+                        <textarea
+                            id="chat-composer"
+                            v-model="composerText"
+                            class="rp-focusable rp-chat-composer-input mx-2 mb-1 min-h-[4.5rem] resize-y sm:mx-3 sm:mb-2"
+                            maxlength="4000"
+                            rows="3"
                             :disabled="sending || uploadingImage || !selectedRoomId"
-                            title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
-                            @click="$refs.imageInput && $refs.imageInput.click()"
+                            placeholder="Повідомлення (Жміть кнопу ⇧, щоб поправити останні повідомлення — згодом). /msg нік текст — приват."
+                        />
+                        <input
+                            ref="imageInput"
+                            type="file"
+                            class="hidden"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            @change="onChatImageSelected"
+                        />
+                        <div
+                            v-if="pendingImageId && pendingPreviewUrl"
+                            class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-message-bg)] p-2 sm:mx-3"
                         >
-                            Фото
-                        </button>
-                        <button
-                            type="submit"
-                            class="rp-focusable rp-btn rp-btn-primary"
-                            :disabled="
-                                sending
-                                || uploadingImage
-                                || !selectedRoomId
-                                || (!composerText.trim() && !pendingImageId)
-                            "
+                            <img
+                                :src="pendingPreviewUrl"
+                                alt=""
+                                class="max-h-24 max-w-[12rem] rounded object-contain"
+                            />
+                            <button
+                                type="button"
+                                class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                                :disabled="sending || uploadingImage"
+                                @click="clearPendingChatImage"
+                            >
+                                Прибрати фото
+                            </button>
+                        </div>
+                        <p
+                            v-if="imageUploadError"
+                            class="mx-2 mb-2 text-sm text-[var(--rp-error)] sm:mx-3"
+                            role="alert"
                         >
-                            Надіслати
-                        </button>
-                    </div>
-                </form>
+                            {{ imageUploadError }}
+                        </p>
+                    </form>
+                </div>
             </main>
         </div>
 
         <!-- Панель #chat_panel — 320px, порядок вкладок як у CHAT-PANEL-SIDEBAR -->
         <aside
             id="chat-panel"
-            class="flex w-[320px] max-w-[100vw] flex-shrink-0 flex-col border-l border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-50 max-md:shadow-lg max-md:transition-transform max-md:duration-200 max-md:ease-out md:relative md:z-auto md:h-screen md:shadow-none md:transition-none"
+            class="flex w-[320px] max-w-[100vw] flex-shrink-0 flex-col border-l border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-sidebar-bg)] max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-50 max-md:shadow-lg max-md:transition-transform max-md:duration-200 max-md:ease-out md:relative md:z-auto md:h-screen md:shadow-none md:transition-none"
             :class="[
                 isNarrowViewport && (panelOpen ? 'max-md:translate-x-0' : 'max-md:translate-x-full'),
                 !isNarrowViewport && !panelOpen ? 'md:hidden' : '',
