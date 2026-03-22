@@ -210,8 +210,9 @@
                     maxlength="4000"
                     rows="1"
                     :disabled="sending || uploadingImage || !selectedRoomId"
-                    placeholder="Повідомлення — Enter надішле, Shift+Enter — новий рядок"
+                    placeholder="Повідомлення — Enter надішле, Shift+Enter — новий рядок; зображення можна вставити з буфера"
                     @keydown="onChatComposerKeydown"
+                    @paste="onChatComposerPaste"
                     @input="syncComposerInputHeight"
                 />
             </div>
@@ -296,6 +297,10 @@
 <script>
 import ChatEmojiModal from './ChatEmojiModal.vue';
 import ChatMyImagesModal from './ChatMyImagesModal.vue';
+import {
+    getFirstClipboardImageFile,
+    validateChatImageFileForUpload,
+} from '../../utils/chatComposerImageUpload';
 import {
     COMPOSER_BG_PALETTE,
     COMPOSER_FG_PALETTE,
@@ -470,6 +475,27 @@ export default {
             e.preventDefault();
             this.emitSubmit();
         },
+        onChatComposerPaste(e) {
+            const file = getFirstClipboardImageFile(e.clipboardData);
+            if (!file) {
+                return;
+            }
+            e.preventDefault();
+            if (this.isGuest) {
+                this.imageUploadError = 'Завантаження зображень недоступне для гостя.';
+
+                return;
+            }
+            if (!this.selectedRoomId) {
+                return;
+            }
+            if (this.sending || this.uploadingImage) {
+                this.imageUploadError = 'Зачекайте завершення поточної дії перед вставкою зображення.';
+
+                return;
+            }
+            this.uploadChatImageFile(file);
+        },
         syncComposerInputHeight() {
             this.$nextTick(() => {
                 const el = this.$refs.chatComposer;
@@ -507,7 +533,20 @@ export default {
         async onChatImageSelected(e) {
             const input = e.target;
             const file = input.files && input.files[0];
+            if (input) {
+                input.value = '';
+            }
             if (!file || !this.selectedRoomId || this.isGuest) {
+                return;
+            }
+            await this.uploadChatImageFile(file);
+        },
+        async uploadChatImageFile(file) {
+            const v = validateChatImageFileForUpload(file);
+            if (!v.ok) {
+                this.imageUploadError = v.message;
+                this.clearPendingChatImage();
+
                 return;
             }
             this.imageUploadError = '';
@@ -527,7 +566,6 @@ export default {
                 this.clearPendingChatImage();
             } finally {
                 this.uploadingImage = false;
-                input.value = '';
             }
         },
     },
