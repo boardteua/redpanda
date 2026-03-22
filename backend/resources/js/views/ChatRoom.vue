@@ -868,6 +868,7 @@ export default {
     name: 'ChatRoom',
     components: {
         PrivateChatPanel,
+        UserAvatar,
     },
     data() {
         return {

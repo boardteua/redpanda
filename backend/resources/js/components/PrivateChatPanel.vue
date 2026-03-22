@@ -77,8 +77,13 @@
 </template>
 
 <script>
+import UserAvatar from './UserAvatar.vue';
+
 export default {
     name: 'PrivateChatPanel',
+    components: {
+        UserAvatar,
+    },
     props: {
         peer: {
             type: Object,
