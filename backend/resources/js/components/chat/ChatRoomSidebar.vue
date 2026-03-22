@@ -602,17 +602,17 @@
                         <button
                             type="button"
                             class="rp-focusable w-full rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] px-3 py-2.5 text-sm font-semibold text-[var(--rp-chat-sidebar-fg)] hover:bg-[var(--rp-chat-sidebar-border)]/30"
-                            @click="$emit('open-room-manage')"
+                            @click="$emit('open-add-room')"
                         >
-                            Керування кімнатами
+                            Додати кімнату
                         </button>
                     </div>
                     <p v-if="loadingRooms" class="text-[var(--rp-chat-sidebar-muted)]">Завантаження…</p>
                     <ul v-else class="space-y-2">
-                        <li v-for="r in rooms" :key="r.room_id">
+                        <li v-for="r in rooms" :key="r.room_id" class="flex items-stretch gap-1">
                             <button
                                 type="button"
-                                class="rp-focusable rp-chat-side-room-btn w-full rounded-md border-2 px-3 py-2 text-left transition-colors"
+                                class="rp-focusable rp-chat-side-room-btn min-w-0 flex-1 rounded-md border-2 px-3 py-2 text-left transition-colors"
                                 :class="r.room_id === selectedRoomId ? 'is-active' : ''"
                                 @click="$emit('select-room', r.room_id)"
                             >
@@ -623,6 +623,24 @@
                                     v-if="r.topic"
                                     class="mt-0.5 block text-xs text-[var(--rp-chat-sidebar-muted)]"
                                 >{{ r.topic }}</span>
+                            </button>
+                            <button
+                                v-if="roomListCanManage(r)"
+                                type="button"
+                                class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center self-center rounded-md border-2 border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-fg)] hover:bg-[var(--rp-chat-sidebar-border)]/25"
+                                :aria-label="'Редагувати кімнату «' + r.room_name + '»'"
+                                @click.stop="$emit('edit-room', r.room_id)"
+                            >
+                                <svg
+                                    class="h-5 w-5 text-[var(--rp-chat-sidebar-link)]"
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                >
+                                    <path
+                                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                                    />
+                                </svg>
                             </button>
                         </li>
                     </ul>
@@ -801,6 +819,19 @@ export default {
             }
 
             return this.sexGlyphAndLabel(row.sex);
+        },
+        /** T54: олівець у списку — творець кімнати або модератор/адмін. */
+        roomListCanManage(room) {
+            const u = this.user;
+            if (!u || u.guest || !room) {
+                return false;
+            }
+            const role = u.chat_role;
+            if (role === 'moderator' || role === 'admin') {
+                return true;
+            }
+            const cid = room.created_by_user_id;
+            return cid != null && Number(cid) === Number(u.id);
         },
         panelTabLabelledby(panelKey) {
             return (this.isNarrowViewport ? 'chat-tab-m-' : 'chat-tab-d-') + panelKey;

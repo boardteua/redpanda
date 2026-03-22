@@ -128,7 +128,8 @@
             @lookup-private="lookupAndOpenPrivate"
             @open-private-peer="openPrivatePeer"
             @select-room="selectRoom"
-            @open-room-manage="openRoomManageModal"
+            @open-add-room="openAddRoomModal"
+            @edit-room="openRoomEditor"
             @accept-friend="acceptFriend"
             @reject-friend="rejectFriend"
             @remove-ignore="removeIgnore"
@@ -169,21 +170,26 @@
             @close="closeDeleteMessageConfirm"
             @confirm="confirmDeleteMessage"
         />
-        <RoomManageModal
-            :open="roomManageModalOpen"
+        <AddRoomModal
+            :open="addRoomModalOpen"
             :user="user"
-            :rooms="rooms"
             :can-create-room="canCreateRoom"
             :chat-settings="chatSettings"
-            :selected-room-id="selectedRoomId"
             :creating-room="creatingRoom"
-            :saving-room="roomManageSaving"
-            :deleting-room="roomManageDeleting"
-            :form-error="roomManageError"
-            @close="roomManageModalOpen = false"
-            @create-room="onRoomModalCreate"
-            @save-room="onRoomModalSave"
-            @request-delete-room="onRoomModalRequestDelete"
+            :form-error="addRoomError"
+            @close="addRoomModalOpen = false"
+            @create-room="onAddRoomModalCreate"
+        />
+        <RoomEditModal
+            :open="roomEditModalOpen && !!roomBeingEdited"
+            :room="roomBeingEdited"
+            :user="user"
+            :saving-room="roomEditSaving"
+            :deleting-room="roomEditDeleting"
+            :form-error="editRoomError"
+            @close="closeRoomEditModal"
+            @save-room="onRoomEditModalSave"
+            @request-delete-room="onRoomEditRequestDelete"
         />
         <ConfirmDialogModal
             :open="deleteRoomConfirmOpen"
@@ -224,7 +230,8 @@ import PrivateChatPanel from '../components/PrivateChatPanel.vue';
 import ChatSettingsModal from '../components/ChatSettingsModal.vue';
 import UserProfileModal from '../components/UserProfileModal.vue';
 import UserInfoModal from '../components/UserInfoModal.vue';
-import RoomManageModal from '../components/chat/RoomManageModal.vue';
+import AddRoomModal from '../components/chat/AddRoomModal.vue';
+import RoomEditModal from '../components/chat/RoomEditModal.vue';
 import { createEcho } from '../lib/echo';
 import { normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 
@@ -395,7 +402,8 @@ export default {
         ChatSettingsModal,
         UserProfileModal,
         UserInfoModal,
-        RoomManageModal,
+        AddRoomModal,
+        RoomEditModal,
     },
     data() {
         return {
@@ -407,10 +415,13 @@ export default {
             loadingRooms: true,
             chatSettings: null,
             creatingRoom: false,
-            roomManageModalOpen: false,
-            roomManageError: '',
-            roomManageSaving: false,
-            roomManageDeleting: false,
+            addRoomModalOpen: false,
+            addRoomError: '',
+            roomEditModalOpen: false,
+            roomEditRoomId: null,
+            editRoomError: '',
+            roomEditSaving: false,
+            roomEditDeleting: false,
             deleteRoomConfirmOpen: false,
             pendingDeleteRoomId: null,
             loadingMessages: false,
@@ -473,6 +484,12 @@ export default {
         },
         canCreateRoom() {
             return Boolean(this.user && !this.user.guest && this.user.can_create_room);
+        },
+        roomBeingEdited() {
+            if (this.roomEditRoomId == null) {
+                return null;
+            }
+            return this.rooms.find((r) => r.room_id === this.roomEditRoomId) || null;
         },
         /** Реактивний статус «я» для індикатора в сайдбарі (T48). */
         viewerPresenceStatus() {
@@ -624,6 +641,11 @@ export default {
             this.echoUserListenerReady = false;
             if (nextId != null) {
                 this.$nextTick(() => this.ensureUserPrivateListener());
+            }
+        },
+        rooms() {
+            if (this.roomEditModalOpen && this.roomEditRoomId != null && !this.roomBeingEdited) {
+                this.closeRoomEditModal();
             }
         },
     },
@@ -836,12 +858,25 @@ export default {
                 this.chatSettings = null;
             }
         },
-        openRoomManageModal() {
-            this.roomManageError = '';
-            this.roomManageModalOpen = true;
+        openAddRoomModal() {
+            this.addRoomError = '';
+            this.addRoomModalOpen = true;
         },
-        async onRoomModalCreate({ room_name, topic }) {
-            this.roomManageError = '';
+        openRoomEditor(roomId) {
+            if (roomId == null) {
+                return;
+            }
+            this.editRoomError = '';
+            this.roomEditRoomId = roomId;
+            this.roomEditModalOpen = true;
+        },
+        closeRoomEditModal() {
+            this.roomEditModalOpen = false;
+            this.roomEditRoomId = null;
+            this.editRoomError = '';
+        },
+        async onAddRoomModalCreate({ room_name, topic }) {
+            this.addRoomError = '';
             this.creatingRoom = true;
             try {
                 await this.ensureSanctum();
@@ -859,18 +894,19 @@ export default {
                 if (u) {
                     this.user = u;
                 }
+                this.addRoomModalOpen = false;
             } catch (e) {
                 const st = e.response && e.response.status;
                 const msg =
                     (e.response && e.response.data && e.response.data.message) ||
                     (st === 403 ? 'Немає права створити кімнату.' : null) ||
                     'Не вдалося створити кімнату.';
-                this.roomManageError = typeof msg === 'string' ? msg : 'Не вдалося створити кімнату.';
+                this.addRoomError = typeof msg === 'string' ? msg : 'Не вдалося створити кімнату.';
             } finally {
                 this.creatingRoom = false;
             }
         },
-        async onRoomModalSave(payload) {
+        async onRoomEditModalSave(payload) {
             const roomId = payload && payload.room_id;
             if (roomId == null) {
                 return;
@@ -885,8 +921,8 @@ export default {
             if (Object.prototype.hasOwnProperty.call(payload, 'access')) {
                 body.access = payload.access;
             }
-            this.roomManageError = '';
-            this.roomManageSaving = true;
+            this.editRoomError = '';
+            this.roomEditSaving = true;
             try {
                 await this.ensureSanctum();
                 await window.axios.patch(`/api/v1/rooms/${roomId}`, body);
@@ -897,12 +933,12 @@ export default {
                     (e.response && e.response.data && e.response.data.message) ||
                     (st === 403 ? 'Недостатньо прав для зміни цієї кімнати.' : null) ||
                     'Не вдалося зберегти зміни.';
-                this.roomManageError = typeof msg === 'string' ? msg : 'Не вдалося зберегти зміни.';
+                this.editRoomError = typeof msg === 'string' ? msg : 'Не вдалося зберегти зміни.';
             } finally {
-                this.roomManageSaving = false;
+                this.roomEditSaving = false;
             }
         },
-        onRoomModalRequestDelete(roomId) {
+        onRoomEditRequestDelete(roomId) {
             if (roomId == null) {
                 return;
             }
@@ -920,14 +956,17 @@ export default {
 
                 return;
             }
-            this.roomManageError = '';
-            this.roomManageDeleting = true;
+            this.editRoomError = '';
+            this.roomEditDeleting = true;
             try {
                 await this.ensureSanctum();
                 await window.axios.delete(`/api/v1/rooms/${id}`);
                 const wasSelected = this.selectedRoomId === id;
                 await this.loadRooms();
                 this.closeDeleteRoomConfirm();
+                if (this.roomEditRoomId === id) {
+                    this.closeRoomEditModal();
+                }
                 if (wasSelected) {
                     if (this.rooms.length > 0) {
                         this.selectedRoomId = this.rooms[0].room_id;
@@ -953,10 +992,10 @@ export default {
                         e.response.data.message ||
                         'Неможливо видалити кімнату з повідомленнями в історії.';
                 }
-                this.roomManageError = typeof msg === 'string' ? msg : 'Не вдалося видалити кімнату.';
+                this.editRoomError = typeof msg === 'string' ? msg : 'Не вдалося видалити кімнату.';
                 this.closeDeleteRoomConfirm();
             } finally {
-                this.roomManageDeleting = false;
+                this.roomEditDeleting = false;
             }
         },
         async loadRooms() {
