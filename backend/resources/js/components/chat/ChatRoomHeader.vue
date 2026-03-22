@@ -1,41 +1,36 @@
 <template>
     <header
-        class="mb-2 flex w-full flex-shrink-0 flex-col gap-1 border-b border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-header-bg)] px-2 py-2 sm:px-3"
+        class="mb-2 flex w-full flex-shrink-0 flex-col gap-1.5 rounded-lg border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-bg)] px-2 py-2 sm:px-3"
     >
-        <div v-if="chatBreadcrumb || chatTopicLine" class="min-w-0">
+        <div v-if="chatBreadcrumb" class="min-w-0">
             <p
-                v-if="chatBreadcrumb"
-                class="truncate text-[0.6875rem] font-semibold tracking-wide text-[var(--rp-text)]"
+                class="truncate text-[0.6875rem] font-semibold tracking-wide text-[var(--rp-chat-sidebar-fg)]"
             >
                 {{ chatBreadcrumb }}
             </p>
-            <p
-                v-if="chatTopicLine"
-                class="truncate text-[0.625rem] text-[var(--rp-text-muted)]"
-            >
-                {{ chatTopicLine }}
-            </p>
         </div>
-        <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
-            <div class="flex min-w-0 flex-wrap items-center gap-3">
-                <button
-                    type="button"
-                    class="rp-focusable shrink-0 text-sm font-medium text-[var(--rp-link)] hover:text-[var(--rp-link-hover)]"
-                    :disabled="loggingOut"
-                    @click="$emit('logout')"
+        <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
+            <div class="min-w-0 flex-1 basis-[min(100%,12rem)]">
+                <p
+                    v-if="chatTopicLine"
+                    class="line-clamp-2 text-sm leading-snug text-[var(--rp-chat-sidebar-muted)]"
+                    :title="chatTopicLine"
                 >
-                    Вийти
-                </button>
-                <router-link
-                    :to="archiveRoute"
-                    class="rp-focusable shrink-0 text-sm font-medium text-[var(--rp-link)] hover:text-[var(--rp-link-hover)]"
+                    {{ chatTopicLine }}
+                </p>
+            </div>
+            <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <span
+                    v-if="wsDegraded"
+                    class="max-w-[11rem] rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] px-2 py-1 text-xs text-[var(--rp-chat-sidebar-muted)] md:max-w-none"
+                    role="status"
                 >
-                    Архів чату
-                </router-link>
+                    Реалтайм недоступний — оновлення через опитування
+                </span>
                 <button
                     ref="mobilePanelToggle"
                     type="button"
-                    class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md border-2 border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] text-[var(--rp-text)] md:hidden"
+                    class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-icon)] hover:bg-[var(--rp-chat-sidebar-tab-active-bg)] md:hidden"
                     :aria-expanded="panelOpen ? 'true' : 'false'"
                     aria-controls="chat-panel"
                     title="Меню"
@@ -46,19 +41,10 @@
                         <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
                     </svg>
                 </button>
-                <span
-                    v-if="wsDegraded"
-                    class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] px-2 py-1 text-xs text-[var(--rp-text-muted)]"
-                    role="status"
-                >
-                    Реалтайм недоступний — оновлення через опитування
-                </span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
                 <button
                     ref="desktopPanelToggle"
                     type="button"
-                    class="rp-focusable hidden h-11 w-11 items-center justify-center rounded-md border-2 border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] text-[var(--rp-text)] md:inline-flex"
+                    class="rp-focusable hidden h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-icon)] hover:opacity-95 md:inline-flex"
                     :aria-expanded="panelOpen ? 'true' : 'false'"
                     aria-controls="chat-panel"
                     title="Панель чату"
@@ -82,21 +68,8 @@ export default {
     props: {
         chatBreadcrumb: { type: String, default: '' },
         chatTopicLine: { type: String, default: '' },
-        loggingOut: { type: Boolean, default: false },
         panelOpen: { type: Boolean, default: false },
         wsDegraded: { type: Boolean, default: false },
-        selectedRoomId: {
-            default: null,
-            validator: (v) => v === null || v === undefined || typeof v === 'number',
-        },
-    },
-    computed: {
-        archiveRoute() {
-            return {
-                name: 'archive',
-                query: this.selectedRoomId ? { room: String(this.selectedRoomId) } : {},
-            };
-        },
     },
 };
 </script>

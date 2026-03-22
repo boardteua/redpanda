@@ -21,11 +21,8 @@
                 ref="chatRoomHeader"
                 :chat-breadcrumb="chatBreadcrumb"
                 :chat-topic-line="chatTopicLine"
-                :logging-out="loggingOut"
                 :panel-open="panelOpen"
                 :ws-degraded="wsDegraded"
-                :selected-room-id="selectedRoomId"
-                @logout="logout"
                 @toggle-panel="togglePanel"
             />
 
@@ -577,7 +574,8 @@ export default {
             }
             const mq = window.matchMedia('(max-width: 767px)');
             this.isNarrowViewport = mq.matches;
-            this.panelOpen = !mq.matches;
+            /* T45: панель сайдбару відкрита за замовчуванням і на вузькому viewport (разом із T41 «Люди»). */
+            this.panelOpen = true;
             this.mqHandler = () => {
                 this.isNarrowViewport = mq.matches;
                 if (!mq.matches) {
@@ -588,6 +586,7 @@ export default {
                 });
             };
             mq.addEventListener('change', this.mqHandler);
+            this.syncBodyScrollLock(this.panelOpen && this.isNarrowViewport);
         },
         teardownMediaQuery() {
             if (typeof window === 'undefined' || !window.matchMedia || !this.mqHandler) {
