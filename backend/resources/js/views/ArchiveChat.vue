@@ -198,15 +198,10 @@
 </template>
 
 <script>
-import UserAvatar from '../components/UserAvatar.vue';
-
 const THEME_KEY = 'redpanda-theme';
 
 export default {
     name: 'ArchiveChat',
-    components: {
-        UserAvatar,
-    },
     data() {
         return {
             user: null,

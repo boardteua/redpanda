@@ -792,7 +792,6 @@
 
 <script>
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
-import UserAvatar from '../components/UserAvatar.vue';
 import { createEcho } from '../lib/echo';
 
 const THEME_KEY = 'redpanda-theme';
@@ -868,7 +867,6 @@ export default {
     name: 'ChatRoom',
     components: {
         PrivateChatPanel,
-        UserAvatar,
     },
     data() {
         return {
