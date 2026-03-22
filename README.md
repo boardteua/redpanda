@@ -14,7 +14,7 @@
 
 **Chat REST (T04):** `GET /api/v1/rooms`, `GET|POST /api/v1/rooms/{id}/messages`; контракт API — [docs/chat-v2/openapi.yaml](docs/chat-v2/openapi.yaml); браузерний QA (лише `APP_ENV=local`) — [`/__qa/chat-api`](http://127.0.0.1:8000/__qa/chat-api); деталі — [docs/chat-v2/T04-QA.md](docs/chat-v2/T04-QA.md).
 
-**Broadcast (T05):** канали `private-room.{id}` / `private-user.{id}`, подія **MessagePosted**; локально — `php artisan reverb:start` (див. `.env` `REVERB_*`); QA — [docs/chat-v2/T05-QA.md](docs/chat-v2/T05-QA.md).
+**Broadcast (T05/T20):** кімната — presence `presence-room.{id}` (**MessagePosted** + список онлайн у сайдбарі); приват — `private-user.{id}`; локально — `php artisan reverb:start` (див. `.env` `REVERB_*`); QA — [docs/chat-v2/T05-QA.md](docs/chat-v2/T05-QA.md), presence — [docs/chat-v2/T20-QA.md](docs/chat-v2/T20-QA.md).
 
 **Vue чат (T06):** після входу — **`/chat`** (стрічка, Echo, poll fallback); потрібні `VITE_REVERB_*` у `.env` для WS; QA — [docs/chat-v2/T06-QA.md](docs/chat-v2/T06-QA.md).
 

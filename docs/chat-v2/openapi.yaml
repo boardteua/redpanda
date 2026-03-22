@@ -13,8 +13,7 @@ info:
 
     **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`).
 
-    **WebSocket (Laravel Reverb, протокол як у Pusher):** приватні канали `private-room.{roomId}` та `private-user.{userId}` авторизуються через `POST /broadcasting/auth` (сесія + для змінюючих запитів CSRF).
-    Після успішного `POST /api/v1/rooms/{roomId}/messages` транслюється подія **`.MessagePosted`** на `private-room.{roomId}` (деталі payload — [T05-QA.md](T05-QA.md)).
+    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`** транслюються на той самий presence-канал (T20). Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08).
 
     **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09). З головної з `?history=1` після входу — перехід на архів.
 
@@ -29,7 +28,7 @@ info:
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.11.1"
+  version: "0.12.0"
   license:
     name: Proprietary
     url: https://example.com/

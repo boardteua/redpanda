@@ -4,7 +4,7 @@ namespace App\Events;
 
 use App\Models\ChatMessage;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -17,11 +17,11 @@ class MessagePosted implements ShouldBroadcast
     public function __construct(public ChatMessage $message) {}
 
     /**
-     * @return array<int, PrivateChannel>
+     * @return array<int, PresenceChannel>
      */
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('room.'.$this->message->post_roomid)];
+        return [new PresenceChannel('room.'.$this->message->post_roomid)];
     }
 
     public function broadcastAs(): string

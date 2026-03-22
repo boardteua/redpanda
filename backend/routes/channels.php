@@ -12,7 +12,17 @@ Broadcast::channel('room.{roomId}', function (User $user, int|string $roomId) {
         return false;
     }
 
-    return Gate::forUser($user)->allows('interact', $room);
+    if (! Gate::forUser($user)->allows('interact', $room)) {
+        return false;
+    }
+
+    /** @var array<string, mixed> Presence payload for Echo.join / Pusher presence (id обов’язковий). */
+    return [
+        'id' => $user->id,
+        'user_name' => $user->user_name,
+        'guest' => (bool) $user->guest,
+        'avatar_url' => $user->resolveAvatarUrl() ?? '',
+    ];
 });
 
 Broadcast::channel('user.{id}', function (User $user, int|string $id) {

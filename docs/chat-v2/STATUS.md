@@ -132,7 +132,7 @@
 
 | Елемент | Значення |
 |---------|-----------|
-| Канали | `private-room.{roomId}`, `private-user.{userId}` у `routes/channels.php` |
+| Канали | `presence-room.{roomId}` (повідомлення + presence), `private-user.{userId}` у `routes/channels.php` |
 | Подія | `App\Events\MessagePosted` → `broadcastAs` **MessagePosted**, `ShouldBroadcast` + черга |
 | HTTP | Після створення повідомлення: `broadcast(new MessagePosted($message))->toOthers()` |
 

@@ -7,6 +7,7 @@ use App\Models\ChatMessage;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Broadcasting\BroadcastEvent;
+use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -283,5 +284,31 @@ class ChatApiTest extends TestCase
             ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=10')
             ->assertOk()
             ->assertJsonPath('data.0.avatar', 'https://example.test/avatars/u1.png');
+    }
+
+    public function test_message_posted_broadcasts_on_presence_room_channel(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $m = ChatMessage::query()->create([
+            'user_id' => $user->id,
+            'post_date' => 2001,
+            'post_time' => '12:00',
+            'post_user' => $user->user_name,
+            'post_message' => 'hi',
+            'post_color' => 'user',
+            'post_roomid' => $public->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => '',
+            'file' => 0,
+            'client_message_id' => 'e0000000-0000-4000-8000-000000000001',
+        ]);
+
+        $channels = (new MessagePosted($m))->broadcastOn();
+        $this->assertCount(1, $channels);
+        $this->assertInstanceOf(PresenceChannel::class, $channels[0]);
+        $this->assertSame('presence-room.'.$public->room_id, $channels[0]->name);
     }
 }

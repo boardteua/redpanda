@@ -520,8 +520,41 @@
                             </p>
                         </li>
                     </ul>
-                    <p class="mt-3 text-[var(--rp-chat-sidebar-muted)]">
-                        Інших учасників онлайн поки не показуємо — з’явиться разом із presence API.
+                    <ul
+                        v-if="roomPresencePeers.length > 0"
+                        class="mt-3 space-y-2"
+                        aria-label="Інші учасники онлайн"
+                    >
+                        <li
+                            v-for="p in roomPresencePeers"
+                            :key="'presence-' + p.id"
+                            class="rp-chat-side-card flex items-center gap-2 rounded-md border px-2 py-2"
+                        >
+                            <UserAvatar
+                                :src="p.avatar_url || ''"
+                                :name="p.user_name"
+                                variant="sidebar"
+                                decorative
+                            />
+                            <span class="min-w-0 truncate font-medium text-[var(--rp-chat-sidebar-fg)]">{{
+                                p.user_name
+                            }}</span>
+                            <span
+                                v-if="p.guest"
+                                class="shrink-0 text-xs text-[var(--rp-chat-sidebar-muted)]"
+                            >
+                                (гість)
+                            </span>
+                        </li>
+                    </ul>
+                    <p
+                        v-else-if="wsDegraded"
+                        class="mt-3 text-xs text-[var(--rp-chat-sidebar-muted)]"
+                    >
+                        У режимі опитування список інших учасників онлайн недоступний.
+                    </p>
+                    <p v-else class="mt-3 text-xs text-[var(--rp-chat-sidebar-muted)]">
+                        Нікого іншого онлайн у цій кімнаті.
                     </p>
                     <div class="mt-4 space-y-2 border-t border-[var(--rp-chat-sidebar-border)] pt-3">
                         <label class="rp-label" for="pm-lookup">Приват за ніком</label>
@@ -859,6 +892,19 @@ function createChatRoomSidebarState() {
     };
 }
 
+function normalizePresencePeer(raw) {
+    if (!raw || raw.id === undefined || raw.id === null) {
+        return null;
+    }
+
+    return {
+        id: Number(raw.id),
+        user_name: raw.user_name != null ? String(raw.user_name) : '',
+        guest: Boolean(raw.guest),
+        avatar_url: raw.avatar_url != null ? String(raw.avatar_url) : '',
+    };
+}
+
 function normalizeMessage(raw) {
     if (!raw || typeof raw.post_id === 'undefined') {
         return null;
@@ -925,6 +971,8 @@ export default {
             mqHandler: null,
             /** Елемент фокусу до відкриття off-canvas (повертаємо при закритті). */
             panelFocusReturnEl: null,
+            /** Інші учасники поточної кімнати (Echo presence), без поточного користувача. */
+            roomPresencePeers: [],
             ...createChatRoomSidebarState(),
         };
     },
@@ -1341,6 +1389,34 @@ export default {
                 this.pollTimer = null;
             }
         },
+        syncPresenceHere(users) {
+            const myId = this.user && this.user.id != null ? Number(this.user.id) : null;
+            const list = (users || [])
+                .map((u) => normalizePresencePeer(u))
+                .filter((p) => p && myId !== null && p.id !== myId);
+            list.sort((a, b) => a.user_name.localeCompare(b.user_name, 'uk'));
+            this.roomPresencePeers = list;
+        },
+        addPresencePeer(raw) {
+            const p = normalizePresencePeer(raw);
+            const myId = this.user && this.user.id != null ? Number(this.user.id) : null;
+            if (!p || myId === null || p.id === myId) {
+                return;
+            }
+            if (this.roomPresencePeers.some((x) => x.id === p.id)) {
+                return;
+            }
+            const next = [...this.roomPresencePeers, p];
+            next.sort((a, b) => a.user_name.localeCompare(b.user_name, 'uk'));
+            this.roomPresencePeers = next;
+        },
+        removePresencePeer(raw) {
+            const id = raw && raw.id != null ? Number(raw.id) : null;
+            if (id == null) {
+                return;
+            }
+            this.roomPresencePeers = this.roomPresencePeers.filter((x) => x.id !== id);
+        },
         teardownEcho(fullDisconnect = false) {
             if (this.echo && this.echoSubscribedRoomId !== null) {
                 try {
@@ -1351,6 +1427,7 @@ export default {
             }
             this.echoSubscribedRoomId = null;
             this.echoChannel = null;
+            this.roomPresencePeers = [];
 
             if (fullDisconnect && this.echo) {
                 if (this.user) {
@@ -1388,8 +1465,24 @@ export default {
             this.wsDegraded = false;
 
             const roomId = this.selectedRoomId;
+            if (roomId == null) {
+                return;
+            }
+
             this.echoSubscribedRoomId = roomId;
-            const channel = echo.private(`room.${roomId}`);
+            this.roomPresencePeers = [];
+
+            const channel = echo.join(`room.${roomId}`);
+
+            channel.here((users) => {
+                this.syncPresenceHere(users);
+            });
+            channel.joining((u) => {
+                this.addPresencePeer(u);
+            });
+            channel.leaving((u) => {
+                this.removePresencePeer(u);
+            });
 
             channel.subscribed(() => {
                 this.wsDegraded = false;
@@ -1398,6 +1491,7 @@ export default {
 
             channel.error(() => {
                 this.wsDegraded = true;
+                this.roomPresencePeers = [];
                 this.startPollIfDegraded();
             });
 

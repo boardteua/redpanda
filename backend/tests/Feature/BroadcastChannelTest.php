@@ -50,7 +50,7 @@ class BroadcastChannelTest extends TestCase
             ]);
     }
 
-    public function test_unauthenticated_private_room_channel_is_denied(): void
+    public function test_unauthenticated_presence_room_channel_is_denied(): void
     {
         $public = Room::query()->create([
             'room_name' => 'Public',
@@ -58,11 +58,11 @@ class BroadcastChannelTest extends TestCase
             'access' => 0,
         ]);
 
-        $this->authChannel(null, 'private-room.'.$public->room_id)
+        $this->authChannel(null, 'presence-room.'.$public->room_id)
             ->assertForbidden();
     }
 
-    public function test_guest_can_subscribe_to_public_room_channel(): void
+    public function test_guest_can_subscribe_to_public_room_presence_channel(): void
     {
         $public = Room::query()->create([
             'room_name' => 'Public',
@@ -72,12 +72,21 @@ class BroadcastChannelTest extends TestCase
 
         $guest = User::factory()->guest()->create();
 
-        $this->authChannel($guest, 'private-room.'.$public->room_id)
+        $response = $this->authChannel($guest, 'presence-room.'.$public->room_id)
             ->assertOk()
-            ->assertJsonStructure(['auth']);
+            ->assertJsonStructure(['auth', 'channel_data']);
+
+        $raw = $response->json('channel_data');
+        $payload = is_array($raw) ? $raw : json_decode((string) $raw, true);
+        $this->assertIsArray($payload);
+        $this->assertSame($guest->id, (int) ($payload['user_id'] ?? 0));
+        $info = $payload['user_info'] ?? [];
+        $this->assertIsArray($info);
+        $this->assertSame($guest->user_name, $info['user_name'] ?? null);
+        $this->assertTrue((bool) ($info['guest'] ?? false));
     }
 
-    public function test_guest_cannot_subscribe_to_registered_only_room_channel(): void
+    public function test_guest_cannot_subscribe_to_registered_only_room_presence_channel(): void
     {
         $registered = Room::query()->create([
             'room_name' => 'VIP',
@@ -87,11 +96,11 @@ class BroadcastChannelTest extends TestCase
 
         $guest = User::factory()->guest()->create();
 
-        $this->authChannel($guest, 'private-room.'.$registered->room_id)
+        $this->authChannel($guest, 'presence-room.'.$registered->room_id)
             ->assertForbidden();
     }
 
-    public function test_registered_user_can_subscribe_to_registered_only_room_channel(): void
+    public function test_registered_user_can_subscribe_to_registered_only_room_presence_channel(): void
     {
         $registered = Room::query()->create([
             'room_name' => 'VIP',
@@ -101,16 +110,16 @@ class BroadcastChannelTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->authChannel($user, 'private-room.'.$registered->room_id)
+        $this->authChannel($user, 'presence-room.'.$registered->room_id)
             ->assertOk()
-            ->assertJsonStructure(['auth']);
+            ->assertJsonStructure(['auth', 'channel_data']);
     }
 
-    public function test_unknown_room_channel_is_denied(): void
+    public function test_unknown_room_presence_channel_is_denied(): void
     {
         $user = User::factory()->create();
 
-        $this->authChannel($user, 'private-room.999999')
+        $this->authChannel($user, 'presence-room.999999')
             ->assertForbidden();
     }
 
