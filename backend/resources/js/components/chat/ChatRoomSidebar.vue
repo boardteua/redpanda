@@ -37,7 +37,7 @@
                         :id="'chat-tab-m-' + tab.id"
                         type="button"
                         role="tab"
-                        class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/95"
+                        class="rp-focusable relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/95"
                         :class="
                             sidebarTab === tab.id
                                 ? 'bg-white/20 ring-1 ring-white/35'
@@ -46,11 +46,16 @@
                         :aria-selected="sidebarTab === tab.id ? 'true' : 'false'"
                         :aria-controls="'chat-panel-' + tab.id"
                         :tabindex="sidebarTab === tab.id ? 0 : -1"
-                        :title="tab.title"
+                        :title="sidebarTabTitle(tab)"
+                        :aria-label="sidebarTabAriaLabel(tab)"
                         @click="$emit('select-tab', tab.id)"
                     >
-                        <span class="rp-sr-only">{{ tab.title }}</span>
-                        <span class="inline-flex [&_svg]:h-6 [&_svg]:w-6" v-html="tab.icon" />
+                        <span class="inline-flex [&_svg]:h-6 [&_svg]:w-6" aria-hidden="true" v-html="tab.icon" />
+                        <span
+                            v-if="tab.id === 'private' && privateUnreadTotal > 0"
+                            class="pointer-events-none absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-0.5 text-[10px] font-bold leading-none text-white shadow ring-1 ring-black/20"
+                            aria-hidden="true"
+                        >{{ privateUnreadBadgeText }}</span>
                     </button>
                 </div>
             </div>
@@ -71,7 +76,7 @@
                         :id="'chat-tab-d-' + tab.id"
                         type="button"
                         role="tab"
-                        class="rp-focusable flex h-11 min-w-0 flex-1 items-center justify-center rounded-md border-2 text-[var(--rp-chat-sidebar-icon)]"
+                        class="rp-focusable relative flex h-11 min-w-0 flex-1 items-center justify-center rounded-md border-2 text-[var(--rp-chat-sidebar-icon)]"
                         :class="
                             sidebarTab === tab.id
                                 ? 'border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-fg)]'
@@ -80,11 +85,16 @@
                         :aria-selected="sidebarTab === tab.id ? 'true' : 'false'"
                         :aria-controls="'chat-panel-' + tab.id"
                         :tabindex="sidebarTab === tab.id ? 0 : -1"
-                        :title="tab.title"
+                        :title="sidebarTabTitle(tab)"
+                        :aria-label="sidebarTabAriaLabel(tab)"
                         @click="$emit('select-tab', tab.id)"
                     >
-                        <span class="rp-sr-only">{{ tab.title }}</span>
-                        <span class="inline-flex items-center justify-center" v-html="tab.icon" />
+                        <span class="inline-flex items-center justify-center" aria-hidden="true" v-html="tab.icon" />
+                        <span
+                            v-if="tab.id === 'private' && privateUnreadTotal > 0"
+                            class="pointer-events-none absolute right-1 top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-0.5 text-[10px] font-bold leading-none text-white shadow ring-1 ring-black/15"
+                            aria-hidden="true"
+                        >{{ privateUnreadBadgeText }}</span>
                     </button>
                 </div>
                 <button
@@ -571,9 +581,16 @@
                                     class="rp-focusable min-w-0 flex-1 text-left"
                                     @click="$emit('open-private-peer', row.c.peer)"
                                 >
-                                    <span class="block font-semibold text-[var(--rp-chat-sidebar-fg)]">{{
-                                        row.c.peer.user_name
-                                    }}</span>
+                                    <span class="flex flex-wrap items-center gap-1.5">
+                                        <span class="font-semibold text-[var(--rp-chat-sidebar-fg)]">{{
+                                            row.c.peer.user_name
+                                        }}</span>
+                                        <span
+                                            v-if="row.c.unread_count > 0"
+                                            class="inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white"
+                                            aria-hidden="true"
+                                        >{{ formatPrivateUnread(row.c.unread_count) }}</span>
+                                    </span>
                                     <span
                                         class="mt-0.5 block truncate text-xs text-[var(--rp-chat-sidebar-muted)]"
                                     >{{ (row.c.last_message && row.c.last_message.body) || '—' }}</span>
@@ -758,6 +775,8 @@ export default {
         friendsOutgoingWithMenuPeer: { type: Array, default: () => [] },
         conversations: { type: Array, default: () => [] },
         privateConversationRows: { type: Array, default: () => [] },
+        /** T56: сума непрочитаних вхідних приватних для вкладки «Приват». */
+        privateUnreadTotal: { type: Number, default: 0 },
         rooms: { type: Array, default: () => [] },
         loadingRooms: { type: Boolean, default: false },
         selectedRoomId: {
@@ -768,6 +787,14 @@ export default {
         ignoresWithMenuPeer: { type: Array, default: () => [] },
     },
     computed: {
+        privateUnreadBadgeText() {
+            const n = this.privateUnreadTotal;
+            if (!n) {
+                return '';
+            }
+
+            return n > 99 ? '99+' : String(n);
+        },
         viewerSexMetaRow() {
             if (!this.user || this.user.guest) {
                 return null;
@@ -796,6 +823,32 @@ export default {
         },
     },
     methods: {
+        formatPrivateUnread(n) {
+            const c = Number(n);
+            if (!c || c < 1) {
+                return '';
+            }
+
+            return c > 99 ? '99+' : String(c);
+        },
+        sidebarTabTitle(tab) {
+            return tab && tab.title ? tab.title : '';
+        },
+        sidebarTabAriaLabel(tab) {
+            if (!tab) {
+                return '';
+            }
+            if (tab.id !== 'private' || !this.privateUnreadTotal) {
+                return tab.title;
+            }
+            const n = this.privateUnreadTotal;
+            if (n === 1) {
+                return 'Приват, 1 непрочитане повідомлення';
+            }
+            const display = n > 99 ? '99+' : String(n);
+
+            return `Приват, ${display} непрочитаних повідомлень`;
+        },
         sexGlyphAndLabel(sex) {
             if (sex === 'male') {
                 return { glyph: '\u2642', label: 'Чоловік' };

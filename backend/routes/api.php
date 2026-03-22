@@ -86,6 +86,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::middleware('throttle:private-read')->group(function (): void {
             Route::get('private/conversations', [PrivateMessageController::class, 'conversations']);
             Route::get('private/peers/{peer}/messages', [PrivateMessageController::class, 'index']);
+            Route::post('private/peers/{peer}/read', [PrivateMessageController::class, 'read']);
         });
 
         Route::middleware('throttle:private-post')->post('private/peers/{peer}/messages', [PrivateMessageController::class, 'store']);

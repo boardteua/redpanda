@@ -114,6 +114,7 @@
             :friends-outgoing-with-menu-peer="friendsOutgoingWithMenuPeer"
             :conversations="conversations"
             :private-conversation-rows="privateConversationRows"
+            :private-unread-total="totalPrivateUnread"
             :rooms="rooms"
             :loading-rooms="loadingRooms"
             :selected-room-id="selectedRoomId"
@@ -322,6 +323,8 @@ function createChatRoomSidebarState() {
         echoUserListenerReady: false,
         privateListLoadError: '',
         friendsIgnoresLoadError: '',
+        /** T56: сума непрочитаних вхідних приватних (з meta GET /private/conversations). */
+        totalPrivateUnread: 0,
     };
 }
 
@@ -1514,7 +1517,7 @@ export default {
                 this.mergeMessage(payload);
             });
         },
-        onPrivateWsPayload(payload) {
+        async onPrivateWsPayload(payload) {
             if (!payload || typeof payload.id === 'undefined' || !this.user) {
                 return;
             }
@@ -1527,8 +1530,20 @@ export default {
             ) {
                 this.mergePrivateMessage(payload);
                 this.privateMessages.sort((a, b) => a.id - b.id);
+                await this.markPrivateThreadRead(this.privatePeer.id);
             }
-            this.loadConversations();
+            await this.loadConversations();
+        },
+        async markPrivateThreadRead(peerId) {
+            if (!peerId || !this.user) {
+                return;
+            }
+            await this.ensureSanctum();
+            try {
+                await window.axios.post(`/api/v1/private/peers/${peerId}/read`);
+            } catch {
+                /* не блокуємо UI */
+            }
         },
         async loadConversations() {
             if (!this.user) {
@@ -1539,8 +1554,14 @@ export default {
                 const { data } = await window.axios.get('/api/v1/private/conversations');
                 const list = data && data.data;
                 this.conversations = Array.isArray(list) ? list : [];
+                const meta = data && data.meta;
+                this.totalPrivateUnread =
+                    meta && typeof meta.total_private_unread === 'number'
+                        ? meta.total_private_unread
+                        : 0;
             } catch {
                 this.conversations = [];
+                this.totalPrivateUnread = 0;
                 this.privateListLoadError = 'Не вдалося завантажити список розмов.';
             }
         },
@@ -2047,6 +2068,7 @@ export default {
                 this.privateMessages = [];
                 (data.data || []).forEach((row) => this.mergePrivateMessage(row));
                 this.privateMessages.sort((a, b) => a.id - b.id);
+                await this.loadConversations();
             } catch (e) {
                 this.privateLoadError = e.response?.data?.message || 'Не вдалося завантажити приват.';
             } finally {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StorePrivateMessageRequest;
 use App\Http\Resources\PrivateMessageResource;
 use App\Models\PrivateMessage;
+use App\Models\PrivateMessageReadState;
 use App\Models\User;
 use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\UserPostingGate;
@@ -38,7 +39,10 @@ class PrivateMessageController extends Controller
 
         $sortedIds = $peerLatestIds->sortDesc()->values()->all();
         if ($sortedIds === []) {
-            return response()->json(['data' => []]);
+            return response()->json([
+                'data' => [],
+                'meta' => ['total_private_unread' => 0],
+            ]);
         }
 
         $lastMessages = PrivateMessage::query()
@@ -51,8 +55,25 @@ class PrivateMessageController extends Controller
             ->sortByDesc('id')
             ->values();
 
-        $data = $lastMessages->map(function (PrivateMessage $m) use ($uid) {
+        $peerIds = $lastMessages->map(function (PrivateMessage $m) use ($uid) {
             $peer = (int) $m->sender_id === $uid ? $m->recipient : $m->sender;
+
+            return (int) $peer->id;
+        })->unique()->values()->all();
+
+        $readThrough = $peerIds === [] ? [] : PrivateMessageReadState::query()
+            ->where('user_id', $uid)
+            ->whereIn('peer_id', $peerIds)
+            ->pluck('last_read_incoming_message_id', 'peer_id')
+            ->all();
+
+        $totalUnread = 0;
+        $data = $lastMessages->map(function (PrivateMessage $m) use ($uid, $readThrough, &$totalUnread) {
+            $peer = (int) $m->sender_id === $uid ? $m->recipient : $m->sender;
+            $peerId = (int) $peer->id;
+            $lastRead = (int) ($readThrough[$peerId] ?? 0);
+            $unread = $this->countUnreadIncoming($uid, $peerId, $lastRead);
+            $totalUnread += $unread;
 
             return [
                 'peer' => [
@@ -60,10 +81,16 @@ class PrivateMessageController extends Controller
                     'user_name' => $peer->user_name,
                 ],
                 'last_message' => PrivateMessageResource::make($m)->resolve(),
+                'unread_count' => $unread,
             ];
         })->all();
 
-        return response()->json(['data' => $data]);
+        return response()->json([
+            'data' => $data,
+            'meta' => [
+                'total_private_unread' => $totalUnread,
+            ],
+        ]);
     }
 
     public function index(Request $request, User $peer): AnonymousResourceCollection|JsonResponse
@@ -103,10 +130,29 @@ class PrivateMessageController extends Controller
         $page = $query->limit($limit)->get()->sortBy('id')->values();
         $nextCursor = $page->isNotEmpty() ? $page->first()->id : null;
 
+        $this->markIncomingReadThrough($uid, $peerId);
+
         return PrivateMessageResource::collection($page)->additional([
             'meta' => [
                 'next_cursor' => $nextCursor,
             ],
+        ]);
+    }
+
+    public function read(Request $request, User $peer): JsonResponse
+    {
+        $user = $request->user();
+        if ((int) $peer->id === (int) $user->id) {
+            return response()->json(['message' => 'Неможливо застосувати до себе.'], 422);
+        }
+        if (PrivateMessageGate::isBlocked($user, $peer)) {
+            return response()->json(['message' => 'Повідомлення недоступні.'], 403);
+        }
+
+        $this->markIncomingReadThrough((int) $user->id, (int) $peer->id);
+
+        return response()->json([
+            'meta' => ['ok' => true],
         ]);
     }
 
@@ -183,6 +229,45 @@ class PrivateMessageController extends Controller
             ->additional(['meta' => ['duplicate' => false]])
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    private function countUnreadIncoming(int $readerId, int $peerId, int $lastReadIncomingMessageId): int
+    {
+        return (int) PrivateMessage::query()
+            ->where('recipient_id', $readerId)
+            ->where('sender_id', $peerId)
+            ->where('id', '>', $lastReadIncomingMessageId)
+            ->count();
+    }
+
+    /**
+     * Вхідні від peer до reader: позначити прочитаними до поточного max(id) (T56).
+     */
+    private function markIncomingReadThrough(int $readerId, int $peerId): void
+    {
+        $maxId = (int) (PrivateMessage::query()
+            ->where('sender_id', $peerId)
+            ->where('recipient_id', $readerId)
+            ->max('id') ?? 0);
+
+        if ($maxId <= 0) {
+            return;
+        }
+
+        $existing = PrivateMessageReadState::query()
+            ->where('user_id', $readerId)
+            ->where('peer_id', $peerId)
+            ->value('last_read_incoming_message_id');
+
+        $current = (int) ($existing ?? 0);
+        if ($maxId <= $current) {
+            return;
+        }
+
+        PrivateMessageReadState::query()->updateOrCreate(
+            ['user_id' => $readerId, 'peer_id' => $peerId],
+            ['last_read_incoming_message_id' => $maxId],
+        );
     }
 
     private function isDuplicateKey(QueryException $e): bool
