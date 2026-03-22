@@ -19,7 +19,7 @@ info:
 
     **Архів (T09):** `GET /api/v1/archive/messages` — offset-пагінація (`page`, `per_page` ∈ {10,25,50,100}), пошук `q` (≤200 символів); деталі — [T09-QA.md](T09-QA.md).
 
-    **Медіа (T10):** `POST /api/v1/images` (multipart, поле `image`), `GET /api/v1/images/{id}/file` — файли на диску `storage/app/chat-images` (не в `public/`); доступ до файлу за політикою (власник або повідомлення в доступній кімнаті). Повідомлення: опційний `image_id` у `POST .../messages` — [T10-QA.md](T10-QA.md).
+    **Медіа (T10, T31):** `GET /api/v1/images` — пагінований список **власних** зображень чату (для модалу «мої зображення»; гість — 403); `POST /api/v1/images` (multipart, поле `image`), `GET /api/v1/images/{id}/file` — файли на диску `storage/app/chat-images` (не в `public/`); доступ до файлу за політикою (власник або повідомлення в доступній кімнаті). Повідомлення: опційний `image_id` у `POST .../messages` — [T10-QA.md](T10-QA.md), [T31-QA.md](T31-QA.md).
 
     **Спостережуваність (T11):** `GET /up` (liveness), `GET /health/ready` (readiness, JSON); структуровані логи — [T11-QA.md](T11-QA.md), runbook — [T11-RUNBOOK.md](T11-RUNBOOK.md).
 
@@ -30,7 +30,7 @@ info:
     **Приват і соціальне (T08):** `GET /api/v1/private/conversations`, `GET|POST /api/v1/private/peers/{userId}/messages`,
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
-  version: "0.13.0"
+  version: "0.14.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -603,6 +603,42 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/images:
+    get:
+      tags: [Chat]
+      summary: Список останніх зображень поточного користувача (чат)
+      description: |
+        Повертає лише записи з `images.user_id` = поточний користувач, за спаданням `date_sent` та `id`.
+        **Гість** — `403`. Параметр `per_page` обмежено **60** (якщо більше — обрізається). Формат відповіді — стандартна пагінація Laravel (`data`, `total`, `links`, тощо).
+      operationId: listMyChatImages
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 60
+            default: 24
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        "200":
+          description: Сторінка зображень
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatImagesPaginatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     post:
       tags: [Chat]
       summary: Завантажити зображення (чернетка перед повідомленням)
@@ -1203,6 +1239,67 @@ components:
               type: string
             size_bytes:
               type: integer
+
+    ChatImageListItem:
+      type: object
+      required: [id, url, mime, size_bytes, file_name, date_sent]
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+          format: uri
+        mime:
+          type: string
+        size_bytes:
+          type: integer
+        file_name:
+          type: string
+        date_sent:
+          type: integer
+          description: Unix timestamp (секунди)
+
+    ChatImagesPaginatedResponse:
+      type: object
+      description: LengthAwarePaginator у JSON (поля на верхньому рівні, як у Laravel)
+      required: [data, current_page, last_page, per_page, total]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatImageListItem"
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        links:
+          type: array
+          items:
+            type: object
+        first_page_url:
+          type: string
+          nullable: true
+        last_page_url:
+          type: string
+          nullable: true
+        next_page_url:
+          type: string
+          nullable: true
+        prev_page_url:
+          type: string
+          nullable: true
+        path:
+          type: string
+        from:
+          type: integer
+          nullable: true
+        to:
+          type: integer
+          nullable: true
 
     SlashMeta:
       type: object

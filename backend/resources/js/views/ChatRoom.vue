@@ -75,6 +75,7 @@
                         :selected-room-id="selectedRoomId"
                         :sending="sending"
                         :logging-out="loggingOut"
+                        :is-guest="Boolean(user && user.guest)"
                         :ensure-sanctum="ensureSanctum"
                         @submit-message="sendMessage"
                         @logout="logout"

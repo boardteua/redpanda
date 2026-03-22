@@ -98,9 +98,10 @@
                 <button
                     type="button"
                     class="rp-focusable rp-chat-toolbar-btn"
-                    disabled
-                    title="Мої зображення (згодом)"
-                    aria-disabled="true"
+                    :disabled="isGuest || !selectedRoomId || uploadingImage"
+                    title="Мої зображення"
+                    aria-label="Мої зображення"
+                    @click="openMyImagesModal"
                 >
                     <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
                         <path
@@ -217,7 +218,7 @@
                 <button
                     type="button"
                     class="rp-focusable rp-chat-composer-rail-btn"
-                    :disabled="sending || uploadingImage || !selectedRoomId"
+                    :disabled="sending || uploadingImage || !selectedRoomId || isGuest"
                     title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
                     aria-label="Додати зображення до повідомлення"
                     @click="$refs.imageInput && $refs.imageInput.click()"
@@ -281,10 +282,17 @@
         >
             {{ imageUploadError }}
         </p>
+        <ChatMyImagesModal
+            :open="myImagesModalOpen"
+            :ensure-sanctum="ensureSanctum"
+            @close="myImagesModalOpen = false"
+            @select="onLibraryImageSelected"
+        />
     </form>
 </template>
 
 <script>
+import ChatMyImagesModal from './ChatMyImagesModal.vue';
 import {
     COMPOSER_BG_PALETTE,
     COMPOSER_FG_PALETTE,
@@ -296,6 +304,7 @@ import {
 
 export default {
     name: 'ChatRoomComposer',
+    components: { ChatMyImagesModal },
     props: {
         selectedRoomId: {
             default: null,
@@ -303,6 +312,7 @@ export default {
         },
         sending: { type: Boolean, default: false },
         loggingOut: { type: Boolean, default: false },
+        isGuest: { type: Boolean, default: false },
         ensureSanctum: { type: Function, required: true },
     },
     data() {
@@ -314,6 +324,7 @@ export default {
             pendingPreviewUrl: '',
             uploadingImage: false,
             imageUploadError: '',
+            myImagesModalOpen: false,
         };
     },
     computed: {
@@ -468,10 +479,24 @@ export default {
                 this.$refs.imageInput.value = '';
             }
         },
+        openMyImagesModal() {
+            if (this.isGuest || !this.selectedRoomId || this.uploadingImage) {
+                return;
+            }
+            this.myImagesModalOpen = true;
+        },
+        onLibraryImageSelected({ id, url }) {
+            if (id == null || !url) {
+                return;
+            }
+            this.imageUploadError = '';
+            this.pendingImageId = id;
+            this.pendingPreviewUrl = url;
+        },
         async onChatImageSelected(e) {
             const input = e.target;
             const file = input.files && input.files[0];
-            if (!file || !this.selectedRoomId) {
+            if (!file || !this.selectedRoomId || this.isGuest) {
                 return;
             }
             this.imageUploadError = '';

@@ -193,4 +193,93 @@ class ChatImageApiTest extends TestCase
             ->post('/api/v1/images', ['image' => $file])
             ->assertUnauthorized();
     }
+
+    public function test_guest_cannot_list_chat_images(): void
+    {
+        $guest = User::factory()->guest()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($guest, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/images')
+            ->assertForbidden();
+    }
+
+    public function test_unauthenticated_cannot_list_chat_images(): void
+    {
+        $this->from(config('app.url'))
+            ->withHeaders(array_merge($this->statefulHeaders(), ['Accept' => 'application/json']))
+            ->getJson('/api/v1/images')
+            ->assertUnauthorized();
+    }
+
+    public function test_user_lists_only_own_images_newest_first(): void
+    {
+        $alice = User::factory()->create();
+        $bob = User::factory()->create();
+
+        Sanctum::actingAs($alice, ['*']);
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->post('/api/v1/images', ['image' => UploadedFile::fake()->image('a1.jpg', 10, 10)])
+            ->assertCreated();
+        Sanctum::actingAs($alice, ['*']);
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->post('/api/v1/images', ['image' => UploadedFile::fake()->image('a2.jpg', 10, 10)])
+            ->assertCreated();
+
+        Sanctum::actingAs($bob, ['*']);
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->post('/api/v1/images', ['image' => UploadedFile::fake()->image('b1.jpg', 10, 10)])
+            ->assertCreated();
+
+        Sanctum::actingAs($bob, ['*']);
+        $res = $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/images?per_page=10');
+
+        $res->assertOk();
+        $ids = collect($res->json('data'))->pluck('id')->all();
+        $this->assertCount(1, $ids);
+        $this->assertDatabaseCount('images', 3);
+
+        Sanctum::actingAs($alice, ['*']);
+        $aliceRes = $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/images?per_page=10');
+        $aliceRes->assertOk();
+        $aliceIds = collect($aliceRes->json('data'))->pluck('id')->all();
+        $this->assertCount(2, $aliceIds);
+        $this->assertGreaterThan($aliceIds[1], $aliceIds[0], 'expected newest image id first');
+    }
+
+    public function test_image_list_is_paginated_and_per_page_capped(): void
+    {
+        $user = User::factory()->create();
+        for ($i = 0; $i < 5; $i++) {
+            $this->from(config('app.url'))
+                ->actingAs($user, 'web')
+                ->withHeaders($this->statefulHeaders())
+                ->post('/api/v1/images', ['image' => UploadedFile::fake()->image("p{$i}.jpg", 8, 8)])
+                ->assertCreated();
+        }
+
+        $p1 = $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/images?per_page=2&page=1');
+        $p1->assertOk();
+        $this->assertCount(2, $p1->json('data'));
+        $this->assertSame(5, $p1->json('total'));
+        $this->assertSame(3, $p1->json('last_page'));
+
+        $capped = $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/images?per_page=999');
+        $capped->assertOk();
+        $this->assertSame(60, $capped->json('per_page'));
+    }
 }

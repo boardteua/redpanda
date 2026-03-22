@@ -12,6 +12,41 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChatImageController extends Controller
 {
+    /**
+     * Останні завантажені зображення поточного користувача (для модалу «мої зображення»).
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if ($user->guest) {
+            return response()->json([
+                'message' => 'Гості не мають доступу до бібліотеки зображень чату.',
+            ], 403);
+        }
+
+        $perPage = (int) $request->query('per_page', 24);
+        $perPage = min(max($perPage, 1), 60);
+
+        $paginator = Image::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('date_sent')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        $paginator->getCollection()->transform(function (Image $image): array {
+            return [
+                'id' => $image->id,
+                'url' => route('api.v1.chat-images.file', ['image' => $image->id], true),
+                'mime' => $image->mime,
+                'size_bytes' => $image->size_bytes,
+                'file_name' => $image->file_name,
+                'date_sent' => $image->date_sent,
+            ];
+        });
+
+        return response()->json($paginator);
+    }
+
     public function store(Request $request, UserPostingGate $postingGate): JsonResponse
     {
         $request->validate([

@@ -43,6 +43,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
 
         Route::middleware('throttle:chat-post')->post('rooms/{room}/messages', [ChatMessageController::class, 'store']);
 
+        Route::middleware('throttle:image-read')->get('images', [ChatImageController::class, 'index']);
         Route::middleware('throttle:image-upload')->post('images', [ChatImageController::class, 'store']);
         Route::middleware('throttle:image-read')->get('images/{image}/file', [ChatImageController::class, 'file'])
             ->name('api.v1.chat-images.file');
