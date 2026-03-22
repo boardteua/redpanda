@@ -5,14 +5,14 @@
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
             <p
                 v-if="chatBreadcrumb"
-                class="truncate text-[0.6875rem] font-semibold tracking-wide text-[var(--rp-text-muted)]"
+                class="truncate text-xs font-semibold tracking-wide text-[var(--rp-text-muted)]"
                 :title="chatBreadcrumb"
             >
                 {{ chatBreadcrumb }}
             </p>
             <p
                 v-if="chatTopicLine"
-                class="truncate text-sm leading-snug text-[var(--rp-text-muted)]"
+                class="truncate text-base leading-snug text-[var(--rp-text-muted)]"
                 :title="chatTopicLine"
             >
                 {{ chatTopicLine }}
