@@ -6,6 +6,49 @@ export const CHAT_STYLE_BG_KEYS = ['amber', 'mint', 'sky', 'lavender', 'rose', '
 
 export const CHAT_STYLE_FG_KEYS = ['blue', 'emerald', 'rose', 'violet', 'amber', 'slate'];
 
+/** Мітки для UI палітри композера (ключі збігаються з CHAT_STYLE_*). */
+export const COMPOSER_BG_PALETTE = [
+    { key: 'amber', label: 'Жовтогарячий фон' },
+    { key: 'mint', label: 'Мʼятний фон' },
+    { key: 'sky', label: 'Блакитний фон' },
+    { key: 'lavender', label: 'Лавандовий фон' },
+    { key: 'rose', label: 'Рожевий фон' },
+    { key: 'sand', label: 'Пісочний фон' },
+];
+
+export const COMPOSER_FG_PALETTE = [
+    { key: 'blue', label: 'Синій текст' },
+    { key: 'emerald', label: 'Зелений текст' },
+    { key: 'rose', label: 'Малиновий текст' },
+    { key: 'violet', label: 'Фіолетовий текст' },
+    { key: 'amber', label: 'Бурштиновий текст' },
+    { key: 'slate', label: 'Графітовий текст' },
+];
+
+/**
+ * Тіло поля `style` для POST повідомлення (лише якщо є хоч щось).
+ * @param {ComposerStyle} s
+ * @returns {{ bold: boolean, italic: boolean, underline: boolean, bg?: string, fg?: string }|null}
+ */
+export function buildStylePayloadForApi(s) {
+    const o = {
+        bold: !!s.bold,
+        italic: !!s.italic,
+        underline: !!s.underline,
+    };
+    if (s.bg) {
+        o.bg = s.bg;
+    }
+    if (s.fg) {
+        o.fg = s.fg;
+    }
+    if (!o.bold && !o.italic && !o.underline && !s.bg && !s.fg) {
+        return null;
+    }
+
+    return o;
+}
+
 /** @returns {ComposerStyle} */
 export function defaultComposerStyle() {
     return {

@@ -70,292 +70,15 @@
                         @mention="insertFeedReplyPrefix"
                     />
 
-                    <form
-                        class="flex shrink-0 flex-col border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-composer-bg)]"
-                        @submit.prevent="sendMessage"
-                    >
-                        <div ref="chatComposerChrome" class="shrink-0">
-                            <div class="rp-chat-toolbar rounded-none" role="toolbar" aria-label="Форматування та дії">
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                :class="{ 'rp-chat-toolbar-btn--active': composerStyle.bg }"
-                                title="Колір тла повідомлення"
-                                aria-label="Колір тла повідомлення"
-                                :aria-expanded="formatPanel === 'bg' ? 'true' : 'false'"
-                                aria-haspopup="true"
-                                @click="toggleFormatPanel('bg')"
-                            >
-                                <svg class="h-[18px] w-[18px]" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="12" r="8" />
-                                </svg>
-                            </button>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                :class="{ 'rp-chat-toolbar-btn--active': composerStyle.fg }"
-                                title="Колір тексту"
-                                aria-label="Колір тексту"
-                                :aria-expanded="formatPanel === 'fg' ? 'true' : 'false'"
-                                aria-haspopup="true"
-                                :disabled="Boolean(composerStyle.bg)"
-                                :aria-disabled="composerStyle.bg ? 'true' : 'false'"
-                                @click="toggleFormatPanel('fg')"
-                            >
-                                <svg class="h-[18px] w-[18px]" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                                    <circle cx="12" cy="12" r="7.25" stroke="currentColor" stroke-width="2" />
-                                </svg>
-                            </button>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                :class="{ 'rp-chat-toolbar-btn--active': composerStyle.bold }"
-                                title="Напівжирний"
-                                aria-label="Напівжирний"
-                                :aria-pressed="composerStyle.bold ? 'true' : 'false'"
-                                @click="toggleComposerBold"
-                            >
-                                <span class="text-sm font-bold" aria-hidden="true">B</span>
-                            </button>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                :class="{ 'rp-chat-toolbar-btn--active': composerStyle.italic }"
-                                title="Курсив"
-                                aria-label="Курсив"
-                                :aria-pressed="composerStyle.italic ? 'true' : 'false'"
-                                @click="toggleComposerItalic"
-                            >
-                                <span class="text-sm italic" aria-hidden="true">I</span>
-                            </button>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                :class="{ 'rp-chat-toolbar-btn--active': composerStyle.underline }"
-                                title="Підкреслення"
-                                aria-label="Підкреслення"
-                                :aria-pressed="composerStyle.underline ? 'true' : 'false'"
-                                @click="toggleComposerUnderline"
-                            >
-                                <span class="text-sm underline" aria-hidden="true">U</span>
-                            </button>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                disabled
-                                title="Група (згодом)"
-                                aria-disabled="true"
-                            >
-                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
-                                    />
-                                </svg>
-                            </button>
-                            <span class="rp-chat-toolbar-spacer" aria-hidden="true" />
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                disabled
-                                title="Довідник команд (згодом)"
-                                aria-disabled="true"
-                            >
-                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17l-2 2V4h16v12zM11 5h2v2h-2V5zm0 3h2v6h-2V8z"
-                                    />
-                                </svg>
-                            </button>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                disabled
-                                title="Мої зображення (згодом)"
-                                aria-disabled="true"
-                            >
-                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
-                                    />
-                                </svg>
-                            </button>
-                            <router-link
-                                :to="{
-                                    name: 'archive',
-                                    query: selectedRoomId ? { room: String(selectedRoomId) } : {},
-                                }"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                title="Архів чату"
-                            >
-                                <span class="rp-sr-only">Архів чату</span>
-                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"
-                                    />
-                                </svg>
-                            </router-link>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-toolbar-btn"
-                                title="Вийти з чату"
-                                :disabled="loggingOut"
-                                @click="logout"
-                            >
-                                <span class="rp-sr-only">Вийти</span>
-                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                        <div
-                            v-if="formatPanel === 'bg'"
-                            class="rp-chat-fmt-palette flex flex-wrap items-center gap-2 border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] px-2 py-2 sm:px-3"
-                            role="group"
-                            aria-label="Палітра тла повідомлення"
-                        >
-                            <button
-                                type="button"
-                                class="rp-focusable rounded border border-[var(--rp-chat-chrome-border)] px-2 py-1 text-[0.7rem] text-[var(--rp-text)]"
-                                @click="clearComposerBg"
-                            >
-                                Без тла
-                            </button>
-                            <button
-                                v-for="opt in composerBgPalette"
-                                :key="opt.key"
-                                type="button"
-                                class="rp-focusable rp-chat-fmt-swatch h-7 w-7 rounded border border-[var(--rp-chat-chrome-border)] shadow-sm"
-                                :class="'rp-chat-fmt-swatch--' + opt.key"
-                                :title="opt.label"
-                                :aria-label="opt.label"
-                                @click="setComposerBg(opt.key)"
-                            />
-                        </div>
-                        <div
-                            v-if="formatPanel === 'fg'"
-                            class="rp-chat-fmt-palette flex flex-wrap items-center gap-2 border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] px-2 py-2 sm:px-3"
-                            role="group"
-                            aria-label="Палітра кольору тексту"
-                        >
-                            <button
-                                type="button"
-                                class="rp-focusable rounded border border-[var(--rp-chat-chrome-border)] px-2 py-1 text-[0.7rem] text-[var(--rp-text)]"
-                                @click="clearComposerFg"
-                            >
-                                Звичайний колір
-                            </button>
-                            <button
-                                v-for="opt in composerFgPalette"
-                                :key="opt.key"
-                                type="button"
-                                class="rp-focusable rp-chat-fmt-swatch h-7 w-7 rounded-full border-2 border-[var(--rp-chat-chrome-border)]"
-                                :class="'rp-chat-fmt-swatch-fg--' + opt.key"
-                                :title="opt.label"
-                                :aria-label="opt.label"
-                                @click="setComposerFg(opt.key)"
-                            />
-                        </div>
-                        </div>
-                        <label class="rp-sr-only" for="chat-composer">Повідомлення</label>
-                        <div class="rp-chat-composer-row">
-                            <button
-                                type="button"
-                                class="rp-focusable rp-chat-composer-rail-btn rounded-full"
-                                disabled
-                                title="Смайли (згодом, T33)"
-                                aria-label="Смайли"
-                            >
-                                <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"
-                                    />
-                                </svg>
-                            </button>
-                            <div class="rp-chat-composer-slot min-w-0 flex-[1_1_12rem]">
-                                <textarea
-                                    id="chat-composer"
-                                    ref="chatComposer"
-                                    v-model="composerText"
-                                    class="rp-focusable rp-chat-composer-input w-full"
-                                    maxlength="4000"
-                                    rows="1"
-                                    :disabled="sending || uploadingImage || !selectedRoomId"
-                                    placeholder="Повідомлення — Enter надішле, Shift+Enter — новий рядок"
-                                    @keydown="onChatComposerKeydown"
-                                    @input="syncComposerInputHeight"
-                                />
-                            </div>
-                            <div class="rp-chat-composer-trailing">
-                                <button
-                                    type="button"
-                                    class="rp-focusable rp-chat-composer-rail-btn"
-                                    :disabled="sending || uploadingImage || !selectedRoomId"
-                                    title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
-                                    aria-label="Додати зображення до повідомлення"
-                                    @click="$refs.imageInput && $refs.imageInput.click()"
-                                >
-                                    <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
-                                        />
-                                    </svg>
-                                </button>
-                                <button
-                                    type="submit"
-                                    class="rp-focusable rp-chat-send-primary"
-                                    :disabled="
-                                        sending
-                                        || uploadingImage
-                                        || !selectedRoomId
-                                        || (!composerText.trim() && !pendingImageId)
-                                    "
-                                    title="Надіслати повідомлення"
-                                    aria-label="Надіслати повідомлення"
-                                >
-                                    <svg class="h-5 w-5 shrink-0" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        <p class="px-2 pb-1 text-[0.7rem] text-[var(--rp-text-muted)] sm:px-3">
-                            Приват: <code class="rounded bg-[var(--rp-chat-toolbar-bg)] px-1 font-mono text-[0.65rem]">/msg</code> нік текст.
-                        </p>
-                        <input
-                            ref="imageInput"
-                            type="file"
-                            class="hidden"
-                            accept="image/jpeg,image/png,image/gif,image/webp"
-                            @change="onChatImageSelected"
-                        />
-                        <div
-                            v-if="pendingImageId && pendingPreviewUrl"
-                            class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)] p-2 sm:mx-3"
-                        >
-                            <img
-                                :src="pendingPreviewUrl"
-                                alt=""
-                                class="max-h-24 max-w-[12rem] rounded object-contain"
-                            />
-                            <button
-                                type="button"
-                                class="rp-focusable rp-btn rp-btn-ghost text-sm"
-                                :disabled="sending || uploadingImage"
-                                @click="clearPendingChatImage"
-                            >
-                                Прибрати фото
-                            </button>
-                        </div>
-                        <p
-                            v-if="imageUploadError"
-                            class="mx-2 mb-2 text-sm text-[var(--rp-error)] sm:mx-3"
-                            role="alert"
-                        >
-                            {{ imageUploadError }}
-                        </p>
-                    </form>
+                    <ChatRoomComposer
+                        ref="chatComposer"
+                        :selected-room-id="selectedRoomId"
+                        :sending="sending"
+                        :logging-out="loggingOut"
+                        :ensure-sanctum="ensureSanctum"
+                        @submit-message="sendMessage"
+                        @logout="logout"
+                    />
                 </div>
             </main>
         </div>
@@ -1033,6 +756,7 @@
 
 <script>
 import ChatFeedMessageList from '../components/chat/ChatFeedMessageList.vue';
+import ChatRoomComposer from '../components/chat/ChatRoomComposer.vue';
 import ChatRoomHeader from '../components/chat/ChatRoomHeader.vue';
 import CommandsHelpModal from '../components/CommandsHelpModal.vue';
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
@@ -1042,32 +766,9 @@ import UserBadgeInlineActionPanel from '../components/UserBadgeInlineActionPanel
 import SidebarHamburgerTrigger from '../components/SidebarHamburgerTrigger.vue';
 import UserInfoModal from '../components/UserInfoModal.vue';
 import { createEcho } from '../lib/echo';
-import {
-    defaultComposerStyle,
-    readComposerStyleFromStorage,
-    persistComposerStyle,
-    normalizePostStyleFromApi,
-} from '../utils/chatMessageStyle';
+import { normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 
 const THEME_KEY = 'redpanda-theme';
-
-const COMPOSER_BG_PALETTE = [
-    { key: 'amber', label: 'Жовтогарячий фон' },
-    { key: 'mint', label: 'Мʼятний фон' },
-    { key: 'sky', label: 'Блакитний фон' },
-    { key: 'lavender', label: 'Лавандовий фон' },
-    { key: 'rose', label: 'Рожевий фон' },
-    { key: 'sand', label: 'Пісочний фон' },
-];
-
-const COMPOSER_FG_PALETTE = [
-    { key: 'blue', label: 'Синій текст' },
-    { key: 'emerald', label: 'Зелений текст' },
-    { key: 'rose', label: 'Малиновий текст' },
-    { key: 'violet', label: 'Фіолетовий текст' },
-    { key: 'amber', label: 'Бурштиновий текст' },
-    { key: 'slate', label: 'Графітовий текст' },
-];
 
 const SIDEBAR_TAB_ICONS = {
     users:
@@ -1186,6 +887,7 @@ export default {
     name: 'ChatRoom',
     components: {
         ChatFeedMessageList,
+        ChatRoomComposer,
         ChatRoomHeader,
         CommandsHelpModal,
         PrivateChatPanel,
@@ -1202,14 +904,9 @@ export default {
             selectedRoomId: null,
             messages: [],
             messageIds: new Set(),
-            composerText: '',
             loadingRooms: true,
             loadingMessages: false,
             sending: false,
-            pendingImageId: null,
-            pendingPreviewUrl: '',
-            uploadingImage: false,
-            imageUploadError: '',
             loadError: '',
             logoutError: '',
             echo: null,
@@ -1236,17 +933,9 @@ export default {
             userInfoModalTarget: null,
             adminSettingsStubOpen: false,
             profileModalOpen: false,
-            composerStyle: defaultComposerStyle(),
-            formatPanel: null,
         };
     },
     computed: {
-        composerBgPalette() {
-            return COMPOSER_BG_PALETTE;
-        },
-        composerFgPalette() {
-            return COMPOSER_FG_PALETTE;
-        },
         themeLabel() {
             if (this.themeUi === 'light') {
                 return 'Тема: світла';
@@ -1350,18 +1039,6 @@ export default {
                 document.addEventListener('keydown', this.onSidebarBadgeMenuDocKeydown, true);
             }
         },
-        composerStyle: {
-            deep: true,
-            handler(v) {
-                persistComposerStyle(v);
-            },
-        },
-        formatPanel(to) {
-            document.removeEventListener('mousedown', this.onFormatPaletteDocMouseDown, true);
-            if (to) {
-                document.addEventListener('mousedown', this.onFormatPaletteDocMouseDown, true);
-            }
-        },
         /** Зміна акаунту / вихід без повного reload: перепідписати приватний канал user.{id}. */
         user(to, from) {
             if (!this.echo) {
@@ -1387,17 +1064,20 @@ export default {
     },
     created() {
         this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
-        this.composerStyle = readComposerStyleFromStorage();
     },
     async mounted() {
         document.documentElement.setAttribute('data-theme', this.themeUi);
         this.initViewportListener();
         await this.bootstrap();
-        this.syncComposerInputHeight();
+        this.$nextTick(() => {
+            const c = this.$refs.chatComposer;
+            if (c && typeof c.syncComposerInputHeight === 'function') {
+                c.syncComposerInputHeight();
+            }
+        });
         window.addEventListener('keydown', this.onGlobalKeydown);
     },
     beforeDestroy() {
-        document.removeEventListener('mousedown', this.onFormatPaletteDocMouseDown, true);
         document.removeEventListener('mousedown', this.onSidebarBadgeMenuDocMouseDown, true);
         document.removeEventListener('keydown', this.onSidebarBadgeMenuDocKeydown, true);
         window.removeEventListener('keydown', this.onGlobalKeydown);
@@ -1407,63 +1087,6 @@ export default {
         this.stopPoll();
     },
     methods: {
-        toggleFormatPanel(which) {
-            if (which === 'fg' && this.composerStyle.bg) {
-                return;
-            }
-            this.formatPanel = this.formatPanel === which ? null : which;
-        },
-        onFormatPaletteDocMouseDown(e) {
-            const root = this.$refs.chatComposerChrome;
-            if (root && root.contains(e.target)) {
-                return;
-            }
-            this.formatPanel = null;
-        },
-        toggleComposerBold() {
-            this.composerStyle = { ...this.composerStyle, bold: !this.composerStyle.bold };
-        },
-        toggleComposerItalic() {
-            this.composerStyle = { ...this.composerStyle, italic: !this.composerStyle.italic };
-        },
-        toggleComposerUnderline() {
-            this.composerStyle = { ...this.composerStyle, underline: !this.composerStyle.underline };
-        },
-        setComposerBg(key) {
-            this.composerStyle = { ...this.composerStyle, bg: key, fg: null };
-            this.formatPanel = null;
-        },
-        clearComposerBg() {
-            this.composerStyle = { ...this.composerStyle, bg: null };
-            this.formatPanel = null;
-        },
-        setComposerFg(key) {
-            this.composerStyle = { ...this.composerStyle, fg: key, bg: null };
-            this.formatPanel = null;
-        },
-        clearComposerFg() {
-            this.composerStyle = { ...this.composerStyle, fg: null };
-            this.formatPanel = null;
-        },
-        buildStylePayloadForApi() {
-            const s = this.composerStyle;
-            const o = {
-                bold: !!s.bold,
-                italic: !!s.italic,
-                underline: !!s.underline,
-            };
-            if (s.bg) {
-                o.bg = s.bg;
-            }
-            if (s.fg) {
-                o.fg = s.fg;
-            }
-            if (!o.bold && !o.italic && !o.underline && !s.bg && !s.fg) {
-                return null;
-            }
-
-            return o;
-        },
         initViewportListener() {
             if (typeof window === 'undefined' || !window.matchMedia) {
                 return;
@@ -2050,40 +1673,18 @@ export default {
                 returnFocusEl: el,
             };
         },
-        focusComposerEnd() {
-            const el = this.$refs.chatComposer;
-            if (!el || typeof el.focus !== 'function') {
-                return;
-            }
-            el.focus();
-            const len = this.composerText.length;
-            try {
-                el.setSelectionRange(len, len);
-            } catch {
-                /* */
-            }
-        },
-        appendToComposer(insertion) {
-            if (insertion == null || insertion === '') {
-                return;
-            }
-            const t = this.composerText;
-            if (t.length === 0) {
-                this.composerText = insertion;
-
-                return;
-            }
-            const needsSpace = !/\s$/.test(t);
-            this.composerText = needsSpace ? `${t} ${insertion}` : t + insertion;
-        },
         insertFeedReplyPrefix(userName) {
             if (!this.user || userName == null || userName === '') {
                 return;
             }
+            const comp = this.$refs.chatComposer;
+            if (!comp || typeof comp.appendToComposer !== 'function') {
+                return;
+            }
             const nick = String(userName);
             const prefix = `${nick} > `;
-            this.appendToComposer(prefix);
-            this.$nextTick(() => this.focusComposerEnd());
+            comp.appendToComposer(prefix);
+            this.$nextTick(() => comp.focusComposerEnd());
         },
         insertFeedInlinePrivatePrefix(userName) {
             if (!this.user || userName == null || userName === '') {
@@ -2093,9 +1694,13 @@ export default {
             if (nick === this.user.user_name) {
                 return;
             }
+            const comp = this.$refs.chatComposer;
+            if (!comp || typeof comp.appendToComposer !== 'function') {
+                return;
+            }
             const prefix = `/msg ${nick} `;
-            this.appendToComposer(prefix);
-            this.$nextTick(() => this.focusComposerEnd());
+            comp.appendToComposer(prefix);
+            this.$nextTick(() => comp.focusComposerEnd());
         },
         closeUserInfoModal() {
             this.userInfoModalOpen = false;
@@ -2379,71 +1984,13 @@ export default {
                 this.closePanel();
             }
         },
-        clearPendingChatImage() {
-            this.pendingImageId = null;
-            this.pendingPreviewUrl = '';
-            this.imageUploadError = '';
-            if (this.$refs.imageInput) {
-                this.$refs.imageInput.value = '';
-            }
-        },
-        onChatComposerKeydown(e) {
-            if (e.key !== 'Enter') {
-                return;
-            }
-            if (e.isComposing || e.keyCode === 229) {
-                return;
-            }
-            if (e.shiftKey) {
-                this.$nextTick(() => this.syncComposerInputHeight());
-
-                return;
-            }
-            e.preventDefault();
-            this.sendMessage();
-        },
-        /** Однорядковий вигляд за замовчуванням; розширення після Shift+Enter (T28). */
-        syncComposerInputHeight() {
-            this.$nextTick(() => {
-                const el = this.$refs.chatComposer;
-                if (!el || typeof el.style === 'undefined') {
-                    return;
-                }
-                el.style.height = 'auto';
-                const minPx = 44;
-                const maxPx = 112;
-                el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
-            });
-        },
-        async onChatImageSelected(e) {
-            const input = e.target;
-            const file = input.files && input.files[0];
-            if (!file || !this.selectedRoomId) {
-                return;
-            }
-            this.imageUploadError = '';
-            this.uploadingImage = true;
-            await this.ensureSanctum();
-            try {
-                const form = new FormData();
-                form.append('image', file);
-                const { data } = await window.axios.post('/api/v1/images', form, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                });
-                this.pendingImageId = data.data.id;
-                this.pendingPreviewUrl = data.data.url;
-            } catch (err) {
-                const msg = err.response?.data?.message || 'Не вдалося завантажити зображення.';
-                this.imageUploadError = msg;
-                this.clearPendingChatImage();
-            } finally {
-                this.uploadingImage = false;
-                input.value = '';
-            }
-        },
         async sendMessage() {
-            const text = this.composerText.trim();
-            if ((!text && !this.pendingImageId) || !this.selectedRoomId || this.sending) {
+            const comp = this.$refs.chatComposer;
+            if (!comp || typeof comp.getSendPayload !== 'function') {
+                return;
+            }
+            const { text, imageId, stylePayload } = comp.getSendPayload();
+            if ((!text && !imageId) || !this.selectedRoomId || this.sending) {
                 return;
             }
             this.sending = true;
@@ -2454,10 +2001,9 @@ export default {
                     message: text,
                     client_message_id: clientMessageId,
                 };
-                if (this.pendingImageId) {
-                    body.image_id = this.pendingImageId;
+                if (imageId) {
+                    body.image_id = imageId;
                 }
-                const stylePayload = this.buildStylePayloadForApi();
                 if (stylePayload) {
                     body.style = stylePayload;
                 }
@@ -2469,15 +2015,19 @@ export default {
                     this.mergeMessage(data.data);
                 }
                 if (status === 201 || status === 200) {
-                    this.composerText = '';
-                    this.clearPendingChatImage();
+                    comp.resetAfterSend();
                 }
             } catch (e) {
                 const msg = e.response?.data?.message || 'Не вдалося надіслати.';
                 this.loadError = msg;
             } finally {
                 this.sending = false;
-                this.$nextTick(() => this.syncComposerInputHeight());
+                this.$nextTick(() => {
+                    const c = this.$refs.chatComposer;
+                    if (c && typeof c.syncComposerInputHeight === 'function') {
+                        c.syncComposerInputHeight();
+                    }
+                });
             }
         },
     },

@@ -11,6 +11,10 @@
 - **Хедер** → `ChatRoomHeader.vue` (refs `mobilePanelToggle` / `desktopPanelToggle` лишаються для фокусу після вибору кімнати на вузькому екрані).
 - **Список повідомлень** (прокрутка + порожній стан) → `ChatFeedMessageList.vue` з публічним методом `scrollToBottom()` замість `ref` на `<ul>` у батькові.
 
+### Слайс 3
+
+- **Композер** (форма, тулбар, палітри, textarea, зображення) → `ChatRoomComposer.vue`; стан тексту/стилю/прев’ю картинки всередині; батько викликає `getSendPayload()` / `resetAfterSend()` у `sendMessage`; палітри та `buildStylePayloadForApi` → `chatMessageStyle.js`.
+
 ## Вердикт
 
 - [x] **PASS** (після `npm run build`)
@@ -31,10 +35,12 @@
 6. **Гість** (якщо доступно): нік без кнопки, аватарка без кнопки привату.
 7. **Хедер:** вихід, архів, бургер/панель, перемикач теми, бейдж degraded WS — як раніше.
 8. **Вузький екран:** вибір іншої кімнати в сайдбарі закриває панель і повертає фокус на кнопку меню в хедері.
+9. **Композер:** B/I/U, фон/колір тексту, Enter / Shift+Enter, вкладення фото, тулбар «Архів» / «Вийти».
 
 ## Артефакти
 
 - `backend/resources/js/components/chat/ChatFeedMessageRow.vue`
 - `backend/resources/js/components/chat/ChatFeedMessageList.vue`
 - `backend/resources/js/components/chat/ChatRoomHeader.vue`
-- `backend/resources/js/utils/chatMessageStyle.js` — `nickColorStyleForPost()`
+- `backend/resources/js/components/chat/ChatRoomComposer.vue`
+- `backend/resources/js/utils/chatMessageStyle.js` — `nickColorStyleForPost()`, `COMPOSER_*_PALETTE`, `buildStylePayloadForApi()`
