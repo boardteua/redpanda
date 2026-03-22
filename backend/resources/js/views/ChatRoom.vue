@@ -109,6 +109,11 @@
             :rooms="rooms"
             :loading-rooms="loadingRooms"
             :selected-room-id="selectedRoomId"
+            :can-create-room="canCreateRoom"
+            :chat-settings="chatSettings"
+            :creating-room="creatingRoom"
+            :create-room-error="createRoomError"
+            :room-create-form-key="roomCreateFormKey"
             :ignores="ignores"
             :ignores-with-menu-peer="ignoresWithMenuPeer"
             @close="closePanel"
@@ -120,6 +125,7 @@
             @lookup-private="lookupAndOpenPrivate"
             @open-private-peer="openPrivatePeer"
             @select-room="selectRoom"
+            @create-room="onCreateRoom"
             @accept-friend="acceptFriend"
             @reject-friend="rejectFriend"
             @remove-ignore="removeIgnore"
@@ -364,6 +370,10 @@ export default {
             messages: [],
             messageIds: new Set(),
             loadingRooms: true,
+            chatSettings: null,
+            creatingRoom: false,
+            createRoomError: '',
+            roomCreateFormKey: 0,
             loadingMessages: false,
             sending: false,
             loadError: '',
@@ -397,6 +407,9 @@ export default {
         };
     },
     computed: {
+        canCreateRoom() {
+            return Boolean(this.user && !this.user.guest && this.user.can_create_room);
+        },
         themeLabel() {
             if (this.themeUi === 'light') {
                 return 'Тема: світла';
@@ -717,7 +730,7 @@ export default {
                 return;
             }
 
-            await this.loadRooms();
+            await Promise.all([this.loadRooms(), this.loadChatSettings()]);
             const qRoom = this.$route.query.room;
             const fromQuery = qRoom ? Number(qRoom) : null;
             if (fromQuery && this.rooms.some((r) => r.room_id === fromQuery)) {
@@ -732,6 +745,45 @@ export default {
             }
 
             await Promise.all([this.loadConversations(), this.loadFriendsAndIgnores()]);
+        },
+        async loadChatSettings() {
+            try {
+                const { data } = await window.axios.get('/api/v1/chat/settings');
+                this.chatSettings = data.data || null;
+            } catch {
+                this.chatSettings = null;
+            }
+        },
+        async onCreateRoom({ room_name, topic }) {
+            this.createRoomError = '';
+            this.creatingRoom = true;
+            try {
+                await this.ensureSanctum();
+                const { data } = await window.axios.post('/api/v1/rooms', { room_name, topic });
+                const created = data.data;
+                this.roomCreateFormKey += 1;
+                await this.loadRooms();
+                if (created && created.room_id) {
+                    this.selectedRoomId = created.room_id;
+                    await this.$router
+                        .replace({ path: '/chat', query: { room: String(created.room_id) } })
+                        .catch(() => {});
+                    await this.applyRoomSelection();
+                }
+                const u = await this.fetchUser();
+                if (u) {
+                    this.user = u;
+                }
+            } catch (e) {
+                const st = e.response && e.response.status;
+                const msg =
+                    (e.response && e.response.data && e.response.data.message) ||
+                    (st === 403 ? 'Немає права створити кімнату.' : null) ||
+                    'Не вдалося створити кімнату.';
+                this.createRoomError = typeof msg === 'string' ? msg : 'Не вдалося створити кімнату.';
+            } finally {
+                this.creatingRoom = false;
+            }
         },
         async loadRooms() {
             this.loadingRooms = true;

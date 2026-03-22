@@ -94,6 +94,13 @@ class AppServiceProvider extends ServiceProvider
                 ->by('u:'.$user->id);
         });
 
+        RateLimiter::for('room-create', function (Request $request) {
+            /** @var User $user маршрут під auth:sanctum */
+            $user = $request->user();
+
+            return Limit::perMinute(10)->by('u:'.$user->id);
+        });
+
         RateLimiter::for('private-read', function (Request $request) {
             $user = $request->user();
 

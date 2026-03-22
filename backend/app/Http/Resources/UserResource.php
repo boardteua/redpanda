@@ -2,9 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Room;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * @mixin User
@@ -33,6 +35,7 @@ class UserResource extends JsonResource
         }
 
         $base['message_edit_window_hours'] = (int) config('chat.message_edit_window_hours', 24);
+        $base['can_create_room'] = Gate::forUser($this->resource)->allows('create', Room::class);
 
         $social = array_merge(User::defaultSocialLinkKeys(), $this->social_links ?? []);
         $sounds = array_replace(

@@ -534,6 +534,66 @@
                     tabindex="-1"
                     :aria-hidden="sidebarTab === 'rooms' ? 'false' : 'true'"
                 >
+                    <div
+                        v-if="user && !user.guest"
+                        class="mb-4 space-y-3 rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] p-3"
+                    >
+                        <h3 class="text-sm font-semibold text-[var(--rp-chat-sidebar-fg)]">Нова кімната</h3>
+                        <form v-if="canCreateRoom" class="space-y-2" @submit.prevent="submitCreateRoom">
+                            <div>
+                                <label class="sr-only" for="rp-new-room-name">Назва кімнати</label>
+                                <input
+                                    id="rp-new-room-name"
+                                    v-model="newRoomName"
+                                    type="text"
+                                    maxlength="191"
+                                    required
+                                    class="rp-input rp-focusable w-full text-sm"
+                                    placeholder="Назва"
+                                    :disabled="creatingRoom"
+                                    autocomplete="off"
+                                />
+                            </div>
+                            <div>
+                                <label class="sr-only" for="rp-new-room-topic">Опис (необов’язково)</label>
+                                <textarea
+                                    id="rp-new-room-topic"
+                                    v-model="newRoomTopic"
+                                    rows="2"
+                                    maxlength="2000"
+                                    class="rp-input rp-focusable w-full resize-y text-sm"
+                                    placeholder="Опис кімнати"
+                                    :disabled="creatingRoom"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                class="rp-focusable w-full rounded-md bg-[var(--rp-chat-sidebar-link)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                                :disabled="creatingRoom || !newRoomName.trim()"
+                            >
+                                {{ creatingRoom ? 'Створення…' : 'Створити кімнату' }}
+                            </button>
+                        </form>
+                        <p
+                            v-else-if="chatSettings"
+                            class="text-xs leading-relaxed text-[var(--rp-chat-sidebar-muted)]"
+                        >
+                            Щоб створювати кімнати, потрібна кількість ваших публічних повідомлень
+                            <strong>більша</strong> за
+                            {{ chatSettings.room_create_min_public_messages }}
+                            (за правилами на сервері; див. налаштування чату).
+                        </p>
+                        <p v-else class="text-xs text-[var(--rp-chat-sidebar-muted)]">
+                            Не вдалося завантажити умови створення кімнат.
+                        </p>
+                    </div>
+                    <p
+                        v-if="createRoomError"
+                        role="alert"
+                        class="mb-3 rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-error-bg)] px-2 py-1.5 text-xs text-[var(--rp-error)]"
+                    >
+                        {{ createRoomError }}
+                    </p>
                     <p v-if="loadingRooms" class="text-[var(--rp-chat-sidebar-muted)]">Завантаження…</p>
                     <ul v-else class="space-y-2">
                         <li v-for="r in rooms" :key="r.room_id">
@@ -670,8 +730,33 @@ export default {
         },
         ignores: { type: Array, default: () => [] },
         ignoresWithMenuPeer: { type: Array, default: () => [] },
+        canCreateRoom: { type: Boolean, default: false },
+        chatSettings: { type: Object, default: null },
+        creatingRoom: { type: Boolean, default: false },
+        createRoomError: { type: String, default: '' },
+        roomCreateFormKey: { type: Number, default: 0 },
+    },
+    data() {
+        return {
+            newRoomName: '',
+            newRoomTopic: '',
+        };
+    },
+    watch: {
+        roomCreateFormKey() {
+            this.newRoomName = '';
+            this.newRoomTopic = '';
+        },
     },
     methods: {
+        submitCreateRoom() {
+            const name = (this.newRoomName || '').trim();
+            if (!name) {
+                return;
+            }
+            const topic = (this.newRoomTopic || '').trim();
+            this.$emit('create-room', { room_name: name, topic: topic || null });
+        },
         panelTabLabelledby(panelKey) {
             return (this.isNarrowViewport ? 'chat-tab-m-' : 'chat-tab-d-') + panelKey;
         },

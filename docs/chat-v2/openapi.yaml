@@ -547,6 +547,48 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Chat]
+      summary: Створити публічну кімнату
+      description: |
+        **T44:** лише **не гість**. Адміністратор, модератор і VIP можуть завжди. Звичайний зареєстрований — якщо кількість його публічних повідомлень (за `GET /api/v1/chat/settings`: область лічби та поріг **N**) **строго більша** за **N**.
+        Нова кімната завжди з `access = 0` (публічна). Поле опису — `topic`.
+      operationId: createRoom
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoomRequest"
+      responses:
+        "201":
+          description: Створена кімната в `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: |
+            Гість (`message` про заборону) або недостатня кількість публічних повідомлень (`code`: `room_create_insufficient_messages`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  code:
+                    type: string
+                    enum: [room_create_insufficient_messages]
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/chat/settings:
     get:
@@ -1160,6 +1202,9 @@ components:
           type: integer
           minimum: 1
           description: Години, протягом яких звичайний користувач може редагувати власні публічні повідомлення (T36); лише якщо `guest === false`
+        can_create_room:
+          type: boolean
+          description: Чи дозволено поточному користувачу `POST /api/v1/rooms` (**T44**); лише якщо `guest === false`
 
     UserResponse:
       type: object
@@ -1306,6 +1351,26 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Room"
+
+    CreateRoomRequest:
+      type: object
+      required: [room_name]
+      properties:
+        room_name:
+          type: string
+          maxLength: 191
+        topic:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Опис кімнати (поле `topic` у моделі)
+
+    RoomSingleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Room"
 
     ChatSettingsData:
       type: object
