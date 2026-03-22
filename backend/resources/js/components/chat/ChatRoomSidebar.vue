@@ -55,15 +55,42 @@
                 </div>
             </div>
 
-            <!-- Десктоп: заголовок + закриття -->
+            <!-- Десктоп: вкладки в верхній смузі поруч із закриттям (без заголовка «Панель») -->
             <div
-                class="hidden shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-chat-sidebar-border)] px-3 py-2 md:flex"
+                class="hidden shrink-0 items-center gap-1 border-b border-[var(--rp-chat-sidebar-border)] px-1 py-2 md:flex"
             >
-                <h2 class="text-sm font-semibold text-[var(--rp-chat-sidebar-fg)]">Панель</h2>
+                <div
+                    class="flex min-w-0 flex-1 gap-1"
+                    role="tablist"
+                    aria-label="Вкладки панелі чату"
+                    @keydown="onTabKeydown"
+                >
+                    <button
+                        v-for="tab in sidebarTabs"
+                        :key="'d-' + tab.id"
+                        :id="'chat-tab-d-' + tab.id"
+                        type="button"
+                        role="tab"
+                        class="rp-focusable flex h-11 min-w-0 flex-1 items-center justify-center rounded-md border-2 text-[var(--rp-chat-sidebar-icon)]"
+                        :class="
+                            sidebarTab === tab.id
+                                ? 'border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-fg)]'
+                                : 'border-transparent bg-transparent hover:bg-[var(--rp-chat-sidebar-tab-active-bg)]'
+                        "
+                        :aria-selected="sidebarTab === tab.id ? 'true' : 'false'"
+                        :aria-controls="'chat-panel-' + tab.id"
+                        :tabindex="sidebarTab === tab.id ? 0 : -1"
+                        :title="tab.title"
+                        @click="$emit('select-tab', tab.id)"
+                    >
+                        <span class="rp-sr-only">{{ tab.title }}</span>
+                        <span class="inline-flex items-center justify-center" v-html="tab.icon" />
+                    </button>
+                </div>
                 <button
                     ref="panelCloseBtnDesktop"
                     type="button"
-                    class="rp-focusable flex h-11 w-11 items-center justify-center rounded-md text-[var(--rp-chat-sidebar-icon)] hover:bg-[var(--rp-chat-sidebar-tab-active-bg)] hover:text-[var(--rp-chat-sidebar-fg)]"
+                    class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--rp-chat-sidebar-icon)] hover:bg-[var(--rp-chat-sidebar-tab-active-bg)] hover:text-[var(--rp-chat-sidebar-fg)]"
                     aria-label="Закрити панель"
                     @click="$emit('close')"
                 >
@@ -72,35 +99,6 @@
                             d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
                         />
                     </svg>
-                </button>
-            </div>
-
-            <div
-                class="hidden shrink-0 border-b border-[var(--rp-chat-sidebar-border)] px-1 py-2 md:flex"
-                role="tablist"
-                aria-label="Вкладки панелі чату"
-                @keydown="onTabKeydown"
-            >
-                <button
-                    v-for="tab in sidebarTabs"
-                    :key="'d-' + tab.id"
-                    :id="'chat-tab-d-' + tab.id"
-                    type="button"
-                    role="tab"
-                    class="rp-focusable flex h-11 flex-1 items-center justify-center rounded-md border-2 text-[var(--rp-chat-sidebar-icon)]"
-                    :class="
-                        sidebarTab === tab.id
-                            ? 'border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-fg)]'
-                            : 'border-transparent bg-transparent hover:bg-[var(--rp-chat-sidebar-tab-active-bg)]'
-                    "
-                    :aria-selected="sidebarTab === tab.id ? 'true' : 'false'"
-                    :aria-controls="'chat-panel-' + tab.id"
-                    :tabindex="sidebarTab === tab.id ? 0 : -1"
-                    :title="tab.title"
-                    @click="$emit('select-tab', tab.id)"
-                >
-                    <span class="rp-sr-only">{{ tab.title }}</span>
-                    <span class="inline-flex items-center justify-center" v-html="tab.icon" />
                 </button>
             </div>
 
