@@ -89,6 +89,15 @@
                 </div>
             </header>
 
+            <p
+                v-if="logoutError"
+                class="mb-2 text-sm text-[var(--rp-error)]"
+                role="alert"
+                aria-live="polite"
+            >
+                {{ logoutError }}
+            </p>
+
             <main id="main-content" class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4" tabindex="-1">
                 <div v-if="loadError" class="rp-banner" role="alert">
                     {{ loadError }}
@@ -665,6 +674,7 @@ export default {
             uploadingImage: false,
             imageUploadError: '',
             loadError: '',
+            logoutError: '',
             echo: null,
             echoChannel: null,
             echoSubscribedRoomId: null,
@@ -893,15 +903,16 @@ export default {
         },
         async logout() {
             this.loggingOut = true;
+            this.logoutError = '';
             try {
                 await this.ensureSanctum();
                 await window.axios.post('/api/v1/auth/logout');
-                this.user = null;
                 this.teardownEcho(true);
                 this.stopPoll();
+                this.user = null;
                 await this.$router.replace({ path: '/' });
             } catch {
-                this.loadError = 'Не вдалося вийти. Спробуйте ще раз.';
+                this.logoutError = 'Не вдалося вийти. Спробуйте ще раз.';
             } finally {
                 this.loggingOut = false;
             }

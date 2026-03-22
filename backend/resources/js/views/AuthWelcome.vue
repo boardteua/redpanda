@@ -371,11 +371,19 @@ export default {
             }
             const h = this.$route.query.history;
             if (h === '1' || h === 1) {
-                this.$router.replace({ name: 'archive' }).catch(() => {});
+                this.$router.replace({ name: 'archive' }).catch((err) => {
+                    if (import.meta.env.DEV) {
+                        console.warn('[AuthWelcome] redirect to archive failed', err);
+                    }
+                });
 
                 return;
             }
-            this.$router.replace({ name: 'chat' }).catch(() => {});
+            this.$router.replace({ name: 'chat' }).catch((err) => {
+                if (import.meta.env.DEV) {
+                    console.warn('[AuthWelcome] redirect to chat failed', err);
+                }
+            });
         },
         handleAxiosError(err) {
             const status = err.response?.status;
