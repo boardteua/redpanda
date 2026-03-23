@@ -42,6 +42,14 @@ class SpaShellTest extends TestCase
             ->assertSee('type="module"', false);
     }
 
+    public function test_admin_hub_route_returns_spa_shell(): void
+    {
+        $this->get('/chat/admin')
+            ->assertOk()
+            ->assertSee('<div id="app"></div>', false)
+            ->assertSee('type="module"', false);
+    }
+
     public function test_staff_stop_words_route_returns_spa_shell(): void
     {
         $this->get('/chat/staff-stop-words')

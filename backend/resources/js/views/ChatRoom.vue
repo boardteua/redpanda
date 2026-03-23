@@ -671,6 +671,7 @@ export default {
                 if (!this.chatBootstrapDone || this.$route.path !== '/chat') {
                     return;
                 }
+                this.consumeOpenChatSettingsQuery();
                 const newQ = this.$route.query || {};
                 const newRoom = newQ.room != null ? Number(newQ.room) : null;
                 if (
@@ -933,12 +934,21 @@ export default {
             }
         },
         async bootstrap() {
+            let openChatSettingsAfterBootstrap = false;
             try {
                 this.user = await this.fetchUser();
                 if (!this.user) {
                     await this.$router.replace({ path: '/' });
 
                     return;
+                }
+
+                if (this.user.chat_role === 'admin') {
+                    const raw = this.$route.query.open_chat_settings;
+                    openChatSettingsAfterBootstrap =
+                        raw != null &&
+                        String(raw).trim() !== '' &&
+                        !['0', 'false', 'no', 'off'].includes(String(raw).trim().toLowerCase());
                 }
 
                 await Promise.all([this.loadRooms(), this.loadChatSettings(), loadChatEmoticonsCatalog()]);
@@ -963,6 +973,11 @@ export default {
                 await Promise.all([this.loadConversations(), this.loadFriendsAndIgnores()]);
             } finally {
                 this.chatBootstrapDone = true;
+                if (openChatSettingsAfterBootstrap) {
+                    this.$nextTick(() => {
+                        this.chatSettingsModalOpen = true;
+                    });
+                }
             }
         },
         async loadChatSettings() {
@@ -972,6 +987,23 @@ export default {
             } catch {
                 this.chatSettings = null;
             }
+        },
+        /** T75: відкрити модал налаштувань з `?open_chat_settings=1` (хаб адміна) і прибрати параметр з URL. */
+        consumeOpenChatSettingsQuery() {
+            if (!this.user || this.user.chat_role !== 'admin') {
+                return;
+            }
+            const raw = this.$route.query.open_chat_settings;
+            if (raw == null || String(raw).trim() === '') {
+                return;
+            }
+            if (['0', 'false', 'no', 'off'].includes(String(raw).trim().toLowerCase())) {
+                return;
+            }
+            const q = { ...this.$route.query };
+            delete q.open_chat_settings;
+            this.$router.replace({ path: '/chat', query: q }).catch(() => {});
+            this.chatSettingsModalOpen = true;
         },
         openAddRoomModal() {
             this.addRoomError = '';
@@ -2182,6 +2214,15 @@ export default {
             }
             if (id === 'commands') {
                 this.commandsHelpOpen = true;
+
+                return;
+            }
+            if (id === 'admin-hub') {
+                const q = {};
+                if (this.selectedRoomId != null) {
+                    q.room = String(this.selectedRoomId);
+                }
+                this.$router.push({ name: 'admin-hub', query: q }).catch(() => {});
 
                 return;
             }

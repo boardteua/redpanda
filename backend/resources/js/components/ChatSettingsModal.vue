@@ -2,9 +2,9 @@
     <RpModal
         :open="open"
         variant="framed"
-        size="lg"
+        size="7xl"
         content-sized
-        max-height-class="max-h-[92vh]"
+        max-height-class="max-h-[98vh]"
         :aria-labelledby="titleId"
         :scroll-body="true"
         @close="close"

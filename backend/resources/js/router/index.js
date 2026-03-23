@@ -3,6 +3,7 @@ import VueRouter from 'vue-router';
 import ArchiveChat from '../views/ArchiveChat.vue';
 import AuthWelcome from '../views/AuthWelcome.vue';
 import ChatRoom from '../views/ChatRoom.vue';
+import AdminHubView from '../views/AdminHubView.vue';
 import StaffUsersView from '../views/StaffUsersView.vue';
 import StaffStopWordsView from '../views/StaffStopWordsView.vue';
 import StaffFlaggedMessagesView from '../views/StaffFlaggedMessagesView.vue';
@@ -21,6 +22,11 @@ export default new VueRouter({
             path: '/chat',
             name: 'chat',
             component: ChatRoom,
+        },
+        {
+            path: '/chat/admin',
+            name: 'admin-hub',
+            component: AdminHubView,
         },
         {
             path: '/archive',

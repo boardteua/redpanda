@@ -24,12 +24,9 @@ export function buildUserBadgeMenuItems(mode, viewer, target) {
         add('info', 'Інформація');
         add('commands', 'Команди');
         if (v && v.chat_role === 'admin') {
-            add('settings', 'Налаштування чату');
+            add('admin-hub', 'Панель адміна');
         }
-        if (v && v.chat_role === 'admin') {
-            add('staff-users', 'Користувачі (адмін)');
-        }
-        if (v && isStaffRole(v.chat_role)) {
+        if (v && v.chat_role !== 'admin' && isStaffRole(v.chat_role)) {
             add('staff-stop-words', 'Стоп-слова / фільтр');
             add('staff-flagged', 'Черга на модерацію');
         }
