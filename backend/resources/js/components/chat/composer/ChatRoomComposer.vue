@@ -114,7 +114,7 @@
             :image-upload-error="imageUploadError"
             :sending="sending"
             :uploading-image="uploadingImage"
-            @clear-pending-image="clearPendingChatImage"
+            @clear-pending-image="onClearPendingImageClick"
         />
         <ChatMyImagesModal
             :open="myImagesModalOpen"
@@ -525,13 +525,41 @@ export default {
                 el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
             });
         },
-        clearPendingChatImage() {
+        /**
+         * @param {boolean} clearUploadError — якщо false, залишити `imageUploadError` (після невдалого upload).
+         */
+        clearPendingChatImage(clearUploadError = true) {
             this.pendingImageId = null;
             this.pendingPreviewUrl = '';
-            this.imageUploadError = '';
+            if (clearUploadError) {
+                this.imageUploadError = '';
+            }
             if (this.$refs.imageInput) {
                 this.$refs.imageInput.value = '';
             }
+        },
+        onClearPendingImageClick() {
+            this.clearPendingChatImage(true);
+        },
+        formatChatImageUploadError(err) {
+            const d = err && err.response ? err.response.data : null;
+            const bag = d && d.errors && typeof d.errors === 'object' ? d.errors : null;
+            const flat = bag
+                ? Object.values(bag)
+                      .flat()
+                      .filter((x) => typeof x === 'string' && x.trim())
+                : [];
+            if (flat.length) {
+                return flat[0].trim();
+            }
+            if (d && typeof d.message === 'string' && d.message.trim()) {
+                return d.message.trim();
+            }
+            if (!err.response) {
+                return 'Мережа недоступна або сервер не відповів. Перевірте з’єднання і спробуйте знову.';
+            }
+
+            return 'Не вдалося завантажити зображення.';
         },
         openMyImagesModal() {
             if (this.imageUploadBlocked || !this.selectedRoomId || this.uploadingImage) {
@@ -560,33 +588,39 @@ export default {
         },
         async uploadChatImageFile(file) {
             if (this.imageUploadBlocked) {
-                this.imageUploadError = this.imageUploadBlockedTitle + '.';
-                this.clearPendingChatImage();
+                this.imageUploadError = `${this.imageUploadBlockedTitle}.`;
+                this.clearPendingChatImage(false);
 
                 return;
             }
             const v = validateChatImageFileForUpload(file, this.effectiveChatImageMaxBytes);
             if (!v.ok) {
                 this.imageUploadError = v.message;
-                this.clearPendingChatImage();
+                this.clearPendingChatImage(false);
 
                 return;
             }
             this.imageUploadError = '';
             this.uploadingImage = true;
-            await this.ensureSanctum();
             try {
+                await this.ensureSanctum();
                 const form = new FormData();
                 form.append('image', file);
                 const { data } = await window.axios.post('/api/v1/images', form, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
-                this.pendingImageId = data.data.id;
-                this.pendingPreviewUrl = data.data.url;
+                const row = data && data.data;
+                if (!row || row.id == null || !row.url) {
+                    this.imageUploadError = 'Сервер повернув неочікувану відповідь.';
+                    this.clearPendingChatImage(false);
+
+                    return;
+                }
+                this.pendingImageId = row.id;
+                this.pendingPreviewUrl = row.url;
             } catch (err) {
-                const msg = err.response?.data?.message || 'Не вдалося завантажити зображення.';
-                this.imageUploadError = msg;
-                this.clearPendingChatImage();
+                this.imageUploadError = this.formatChatImageUploadError(err);
+                this.clearPendingChatImage(false);
             } finally {
                 this.uploadingImage = false;
             }
