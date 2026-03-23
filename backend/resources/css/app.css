@@ -41,6 +41,11 @@
     --rp-chat-header-bg: #ece9df;
     --rp-chat-feed-bg: #ebecdb;
     --rp-chat-feed-wash: color-mix(in srgb, var(--rp-primary) 18%, transparent);
+    /* T91 — watermark з legacy board.te.ua/upload/panda_o.png (копія: public/chat-assets/panda_o.png) */
+    --rp-chat-feed-panda-image: url('/chat-assets/panda_o.png');
+    --rp-chat-feed-panda-opacity: 0.16;
+    --rp-chat-feed-panda-filter: none;
+    --rp-chat-feed-panda-size-w: min(46vw, 18rem);
     --rp-chat-message-bg: #fffefb;
     --rp-chat-message-border: #d8d0c4;
     --rp-chat-composer-bg: #faf7f0;
@@ -129,6 +134,10 @@
     --rp-chat-header-bg: #17233a;
     --rp-chat-feed-bg: #152032;
     --rp-chat-feed-wash: color-mix(in srgb, var(--rp-primary) 14%, transparent);
+    --rp-chat-feed-panda-image: url('/chat-assets/panda_o.png');
+    --rp-chat-feed-panda-opacity: 0.11;
+    --rp-chat-feed-panda-filter: brightness(1.12) saturate(0.88);
+    --rp-chat-feed-panda-size-w: min(46vw, 18rem);
     --rp-chat-message-bg: #1b2739;
     --rp-chat-message-border: #334155;
     --rp-chat-composer-bg: #1a2436;
@@ -209,6 +218,10 @@
         --rp-chat-header-bg: #17233a;
         --rp-chat-feed-bg: #152032;
         --rp-chat-feed-wash: color-mix(in srgb, var(--rp-primary) 14%, transparent);
+        --rp-chat-feed-panda-image: url('/chat-assets/panda_o.png');
+        --rp-chat-feed-panda-opacity: 0.11;
+        --rp-chat-feed-panda-filter: brightness(1.12) saturate(0.88);
+        --rp-chat-feed-panda-size-w: min(46vw, 18rem);
         --rp-chat-message-bg: #1b2739;
         --rp-chat-message-border: #334155;
         --rp-chat-composer-bg: #1a2436;
@@ -921,20 +934,26 @@
     opacity: 0.82;
 }
 
-/* Декоративна «панда» — спрощений силует, без зовнішніх ассетів */
+/* T91 — декоративна панда (локальний PNG, без hotlink) */
 .rp-chat-feed-wash::after {
     content: '';
     position: absolute;
-    right: 1.5%;
-    bottom: 2%;
-    width: min(42vw, 18rem);
-    height: min(48vh, 20rem);
-    max-width: 100%;
+    inset: 0;
     pointer-events: none;
     z-index: 0;
-    opacity: 0.09;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 118'%3E%3Ccircle cx='30' cy='30' r='13' fill='%23c2410c'/%3E%3Ccircle cx='70' cy='30' r='13' fill='%23c2410c'/%3E%3Cellipse cx='50' cy='66' rx='40' ry='46' fill='%23c2410c'/%3E%3Cellipse cx='50' cy='88' rx='22' ry='14' fill='%239a3412'/%3E%3C/svg%3E")
-        no-repeat 100% 100% / contain;
+    opacity: var(--rp-chat-feed-panda-opacity);
+    filter: var(--rp-chat-feed-panda-filter);
+    background-image: var(--rp-chat-feed-panda-image);
+    background-repeat: no-repeat;
+    background-position: 98% 99%;
+    background-size: var(--rp-chat-feed-panda-size-w) auto;
+}
+
+/* Порожній стан стрічки: текст поверх watermark з достатнім контрастом (T81 / T91) */
+.rp-chat-feed-wash > .rp-chat-feed-empty {
+    background: color-mix(in srgb, var(--rp-chat-feed-bg) 78%, var(--rp-surface));
+    border-radius: 0.5rem;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rp-chat-chrome-border) 35%, transparent);
 }
 
 .rp-chat-feed-wash > * {

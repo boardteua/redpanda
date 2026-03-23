@@ -43,7 +43,7 @@
         </ul>
         <p
             v-if="messages.length === 0 && !loadingMessages"
-            class="p-4 text-center text-sm text-[var(--rp-text-muted)]"
+            class="rp-chat-feed-empty mx-auto max-w-md p-4 text-center text-sm text-[var(--rp-text-muted)]"
         >
             Ще немає повідомлень. Напишіть перше нижче.
         </p>
