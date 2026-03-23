@@ -1,14 +1,14 @@
 <template>
     <div class="flex min-h-screen flex-col px-4 py-8 sm:px-6">
         <header
-            class="mx-auto mb-8 flex w-full max-w-xl items-center justify-between gap-4"
+            class="mx-auto mb-8 flex w-full max-w-5xl items-center justify-between gap-4"
         >
             <div>
                 <h1 class="text-xl font-bold tracking-tight text-[var(--rp-text)] sm:text-2xl">
-                    {{ appName }}
+                    {{ displayTitle }}
                 </h1>
                 <p class="mt-1 text-sm text-[var(--rp-text-muted)]">
-                    Український онлайн-чат
+                    {{ displayTagline }}
                 </p>
             </div>
             <button
@@ -23,17 +23,20 @@
 
         <main
             id="main-content"
-            class="mx-auto w-full max-w-xl flex-1"
+            class="mx-auto w-full max-w-5xl flex-1"
             tabindex="-1"
         >
             <div
-                class="rp-panel"
+                class="grid gap-8 lg:grid-cols-2 lg:items-start"
+            >
+            <div
+                class="rp-panel min-w-0"
                 role="region"
                 :aria-labelledby="authRegionLabelledBy"
             >
                 <template v-if="!user">
                 <div
-                    class="mb-6 flex gap-2"
+                    class="mb-6 flex flex-wrap gap-2"
                     role="tablist"
                     aria-label="Режим форми"
                 >
@@ -49,6 +52,7 @@
                         Вхід
                     </button>
                     <button
+                        v-if="registrationOpen"
                         id="tab-register"
                         type="button"
                         role="tab"
@@ -144,11 +148,17 @@
                     </form>
 
                     <form
-                        v-else
+                        v-else-if="registrationOpen"
                         class="mt-4 space-y-4"
                         novalidate
                         @submit.prevent="submitRegister"
                     >
+                        <p
+                            v-if="registrationMinAge != null"
+                            class="text-sm text-[var(--rp-text-muted)]"
+                        >
+                            Мінімальний вік для реєстрації: {{ registrationMinAge }}.
+                        </p>
                         <div>
                             <label class="rp-label" for="reg-user_name">Ім’я користувача</label>
                             <input
@@ -225,6 +235,14 @@
                             Зареєструватися
                         </button>
                     </form>
+
+                    <p
+                        v-else
+                        class="mt-4 text-sm text-[var(--rp-text-muted)]"
+                        role="status"
+                    >
+                        Реєстрацію тимчасово вимкнено адміністратором.
+                    </p>
                 </div>
 
                 <div class="mt-8">
@@ -260,6 +278,9 @@
                         Зайти анонімно
                     </button>
                 </div>
+                <p v-if="showSocialLoginButtons" class="mt-6 text-center text-xs text-[var(--rp-text-muted)]">
+                    Соціальний вхід з’явиться після підключення Auth0 (T76).
+                </p>
                 </template>
                 <p
                     v-else
@@ -269,12 +290,52 @@
                     Перенаправлення до чату…
                 </p>
             </div>
+
+            <aside
+                v-if="hasLandingAside"
+                class="rp-panel min-w-0 space-y-4 p-4 lg:p-5"
+                aria-label="Новини та посилання"
+            >
+                <div v-if="landingNewsTitle || landingNewsBody">
+                    <h2 class="text-base font-semibold text-[var(--rp-text)]">
+                        {{ landingNewsTitle || 'Новини' }}
+                    </h2>
+                    <div
+                        v-if="landingNewsBody"
+                        class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--rp-text-muted)]"
+                    >
+                        {{ landingNewsBody }}
+                    </div>
+                </div>
+                <nav v-if="landingLinks.length" aria-label="Посилання з вітальні">
+                    <ul class="space-y-2 text-sm">
+                        <li v-for="(item, i) in landingLinks" :key="'land-link-' + i">
+                            <a
+                                :href="item.url"
+                                class="rp-focusable font-medium text-[var(--rp-text)] underline decoration-[var(--rp-border-subtle)] underline-offset-2 hover:decoration-[var(--rp-text-muted)]"
+                            >
+                                {{ item.label || item.url }}
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </aside>
+            </div>
+
+            <p
+                v-if="!user"
+                class="mx-auto mt-8 max-w-5xl text-center text-sm text-[var(--rp-text-muted)]"
+                role="status"
+            >
+                Користувачі онлайн у чаті: <strong class="font-semibold text-[var(--rp-text)]">{{ usersOnline }}</strong>
+            </p>
         </main>
     </div>
 </template>
 
 <script>
 const THEME_KEY = 'redpanda-theme';
+const LANDING_POLL_MS = 45000;
 
 export default {
     name: 'AuthWelcome',
@@ -300,9 +361,48 @@ export default {
                 password_confirmation: '',
             },
             themeUi: 'system',
+            landing: null,
+            registration: null,
+            usersOnline: 0,
+            landingPollTimer: null,
         };
     },
     computed: {
+        displayTitle() {
+            const t = this.landing && this.landing.page_title;
+
+            return t && String(t).trim() ? String(t).trim() : this.appName;
+        },
+        displayTagline() {
+            const t = this.landing && this.landing.tagline;
+
+            return t && String(t).trim() ? String(t).trim() : 'Український онлайн-чат';
+        },
+        landingNewsTitle() {
+            return this.landing && this.landing.news_title ? String(this.landing.news_title).trim() : '';
+        },
+        landingNewsBody() {
+            return this.landing && this.landing.news_body ? String(this.landing.news_body).trim() : '';
+        },
+        landingLinks() {
+            const links = this.landing && Array.isArray(this.landing.links) ? this.landing.links : [];
+
+            return links.filter((l) => l && (String(l.label || '').trim() || String(l.url || '').trim()));
+        },
+        hasLandingAside() {
+            return Boolean(this.landingNewsTitle || this.landingNewsBody || this.landingLinks.length);
+        },
+        registrationOpen() {
+            return !this.registration || this.registration.registration_open !== false;
+        },
+        registrationMinAge() {
+            const n = this.registration && this.registration.min_age;
+
+            return n != null && n !== '' && !Number.isNaN(Number(n)) ? Number(n) : null;
+        },
+        showSocialLoginButtons() {
+            return Boolean(this.registration && this.registration.show_social_login_buttons);
+        },
         authRegionLabelledBy() {
             if (this.user) {
                 return undefined;
@@ -325,10 +425,50 @@ export default {
         this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
     },
     async mounted() {
+        this.fetchLandingPublic();
+        this.startLandingPoll();
         await this.refreshUser();
         this.redirectIfAuthenticated();
     },
+    beforeDestroy() {
+        this.stopLandingPoll();
+    },
+    watch: {
+        registrationOpen(open) {
+            if (!open && this.mode === 'register') {
+                this.setMode('login');
+            }
+        },
+    },
     methods: {
+        startLandingPoll() {
+            this.stopLandingPoll();
+            this.landingPollTimer = window.setInterval(() => {
+                if (!this.user) {
+                    this.fetchLandingPublic();
+                }
+            }, LANDING_POLL_MS);
+        },
+        stopLandingPoll() {
+            if (this.landingPollTimer != null) {
+                clearInterval(this.landingPollTimer);
+                this.landingPollTimer = null;
+            }
+        },
+        async fetchLandingPublic() {
+            try {
+                const { data } = await window.axios.get('/api/v1/landing');
+                const d = data && data.data;
+                if (!d) {
+                    return;
+                }
+                this.landing = d.landing && typeof d.landing === 'object' ? d.landing : null;
+                this.registration = d.registration && typeof d.registration === 'object' ? d.registration : null;
+                this.usersOnline = Number(d.users_online) >= 0 ? Number(d.users_online) : 0;
+            } catch {
+                /* залишаємо попередні значення / дефолти */
+            }
+        },
         fieldInvalid(field) {
             return this.fieldErrors[field] ? 'true' : 'false';
         },

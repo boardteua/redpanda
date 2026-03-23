@@ -28,6 +28,17 @@ class ChatSettingsController extends Controller
         $row = ChatSetting::current();
         $validated = $request->validated();
 
+        $landingNormalized = null;
+        if (array_key_exists('landing_settings', $validated)) {
+            $landingNormalized = ChatSetting::normalizeLandingSettings($validated['landing_settings']);
+            unset($validated['landing_settings']);
+        }
+        $registrationNormalized = null;
+        if (array_key_exists('registration_flags', $validated)) {
+            $registrationNormalized = ChatSetting::normalizeRegistrationFlags($validated['registration_flags']);
+            unset($validated['registration_flags']);
+        }
+
         if (
             isset($validated['public_message_count_scope'])
             && $validated['public_message_count_scope'] === ChatSetting::SCOPE_ALL_PUBLIC_ROOMS
@@ -36,6 +47,12 @@ class ChatSettingsController extends Controller
         }
 
         $row->fill($validated);
+        if ($landingNormalized !== null) {
+            $row->landing_settings = $landingNormalized;
+        }
+        if ($registrationNormalized !== null) {
+            $row->registration_flags = $registrationNormalized;
+        }
         $row->save();
 
         $fresh = $row->fresh();

@@ -111,6 +111,10 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by($request->ip());
         });
 
+        RateLimiter::for('landing-read', function (Request $request) {
+            return Limit::perMinute(120)->by($request->ip());
+        });
+
         RateLimiter::for('chat-read', function (Request $request) {
             $user = $request->user();
 

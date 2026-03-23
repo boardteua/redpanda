@@ -11,7 +11,7 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`, `oembed-read`, `emoticon-read`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `landing-read`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`, `oembed-read`, `emoticon-read`).
 
     **Смайли / emoticon (T63):** `GET /api/v1/chat/emoticons` — активні записи каталогу (throttle `emoticon-read`); файли за URL `/emoticon/{file}`. Адмін: `GET|POST|PATCH|DELETE /api/v1/mod/emoticons` (multipart на `POST` / опційно `PATCH`), `can:chat-admin`, throttle `mod-actions`. Деталі — [T63-QA.md](T63-QA.md).
 
@@ -49,7 +49,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.16.9"
+  version: "0.17.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -757,6 +757,25 @@ paths:
                 $ref: "#/components/schemas/UserResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/landing:
+    get:
+      tags: [Auth]
+      summary: Публічний зріз вітальні (T75)
+      description: |
+        Без автентифікації: тексти та посилання для гостьової сторінки, прапорці реєстрації (без секретів),
+        приблизний лічильник користувачів з активною сесією (`SESSION_DRIVER=database`). Throttle `landing-read`.
+      operationId: getLandingPublic
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LandingPublicResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -2582,6 +2601,69 @@ components:
         data:
           $ref: "#/components/schemas/Room"
 
+    LandingLinkItem:
+      type: object
+      required: [label, url]
+      properties:
+        label:
+          type: string
+        url:
+          type: string
+
+    LandingSettingsPayload:
+      type: object
+      required: [page_title, tagline, news_title, news_body, links]
+      properties:
+        page_title:
+          type: string
+          nullable: true
+        tagline:
+          type: string
+          nullable: true
+        news_title:
+          type: string
+        news_body:
+          type: string
+        links:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/LandingLinkItem"
+
+    RegistrationFlagsPayload:
+      type: object
+      required: [registration_open, min_age, show_social_login_buttons]
+      properties:
+        registration_open:
+          type: boolean
+        min_age:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 120
+        show_social_login_buttons:
+          type: boolean
+          description: Заготовка під T76 (Auth0); лише прапорець видимості з адмінки.
+
+    LandingPublicData:
+      type: object
+      required: [landing, registration, users_online]
+      properties:
+        landing:
+          $ref: "#/components/schemas/LandingSettingsPayload"
+        registration:
+          $ref: "#/components/schemas/RegistrationFlagsPayload"
+        users_online:
+          type: integer
+          minimum: 0
+
+    LandingPublicResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/LandingPublicData"
+
     ChatSettingsData:
       type: object
       required:
@@ -2592,6 +2674,9 @@ components:
         - mod_slash_default_mute_minutes
         - mod_slash_default_kick_minutes
         - silent_mode
+        - sound_on_every_post
+        - landing_settings
+        - registration_flags
       properties:
         room_create_min_public_messages:
           type: integer
@@ -2628,6 +2713,13 @@ components:
         silent_mode:
           type: boolean
           description: Глобальне приглушення звуків чату (**T71**); slash `/silent On|Off` або `PATCH` адміном.
+        sound_on_every_post:
+          type: boolean
+          description: Legacy-опція «звук на кожен пост» (**T75**); клієнтський newpost (див. T65).
+        landing_settings:
+          $ref: "#/components/schemas/LandingSettingsPayload"
+        registration_flags:
+          $ref: "#/components/schemas/RegistrationFlagsPayload"
 
     ChatSettingsResponse:
       type: object
@@ -2787,6 +2879,49 @@ components:
         silent_mode:
           type: boolean
           description: Беззвучний режим чату (**T71**).
+        sound_on_every_post:
+          type: boolean
+        landing_settings:
+          type: object
+          properties:
+            page_title:
+              type: string
+              nullable: true
+              maxLength: 120
+            tagline:
+              type: string
+              nullable: true
+              maxLength: 200
+            news_title:
+              type: string
+              maxLength: 200
+            news_body:
+              type: string
+              maxLength: 8000
+            links:
+              type: array
+              maxItems: 8
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                    maxLength: 100
+                  url:
+                    type: string
+                    maxLength: 500
+        registration_flags:
+          type: object
+          properties:
+            registration_open:
+              type: boolean
+            show_social_login_buttons:
+              type: boolean
+            min_age:
+              type: integer
+              nullable: true
+              minimum: 0
+              maximum: 120
 
     PatchChatMessageRequest:
       type: object

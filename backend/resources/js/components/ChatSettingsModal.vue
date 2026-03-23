@@ -157,6 +157,127 @@
                         <input v-model="form.silent_mode" type="checkbox" class="rp-focusable h-4 w-4 rounded border" />
                         Беззвучний режим чату
                     </label>
+                    <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
+                        <input
+                            v-model="form.sound_on_every_post"
+                            type="checkbox"
+                            class="rp-focusable h-4 w-4 rounded border"
+                        />
+                        Звук на кожен пост у кімнаті (legacy, T75)
+                    </label>
+                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                        Якщо ввімкнено — кімнатний newpost лунає навіть у фоновій вкладці (узгоджено з T65).
+                    </p>
+                </div>
+
+                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Вхідна сторінка (T75)</h3>
+                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                        Публічний зріз без авторизації: <span class="font-mono">GET /api/v1/landing</span>. Без HTML і
+                        секретів.
+                    </p>
+                    <div class="mt-3 grid gap-3">
+                        <div>
+                            <label class="rp-label" for="cs-lp-title">Заголовок сторінки (замість назви застосунку)</label>
+                            <input
+                                id="cs-lp-title"
+                                v-model.trim="form.landing_settings.page_title"
+                                type="text"
+                                maxlength="120"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xl"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div>
+                            <label class="rp-label" for="cs-lp-tag">Підзаголовок</label>
+                            <input
+                                id="cs-lp-tag"
+                                v-model.trim="form.landing_settings.tagline"
+                                type="text"
+                                maxlength="200"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xl"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div>
+                            <label class="rp-label" for="cs-lp-news-t">Новина — заголовок</label>
+                            <input
+                                id="cs-lp-news-t"
+                                v-model.trim="form.landing_settings.news_title"
+                                type="text"
+                                maxlength="200"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xl"
+                            />
+                        </div>
+                        <div>
+                            <label class="rp-label" for="cs-lp-news-b">Новина — текст</label>
+                            <textarea
+                                id="cs-lp-news-b"
+                                v-model.trim="form.landing_settings.news_body"
+                                rows="4"
+                                maxlength="8000"
+                                class="rp-input rp-focusable mt-1 w-full max-w-2xl font-sans text-sm"
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <p class="text-xs font-medium text-[var(--rp-text-muted)]">Посилання (до 8; тут 4 рядки)</p>
+                            <div
+                                v-for="(link, idx) in form.landing_settings.links.slice(0, 4)"
+                                :key="'lp-link-' + idx"
+                                class="grid gap-2 sm:grid-cols-2"
+                            >
+                                <input
+                                    v-model.trim="link.label"
+                                    type="text"
+                                    maxlength="100"
+                                    :aria-label="'Підпис посилання ' + (idx + 1)"
+                                    placeholder="Підпис"
+                                    class="rp-input rp-focusable w-full text-sm"
+                                />
+                                <input
+                                    v-model.trim="link.url"
+                                    type="text"
+                                    maxlength="500"
+                                    :aria-label="'URL посилання ' + (idx + 1)"
+                                    placeholder="https://… або /шлях"
+                                    class="rp-input rp-focusable w-full font-mono text-sm"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Реєстрація (прапорці, T75)</h3>
+                    <div class="mt-3 space-y-3">
+                        <label class="flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
+                            <input
+                                v-model="form.registration_flags.registration_open"
+                                type="checkbox"
+                                class="rp-focusable h-4 w-4 rounded border"
+                            />
+                            Дозволити реєстрацію нових облікових записів
+                        </label>
+                        <label class="flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
+                            <input
+                                v-model="form.registration_flags.show_social_login_buttons"
+                                type="checkbox"
+                                class="rp-focusable h-4 w-4 rounded border"
+                            />
+                            Показувати кнопки соц-логіну (коли з’явиться T76)
+                        </label>
+                        <div>
+                            <label class="rp-label" for="cs-reg-min-age">Мінімальний вік (необов’язково)</label>
+                            <input
+                                id="cs-reg-min-age"
+                                v-model.number="form.registration_flags.min_age"
+                                type="number"
+                                min="0"
+                                max="120"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex flex-wrap gap-2">
@@ -350,6 +471,24 @@ export default {
                 mod_slash_default_mute_minutes: 30,
                 mod_slash_default_kick_minutes: 60,
                 silent_mode: false,
+                sound_on_every_post: false,
+                landing_settings: {
+                    page_title: '',
+                    tagline: '',
+                    news_title: '',
+                    news_body: '',
+                    links: [
+                        { label: '', url: '' },
+                        { label: '', url: '' },
+                        { label: '', url: '' },
+                        { label: '', url: '' },
+                    ],
+                },
+                registration_flags: {
+                    registration_open: true,
+                    min_age: null,
+                    show_social_login_buttons: false,
+                },
             },
             emoticonList: [],
             emoticonLoading: false,
@@ -432,6 +571,30 @@ export default {
                             ? Number(d.mod_slash_default_kick_minutes)
                             : 60,
                     silent_mode: Boolean(d.silent_mode),
+                    sound_on_every_post: Boolean(d.sound_on_every_post),
+                };
+                const ls = d.landing_settings && typeof d.landing_settings === 'object' ? d.landing_settings : {};
+                const rawLinks = Array.isArray(ls.links) ? ls.links : [];
+                const links = rawLinks.map((l) => ({
+                    label: l && l.label != null ? String(l.label) : '',
+                    url: l && l.url != null ? String(l.url) : '',
+                }));
+                while (links.length < 4) {
+                    links.push({ label: '', url: '' });
+                }
+                this.form.landing_settings = {
+                    page_title: ls.page_title != null ? String(ls.page_title) : '',
+                    tagline: ls.tagline != null ? String(ls.tagline) : '',
+                    news_title: ls.news_title != null ? String(ls.news_title) : '',
+                    news_body: ls.news_body != null ? String(ls.news_body) : '',
+                    links: links.slice(0, 8),
+                };
+                const rf = d.registration_flags && typeof d.registration_flags === 'object' ? d.registration_flags : {};
+                const minA = rf.min_age;
+                this.form.registration_flags = {
+                    registration_open: rf.registration_open !== false,
+                    min_age: minA === null || minA === undefined || minA === '' ? null : Number(minA),
+                    show_social_login_buttons: Boolean(rf.show_social_login_buttons),
                 };
             } catch {
                 this.loadError = 'Не вдалося завантажити налаштування.';
@@ -452,6 +615,29 @@ export default {
                     mod_slash_default_mute_minutes: this.form.mod_slash_default_mute_minutes,
                     mod_slash_default_kick_minutes: this.form.mod_slash_default_kick_minutes,
                     silent_mode: Boolean(this.form.silent_mode),
+                    sound_on_every_post: Boolean(this.form.sound_on_every_post),
+                    landing_settings: {
+                        page_title: (this.form.landing_settings.page_title || '').trim() || null,
+                        tagline: (this.form.landing_settings.tagline || '').trim() || null,
+                        news_title: (this.form.landing_settings.news_title || '').trim(),
+                        news_body: (this.form.landing_settings.news_body || '').trim(),
+                        links: (this.form.landing_settings.links || [])
+                            .map((l) => ({
+                                label: (l.label || '').trim(),
+                                url: (l.url || '').trim(),
+                            }))
+                            .filter((l) => l.label || l.url),
+                    },
+                    registration_flags: {
+                        registration_open: Boolean(this.form.registration_flags.registration_open),
+                        show_social_login_buttons: Boolean(this.form.registration_flags.show_social_login_buttons),
+                        min_age:
+                            this.form.registration_flags.min_age === '' ||
+                            this.form.registration_flags.min_age === null ||
+                            Number.isNaN(Number(this.form.registration_flags.min_age))
+                                ? null
+                                : Number(this.form.registration_flags.min_age),
+                    },
                 };
                 if (this.form.public_message_count_scope === 'default_room_only') {
                     body.message_count_room_id = this.form.message_count_room_id;

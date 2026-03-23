@@ -48,4 +48,15 @@ return [
 
     'slash_mod_default_kick_minutes' => (int) env('CHAT_SLASH_MOD_DEFAULT_KICK_MINUTES', 60),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Лічильник «онлайн» на вітальні (T75 / T77)
+    |--------------------------------------------------------------------------
+    |
+    | Рахуємо різні user_id у таблиці sessions з останньою активністю не старішою
+    | за це вікно (лише при SESSION_DRIVER=database).
+    |
+    */
+    'landing_online_recent_session_seconds' => (int) env('CHAT_LANDING_ONLINE_SESSION_SECONDS', 300),
+
 ];

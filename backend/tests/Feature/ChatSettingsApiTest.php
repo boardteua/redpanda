@@ -42,7 +42,10 @@ class ChatSettingsApiTest extends TestCase
             ->assertJsonPath('data.slash_command_max_per_window', 45)
             ->assertJsonPath('data.slash_command_window_seconds', 60)
             ->assertJsonPath('data.mod_slash_default_mute_minutes', 30)
-            ->assertJsonPath('data.mod_slash_default_kick_minutes', 60);
+            ->assertJsonPath('data.mod_slash_default_kick_minutes', 60)
+            ->assertJsonPath('data.sound_on_every_post', false)
+            ->assertJsonPath('data.landing_settings.links', [])
+            ->assertJsonPath('data.registration_flags.registration_open', true);
     }
 
     public function test_non_admin_patch_returns_403(): void

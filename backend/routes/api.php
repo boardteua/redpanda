@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\ChatMessageController;
 use App\Http\Controllers\Api\V1\ChatSettingsController;
 use App\Http\Controllers\Api\V1\FriendController;
 use App\Http\Controllers\Api\V1\IgnoreController;
+use App\Http\Controllers\Api\V1\LandingController;
 use App\Http\Controllers\Api\V1\MeAccountController;
 use App\Http\Controllers\Api\V1\MeProfileController;
 use App\Http\Controllers\Api\V1\Mod\ChatEmoticonAdminController;
@@ -29,6 +30,8 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
     Route::middleware('throttle:auth-register')->post('auth/register', [AuthController::class, 'register']);
     Route::middleware('throttle:auth-login')->post('auth/login', [AuthController::class, 'login']);
     Route::middleware('throttle:auth-guest')->post('auth/guest', [AuthController::class, 'guest']);
+
+    Route::middleware('throttle:landing-read')->get('landing', [LandingController::class, 'show']);
 
     Route::middleware(['auth:sanctum', RejectDisabledAccount::class])->group(function (): void {
         Route::get('auth/user', [AuthController::class, 'user']);
