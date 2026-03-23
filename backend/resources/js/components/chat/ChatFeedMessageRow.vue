@@ -117,7 +117,7 @@
             <figure v-if="!isDeleted && message.image && message.image.url" class="mt-1.5">
                 <button
                     type="button"
-                    class="rp-focusable group max-w-full rounded-md border-0 bg-transparent p-0 text-left"
+                    class="rp-focusable group max-w-full cursor-pointer rounded-md border-0 bg-transparent p-0 text-left"
                     aria-label="Збільшити вкладене зображення"
                     @click="onAttachmentLightbox($event)"
                 >

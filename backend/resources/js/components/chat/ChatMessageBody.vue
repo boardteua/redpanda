@@ -61,7 +61,7 @@
             >
                 <button
                     type="button"
-                    class="rp-focusable group max-w-full rounded-md border-0 bg-transparent p-0 text-left"
+                    class="rp-focusable group max-w-full cursor-pointer rounded-md border-0 bg-transparent p-0 text-left"
                     :aria-label="imageLightboxTriggerLabel(seg)"
                     @click="onImageLightboxOpen(seg, $event)"
                 >
