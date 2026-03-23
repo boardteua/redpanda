@@ -23,6 +23,12 @@
 
 Публічний API `ChatRoomComposer` (props, події, методи через `ref`) **не змінювався**.
 
+## Продовження (контейнери → вкладки → модалки)
+
+- `ChatRoomMainColumn.vue` — колонка стрічки: шапка, банери стану, `<main>` + слот для списку повідомлень і композера. У `ChatRoom.vue` лишаються затемнення та обгортка `rp-chat-external-wrap` разом із сайдбаром (flex-паритет як раніше).
+- `ChatSidebarTabBars.vue` — мобільний і десктопний рядки вкладок сайдбару; refs `panelCloseBtnMobile` / `panelCloseBtnDesktop` для фокусу з `ChatRoom` через `chatRoomSidebar.$refs.sidebarTabBars`.
+- `ChatRoomModals.vue` — усі модалки екрану чату (довідка, профіль, налаштування, підтвердження, кімнати); події проброшені на батьківський `ChatRoom`.
+
 ## Наступні кроки (поза цим PR, за потреби)
 
 1. `ChatRoom.vue`: винести групи модалок і логіку «стан кімнати» у підкомпоненти або composables utils (лише якщо зберігається Options API і ті самі dispatch/commit).

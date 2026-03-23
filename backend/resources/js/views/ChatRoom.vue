@@ -2,7 +2,6 @@
     <div
         class="flex min-h-screen flex-col bg-[var(--rp-bg)] md:h-[100dvh] md:max-h-screen md:flex-row md:overflow-hidden md:p-0"
     >
-        <!-- Затемнення (лише мобільний off-canvas) -->
         <button
             v-if="panelOpen && isNarrowViewport"
             type="button"
@@ -14,195 +13,138 @@
         <div
             class="rp-chat-external-wrap min-h-0 min-w-0 max-md:flex max-md:flex-1 max-md:flex-col md:min-h-0 md:flex-1"
         >
-            <div
-                class="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--rp-chat-app-bg)] px-3 py-2 md:px-0 md:py-2 md:min-h-0 md:overflow-hidden"
-            >
-            <ChatRoomHeader
-                ref="chatRoomHeader"
+            <ChatRoomMainColumn
+                ref="chatMainColumn"
+                :panel-open="panelOpen"
                 :chat-breadcrumb="chatBreadcrumb"
                 :chat-topic-line="chatTopicLine"
-                :panel-open="panelOpen"
                 :ws-degraded="wsDegraded"
+                :logout-error="logoutError"
+                :load-error="loadError"
+                :rooms-empty="!loadingRooms && rooms.length === 0"
                 @toggle-panel="togglePanel"
+            >
+                <h2 class="rp-sr-only">Повідомлення</h2>
+                <ChatFeedMessageList
+                    ref="chatFeed"
+                    :messages="messages"
+                    :loading-messages="loadingMessages"
+                    :viewer-name="user && user.user_name ? user.user_name : ''"
+                    :divider-before-post-id="newMsgDividerBeforePostId"
+                    :divider-dismissed="newMsgDividerDismissed"
+                    :bottom-dismiss-suppress-until="roomReadSuppressBottomUntil"
+                    :sync-key="feedSyncKey"
+                    @inline-private="insertFeedInlinePrivatePrefix"
+                    @mention="insertFeedReplyPrefix"
+                    @edit="startEditMessageFromFeed"
+                    @delete="openDeleteMessageConfirm"
+                    @feed-bottom-visible="onFeedBottomVisible"
+                />
+
+                <ChatRoomComposer
+                    ref="chatComposer"
+                    :selected-room-id="selectedRoomId"
+                    :sending="sending"
+                    :logging-out="loggingOut"
+                    :is-guest="Boolean(user && user.guest)"
+                    :chat-upload-disabled="Boolean(user && !user.guest && user.chat_upload_disabled)"
+                    :message-max-length="composerMessageMaxLength"
+                    :ensure-sanctum="ensureSanctum"
+                    @submit-message="sendMessage"
+                    @cycle-edit="onComposerCycleEdit"
+                    @logout="logout"
+                />
+            </ChatRoomMainColumn>
+
+            <ChatRoomSidebar
+                ref="chatRoomSidebar"
+                :panel-open="panelOpen"
+                :is-narrow-viewport="isNarrowViewport"
+                :sidebar-tabs="sidebarTabs"
+                :sidebar-tab="sidebarTab"
+                :private-list-load-error="privateListLoadError"
+                :friends-ignores-load-error="friendsIgnoresLoadError"
+                :user="user"
+                :badge-menu="badgeMenu"
+                :is-badge-menu-open="sidebarBadgeMenuOpen"
+                :room-presence-peers="roomPresencePeers"
+                :peer-presence-status-by-user-id="peerPresenceStatusByUserId"
+                :peer-sex-hints-by-user-id="peerSexHintsByUserId"
+                :viewer-presence-status="viewerPresenceStatus"
+                :ws-degraded="wsDegraded"
+                :peer-lookup-name.sync="peerLookupName"
+                :friends-sub-tab.sync="friendsSubTab"
+                :friends-accepted="friendsAccepted"
+                :friends-accepted-with-menu-peer="friendsAcceptedWithMenuPeer"
+                :friends-incoming="friendsIncoming"
+                :friends-incoming-with-menu-peer="friendsIncomingWithMenuPeer"
+                :friends-outgoing="friendsOutgoing"
+                :friends-outgoing-with-menu-peer="friendsOutgoingWithMenuPeer"
+                :conversations="conversations"
+                :private-conversation-rows="privateConversationRows"
+                :private-unread-total="totalPrivateUnread"
+                :rooms="rooms"
+                :loading-rooms="loadingRooms"
+                :selected-room-id="selectedRoomId"
+                :ignores="ignores"
+                :ignores-with-menu-peer="ignoresWithMenuPeer"
+                @close="closePanel"
+                @select-tab="selectSidebarTab"
+                @open-self-badge-menu="openSelfBadgeMenu"
+                @open-peer-badge-menu="openPeerBadgeMenu"
+                @sidebar-badge-pick="onSidebarBadgeMenuPick"
+                @sidebar-badge-close="closeSidebarBadgeMenu"
+                @lookup-private="lookupAndOpenPrivate"
+                @open-private-peer="openPrivatePeer"
+                @select-room="selectRoom"
+                @open-add-room="openAddRoomModal"
+                @edit-room="openRoomEditor"
+                @accept-friend="acceptFriend"
+                @reject-friend="rejectFriend"
+                @remove-ignore="removeIgnore"
             />
-
-            <p
-                v-if="logoutError"
-                class="mb-2 text-sm text-[var(--rp-error)]"
-                role="alert"
-                aria-live="polite"
-            >
-                {{ logoutError }}
-            </p>
-
-            <main
-                id="main-content"
-                class="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden pt-0"
-                tabindex="-1"
-            >
-                <div v-if="loadError" class="rp-banner shrink-0" role="alert">
-                    {{ loadError }}
-                </div>
-                <div
-                    v-else-if="!loadingRooms && rooms.length === 0"
-                    class="rp-banner shrink-0"
-                    role="status"
-                >
-                    Немає доступних кімнат. Зверніться до адміністратора.
-                </div>
-
-                <div
-                    v-else
-                    class="flex min-h-0 flex-1 flex-col overflow-hidden border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-feed-bg)] md:border-0 md:shadow-none"
-                >
-                    <h2 class="rp-sr-only">Повідомлення</h2>
-                    <ChatFeedMessageList
-                        ref="chatFeed"
-                        :messages="messages"
-                        :loading-messages="loadingMessages"
-                        :viewer-name="user && user.user_name ? user.user_name : ''"
-                        :divider-before-post-id="newMsgDividerBeforePostId"
-                        :divider-dismissed="newMsgDividerDismissed"
-                        :bottom-dismiss-suppress-until="roomReadSuppressBottomUntil"
-                        :sync-key="feedSyncKey"
-                        @inline-private="insertFeedInlinePrivatePrefix"
-                        @mention="insertFeedReplyPrefix"
-                        @edit="startEditMessageFromFeed"
-                        @delete="openDeleteMessageConfirm"
-                        @feed-bottom-visible="onFeedBottomVisible"
-                    />
-
-                    <ChatRoomComposer
-                        ref="chatComposer"
-                        :selected-room-id="selectedRoomId"
-                        :sending="sending"
-                        :logging-out="loggingOut"
-                        :is-guest="Boolean(user && user.guest)"
-                        :chat-upload-disabled="Boolean(user && !user.guest && user.chat_upload_disabled)"
-                        :message-max-length="composerMessageMaxLength"
-                        :ensure-sanctum="ensureSanctum"
-                        @submit-message="sendMessage"
-                        @cycle-edit="onComposerCycleEdit"
-                        @logout="logout"
-                    />
-                </div>
-            </main>
         </div>
 
-        <ChatRoomSidebar
-            ref="chatRoomSidebar"
-            :panel-open="panelOpen"
-            :is-narrow-viewport="isNarrowViewport"
-            :sidebar-tabs="sidebarTabs"
-            :sidebar-tab="sidebarTab"
-            :private-list-load-error="privateListLoadError"
-            :friends-ignores-load-error="friendsIgnoresLoadError"
+        <ChatRoomModals
+            :commands-help-open="commandsHelpOpen"
+            :user-info-modal-open="userInfoModalOpen"
+            :user-info-modal-mode="userInfoModalMode"
+            :user-info-modal-target="userInfoModalTarget"
             :user="user"
-            :badge-menu="badgeMenu"
-            :is-badge-menu-open="sidebarBadgeMenuOpen"
-            :room-presence-peers="roomPresencePeers"
-            :peer-presence-status-by-user-id="peerPresenceStatusByUserId"
-            :peer-sex-hints-by-user-id="peerSexHintsByUserId"
-            :viewer-presence-status="viewerPresenceStatus"
-            :ws-degraded="wsDegraded"
-            :peer-lookup-name.sync="peerLookupName"
-            :friends-sub-tab.sync="friendsSubTab"
-            :friends-accepted="friendsAccepted"
-            :friends-accepted-with-menu-peer="friendsAcceptedWithMenuPeer"
-            :friends-incoming="friendsIncoming"
-            :friends-incoming-with-menu-peer="friendsIncomingWithMenuPeer"
-            :friends-outgoing="friendsOutgoing"
-            :friends-outgoing-with-menu-peer="friendsOutgoingWithMenuPeer"
-            :conversations="conversations"
-            :private-conversation-rows="privateConversationRows"
-            :private-unread-total="totalPrivateUnread"
-            :rooms="rooms"
-            :loading-rooms="loadingRooms"
-            :selected-room-id="selectedRoomId"
-            :ignores="ignores"
-            :ignores-with-menu-peer="ignoresWithMenuPeer"
-            @close="closePanel"
-            @select-tab="selectSidebarTab"
-            @open-self-badge-menu="openSelfBadgeMenu"
-            @open-peer-badge-menu="openPeerBadgeMenu"
-            @sidebar-badge-pick="onSidebarBadgeMenuPick"
-            @sidebar-badge-close="closeSidebarBadgeMenu"
-            @lookup-private="lookupAndOpenPrivate"
-            @open-private-peer="openPrivatePeer"
-            @select-room="selectRoom"
-            @open-add-room="openAddRoomModal"
-            @edit-room="openRoomEditor"
-            @accept-friend="acceptFriend"
-            @reject-friend="rejectFriend"
-            @remove-ignore="removeIgnore"
-        />
-
-        </div>
-
-        <CommandsHelpModal :open="commandsHelpOpen" @close="commandsHelpOpen = false" />
-        <UserInfoModal
-            :open="userInfoModalOpen"
-            :mode="userInfoModalMode"
-            :viewer="user"
-            :target="userInfoModalTarget"
             :theme-label="themeLabel"
-            @close="closeUserInfoModal"
-            @cycle-theme="cycleTheme"
-        />
-        <ChatSettingsModal
-            :open="chatSettingsModalOpen"
+            :chat-settings-modal-open="chatSettingsModalOpen"
             :rooms="rooms"
             :ensure-sanctum="ensureSanctum"
-            @close="chatSettingsModalOpen = false"
-            @saved="loadChatSettings"
-        />
-        <UserProfileModal
-            :open="profileModalOpen"
-            :user="user"
-            :theme-label="themeLabel"
-            @close="profileModalOpen = false"
-            @updated="onProfileModalUpdated"
-            @cycle-theme="cycleTheme"
-        />
-        <ConfirmDialogModal
-            :open="deleteConfirmOpen"
-            title="Видалити повідомлення?"
-            body="Рядок зникне зі стрічки для всіх у кімнаті. Відновити вміст буде неможливо."
-            confirm-label="Видалити"
-            cancel-label="Скасувати"
-            @close="closeDeleteMessageConfirm"
-            @confirm="confirmDeleteMessage"
-        />
-        <AddRoomModal
-            :open="addRoomModalOpen"
-            :user="user"
+            :profile-modal-open="profileModalOpen"
+            :delete-message-confirm-open="deleteConfirmOpen"
+            :add-room-modal-open="addRoomModalOpen"
             :can-create-room="canCreateRoom"
             :chat-settings="chatSettings"
             :creating-room="creatingRoom"
-            :form-error="addRoomError"
-            @close="addRoomModalOpen = false"
-            @create-room="onAddRoomModalCreate"
-        />
-        <RoomEditModal
-            :open="roomEditModalOpen && !!roomBeingEdited"
-            :room="roomBeingEdited"
-            :user="user"
-            :saving-room="roomEditSaving"
-            :deleting-room="roomEditDeleting"
-            :form-error="editRoomError"
-            @close="closeRoomEditModal"
-            @save-room="onRoomEditModalSave"
-            @request-delete-room="onRoomEditRequestDelete"
-        />
-        <ConfirmDialogModal
-            :open="deleteRoomConfirmOpen"
-            :z-index="95"
-            title="Видалити кімнату?"
-            body="Кімната зникне зі списку. Це можливо лише якщо в ній ще немає повідомлень."
-            confirm-label="Видалити"
-            cancel-label="Скасувати"
-            @close="closeDeleteRoomConfirm"
-            @confirm="confirmDeleteRoom"
+            :add-room-error="addRoomError"
+            :room-edit-modal-open="roomEditModalOpen"
+            :room-being-edited="roomBeingEdited"
+            :room-edit-saving="roomEditSaving"
+            :room-edit-deleting="roomEditDeleting"
+            :edit-room-error="editRoomError"
+            :delete-room-confirm-open="deleteRoomConfirmOpen"
+            @commands-help-close="commandsHelpOpen = false"
+            @user-info-close="closeUserInfoModal"
+            @user-info-cycle-theme="cycleTheme"
+            @chat-settings-close="chatSettingsModalOpen = false"
+            @chat-settings-saved="loadChatSettings"
+            @profile-close="profileModalOpen = false"
+            @profile-updated="onProfileModalUpdated"
+            @profile-cycle-theme="cycleTheme"
+            @delete-message-close="closeDeleteMessageConfirm"
+            @delete-message-confirm="confirmDeleteMessage"
+            @add-room-close="addRoomModalOpen = false"
+            @add-room-create="onAddRoomModalCreate"
+            @room-edit-close="closeRoomEditModal"
+            @room-edit-save="onRoomEditModalSave"
+            @room-edit-request-delete="onRoomEditRequestDelete"
+            @delete-room-close="closeDeleteRoomConfirm"
+            @delete-room-confirm="confirmDeleteRoom"
         />
 
         <PrivateChatPanel
@@ -225,16 +167,10 @@
 <script>
 import ChatFeedMessageList from '../components/chat/ChatFeedMessageList.vue';
 import ChatRoomComposer from '../components/chat/ChatRoomComposer.vue';
-import ChatRoomHeader from '../components/chat/ChatRoomHeader.vue';
+import ChatRoomMainColumn from '../components/chat/ChatRoomMainColumn.vue';
+import ChatRoomModals from '../components/chat/ChatRoomModals.vue';
 import ChatRoomSidebar from '../components/chat/ChatRoomSidebar.vue';
-import ConfirmDialogModal from '../components/ConfirmDialogModal.vue';
-import CommandsHelpModal from '../components/CommandsHelpModal.vue';
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
-import ChatSettingsModal from '../components/ChatSettingsModal.vue';
-import UserProfileModal from '../components/UserProfileModal.vue';
-import UserInfoModal from '../components/UserInfoModal.vue';
-import AddRoomModal from '../components/chat/AddRoomModal.vue';
-import RoomEditModal from '../components/chat/RoomEditModal.vue';
 import { createEcho } from '../lib/echo';
 import {
     ensureAuth0BootstrapFromLandingApi,
@@ -415,16 +351,10 @@ export default {
     components: {
         ChatFeedMessageList,
         ChatRoomComposer,
-        ChatRoomHeader,
+        ChatRoomMainColumn,
+        ChatRoomModals,
         ChatRoomSidebar,
-        ConfirmDialogModal,
-        CommandsHelpModal,
         PrivateChatPanel,
-        ChatSettingsModal,
-        UserProfileModal,
-        UserInfoModal,
-        AddRoomModal,
-        RoomEditModal,
     },
     data() {
         return {
@@ -826,10 +756,11 @@ export default {
         focusPanelCloseButton() {
             this.$nextTick(() => {
                 const side = this.$refs.chatRoomSidebar;
+                const tabs = side && side.$refs.sidebarTabBars;
                 const btn =
-                    (this.isNarrowViewport && side && side.$refs.panelCloseBtnMobile) ||
-                    (side && side.$refs.panelCloseBtnDesktop) ||
-                    (side && side.$refs.panelCloseBtnMobile);
+                    (this.isNarrowViewport && tabs && tabs.$refs.panelCloseBtnMobile) ||
+                    (tabs && tabs.$refs.panelCloseBtnDesktop) ||
+                    (tabs && tabs.$refs.panelCloseBtnMobile);
                 if (btn && typeof btn.focus === 'function') {
                     btn.focus();
                 }
@@ -839,7 +770,8 @@ export default {
         beginOpeningPanel() {
             if (!this.panelOpen) {
                 const el = document.activeElement;
-                const header = this.$refs.chatRoomHeader;
+                const mainCol = this.$refs.chatMainColumn;
+                const header = mainCol && mainCol.$refs.chatRoomHeader;
                 const mobile = header && header.$refs.mobilePanelToggle;
                 const desktop = header && header.$refs.desktopPanelToggle;
                 const isToggle =
@@ -2583,7 +2515,8 @@ export default {
             this.$router.replace({ path: '/chat', query: { room: String(roomId) } }).catch(() => {});
             await this.applyRoomSelection();
             if (this.isNarrowViewport && this.panelOpen) {
-                const header = this.$refs.chatRoomHeader;
+                const mainCol = this.$refs.chatMainColumn;
+                const header = mainCol && mainCol.$refs.chatRoomHeader;
                 const mobileToggle = header && header.$refs.mobilePanelToggle;
                 const main =
                     this.$el && typeof this.$el.querySelector === 'function'
