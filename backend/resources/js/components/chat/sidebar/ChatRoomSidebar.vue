@@ -109,7 +109,8 @@
                     <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-chat-sidebar-muted)]">
                         Онлайн
                     </p>
-                    <ul v-if="user" class="space-y-2">
+                    <!-- На md+ один ряд «я» під заголовком; на мобільному той самий ряд уже зверху (жовта плашка), інакше дубль. -->
+                    <ul v-if="user" class="hidden space-y-2 md:block">
                         <li
                             class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
                             :class="presenceRowClass(viewerPresenceStatus)"
@@ -685,19 +686,6 @@
                             />
                         </li>
                     </ul>
-                </div>
-            </div>
-
-            <div
-                class="shrink-0 border-t border-white/10 px-4 py-4 md:hidden"
-                style="background: var(--rp-burger-bg)"
-            >
-                <div
-                    class="mx-auto max-w-[16rem] rounded-lg px-4 py-3 text-center shadow-md"
-                    style="background: var(--rp-burger-footer-card-bg); color: var(--rp-burger-footer-card-fg)"
-                >
-                    <p class="font-serif text-lg font-semibold tracking-tight">redpanda</p>
-                    <p class="mt-1 text-xs" style="color: var(--rp-burger-footer-muted)">Чат нового покоління</p>
                 </div>
             </div>
         </aside>

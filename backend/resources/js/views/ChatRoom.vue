@@ -671,6 +671,11 @@ export default {
     },
     created() {
         this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
+        if (typeof window !== 'undefined' && window.matchMedia) {
+            const mq = window.matchMedia('(max-width: 767px)');
+            this.isNarrowViewport = mq.matches;
+            this.panelOpen = !mq.matches;
+        }
     },
     async mounted() {
         document.documentElement.setAttribute('data-theme', this.themeUi);
@@ -757,8 +762,8 @@ export default {
             }
             const mq = window.matchMedia('(max-width: 767px)');
             this.isNarrowViewport = mq.matches;
-            /* T45: панель сайдбару відкрита за замовчуванням і на вузькому viewport (разом із T41 «Люди»). */
-            this.panelOpen = true;
+            /* На max-md панель off-canvas за замовчуванням закрита; на md+ лишається видимою колонкою. */
+            this.panelOpen = !mq.matches;
             this.mqHandler = () => {
                 this.isNarrowViewport = mq.matches;
                 if (!mq.matches) {

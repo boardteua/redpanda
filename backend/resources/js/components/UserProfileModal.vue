@@ -12,18 +12,7 @@
         <template #header>
             <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-4 py-3">
                 <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">Профіль</h2>
-                <button
-                    type="button"
-                    class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--rp-text-muted)] hover:bg-[var(--rp-surface-elevated)]"
-                    aria-label="Закрити"
-                    @click="close"
-                >
-                    <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                        />
-                    </svg>
-                </button>
+                <RpCloseButton @click="close" />
             </div>
         </template>
 

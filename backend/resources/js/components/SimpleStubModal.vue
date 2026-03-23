@@ -3,9 +3,9 @@
         <p class="mt-2 text-sm text-[var(--rp-text-muted)]">
             {{ body }}
         </p>
-        <RpButton class="mt-4 w-full" @click="close">
-            Закрити
-        </RpButton>
+        <div class="mt-4 flex justify-end">
+            <RpCloseButton @click="close" />
+        </div>
     </RpModal>
 </template>
 

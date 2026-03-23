@@ -11,18 +11,7 @@
                 <UserAvatar variant="private" :name="peer.user_name" decorative />
                 <span class="truncate font-semibold text-[var(--rp-text)]">{{ peer.user_name }}</span>
             </span>
-            <button
-                type="button"
-                class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--rp-text-muted)] hover:bg-[var(--rp-surface-elevated)]"
-                aria-label="Закрити приват"
-                @click="$emit('close')"
-            >
-                <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                    />
-                </svg>
-            </button>
+            <RpCloseButton aria-label="Закрити приват" @click="$emit('close')" />
         </div>
         <p v-if="error" class="shrink-0 px-3 py-1 text-xs text-[var(--rp-error)]" role="alert">
             {{ error }}

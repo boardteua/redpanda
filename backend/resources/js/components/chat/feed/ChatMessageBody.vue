@@ -7,7 +7,7 @@
                 :key="'emo-' + i"
                 :src="seg.src"
                 :alt="':' + seg.code + ':'"
-                class="mx-0.5 inline-block h-7 w-7 max-h-7 max-w-7 align-text-bottom object-contain [vertical-align:-0.15em]"
+                class="align-text-bottom object-contain [vertical-align:-0.15em]"
                 loading="lazy"
                 decoding="async"
                 referrerpolicy="no-referrer"

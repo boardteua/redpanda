@@ -4,19 +4,12 @@
         <div
             class="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-2 py-3 md:hidden"
         >
-            <button
+            <RpCloseButton
                 ref="panelCloseBtnMobile"
-                type="button"
-                class="rp-focusable flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-white hover:bg-white/10"
+                variant="sidebar-mobile"
                 aria-label="Закрити панель"
                 @click="$emit('close')"
-            >
-                <svg class="h-9 w-9" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                    />
-                </svg>
-            </button>
+            />
             <div
                 class="flex min-w-0 flex-1 justify-end gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 role="tablist"
@@ -89,19 +82,12 @@
                     >{{ privateUnreadBadgeText }}</span>
                 </button>
             </div>
-            <button
+            <RpCloseButton
                 ref="panelCloseBtnDesktop"
-                type="button"
-                class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--rp-chat-sidebar-icon)] hover:bg-[var(--rp-chat-sidebar-tab-active-bg)] hover:text-[var(--rp-chat-sidebar-fg)]"
+                variant="sidebar-desktop"
                 aria-label="Закрити панель"
                 @click="$emit('close')"
-            >
-                <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                    />
-                </svg>
-            </button>
+            />
         </div>
     </div>
 </template>

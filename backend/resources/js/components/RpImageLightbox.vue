@@ -18,19 +18,11 @@
                 @click.stop
             >
                 <div class="flex shrink-0 justify-end border-b border-[var(--rp-border-subtle)] p-2">
-                    <button
-                        type="button"
-                        class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--rp-text-muted)] hover:bg-[var(--rp-surface-elevated)] hover:text-[var(--rp-text)]"
-                        aria-label="Закрити"
+                    <RpCloseButton
+                        variant="lightbox"
                         data-rp-initial-focus
                         @click="close"
-                    >
-                        <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                            <path
-                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                            />
-                        </svg>
-                    </button>
+                    />
                 </div>
                 <div class="min-h-0 flex-1 overflow-auto p-2">
                     <img

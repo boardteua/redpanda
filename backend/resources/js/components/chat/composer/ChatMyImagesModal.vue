@@ -11,13 +11,11 @@
         @close="close"
     >
         <template #header>
-            <div class="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--rp-border-subtle)] p-4">
+            <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] p-4">
                 <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">
                     Останні додані картинки
                 </h2>
-                <RpButton variant="ghost" class="text-sm" @click="close">
-                    Закрити
-                </RpButton>
+                <RpCloseButton @click="close" />
             </div>
         </template>
         <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
