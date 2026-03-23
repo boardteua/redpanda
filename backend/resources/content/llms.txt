@@ -1,0 +1,30 @@
+# Redpanda Chat v2
+
+> Короткий машинно-читаний огляд HTTP API та публічних точок входу. Замінник токена `__APP_URL__` підставляє сервер під час відповіді. Оновлюйте цей файл разом із змінами контракту (`docs/chat-v2/openapi.yaml`).
+
+## Docs
+
+- [OpenAPI 3 — redpanda Chat v2 API](__APP_URL__/docs/openapi.yaml): канонічний опис REST (копія з `docs/chat-v2/openapi.yaml` у монорепо). **Без виконання JS.** Якщо отримуєте **404**, розгортання може не включати батьківський каталог репозиторію — використовуйте клон Git.
+- [Специфікація проєкту (індекс)](__APP_URL__/docs/project-specs/chat-v2-setup.md): стек, посилання на вимоги та QA-артефакти.
+- [Документ для інтеграторів і LLM](__APP_URL__/docs/chat-v2/AI-AGENT-FRIENDLY.md): сценарії логін / гість / чат, обмеження та політика без PII.
+
+## Public HTTP (без автентифікації)
+
+- `GET __APP_URL__/llms.txt` — цей файл (`text/markdown; charset=utf-8`).
+- `GET __APP_URL__/up` — liveness (Laravel).
+- `GET __APP_URL__/health/ready` — readiness (JSON, перевірка БД).
+- `GET __APP_URL__/api/v1/landing` — публічні поля вітальні (throttle `landing-read`), **без** секретів і PII.
+
+## Auth (браузерний SPA-клієнт)
+
+- Реєстрація, логін, гість: префікс `POST __APP_URL__/api/v1/auth/*` (деталі та CSRF — у OpenAPI `info.description` та `AI-AGENT-FRIENDLY.md`).
+- Sanctum SPA: `GET __APP_URL__/sanctum/csrf-cookie`, далі cookie-сесія + заголовок `X-XSRF-TOKEN` на змінюючі запити.
+
+## Examples
+
+- Після отримання сесії: `GET __APP_URL__/api/v1/rooms`, `GET __APP_URL__/api/v1/rooms/{id}/messages` (див. OpenAPI).
+- Опис каналів WebSocket (Reverb / Echo) — у OpenAPI `info.description`; **підписка потребує** валідної сесії та `POST __APP_URL__/broadcasting/auth`.
+
+## Optional
+
+- Клон репозиторію: повний текст OpenAPI та `docs/board-te-ua/*`, `project-specs/chat-v2-setup.md` доступні **локально**; не вимагайте від користувачів розкриття токенів або staff-ендпоінтів у публічних відповідях.
