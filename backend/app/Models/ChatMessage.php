@@ -86,6 +86,10 @@ class ChatMessage extends Model
             ->where(function ($outer) use ($userId) {
                 $outer->where('type', 'public')
                     ->orWhere(function ($q) use ($userId) {
+                        $q->where('type', 'client_only')
+                            ->where('user_id', $userId);
+                    })
+                    ->orWhere(function ($q) use ($userId) {
                         $q->where('type', 'inline_private')
                             ->where(function ($inner) use ($userId) {
                                 $inner->where('user_id', $userId)

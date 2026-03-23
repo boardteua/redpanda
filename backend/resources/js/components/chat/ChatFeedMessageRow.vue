@@ -51,12 +51,14 @@
                     >
                         Повідомлення видалено
                     </span>
+                    <span
+                        v-else-if="isClientOnly && message.post_message"
+                        class="block max-w-full whitespace-pre-wrap break-words font-mono text-[0.875rem] text-[var(--rp-text-muted)]"
+                    >
+                        <span class="select-none" aria-hidden="true">&gt; </span>{{ message.post_message }}
+                    </span>
                     <ChatMessageBody
-                        v-else-if="
-                            message.post_message
-                                && !postHasBlockMedia
-                                && message.type !== 'slash_client_only'
-                        "
+                        v-else-if="message.post_message && !postHasBlockMedia"
                         :class="messageBodyRootClass"
                         :body-class="bodyClassList"
                         :text="message.post_message"
@@ -105,20 +107,8 @@
                     </time>
                 </div>
             </div>
-            <div
-                v-if="!isDeleted && message.type === 'slash_client_only' && message.post_message"
-                class="mt-0.5 w-full max-w-full font-mono text-[0.8125rem] leading-relaxed text-[var(--rp-text-muted)] whitespace-pre-wrap break-words"
-                role="status"
-            >
-                {{ message.post_message }}
-            </div>
             <ChatMessageBody
-                v-if="
-                    !isDeleted
-                        && message.post_message
-                        && postHasBlockMedia
-                        && message.type !== 'slash_client_only'
-                "
+                v-if="!isDeleted && !isClientOnly && message.post_message && postHasBlockMedia"
                 :class="messageBodyRootClassBlockMedia"
                 :body-class="bodyClassList"
                 :text="message.post_message"
@@ -171,9 +161,12 @@ export default {
             return [
                 even ? 'bg-[var(--rp-chat-row-even)]' : 'bg-[var(--rp-chat-row-odd)]',
                 m.type === 'inline_private' ? 'rp-chat-feed-row--inline-private' : '',
-                m.type === 'slash_client_only' ? 'rp-chat-feed-row--slash-client-only' : '',
+                m.type === 'client_only' ? 'rp-chat-feed-row--client-only' : '',
                 this.isDeleted ? 'opacity-90' : '',
             ];
+        },
+        isClientOnly() {
+            return this.message && this.message.type === 'client_only';
         },
         nickStyle() {
             return nickColorStyleForPost(this.message);
@@ -182,6 +175,9 @@ export default {
             return chatMessageBodyClassList(this.message.post_style);
         },
         postHasBlockMedia() {
+            if (this.isClientOnly) {
+                return false;
+            }
             return messageHasBlockMedia(this.message.post_message);
         },
         /** Повний рядок під ніком/часом — коректна ширина для 16:9 ембедів (не flex+baseline колонка). */

@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Chat\RoomInlinePrivateParser;
-use App\Chat\SlashCommandPipeline;
+use App\Chat\SlashCommands\SlashCommandContext;
+use App\Chat\SlashCommands\SlashCommandOutcome;
+use App\Chat\SlashCommands\SlashCommandParser;
+use App\Chat\SlashCommands\SlashCommandProcessor;
 use App\Events\MessageDeleted;
 use App\Events\MessagePosted;
 use App\Events\MessageUpdated;
@@ -27,14 +30,13 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class ChatMessageController extends Controller
 {
     public function __construct(
-        private readonly SlashCommandPipeline $slashPipeline,
+        private readonly SlashCommandProcessor $slashProcessor,
         private readonly ContentWordFilter $wordFilter,
         private readonly UserPostingGate $postingGate,
         private readonly ChatAutomoderationService $automod,
@@ -178,11 +180,6 @@ class ChatMessageController extends Controller
             return $this->duplicateMessageResponse($existing);
         }
 
-        $cachedSlash = Cache::get($this->slashClientOnlyCacheKey((int) $user->id, $clientId));
-        if (is_array($cachedSlash)) {
-            return response()->json($cachedSlash, Response::HTTP_OK);
-        }
-
         $validated = $request->validated();
         $stylePayload = isset($validated['style']) && is_array($validated['style']) ? $validated['style'] : null;
         $postStyle = ChatMessageBodyStyle::fromValidated($stylePayload);
@@ -289,137 +286,42 @@ class ChatMessageController extends Controller
                 ->additional([
                     'meta' => [
                         'duplicate' => false,
-                        'slash' => [
-                            'name' => 'msg',
-                            'recognized' => true,
-                            'result' => 'public_message',
-                        ],
+                        'slash' => ['name' => 'msg', 'recognized' => true],
                     ],
                 ])
                 ->response()
                 ->setStatusCode(Response::HTTP_CREATED);
         }
 
-        $trim = ltrim($raw);
-
-        if (str_starts_with($trim, '//')) {
-            $escapedBody = substr($trim, 1);
-
-            return $this->persistRoomPublicMessage(
-                $room,
-                $user,
-                $escapedBody,
-                $postStyle,
-                $fileRef,
-                $clientId,
-                [
-                    'name' => null,
-                    'recognized' => false,
-                    'result' => 'public_message',
-                    'escaped' => true,
-                ],
-            );
+        if ($fileRef !== 0 && SlashCommandParser::looksLikeSlashCommand($raw)) {
+            return response()->json([
+                'message' => 'Зображення не підтримуються разом із командами, що починаються з /.',
+            ], 422);
         }
 
-        if ($trim !== '' && $trim[0] === '/') {
-            $throttleMessage = $this->slashPipeline->ensureSlashThrottle($user);
-            if ($throttleMessage !== null) {
-                return response()->json(['message' => $throttleMessage], Response::HTTP_TOO_MANY_REQUESTS);
-            }
-
-            $dispatch = $this->slashPipeline->dispatchParsed($user, $room, $trim);
-            $handlerResult = $dispatch['result'];
-            $invocation = $dispatch['invocation'];
-
-            if ($handlerResult->kind === 'client_only') {
-                $slashMeta = array_merge(
-                    [
-                        'name' => $invocation->parsed->command !== '' ? $invocation->parsed->command : null,
-                        'recognized' => false,
-                        'result' => 'client_only',
-                    ],
-                    $handlerResult->slashMetaExtension,
-                );
-
-                $payload = [
-                    'data' => null,
-                    'meta' => [
-                        'duplicate' => false,
-                        'slash' => $slashMeta,
-                        'client_only' => [
-                            'lines' => array_values($handlerResult->clientOnlyLines),
-                            'style' => 'terminal',
-                        ],
-                    ],
-                ];
-
-                Cache::put($this->slashClientOnlyCacheKey((int) $user->id, $clientId), $payload, 86400);
-
-                return response()->json($payload, Response::HTTP_OK);
-            }
-
-            if ($handlerResult->kind === 'http_error') {
-                return response()->json(
-                    ['message' => $handlerResult->httpMessage ?? 'Помилка'],
-                    $handlerResult->httpStatus ?? Response::HTTP_UNPROCESSABLE_ENTITY,
-                );
-            }
-
-            $roomText = $handlerResult->roomMessage ?? '';
-            $slashMeta = array_merge(
-                [
-                    'name' => $invocation->parsed->command !== '' ? $invocation->parsed->command : null,
-                    'recognized' => true,
-                    'result' => 'public_message',
-                ],
-                $handlerResult->slashMetaExtension,
-            );
-
-            return $this->persistRoomPublicMessage(
-                $room,
-                $user,
-                $roomText,
-                $postStyle,
-                $fileRef,
-                $clientId,
-                $slashMeta,
-            );
-        }
-
-        return $this->persistRoomPublicMessage(
-            $room,
-            $user,
+        $slashOutcome = $this->slashProcessor->process(
             $raw,
-            $postStyle,
-            $fileRef,
-            $clientId,
-            [
-                'name' => null,
-                'recognized' => false,
-                'result' => 'public_message',
-            ],
+            new SlashCommandContext($user, $room, (string) $user->user_name),
         );
-    }
 
-    /**
-     * @param  array<string, mixed>|null  $postStyle
-     * @param  array<string, mixed>  $slashMeta
-     */
-    private function persistRoomPublicMessage(
-        Room $room,
-        User $user,
-        string $messageText,
-        ?array $postStyle,
-        int $fileRef,
-        string $clientId,
-        array $slashMeta,
-    ): JsonResponse {
-        $mod = $this->automod->applyToPublicMessage($messageText, $user);
-        if (! $mod['ok']) {
-            return response()->json(['message' => $mod['message']], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if ($slashOutcome->mode === SlashCommandOutcome::MODE_HTTP_ERROR) {
+            return response()->json([
+                'message' => (string) $slashOutcome->httpMessage,
+            ], (int) $slashOutcome->httpStatus);
         }
-        $filtered = $mod['text'];
+
+        if ($slashOutcome->mode === SlashCommandOutcome::MODE_CLIENT_ONLY) {
+            return $this->storeClientOnlySlashMessage($user, $room, $slashOutcome, $clientId);
+        }
+
+        $effective = $slashOutcome->text;
+        $mod = $this->automod->applyToPublicMessage($effective, $user);
+        if (! $mod['ok']) {
+            return response()->json(['message' => $mod['message']], 422);
+        }
+        $effective = $mod['text'];
         $now = time();
+
         $avatarUrl = $user->resolveAvatarUrl();
 
         try {
@@ -428,7 +330,7 @@ class ChatMessageController extends Controller
                 'post_date' => $now,
                 'post_time' => date('H:i', $now),
                 'post_user' => $user->user_name,
-                'post_message' => $filtered,
+                'post_message' => $effective,
                 'post_style' => $postStyle,
                 'post_color' => $user->resolveChatRole()->postColorClass(),
                 'post_roomid' => $room->room_id,
@@ -449,7 +351,7 @@ class ChatMessageController extends Controller
                 if ((int) $retry->post_roomid !== (int) $room->room_id) {
                     return response()->json([
                         'message' => 'client_message_id already used for another room.',
-                    ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                    ], 422);
                 }
 
                 return $this->duplicateMessageResponse($retry);
@@ -464,16 +366,67 @@ class ChatMessageController extends Controller
             ->additional([
                 'meta' => [
                     'duplicate' => false,
-                    'slash' => $slashMeta,
+                    'slash' => $slashOutcome->slashMeta,
                 ],
             ])
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
-    private function slashClientOnlyCacheKey(int $userId, string $clientId): string
-    {
-        return 'slash_client_only:v1:'.$userId.':'.$clientId;
+    private function storeClientOnlySlashMessage(
+        User $user,
+        Room $room,
+        SlashCommandOutcome $slashOutcome,
+        string $clientId,
+    ): JsonResponse {
+        $now = time();
+        $avatarUrl = $user->resolveAvatarUrl();
+
+        try {
+            $message = ChatMessage::query()->create([
+                'user_id' => $user->id,
+                'post_date' => $now,
+                'post_time' => date('H:i', $now),
+                'post_user' => $user->user_name,
+                'post_message' => $slashOutcome->text,
+                'post_style' => null,
+                'post_color' => $user->resolveChatRole()->postColorClass(),
+                'post_roomid' => $room->room_id,
+                'type' => 'client_only',
+                'post_target' => null,
+                'avatar' => $avatarUrl,
+                'file' => 0,
+                'client_message_id' => $clientId,
+                'moderation_flag_at' => null,
+            ]);
+        } catch (QueryException $e) {
+            if ($this->isDuplicateKey($e)) {
+                $retry = ChatMessage::query()
+                    ->where('user_id', $user->id)
+                    ->where('client_message_id', $clientId)
+                    ->firstOrFail();
+
+                if ((int) $retry->post_roomid !== (int) $room->room_id) {
+                    return response()->json([
+                        'message' => 'client_message_id already used for another room.',
+                    ], 422);
+                }
+
+                return $this->duplicateMessageResponse($retry);
+            }
+
+            throw $e;
+        }
+
+        return ChatMessageResource::make($message)
+            ->additional([
+                'meta' => [
+                    'duplicate' => false,
+                    'slash' => $slashOutcome->slashMeta,
+                ],
+            ])
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     private function duplicateMessageResponse(ChatMessage $message): JsonResponse
@@ -482,11 +435,7 @@ class ChatMessageController extends Controller
             ->additional([
                 'meta' => [
                     'duplicate' => true,
-                    'slash' => [
-                        'name' => null,
-                        'recognized' => false,
-                        'result' => 'public_message',
-                    ],
+                    'slash' => ['name' => null, 'recognized' => false, 'client_only' => false],
                 ],
             ])
             ->response()

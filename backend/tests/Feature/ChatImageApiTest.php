@@ -85,6 +85,32 @@ class ChatImageApiTest extends TestCase
         $this->assertSame(1, ChatMessage::query()->where('file', $imageId)->count());
     }
 
+    public function test_slash_command_with_image_is_rejected(): void
+    {
+        $room = $this->seedPublicRoom();
+        $user = User::factory()->create();
+        $file = UploadedFile::fake()->image('slash.jpg', 40, 40);
+
+        $up = $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->post('/api/v1/images', ['image' => $file]);
+
+        $up->assertCreated();
+        $imageId = $up->json('data.id');
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$room->room_id.'/messages', [
+                'message' => '/me hi',
+                'image_id' => $imageId,
+                'client_message_id' => 'c3000000-0000-4000-8000-000000000003',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Зображення не підтримуються разом із командами, що починаються з /.');
+    }
+
     public function test_message_without_text_or_image_is_422(): void
     {
         $room = $this->seedPublicRoom();

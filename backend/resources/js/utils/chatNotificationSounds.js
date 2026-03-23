@@ -62,7 +62,7 @@ export function maybePlayNewPostSound(user, opts = {}) {
     if (userId != null && Number(userId) === Number(user.id)) {
         return;
     }
-    if (type === 'inline_private') {
+    if (type === 'inline_private' || type === 'client_only') {
         return;
     }
     const p = effectivePrefs(user);

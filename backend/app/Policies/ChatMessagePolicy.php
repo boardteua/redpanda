@@ -14,11 +14,23 @@ class ChatMessagePolicy
             return false;
         }
 
+        if ($message->type === 'client_only') {
+            return false;
+        }
+
         return $this->canModifyPublicMessage($user, $message);
     }
 
     public function delete(User $user, ChatMessage $message): bool
     {
+        if ($message->type === 'client_only') {
+            if ($user->guest) {
+                return false;
+            }
+
+            return (int) $message->user_id === (int) $user->id;
+        }
+
         return $this->canModifyPublicMessage($user, $message);
     }
 

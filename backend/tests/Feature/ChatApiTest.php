@@ -195,7 +195,9 @@ class ChatApiTest extends TestCase
             ->assertJsonPath('data.post_message', '*'.$user->user_name.' says hi*')
             ->assertJsonPath('data.avatar', null)
             ->assertJsonPath('meta.duplicate', false)
-            ->assertJsonPath('meta.slash.recognized', true);
+            ->assertJsonPath('meta.slash.recognized', true)
+            ->assertJsonPath('meta.slash.name', 'me')
+            ->assertJsonPath('meta.slash.client_only', false);
 
         $postId = $first->json('data.post_id');
 
@@ -211,9 +213,77 @@ class ChatApiTest extends TestCase
             ->assertJsonPath('data.post_id', $postId)
             ->assertJsonPath('meta.duplicate', true)
             ->assertJsonPath('meta.slash.name', null)
-            ->assertJsonPath('meta.slash.recognized', false);
+            ->assertJsonPath('meta.slash.recognized', false)
+            ->assertJsonPath('meta.slash.client_only', false);
 
         $this->assertSame(1, ChatMessage::query()->where('client_message_id', $clientId)->count());
+    }
+
+    public function test_slash_unknown_command_is_client_only_and_hidden_from_others(): void
+    {
+        [$public] = $this->seedRooms();
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        $this->assertNotSame($a->id, $b->id);
+        $clientId = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44';
+
+        Sanctum::actingAs($a);
+        $first = $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/unknowncmd trailing args',
+                'client_message_id' => $clientId,
+            ]);
+
+        $first->assertCreated()
+            ->assertJsonPath('data.type', 'client_only')
+            ->assertJsonPath('meta.slash.recognized', false)
+            ->assertJsonPath('meta.slash.client_only', true)
+            ->assertJsonPath('meta.slash.name', 'unknowncmd');
+
+        $this->assertStringContainsString('Невідома команда', (string) $first->json('data.post_message'));
+        $this->assertStringContainsString('/unknowncmd', (string) $first->json('data.post_message'));
+
+        $postId = (int) $first->json('data.post_id');
+
+        Sanctum::actingAs($a);
+        $idsA = collect(
+            $this->from(config('app.url'))
+                ->withHeaders($this->statefulHeaders())
+                ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=50')
+                ->json('data'),
+        )->pluck('post_id');
+
+        $this->assertTrue($idsA->contains($postId));
+
+        Sanctum::actingAs($b);
+        $respB = $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=50');
+
+        $respB->assertOk();
+        $rowsB = collect($respB->json('data'));
+        $leak = $rowsB->first(fn (array $row) => (int) ($row['post_id'] ?? 0) === $postId);
+        $this->assertNull($leak);
+    }
+
+    public function test_slash_unknown_does_not_dispatch_room_broadcast(): void
+    {
+        Bus::fake([BroadcastEvent::class]);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/notregistered',
+                'client_message_id' => 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55',
+            ])
+            ->assertCreated();
+
+        Bus::assertNotDispatched(BroadcastEvent::class);
     }
 
     public function test_same_client_id_in_different_room_returns_422(): void
@@ -1136,93 +1206,5 @@ class ChatApiTest extends TestCase
                 'last_read_post_id' => 999999999,
             ])
             ->assertStatus(422);
-    }
-
-    public function test_slash_double_slash_escape_stores_literal_without_me_action(): void
-    {
-        [$public] = $this->seedRooms();
-        $user = User::factory()->create();
-
-        $this->from(config('app.url'))
-            ->actingAs($user, 'web')
-            ->withHeaders($this->statefulHeaders())
-            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
-                'message' => '//me literal',
-                'client_message_id' => (string) Str::uuid(),
-            ])
-            ->assertCreated()
-            ->assertJsonPath('data.post_message', '/me literal')
-            ->assertJsonPath('meta.slash.escaped', true)
-            ->assertJsonPath('meta.slash.result', 'public_message');
-    }
-
-    public function test_slash_unknown_command_returns_client_only_without_persisting(): void
-    {
-        Bus::fake([BroadcastEvent::class]);
-
-        [$public] = $this->seedRooms();
-        $user = User::factory()->create();
-        $before = ChatMessage::query()->count();
-
-        $this->from(config('app.url'))
-            ->actingAs($user, 'web')
-            ->withHeaders($this->statefulHeaders())
-            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
-                'message' => '/notregisteredcmd arg',
-                'client_message_id' => (string) Str::uuid(),
-            ])
-            ->assertOk()
-            ->assertJsonPath('data', null)
-            ->assertJsonPath('meta.slash.result', 'client_only')
-            ->assertJsonPath('meta.client_only.style', 'terminal');
-
-        $this->assertSame($before, ChatMessage::query()->count());
-        Bus::assertDispatchedTimes(BroadcastEvent::class, 0);
-    }
-
-    public function test_slash_client_only_idempotent_returns_cached_meta(): void
-    {
-        [$public] = $this->seedRooms();
-        $user = User::factory()->create();
-        $clientId = (string) Str::uuid();
-
-        $first = $this->from(config('app.url'))
-            ->actingAs($user, 'web')
-            ->withHeaders($this->statefulHeaders())
-            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
-                'message' => '/unknowncmd',
-                'client_message_id' => $clientId,
-            ])
-            ->assertOk();
-
-        $second = $this->from(config('app.url'))
-            ->actingAs($user, 'web')
-            ->withHeaders($this->statefulHeaders())
-            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
-                'message' => '/other body ignored',
-                'client_message_id' => $clientId,
-            ])
-            ->assertOk();
-
-        $this->assertSame($first->json('meta'), $second->json('meta'));
-        $this->assertSame(0, ChatMessage::query()->where('client_message_id', $clientId)->count());
-    }
-
-    public function test_slash_noop_returns_empty_client_only_lines(): void
-    {
-        [$public] = $this->seedRooms();
-        $user = User::factory()->create();
-
-        $this->from(config('app.url'))
-            ->actingAs($user, 'web')
-            ->withHeaders($this->statefulHeaders())
-            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
-                'message' => '/noop',
-                'client_message_id' => (string) Str::uuid(),
-            ])
-            ->assertOk()
-            ->assertJsonPath('meta.slash.name', 'noop')
-            ->assertJsonPath('meta.slash.recognized', true)
-            ->assertJsonPath('meta.client_only.lines', []);
     }
 }

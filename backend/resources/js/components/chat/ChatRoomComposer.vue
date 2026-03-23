@@ -226,7 +226,7 @@
                     ref="chatComposer"
                     v-model="composerText"
                     class="rp-focusable rp-chat-composer-input w-full"
-                    :class="{ 'rp-chat-composer-input--slash': composerSlashMode }"
+                    :class="{ 'font-mono': composerLeadingSlash }"
                     :maxlength="messageMaxLength"
                     rows="1"
                     :disabled="sending || uploadingImage || !selectedRoomId"
@@ -401,11 +401,11 @@ export default {
                 query: this.selectedRoomId ? { room: String(this.selectedRoomId) } : {},
             };
         },
-        /** T66: рядок виглядає як slash-команда (не екранований «//»). */
-        composerSlashMode() {
-            const t = this.composerText.replace(/^\s+/, '');
+        /** T66: рядок починається з `/` після пробілів — підказка «команда» (моноширинність). */
+        composerLeadingSlash() {
+            const t = (this.composerText || '').replace(/^\s+/, '');
 
-            return Boolean(t.startsWith('/') && !t.startsWith('//'));
+            return t.startsWith('/');
         },
     },
     watch: {

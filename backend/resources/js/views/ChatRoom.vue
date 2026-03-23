@@ -352,27 +352,6 @@ function normalizePresencePeer(raw) {
     };
 }
 
-function postColorClassForViewer(user) {
-    if (!user) {
-        return 'user';
-    }
-    if (user.guest) {
-        return 'guest';
-    }
-    const r = user.chat_role;
-    if (r === 'admin') {
-        return 'admin';
-    }
-    if (r === 'moderator') {
-        return 'mod';
-    }
-    if (r === 'vip') {
-        return 'vip';
-    }
-
-    return 'user';
-}
-
 function normalizeMessage(raw) {
     if (!raw || typeof raw.post_id === 'undefined') {
         return null;
@@ -445,8 +424,6 @@ export default {
             selectedRoomId: null,
             messages: [],
             messageIds: new Set(),
-            /** T66: від’ємні post_id для локальних slash client_only рядків. */
-            syntheticPostSeq: 0,
             loadingRooms: true,
             chatSettings: null,
             creatingRoom: false,
@@ -1146,50 +1123,17 @@ export default {
         clearMessages() {
             this.messages = [];
             this.messageIds = new Set();
-            this.syntheticPostSeq = 0;
-        },
-        allocSyntheticPostId() {
-            this.syntheticPostSeq -= 1;
-
-            return this.syntheticPostSeq;
-        },
-        /**
-         * T66: відповідь API без рядка в БД — лише ініціатор бачить «термінал» у стрічці.
-         * @param {string[]} lines
-         * @param {string} clientMessageId
-         */
-        mergeSlashClientOnlyLocal(lines, clientMessageId) {
-            if (!lines || !lines.length || !this.user) {
-                return;
-            }
-            const text = lines.map((l) => `> ${String(l)}`).join('\n');
-            const now = Math.floor(Date.now() / 1000);
-            const d = new Date();
-            const postTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            const avatar = this.user.avatar_url != null ? String(this.user.avatar_url) : '';
-            this.mergeMessage({
-                post_id: this.allocSyntheticPostId(),
-                post_roomid: this.selectedRoomId,
-                user_id: this.user.id,
-                post_date: now,
-                post_edited_at: null,
-                post_deleted_at: null,
-                post_time: postTime,
-                post_user: this.user.user_name,
-                post_message: text,
-                post_style: null,
-                post_color: postColorClassForViewer(this.user),
-                type: 'slash_client_only',
-                recipient_user_id: null,
-                client_message_id: clientMessageId,
-                avatar,
-                file: 0,
-                image: null,
-                can_edit: false,
-                can_delete: false,
-            });
         },
         inferCanDeleteForMessage(m) {
+            if (!this.user || this.user.guest) {
+                return false;
+            }
+            if (m.post_deleted_at != null && m.post_deleted_at !== '') {
+                return false;
+            }
+            if (m.type === 'client_only') {
+                return Number(m.user_id) === Number(this.user.id);
+            }
             return this.inferCanEditForMessage(m);
         },
         inferCanEditForMessage(m) {
@@ -2525,17 +2469,6 @@ export default {
                         `/api/v1/rooms/${this.selectedRoomId}/messages`,
                         body,
                     );
-                    const co = data.meta && data.meta.client_only;
-                    if (
-                        data.meta
-                        && data.meta.slash
-                        && data.meta.slash.result === 'client_only'
-                        && co
-                        && Array.isArray(co.lines)
-                        && co.lines.length
-                    ) {
-                        this.mergeSlashClientOnlyLocal(co.lines, clientMessageId);
-                    }
                     if (data.data) {
                         this.mergeMessage(data.data);
                     }

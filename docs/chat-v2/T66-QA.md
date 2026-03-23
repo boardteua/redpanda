@@ -1,24 +1,22 @@
-# T66 — QA (slash-команди: інфраструктура)
+# T66 — Slash-команди: спільна інфраструктура — QA
 
 **Вердикт:** PASS
 
-## Автоматичні перевірки
+## Доказ
 
-- `php artisan test` — усі тести зелені (у т.ч. `ChatApiTest` для escape `//`, `client_only`, кеш ідемпотентності, `/noop`; `SlashCommandLineParserTest`).
-- `npm run build` — без помилок.
+- **PHPUnit:** `tests/Unit/Chat/SlashCommandParserTest.php`; у `tests/Feature/ChatApiTest.php`: `test_post_message_slash_me_and_idempotent_duplicate`, `test_slash_unknown_command_is_client_only_and_hidden_from_others`, `test_slash_unknown_does_not_dispatch_room_broadcast`; у `tests/Feature/ChatImageApiTest.php`: `test_slash_command_with_image_is_rejected`.
+- **Збірка фронту:** `npm run build` у каталозі `backend/` — без помилок.
 
-## Контракт API (коротко)
+## Що перевірено
 
-- `//…` → публічне повідомлення з текстом після зняття одного `/`; `meta.slash.escaped: true`, `result: public_message`.
-- Невідома `/команда` → **200**, `data: null`, `meta.slash.result: client_only`, `meta.client_only.style: terminal`, без рядка в `chat`.
-- Повтор з тим самим `client_message_id` після `client_only` повертає ту саму закешовану `meta` (без запису в БД).
-- Окремий ліміт slash: 25 спроб / 60 с на користувача → **429** з повідомленням українською.
+- Парсер: ім’я команди (нижній регістр), аргументи, `/` без імені — звичайний текст.
+- Реєстр: `/me` → публічне повідомлення (як раніше); невідома команда → `type: client_only`, `meta.slash.client_only: true`, без `MessagePosted` у кімнату.
+- `GET .../messages`: `client_only` видно лише автору; інший користувач не отримує рядок (тест з `Sanctum::actingAs` для перемикання користувача).
+- Ліміт slash: 45 спроб / 60 с на користувача → `429` (реалізація через `RateLimiter::attempt`).
+- `image_id` + рядок, що виглядає як slash-команда → `422`.
+- Vue: моноширинний композер при провідному `/`; рядок `client_only` у стрічці з префіксом `>`; `newpost` не для `client_only`; видалення власного `client_only` з інференсу `can_delete`.
 
-## Фронтенд
+## Примітки
 
-- Відповідь `client_only` з непорожніми `lines` додає локальний рядок типу `slash_client_only` (моноширинний вивід з префіксом `>`).
-- Композер: підказка візуально (`rp-chat-composer-input--slash`), коли рядок виглядає як команда (один `/`, не `//`).
-
-## Примітки для T67+
-
-- Реєстр обробників у `SlashCommandRegistry`; нові команди реєструються в `SlashCommandPipeline::buildDefaultRegistry()`.
+- Семантика конкретних команд (окрім `/me` та заглушки «невідома команда») — у T67+.
+- Ручна перевірка WS для `client_only` не потрібна: broadcast не виконується.
