@@ -32,6 +32,10 @@
     --rp-error-bg: #fef2f2;
     --rp-link: #1d4ed8;
     --rp-link-hover: #1e3a8a;
+    /* T77 — фон вітальні (board.te.ua) */
+    --rp-landing-hero-top: #fb923c;
+    --rp-landing-hero-bottom: #ea580c;
+    --rp-landing-card-shadow: 0 25px 50px -12px rgb(124 45 18 / 0.32);
     /* Чат-вікно — теплий фон стрічки та рамка як у legacy board.te.ua */
     --rp-chat-app-bg: #e8e2d8;
     --rp-chat-header-bg: #e3dcd1;
@@ -116,6 +120,9 @@
     --rp-error-bg: #450a0a;
     --rp-link: #93c5fd;
     --rp-link-hover: #bfdbfe;
+    --rp-landing-hero-top: #c2410c;
+    --rp-landing-hero-bottom: #9a3412;
+    --rp-landing-card-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.42);
     /* Чат-вікно (паритет board.te.ua — теплі «панельні» тони) */
     --rp-chat-app-bg: #111c2e;
     --rp-chat-header-bg: #17233a;
@@ -194,6 +201,9 @@
         --rp-error-bg: #450a0a;
         --rp-link: #93c5fd;
         --rp-link-hover: #bfdbfe;
+        --rp-landing-hero-top: #c2410c;
+        --rp-landing-hero-bottom: #9a3412;
+        --rp-landing-card-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.42);
         --rp-chat-app-bg: #111c2e;
         --rp-chat-header-bg: #17233a;
         --rp-chat-feed-bg: #152032;
@@ -263,6 +273,159 @@
     color: var(--rp-text);
     font-family: var(--font-sans);
     line-height: 1.5;
+}
+
+/* T77 — вітальня: оранжевий фон + біла картка (паритет board.te.ua) */
+.rp-auth-landing {
+    position: relative;
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(
+        165deg,
+        var(--rp-landing-hero-top) 0%,
+        var(--rp-landing-hero-bottom) 52%,
+        color-mix(in srgb, var(--rp-landing-hero-bottom) 82%, #171717) 100%
+    );
+    color: var(--rp-text);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+}
+
+.rp-auth-landing-theme {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+}
+
+.rp-auth-landing-theme .rp-btn-ghost {
+    color: rgb(255 255 255 / 0.95);
+    border-color: rgb(255 255 255 / 0.38);
+}
+
+.rp-auth-landing-theme .rp-btn-ghost:hover:not(:disabled) {
+    color: #fff;
+    background: rgb(255 255 255 / 0.14);
+    text-decoration: none;
+}
+
+.rp-auth-landing-card {
+    background: var(--rp-surface);
+    border-radius: 1rem;
+    box-shadow: var(--rp-landing-card-shadow);
+    border: 1px solid color-mix(in srgb, var(--rp-border-subtle) 55%, transparent);
+    overflow: hidden;
+}
+
+.rp-auth-landing-brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--rp-border-subtle);
+    background: linear-gradient(180deg, var(--rp-surface-elevated) 0%, var(--rp-surface) 100%);
+}
+
+.rp-auth-landing-logo-link {
+    display: flex;
+    flex-shrink: 0;
+    border-radius: 0.5rem;
+    line-height: 0;
+}
+
+.rp-auth-landing-logo-link:focus-visible {
+    outline: 2px solid var(--rp-focus-ring);
+    outline-offset: 3px;
+}
+
+.rp-auth-landing-logo {
+    width: 4rem;
+    height: 4rem;
+    object-fit: contain;
+}
+
+.rp-auth-landing-brand-titles {
+    min-width: 0;
+}
+
+.rp-auth-landing-brand-titles h1 {
+    margin: 0;
+    font-size: 1.375rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--rp-text);
+    line-height: 1.2;
+}
+
+@media (min-width: 640px) {
+    .rp-auth-landing-brand-titles h1 {
+        font-size: 1.625rem;
+    }
+}
+
+.rp-auth-landing-tagline {
+    margin: 0.25rem 0 0;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--rp-text-muted);
+}
+
+.rp-auth-landing-main-grid > * {
+    min-width: 0;
+}
+
+@media (min-width: 1024px) {
+    .rp-auth-landing-aside {
+        border-left: 1px solid var(--rp-border-subtle);
+    }
+}
+
+.rp-auth-landing-online {
+    margin: 0;
+    padding: 1rem 1.5rem 1.25rem;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--rp-text);
+    border-top: 1px solid var(--rp-border-subtle);
+    background: var(--rp-surface-elevated);
+}
+
+.rp-auth-landing-online strong {
+    font-weight: 800;
+    color: var(--rp-primary);
+}
+
+.rp-auth-landing-forgot {
+    margin: 0 0 0.25rem;
+    text-align: right;
+}
+
+.rp-auth-landing-forgot-btn {
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    color: var(--rp-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.rp-auth-landing-forgot-btn:hover {
+    color: var(--rp-link-hover);
+}
+
+.rp-auth-landing-forgot-btn:focus {
+    outline: none;
+}
+
+.rp-auth-landing-forgot-btn:focus-visible {
+    outline: 2px solid var(--rp-focus-ring);
+    outline-offset: 2px;
+    border-radius: 0.125rem;
 }
 
 .rp-app {
@@ -467,8 +630,8 @@
 
 .rp-panel {
     width: 100%;
-    max-width: 26rem;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
     padding: 1.5rem;
     background: var(--rp-surface);
     border: 1px solid var(--rp-border-subtle);

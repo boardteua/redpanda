@@ -1,16 +1,6 @@
 <template>
-    <div class="flex min-h-screen flex-col px-4 py-8 sm:px-6">
-        <header
-            class="mx-auto mb-8 flex w-full max-w-5xl items-center justify-between gap-4"
-        >
-            <div>
-                <h1 class="text-xl font-bold tracking-tight text-[var(--rp-text)] sm:text-2xl">
-                    {{ displayTitle }}
-                </h1>
-                <p class="mt-1 text-sm text-[var(--rp-text-muted)]">
-                    {{ displayTagline }}
-                </p>
-            </div>
+    <div class="rp-auth-landing flex flex-col px-4 py-10 pb-12 sm:px-6">
+        <div class="rp-auth-landing-theme">
             <button
                 type="button"
                 class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-sm"
@@ -19,18 +9,41 @@
             >
                 {{ themeLabel }}
             </button>
-        </header>
+        </div>
 
         <main
             id="main-content"
             class="mx-auto w-full max-w-5xl flex-1"
             tabindex="-1"
         >
+            <div class="rp-auth-landing-card">
+                <div class="rp-auth-landing-brand">
+                    <a
+                        href="/"
+                        class="rp-auth-landing-logo-link rp-focusable"
+                        aria-label="На головну чату"
+                    >
+                        <img
+                            class="rp-auth-landing-logo"
+                            :src="landingLogoUrl"
+                            width="128"
+                            height="128"
+                            alt="Логотип чату — руда панда"
+                        />
+                    </a>
+                    <div class="rp-auth-landing-brand-titles">
+                        <h1>{{ displayTitle }}</h1>
+                        <h2 class="rp-auth-landing-tagline">
+                            {{ displayTagline }}
+                        </h2>
+                    </div>
+                </div>
+
+                <div
+                    class="rp-auth-landing-main-grid grid gap-0 lg:grid-cols-2 lg:items-stretch"
+                >
             <div
-                class="grid gap-8 lg:grid-cols-2 lg:items-start"
-            >
-            <div
-                class="rp-panel min-w-0"
+                class="min-w-0 p-5 lg:p-6"
                 role="region"
                 :aria-labelledby="authRegionLabelledBy"
             >
@@ -70,18 +83,18 @@
                     role="tabpanel"
                     :aria-labelledby="mode === 'login' ? 'tab-login' : 'tab-register'"
                 >
-                    <h2
+                    <h3
                         id="login-heading"
                         :class="['text-lg font-semibold', mode === 'login' ? '' : 'rp-sr-only']"
                     >
                         Вхід
-                    </h2>
-                    <h2
+                    </h3>
+                    <h3
                         id="register-heading"
                         :class="['text-lg font-semibold', mode === 'register' ? '' : 'rp-sr-only']"
                     >
                         Реєстрація
-                    </h2>
+                    </h3>
 
                     <div
                         v-if="formError"
@@ -130,6 +143,23 @@
                                 {{ fieldError('password') }}
                             </p>
                         </div>
+                        <p class="rp-auth-landing-forgot">
+                            <button
+                                type="button"
+                                class="rp-auth-landing-forgot-btn rp-focusable text-sm"
+                                @click="onForgotPassword"
+                            >
+                                Забули пароль?
+                            </button>
+                        </p>
+                        <p
+                            v-if="forgotPasswordHint"
+                            class="mb-2 text-sm text-[var(--rp-text-muted)]"
+                            role="status"
+                            aria-live="polite"
+                        >
+                            Відновлення пароля ще не підключено. Зверніться до адміністрації або увійдіть як гість.
+                        </p>
                         <label class="flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text-muted)]">
                             <input
                                 v-model="loginForm.remember"
@@ -249,7 +279,7 @@
                     <div class="rp-divider" aria-hidden="true">
                         або
                     </div>
-                    <h3 class="rp-sr-only">Анонімний вхід</h3>
+                    <h4 class="rp-sr-only">Анонімний вхід</h4>
                     <p class="text-center text-sm text-[var(--rp-text-muted)]">
                         Швидкий вхід без облікового запису
                     </p>
@@ -292,19 +322,17 @@
             </div>
 
             <aside
-                v-if="hasLandingAside"
-                class="rp-panel min-w-0 space-y-4 p-4 lg:p-5"
+                class="rp-auth-landing-aside min-w-0 space-y-4 p-5 lg:p-6"
                 aria-label="Новини та посилання"
             >
-                <div v-if="landingNewsTitle || landingNewsBody">
-                    <h2 class="text-base font-semibold text-[var(--rp-text)]">
-                        {{ landingNewsTitle || 'Новини' }}
-                    </h2>
+                <div>
+                    <h3 class="text-base font-semibold text-[var(--rp-text)]">
+                        {{ asideNewsTitle }}
+                    </h3>
                     <div
-                        v-if="landingNewsBody"
                         class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--rp-text-muted)]"
                     >
-                        {{ landingNewsBody }}
+                        {{ asideNewsBody }}
                     </div>
                 </div>
                 <nav v-if="landingLinks.length" aria-label="Посилання з вітальні">
@@ -320,15 +348,16 @@
                     </ul>
                 </nav>
             </aside>
-            </div>
+                </div>
 
-            <p
-                v-if="!user"
-                class="mx-auto mt-8 max-w-5xl text-center text-sm text-[var(--rp-text-muted)]"
-                role="status"
-            >
-                Користувачі онлайн у чаті: <strong class="font-semibold text-[var(--rp-text)]">{{ usersOnline }}</strong>
-            </p>
+                <h3
+                    v-if="!user"
+                    class="rp-auth-landing-online"
+                >
+                    Користувачі онлайн
+                    <strong>{{ usersOnline }}</strong>
+                </h3>
+            </div>
         </main>
     </div>
 </template>
@@ -365,6 +394,9 @@ export default {
             registration: null,
             usersOnline: 0,
             landingPollTimer: null,
+            forgotPasswordHint: false,
+            /** Публічний асет `public/brand/` — не статичний src у шаблоні (Vite). */
+            landingLogoUrl: '/brand/board-te-ua-orange.png',
         };
     },
     computed: {
@@ -389,8 +421,15 @@ export default {
 
             return links.filter((l) => l && (String(l.label || '').trim() || String(l.url || '').trim()));
         },
-        hasLandingAside() {
-            return Boolean(this.landingNewsTitle || this.landingNewsBody || this.landingLinks.length);
+        asideNewsTitle() {
+            return this.landingNewsTitle || 'Новини та оголошення';
+        },
+        asideNewsBody() {
+            if (this.landingNewsBody) {
+                return this.landingNewsBody;
+            }
+
+            return 'Тут з’являтимуться текст і посилання, які налаштовує адміністратор у розділі налаштувань чату. Оберіть спосіб входу ліворуч, щоб приєднатися до розмови.';
         },
         registrationOpen() {
             return !this.registration || this.registration.registration_open !== false;
@@ -485,6 +524,9 @@ export default {
         setMode(m) {
             this.mode = m;
             this.clearErrors();
+        },
+        onForgotPassword() {
+            this.forgotPasswordHint = true;
         },
         cycleTheme() {
             const order = ['system', 'light', 'dark'];
