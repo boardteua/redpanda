@@ -16,15 +16,20 @@ export function createEcho(bearerToken = null) {
     window.Pusher = Pusher;
 
     const scheme = import.meta.env.VITE_REVERB_SCHEME ?? 'https';
-    const port = import.meta.env.VITE_REVERB_PORT;
+    const rawPort = import.meta.env.VITE_REVERB_PORT;
+    const parsed =
+        rawPort !== undefined && rawPort !== null && String(rawPort).trim() !== ''
+            ? Number(String(rawPort).trim())
+            : NaN;
+    const wsPort = Number.isFinite(parsed) && parsed > 0 ? parsed : scheme === 'https' ? 443 : 80;
 
     /** @type {Record<string, unknown>} */
     const opts = {
         broadcaster: 'reverb',
         key,
         wsHost: import.meta.env.VITE_REVERB_HOST ?? 'localhost',
-        wsPort: port ? Number(port) : 80,
-        wssPort: port ? Number(port) : 443,
+        wsPort,
+        wssPort: wsPort,
         forceTLS: scheme === 'https',
         enabledTransports: ['ws', 'wss'],
         authEndpoint: `${window.location.origin}/broadcasting/auth`,
