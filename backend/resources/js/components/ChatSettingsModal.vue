@@ -12,22 +12,11 @@
         <template #header>
             <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-4 py-3">
                 <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">Налаштування чату</h2>
-                <button
-                    type="button"
-                    class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--rp-text-muted)] hover:bg-[var(--rp-surface-elevated)]"
-                    aria-label="Закрити"
-                    @click="close"
-                >
-                    <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                        />
-                    </svg>
-                </button>
+                <RpCloseButton @click="close" />
             </div>
         </template>
 
-        <div class="space-y-4 px-4 py-4">
+        <div class="flex min-h-0 flex-col space-y-4 px-4 py-4">
             <p
                 v-if="loadError"
                 role="alert"
@@ -43,9 +32,40 @@
                 {{ saveError }}
             </p>
 
-            <fieldset :disabled="loading || saving" class="space-y-4">
-                <legend class="sr-only">Параметри створення кімнат (T51)</legend>
+            <div
+                class="rp-profile-modal-tabs flex flex-wrap gap-1 border-b border-[var(--rp-border-subtle)] pb-2"
+                role="tablist"
+                aria-label="Розділи налаштувань чату"
+                @keydown="onSettingsTabKeydown"
+            >
+                <button
+                    v-for="t in settingsTabs"
+                    :id="tabElementId(t.id)"
+                    :key="t.id"
+                    ref="settingsTabButtons"
+                    type="button"
+                    role="tab"
+                    class="rp-focusable rp-tab px-2 py-2 text-xs sm:text-sm"
+                    :tabindex="activeSettingsTab === t.id ? 0 : -1"
+                    :aria-selected="activeSettingsTab === t.id ? 'true' : 'false'"
+                    :aria-controls="tabPanelId(t.id)"
+                    @click="activateSettingsTab(t.id)"
+                >
+                    {{ t.label }}
+                </button>
+            </div>
 
+            <fieldset :disabled="loading || saving" class="min-h-0 space-y-4">
+                <legend class="sr-only">Параметри чату (T51, T75, T86)</legend>
+
+                <div
+                    v-show="activeSettingsTab === 'rooms'"
+                    :id="tabPanelId('rooms')"
+                    role="tabpanel"
+                    :aria-labelledby="tabElementId('rooms')"
+                    :aria-hidden="activeSettingsTab === 'rooms' ? 'false' : 'true'"
+                    class="space-y-4"
+                >
                 <div>
                     <label class="rp-label" for="cs-n">Поріг N (мінімум публічних повідомлень для права створити кімнату)</label>
                     <input
@@ -82,126 +102,158 @@
                         </option>
                     </select>
                 </div>
+                </div>
 
-                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
-                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Slash-команди</h3>
-                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
-                        Обмеження на рядки, що починаються з <span class="font-mono">/</span> (окремо від ліміту на звичайні
-                        повідомлення). Застосовується до кожного користувача; при перевищенні — HTTP 429.
-                    </p>
-                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                        <div>
-                            <label class="rp-label" for="cs-slash-max">Максимум команд за вікно</label>
-                            <input
-                                id="cs-slash-max"
-                                v-model.number="form.slash_command_max_per_window"
-                                type="number"
-                                min="1"
-                                max="65535"
-                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
-                            />
+                <div
+                    v-show="activeSettingsTab === 'slash'"
+                    :id="tabPanelId('slash')"
+                    role="tabpanel"
+                    :aria-labelledby="tabElementId('slash')"
+                    :aria-hidden="activeSettingsTab === 'slash' ? 'false' : 'true'"
+                    class="space-y-6"
+                >
+                    <div>
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Slash-команди</h3>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Обмеження на рядки, що починаються з <span class="font-mono">/</span> (окремо від ліміту на звичайні
+                            повідомлення). Застосовується до кожного користувача; при перевищенні — HTTP 429.
+                        </p>
+                        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="rp-label" for="cs-slash-max">Максимум команд за вікно</label>
+                                <input
+                                    id="cs-slash-max"
+                                    v-model.number="form.slash_command_max_per_window"
+                                    type="number"
+                                    min="1"
+                                    max="65535"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-slash-window">Тривалість вікна (секунди)</label>
+                                <input
+                                    id="cs-slash-window"
+                                    v-model.number="form.slash_command_window_seconds"
+                                    type="number"
+                                    min="10"
+                                    max="86400"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label class="rp-label" for="cs-slash-window">Тривалість вікна (секунди)</label>
-                            <input
-                                id="cs-slash-window"
-                                v-model.number="form.slash_command_window_seconds"
-                                type="number"
-                                min="10"
-                                max="86400"
-                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
-                            />
+                    </div>
+
+                    <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Модерація (slash)</h3>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Дефолтні хвилини для <span class="font-mono">/mute</span> та <span class="font-mono">/kick</span>,
+                            коли модератор не вказує другий аргумент (див. T69).
+                        </p>
+                        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="rp-label" for="cs-mod-mute">Мут за замовчуванням (хв)</label>
+                                <input
+                                    id="cs-mod-mute"
+                                    v-model.number="form.mod_slash_default_mute_minutes"
+                                    type="number"
+                                    min="1"
+                                    max="525600"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-mod-kick">Kick за замовчуванням (хв)</label>
+                                <input
+                                    id="cs-mod-kick"
+                                    v-model.number="form.mod_slash_default_kick_minutes"
+                                    type="number"
+                                    min="1"
+                                    max="525600"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
-                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Модерація (slash)</h3>
-                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
-                        Дефолтні хвилини для <span class="font-mono">/mute</span> та <span class="font-mono">/kick</span>,
-                        коли модератор не вказує другий аргумент (див. T69).
-                    </p>
-                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                        <div>
-                            <label class="rp-label" for="cs-mod-mute">Мут за замовчуванням (хв)</label>
+                <div
+                    v-show="activeSettingsTab === 'media'"
+                    :id="tabPanelId('media')"
+                    role="tabpanel"
+                    :aria-labelledby="tabElementId('media')"
+                    :aria-hidden="activeSettingsTab === 'media' ? 'false' : 'true'"
+                    class="space-y-6"
+                >
+                    <div>
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Звуки (T71)</h3>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Якщо увімкнено, кімнатні та приватні сповіщення не відтворюються (slash
+                            <span class="font-mono">/silent</span> теж змінює цей прапорець).
+                        </p>
+                        <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
                             <input
-                                id="cs-mod-mute"
-                                v-model.number="form.mod_slash_default_mute_minutes"
-                                type="number"
-                                min="1"
-                                max="525600"
-                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                                id="cs-silent-mode"
+                                v-model="form.silent_mode"
+                                type="checkbox"
+                                class="rp-focusable h-4 w-4 rounded border"
                             />
-                        </div>
-                        <div>
-                            <label class="rp-label" for="cs-mod-kick">Kick за замовчуванням (хв)</label>
+                            Беззвучний режим чату
+                        </label>
+                        <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
                             <input
-                                id="cs-mod-kick"
-                                v-model.number="form.mod_slash_default_kick_minutes"
-                                type="number"
-                                min="1"
-                                max="525600"
-                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                                id="cs-sound-every-post"
+                                v-model="form.sound_on_every_post"
+                                type="checkbox"
+                                class="rp-focusable h-4 w-4 rounded border"
                             />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
-                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Звуки (T71)</h3>
-                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
-                        Якщо увімкнено, кімнатні та приватні сповіщення не відтворюються (slash
-                        <span class="font-mono">/silent</span> теж змінює цей прапорець).
-                    </p>
-                    <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
-                        <input v-model="form.silent_mode" type="checkbox" class="rp-focusable h-4 w-4 rounded border" />
-                        Беззвучний режим чату
-                    </label>
-                    <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
-                        <input
-                            v-model="form.sound_on_every_post"
-                            type="checkbox"
-                            class="rp-focusable h-4 w-4 rounded border"
-                        />
-                        Звук на кожен пост у кімнаті (legacy, T75)
-                    </label>
-                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
-                        Якщо ввімкнено — кімнатний newpost лунає навіть у фоновій вкладці (узгоджено з T65).
-                    </p>
-                </div>
-
-                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
-                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Вкладення в чат (T86)</h3>
-                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
-                        Максимальний розмір файлу зображення для <span class="font-mono">POST /api/v1/images</span>. Фактична
-                        межа на сервері не перевищує PHP
-                        <span class="font-mono">upload_max_filesize</span> — див. підказку нижче після збереження/завантаження.
-                    </p>
-                    <div class="mt-3">
-                        <label class="rp-label" for="cs-max-att-mb">Максимум розміру файлу (МБ)</label>
-                        <input
-                            id="cs-max-att-mb"
-                            v-model.number="form.max_attachment_mb"
-                            type="number"
-                            min="0.01"
-                            max="100"
-                            step="0.1"
-                            class="rp-input rp-focusable mt-1 w-full max-w-xs"
-                        />
-                        <p v-if="attachmentEffectiveLabel" class="mt-1 text-xs text-[var(--rp-text-muted)]">
-                            Зараз клієнти обмежені приблизно до <strong>{{ attachmentEffectiveLabel }}</strong> (мінімум з цього
-                            значення та обмежень PHP).
+                            Звук на кожен пост у кімнаті (legacy, T75)
+                        </label>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Якщо ввімкнено — кімнатний newpost лунає навіть у фоновій вкладці (узгоджено з T65).
                         </p>
                     </div>
+
+                    <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Вкладення в чат (T86)</h3>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Максимальний розмір файлу зображення для <span class="font-mono">POST /api/v1/images</span>. Фактична
+                            межа на сервері не перевищує PHP
+                            <span class="font-mono">upload_max_filesize</span> — див. підказку нижче після збереження/завантаження.
+                        </p>
+                        <div class="mt-3">
+                            <label class="rp-label" for="cs-max-att-mb">Максимум розміру файлу (МБ)</label>
+                            <input
+                                id="cs-max-att-mb"
+                                v-model.number="form.max_attachment_mb"
+                                type="number"
+                                min="0.01"
+                                max="100"
+                                step="0.1"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                            />
+                            <p v-if="attachmentEffectiveLabel" class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                                Зараз клієнти обмежені приблизно до <strong>{{ attachmentEffectiveLabel }}</strong> (мінімум з цього
+                                значення та обмежень PHP).
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                <div
+                    v-show="activeSettingsTab === 'landing'"
+                    :id="tabPanelId('landing')"
+                    role="tabpanel"
+                    :aria-labelledby="tabElementId('landing')"
+                    :aria-hidden="activeSettingsTab === 'landing' ? 'false' : 'true'"
+                    class="space-y-4"
+                >
                     <h3 class="text-sm font-semibold text-[var(--rp-text)]">Вхідна сторінка (T75)</h3>
-                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                    <p class="text-xs text-[var(--rp-text-muted)]">
                         Публічний зріз без авторизації: <span class="font-mono">GET /api/v1/landing</span>. Без HTML і
                         секретів.
                     </p>
-                    <div class="mt-3 grid gap-3">
+                    <div class="grid gap-3">
                         <div>
                             <label class="rp-label" for="cs-lp-title">Заголовок сторінки (замість назви застосунку)</label>
                             <input
@@ -260,6 +312,7 @@
                                     class="rp-input rp-focusable w-full text-sm"
                                 />
                                 <input
+                                    :id="'cs-lp-link-url-' + idx"
                                     v-model.trim="link.url"
                                     type="text"
                                     maxlength="500"
@@ -272,9 +325,16 @@
                     </div>
                 </div>
 
-                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                <div
+                    v-show="activeSettingsTab === 'registration'"
+                    :id="tabPanelId('registration')"
+                    role="tabpanel"
+                    :aria-labelledby="tabElementId('registration')"
+                    :aria-hidden="activeSettingsTab === 'registration' ? 'false' : 'true'"
+                    class="space-y-3"
+                >
                     <h3 class="text-sm font-semibold text-[var(--rp-text)]">Реєстрація (прапорці, T75)</h3>
-                    <div class="mt-3 space-y-3">
+                    <div class="space-y-3">
                         <label class="flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
                             <input
                                 v-model="form.registration_flags.registration_open"
@@ -305,7 +365,10 @@
                     </div>
                 </div>
 
-                <div class="flex flex-wrap gap-2">
+            </fieldset>
+
+            <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                <div class="flex flex-wrap items-center gap-2">
                     <RpButton
                         class="text-sm"
                         :loading="saving"
@@ -314,10 +377,20 @@
                     >
                         {{ saving ? 'Збереження…' : 'Зберегти' }}
                     </RpButton>
+                    <p v-if="activeSettingsTab === 'emoticons'" class="text-xs text-[var(--rp-text-muted)]">
+                        Зберігає всі поля налаштувань чату з інших вкладок.
+                    </p>
                 </div>
-            </fieldset>
+            </div>
 
-            <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+            <div
+                v-show="activeSettingsTab === 'emoticons'"
+                :id="tabPanelId('emoticons')"
+                role="tabpanel"
+                :aria-labelledby="tabElementId('emoticons')"
+                :aria-hidden="activeSettingsTab === 'emoticons' ? 'false' : 'true'"
+                class="space-y-3 border-t border-[var(--rp-border-subtle)] pt-4"
+            >
                 <h3 class="text-sm font-semibold text-[var(--rp-text)]">Каталог смайлів</h3>
                 <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
                     Файли відображаються за шляхом <span class="font-mono">/emoticon/</span> (GIF, PNG, WebP до 512&nbsp;КБ).
@@ -480,6 +553,7 @@ export default {
 
         return {
             titleId: `chat-settings-title-${titleSeq}`,
+            activeSettingsTab: 'rooms',
             loading: false,
             saving: false,
             loadError: '',
@@ -528,6 +602,16 @@ export default {
         };
     },
     computed: {
+        settingsTabs() {
+            return [
+                { id: 'rooms', label: 'Кімнати' },
+                { id: 'slash', label: 'Команди й модерація' },
+                { id: 'media', label: 'Звуки та файли' },
+                { id: 'landing', label: 'Вітальня' },
+                { id: 'registration', label: 'Реєстрація' },
+                { id: 'emoticons', label: 'Смайли' },
+            ];
+        },
         publicRooms() {
             const list = this.rooms || [];
 
@@ -554,6 +638,7 @@ export default {
     watch: {
         open(v) {
             if (v) {
+                this.activeSettingsTab = 'rooms';
                 this.loadError = '';
                 this.saveError = '';
                 this.emoticonError = '';
@@ -563,6 +648,121 @@ export default {
         },
     },
     methods: {
+        tabElementId(id) {
+            return `${this.titleId}-tab-${id}`;
+        },
+        tabPanelId(id) {
+            return `${this.titleId}-panel-${id}`;
+        },
+        activateSettingsTab(id) {
+            this.activeSettingsTab = id;
+            this.$nextTick(() => {
+                const refs = this.$refs.settingsTabButtons;
+                const buttons = Array.isArray(refs) ? refs : refs ? [refs] : [];
+                const idx = this.settingsTabs.findIndex((t) => t.id === id);
+                if (idx >= 0 && buttons[idx]) {
+                    buttons[idx].focus();
+                }
+            });
+        },
+        onSettingsTabKeydown(e) {
+            if (e.target.getAttribute('role') !== 'tab') {
+                return;
+            }
+            const navKeys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+            if (!navKeys.includes(e.key)) {
+                return;
+            }
+            e.preventDefault();
+            const list = this.settingsTabs;
+            let i = list.findIndex((t) => t.id === this.activeSettingsTab);
+            if (i < 0) {
+                i = 0;
+            }
+            if (e.key === 'Home') {
+                i = 0;
+            } else if (e.key === 'End') {
+                i = list.length - 1;
+            } else if (e.key === 'ArrowRight') {
+                i = (i + 1) % list.length;
+            } else if (e.key === 'ArrowLeft') {
+                i = (i - 1 + list.length) % list.length;
+            }
+            const next = list[i];
+            if (next) {
+                this.activateSettingsTab(next.id);
+            }
+        },
+        tabIdForValidationKey(key) {
+            if (!key || typeof key !== 'string') {
+                return 'rooms';
+            }
+            if (key.startsWith('landing_settings')) {
+                return 'landing';
+            }
+            if (key.startsWith('registration_flags')) {
+                return 'registration';
+            }
+            if (key.startsWith('slash_command') || key.startsWith('mod_slash')) {
+                return 'slash';
+            }
+            if (key === 'silent_mode' || key === 'sound_on_every_post' || key === 'max_attachment_bytes') {
+                return 'media';
+            }
+            if (
+                key === 'room_create_min_public_messages' ||
+                key === 'public_message_count_scope' ||
+                key === 'message_count_room_id'
+            ) {
+                return 'rooms';
+            }
+
+            return 'rooms';
+        },
+        focusFieldForValidationKey(key) {
+            const idMap = {
+                room_create_min_public_messages: 'cs-n',
+                public_message_count_scope: 'cs-scope',
+                message_count_room_id: 'cs-room',
+                slash_command_max_per_window: 'cs-slash-max',
+                slash_command_window_seconds: 'cs-slash-window',
+                mod_slash_default_mute_minutes: 'cs-mod-mute',
+                mod_slash_default_kick_minutes: 'cs-mod-kick',
+                silent_mode: 'cs-silent-mode',
+                sound_on_every_post: 'cs-sound-every-post',
+                max_attachment_bytes: 'cs-max-att-mb',
+                'landing_settings.page_title': 'cs-lp-title',
+                'landing_settings.tagline': 'cs-lp-tag',
+                'landing_settings.news_title': 'cs-lp-news-t',
+                'landing_settings.news_body': 'cs-lp-news-b',
+                'registration_flags.min_age': 'cs-reg-min-age',
+            };
+            let fieldId = idMap[key];
+            if (!fieldId && key.startsWith('landing_settings.links.')) {
+                const m = key.match(/^landing_settings\.links\.(\d+)\.(label|url)$/);
+                if (m && m[2] === 'url') {
+                    fieldId = `cs-lp-link-url-${m[1]}`;
+                }
+            }
+            if (!fieldId && key.startsWith('landing_settings.')) {
+                const sub = key.slice('landing_settings.'.length);
+                fieldId = idMap[`landing_settings.${sub}`];
+            }
+            if (!fieldId && key.startsWith('registration_flags.')) {
+                const sub = key.slice('registration_flags.'.length);
+                fieldId = idMap[`registration_flags.${sub}`];
+            }
+            const el = fieldId ? document.getElementById(fieldId) : null;
+            if (el && typeof el.focus === 'function') {
+                el.focus();
+
+                return;
+            }
+            const panel = document.getElementById(this.tabPanelId(this.tabIdForValidationKey(key)));
+            if (panel && typeof panel.scrollIntoView === 'function') {
+                panel.scrollIntoView({ block: 'nearest' });
+            }
+        },
         close() {
             this.$emit('close');
         },
@@ -686,7 +886,14 @@ export default {
                 const mb = Number(this.form.max_attachment_mb);
                 if (!Number.isFinite(mb) || mb <= 0) {
                     this.saveError = 'Вкажіть коректний ліміт розміру файлу (МБ).';
+                    this.activeSettingsTab = 'media';
                     this.saving = false;
+                    this.$nextTick(() => {
+                        const el = document.getElementById('cs-max-att-mb');
+                        if (el && typeof el.focus === 'function') {
+                            el.focus();
+                        }
+                    });
 
                     return;
                 }
@@ -699,11 +906,23 @@ export default {
                 this.close();
             } catch (e) {
                 const st = e.response && e.response.status;
+                const payload = e.response && e.response.data;
+                const errs = payload && payload.errors;
                 if (st === 403) {
                     this.saveError = 'Недостатньо прав (потрібен адміністратор чату).';
+                } else if (errs && typeof errs === 'object' && !Array.isArray(errs)) {
+                    const keys = Object.keys(errs);
+                    const firstKey = keys.length ? keys[0] : '';
+                    const msgs = firstKey ? errs[firstKey] : null;
+                    const firstMsg =
+                        Array.isArray(msgs) && msgs.length && typeof msgs[0] === 'string' ? msgs[0] : '';
+                    this.saveError = firstMsg || (payload && payload.message) || 'Не вдалося зберегти.';
+                    if (firstKey) {
+                        this.activeSettingsTab = this.tabIdForValidationKey(firstKey);
+                        this.$nextTick(() => this.focusFieldForValidationKey(firstKey));
+                    }
                 } else {
-                    this.saveError =
-                        (e.response && e.response.data && e.response.data.message) || 'Не вдалося зберегти.';
+                    this.saveError = (payload && payload.message) || 'Не вдалося зберегти.';
                 }
             } finally {
                 this.saving = false;
