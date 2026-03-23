@@ -73,6 +73,10 @@
                 :viewer-presence-status="viewerPresenceStatus"
                 :ws-degraded="wsDegraded"
                 :peer-lookup-name.sync="peerLookupName"
+                :peer-autocomplete-suggestions="peerAutocompleteSuggestions"
+                :peer-autocomplete-highlight-index="peerAutocompleteHighlightIndex"
+                :peer-autocomplete-loading="peerAutocompleteLoading"
+                :peer-autocomplete-open="peerAutocompletePanelOpen"
                 :friends-sub-tab.sync="friendsSubTab"
                 :friends-accepted="friendsAccepted"
                 :friends-accepted-with-menu-peer="friendsAcceptedWithMenuPeer"
@@ -95,6 +99,8 @@
                 @sidebar-badge-pick="onSidebarBadgeMenuPick"
                 @sidebar-badge-close="closeSidebarBadgeMenu"
                 @lookup-private="lookupAndOpenPrivate"
+                @peer-lookup-keydown="onPeerLookupKeydown"
+                @pick-peer-autocomplete="pickPeerAutocomplete"
                 @open-private-peer="openPrivatePeer"
                 @select-room="selectRoom"
                 @open-add-room="openAddRoomModal"
@@ -259,6 +265,12 @@ function peerTargetFromFriendUserPayload(u) {
 function createChatRoomSidebarState() {
     return {
         peerLookupName: '',
+        /** T85: автокомпліт ніків для привату */
+        peerAutocompleteSuggestions: [],
+        peerAutocompleteHighlightIndex: -1,
+        peerAutocompleteLoading: false,
+        peerLookupDebounceTimer: null,
+        peerAutocompleteRequestSeq: 0,
         conversations: [],
         friendsAccepted: [],
         friendsIncoming: [],
@@ -542,6 +554,15 @@ export default {
                 menuPeer: peerTargetFromFriendUserPayload(row.user),
             }));
         },
+        /** T85: випадаючий список підказок (debounce + мін. 2 символи на бекенді). */
+        peerAutocompletePanelOpen() {
+            const q = String(this.peerLookupName || '').trim();
+            if (q.length < 2) {
+                return false;
+            }
+
+            return this.peerAutocompleteLoading || (this.peerAutocompleteSuggestions || []).length > 0;
+        },
     },
     watch: {
         panelOpen() {
@@ -552,6 +573,9 @@ export default {
         },
         sidebarTab(to) {
             this.badgeMenu = null;
+            if (to !== 'users') {
+                this.clearPeerAutocompleteUi();
+            }
             try {
                 if (typeof localStorage !== 'undefined' && SIDEBAR_TAB_IDS.includes(to)) {
                     localStorage.setItem(SIDEBAR_TAB_STORAGE_KEY, to);
@@ -565,6 +589,9 @@ export default {
             if (to === 'friends' || to === 'ignore') {
                 this.loadFriendsAndIgnores();
             }
+        },
+        peerLookupName() {
+            this.schedulePeerAutocompleteFetch();
         },
         badgeMenu(to) {
             document.removeEventListener('mousedown', this.onSidebarBadgeMenuDocMouseDown, true);
@@ -659,6 +686,10 @@ export default {
         if (this.markReadDebounceTimer) {
             clearTimeout(this.markReadDebounceTimer);
             this.markReadDebounceTimer = null;
+        }
+        if (this.peerLookupDebounceTimer) {
+            clearTimeout(this.peerLookupDebounceTimer);
+            this.peerLookupDebounceTimer = null;
         }
         this.detachChatSoundActivation();
         resetFaviconPrivateUnreadBadge();
@@ -1925,6 +1956,120 @@ export default {
             } catch (e) {
                 this.loadError = e.response?.data?.message || 'Користувача не знайдено.';
             }
+        },
+        clearPeerAutocompleteUi() {
+            this.peerAutocompleteSuggestions = [];
+            this.peerAutocompleteHighlightIndex = -1;
+            this.peerAutocompleteLoading = false;
+            this.peerAutocompleteRequestSeq += 1;
+            if (this.peerLookupDebounceTimer) {
+                clearTimeout(this.peerLookupDebounceTimer);
+                this.peerLookupDebounceTimer = null;
+            }
+        },
+        schedulePeerAutocompleteFetch() {
+            if (this.sidebarTab !== 'users') {
+                return;
+            }
+            if (this.peerLookupDebounceTimer) {
+                clearTimeout(this.peerLookupDebounceTimer);
+            }
+            this.peerLookupDebounceTimer = setTimeout(() => {
+                this.peerLookupDebounceTimer = null;
+                const t = String(this.peerLookupName || '').trim();
+                this.peerAutocompleteHighlightIndex = -1;
+                if (t.length < 2) {
+                    this.peerAutocompleteSuggestions = [];
+                    this.peerAutocompleteLoading = false;
+                    return;
+                }
+                this.runPeerAutocompleteFetch(t);
+            }, 400);
+        },
+        async runPeerAutocompleteFetch(q) {
+            this.peerAutocompleteLoading = true;
+            const seq = ++this.peerAutocompleteRequestSeq;
+            try {
+                const { data } = await window.axios.get('/api/v1/users/autocomplete', {
+                    params: { q },
+                });
+                if (seq !== this.peerAutocompleteRequestSeq) {
+                    return;
+                }
+                this.peerAutocompleteSuggestions = Array.isArray(data.data) ? data.data : [];
+            } catch {
+                if (seq !== this.peerAutocompleteRequestSeq) {
+                    return;
+                }
+                this.peerAutocompleteSuggestions = [];
+            } finally {
+                if (seq === this.peerAutocompleteRequestSeq) {
+                    this.peerAutocompleteLoading = false;
+                }
+            }
+        },
+        onPeerLookupKeydown(e) {
+            if (!e || !this.user) {
+                return;
+            }
+            const list = this.peerAutocompleteSuggestions || [];
+            const panelOpen = this.peerAutocompletePanelOpen;
+            if (e.key === 'Escape') {
+                if (panelOpen) {
+                    e.preventDefault();
+                    this.peerAutocompleteSuggestions = [];
+                    this.peerAutocompleteHighlightIndex = -1;
+                    this.peerAutocompleteLoading = false;
+                }
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                if (!panelOpen || list.length === 0) {
+                    return;
+                }
+                e.preventDefault();
+                const next =
+                    this.peerAutocompleteHighlightIndex < 0
+                        ? 0
+                        : Math.min(this.peerAutocompleteHighlightIndex + 1, list.length - 1);
+                this.peerAutocompleteHighlightIndex = next;
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                if (!panelOpen || list.length === 0) {
+                    return;
+                }
+                e.preventDefault();
+                if (this.peerAutocompleteHighlightIndex <= 0) {
+                    this.peerAutocompleteHighlightIndex = 0;
+                } else {
+                    this.peerAutocompleteHighlightIndex -= 1;
+                }
+                return;
+            }
+            if (e.key === 'Enter') {
+                if (panelOpen && list.length > 0 && this.peerAutocompleteHighlightIndex >= 0) {
+                    e.preventDefault();
+                    this.pickPeerAutocomplete(list[this.peerAutocompleteHighlightIndex]);
+                    return;
+                }
+                if (panelOpen && list.length === 1 && this.peerAutocompleteHighlightIndex < 0) {
+                    e.preventDefault();
+                    this.pickPeerAutocomplete(list[0]);
+                    return;
+                }
+                e.preventDefault();
+                this.lookupAndOpenPrivate();
+            }
+        },
+        pickPeerAutocomplete(peer) {
+            if (!peer || peer.id == null) {
+                return;
+            }
+            this.openPrivatePeer(peer);
+            this.peerLookupName = '';
+            this.clearPeerAutocompleteUi();
+            this.loadError = '';
         },
         sidebarBadgeMenuOpen(rowKey) {
             return Boolean(this.badgeMenu && this.badgeMenu.rowKey === rowKey);

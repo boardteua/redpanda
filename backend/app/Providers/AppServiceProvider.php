@@ -241,5 +241,11 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(30)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
         });
+
+        RateLimiter::for('user-autocomplete', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(45)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
     }
 }

@@ -90,6 +90,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::middleware('throttle:image-read')->get('images/{image}/file', [ChatImageController::class, 'file'])
             ->name('api.v1.chat-images.file');
 
+        Route::middleware('throttle:user-autocomplete')->get('users/autocomplete', [UserLookupController::class, 'autocomplete']);
         Route::get('users/lookup', [UserLookupController::class, 'show']);
 
         Route::middleware('throttle:oembed-read')->get('oembed', [OEmbedController::class, 'show']);

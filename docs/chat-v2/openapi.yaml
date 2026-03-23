@@ -44,12 +44,12 @@ info:
     **Приват і соціальне (T08, T56, T68):** `GET /api/v1/private/conversations` — у кожному елементі `unread_count` (вхідні від peer, ще не «прочитані»), у корені `meta.total_private_unread` (сума).
     `GET|POST /api/v1/private/peers/{userId}/messages`; `POST /api/v1/private/peers/{userId}/read` — позначити вхідні від peer прочитаними (throttle `private-read`, ідемпотентно).
     `DELETE /api/v1/private/peers/{userId}/thread` — видалити всю історію привату між поточним користувачем і peer (throttle `private-post`); **403** при взаємному ігнорі; подія **`.PrivateThreadCleared`** на **`private-user.{userId}`** для **обох** учасників (`peer_one_id`, `peer_two_id`, `cleared_by_user_id`).
-    `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)); непрочитані приватні — [T56-QA.md](T56-QA.md).
+    `GET /api/v1/users/lookup` (точний нік), **`GET /api/v1/users/autocomplete?q=`** — префіксний пошук зареєстрованих для привату (T85, throttle `user-autocomplete`); ендпоінти `friends*` та `ignores*` (деталі — [T08-QA.md](T08-QA.md)); непрочитані приватні — [T56-QA.md](T56-QA.md).
     **Друзі (T50):** `GET /api/v1/friends` — усі прийняті друзі (без фільтра онлайн); `DELETE /api/v1/friends/{userId}` — прибрати з друзів або скасувати вихідний запит (throttle `private-post`).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.17.2"
+  version: "0.17.3"
   license:
     name: Proprietary
     url: https://example.com/
@@ -944,6 +944,49 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/users/autocomplete:
+    get:
+      tags: [Auth]
+      summary: Автокомпліт ніків зареєстрованих користувачів (T85)
+      description: |
+        Префіксний пошук по `user_name` для поля «Почати приватний чат».
+        У відповіді лише **не**-гості з активним акаунтом (`account_disabled_at` IS NULL), без поточного користувача.
+        Запит до БД — `LIKE 'prefix%'` на індексованій колонці (`user_name` UNIQUE); екранування `%`, `_`, `!` у префіксі.
+        Параметр **`q`**: мінімум 2 символи, максимум 64; повертається до **15** записів, відсортовано за `user_name`.
+        Throttle: **`user-autocomplete`** (на користувача).
+      operationId: usersAutocomplete
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 64
+          description: Префікс ніка (без глобального wildcard).
+      responses:
+        "200":
+          description: Список кандидатів (той самий набір полів, що й у `users/lookup` → `data`)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    maxItems: 15
+                    items:
+                      $ref: "#/components/schemas/UserLookupPeer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "422":
           $ref: "#/components/responses/ValidationError"
         "429":
@@ -2135,6 +2178,21 @@ components:
         chat_upload_disabled:
           type: boolean
           description: Лише для **власного** облікового запису (`data.id` збігається з авторизованим); модераторське вимкнення завантажень у чаті / аватарки.
+
+    UserLookupPeer:
+      type: object
+      required: [id, user_name, guest, chat_role, badge_color]
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+        guest:
+          type: boolean
+        chat_role:
+          type: string
+        badge_color:
+          type: string
 
     UserResponse:
       type: object

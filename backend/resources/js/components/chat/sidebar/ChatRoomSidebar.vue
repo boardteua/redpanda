@@ -247,22 +247,66 @@
                         Нікого іншого онлайн у цій кімнаті.
                     </p>
                     <div class="mt-4 space-y-2 border-t border-[var(--rp-chat-sidebar-border)] pt-3">
-                        <label class="rp-label" for="pm-lookup">Приват за ніком</label>
-                        <div class="flex flex-wrap gap-2">
-                            <input
-                                id="pm-lookup"
-                                :value="peerLookupName"
-                                @input="onPeerLookupInput"
-                                type="text"
-                                maxlength="191"
-                                class="rp-input rp-focusable min-w-[8rem] flex-1"
-                                placeholder="нік"
-                                @keyup.enter="$emit('lookup-private')"
-                            />
+                        <label class="rp-label" for="pm-lookup">Почати приватний чат</label>
+                        <div class="flex flex-wrap items-start gap-2">
+                            <div class="relative min-w-[8rem] flex-1">
+                                <input
+                                    id="pm-lookup"
+                                    role="combobox"
+                                    :aria-expanded="peerAutocompleteOpen ? 'true' : 'false'"
+                                    aria-autocomplete="list"
+                                    :aria-controls="peerAutocompleteOpen ? 'pm-lookup-listbox' : undefined"
+                                    :aria-activedescendant="peerAutocompleteActiveDescendantId"
+                                    aria-label="Почати приватний чат, введіть нік або початок ніка"
+                                    :value="peerLookupName"
+                                    type="text"
+                                    maxlength="191"
+                                    autocomplete="off"
+                                    class="rp-input rp-focusable w-full"
+                                    placeholder="нік або початок ніка"
+                                    @input="onPeerLookupInput"
+                                    @keydown="onPmLookupKeydown"
+                                />
+                                <ul
+                                    v-show="peerAutocompleteOpen"
+                                    id="pm-lookup-listbox"
+                                    role="listbox"
+                                    aria-label="Підказки ніків"
+                                    class="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-bg)] py-1 text-[var(--rp-chat-sidebar-fg)] shadow-md"
+                                >
+                                    <li
+                                        v-if="peerAutocompleteLoading"
+                                        role="presentation"
+                                        class="px-2 py-1.5 text-xs text-[var(--rp-chat-sidebar-muted)]"
+                                    >
+                                        Завантаження…
+                                    </li>
+                                    <template v-else>
+                                        <li
+                                            v-for="(row, idx) in peerAutocompleteSuggestions"
+                                            :id="'pm-ac-' + idx"
+                                            :key="'pm-ac-' + row.id"
+                                            role="option"
+                                            :aria-selected="
+                                                peerAutocompleteHighlightIndex === idx ? 'true' : 'false'
+                                            "
+                                            class="cursor-pointer px-2 py-1.5 text-sm"
+                                            :class="
+                                                peerAutocompleteHighlightIndex === idx
+                                                    ? 'bg-[var(--rp-chat-sidebar-border)]/40'
+                                                    : 'hover:bg-[var(--rp-chat-sidebar-border)]/25'
+                                            "
+                                            @mousedown.prevent="$emit('pick-peer-autocomplete', row)"
+                                        >
+                                            {{ row.user_name }}
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
                             <button
                                 type="button"
                                 class="rp-focusable rp-btn rp-btn-primary shrink-0"
-                                :disabled="!peerLookupName"
+                                :disabled="!String(peerLookupName || '').trim()"
                                 @click="$emit('lookup-private')"
                             >
                                 Відкрити
@@ -710,6 +754,11 @@ export default {
         viewerPresenceStatus: { type: String, default: 'online' },
         wsDegraded: { type: Boolean, default: false },
         peerLookupName: { type: String, default: '' },
+        /** T85 */
+        peerAutocompleteSuggestions: { type: Array, default: () => [] },
+        peerAutocompleteHighlightIndex: { type: Number, default: -1 },
+        peerAutocompleteLoading: { type: Boolean, default: false },
+        peerAutocompleteOpen: { type: Boolean, default: false },
         friendsSubTab: { type: String, required: true },
         friendsAccepted: { type: Array, default: () => [] },
         friendsAcceptedWithMenuPeer: { type: Array, default: () => [] },
@@ -766,6 +815,18 @@ export default {
             }
 
             return this.filteredRooms.length === 0;
+        },
+        peerAutocompleteActiveDescendantId() {
+            if (
+                !this.peerAutocompleteOpen ||
+                this.peerAutocompleteHighlightIndex < 0 ||
+                !this.peerAutocompleteSuggestions ||
+                this.peerAutocompleteSuggestions.length === 0
+            ) {
+                return undefined;
+            }
+
+            return 'pm-ac-' + this.peerAutocompleteHighlightIndex;
         },
         viewerSexMetaRow() {
             if (!this.user || this.user.guest) {
@@ -946,6 +1007,9 @@ export default {
         },
         onPeerLookupInput(e) {
             this.$emit('update:peerLookupName', e.target.value);
+        },
+        onPmLookupKeydown(e) {
+            this.$emit('peer-lookup-keydown', e);
         },
     },
 };
