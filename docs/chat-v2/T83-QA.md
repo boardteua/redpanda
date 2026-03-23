@@ -36,7 +36,7 @@ docker compose -f docker/compose.yaml --profile app up -d --build
   - **Secrets:** `DEPLOY_SSH_KEY` (приватний ключ SSH)
   - **Environment `production`:** за бажанням — required reviewers / protection (branch protection на `main` — політика команди).
 
-На сервері **розкоментуйте** реальні кроки в `docker/deploy.example.sh`; поточний скрипт навмисно не змінює прод без ручної адаптації.
+На сервері **розкоментуйте** реальні кроки в `docker/deploy.example.sh` і **приберіть** фінальний `exit 1` (він потрібен, щоб CI не показував успішний деплой, поки скрипт лише заглушка). За бажанням перейменуйте скрипт на `deploy.sh` і оновіть виклик у `.github/workflows/ci.yml`.
 
 ## Доказ (PASS)
 

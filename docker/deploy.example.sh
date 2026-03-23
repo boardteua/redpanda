@@ -31,4 +31,6 @@ cd "$BACKEND_DIR"
 # --- 2) Перевірка готовності (після up / reload) ---
 # curl -fsS "https://your-host/health/ready" | jq .
 
-echo "OK: розкоментуйте кроки під реальний деплой; бекап і health — див. docs/chat-v2/T80-DEPLOY-CHECKLIST.md та T83-ROLLBACK.md."
+# Поки немає реальних кроків деплою — не даємо зелений SSH-job у CI «без змін на сервері».
+echo "FAIL: розкоментуйте кроки в docker/deploy.example.sh або замініть шлях у workflow (див. docs/chat-v2/T83-QA.md)." >&2
+exit 1
