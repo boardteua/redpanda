@@ -11,7 +11,7 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `landing-read`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`, `oembed-read`, `emoticon-read`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*` — для `auth-login` два ключі: IP і нормалізований `user_name`; `auth-guest` 12/хв на IP; інші — `landing-read`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`, `oembed-read`, `emoticon-read`).
 
     **Смайли / emoticon (T63):** `GET /api/v1/chat/emoticons` — активні записи каталогу (throttle `emoticon-read`); файли за URL `/emoticon/{file}`. Адмін: `GET|POST|PATCH|DELETE /api/v1/mod/emoticons` (multipart на `POST` / опційно `PATCH`), `can:chat-admin`, throttle `mod-actions`. Деталі — [T63-QA.md](T63-QA.md).
 
@@ -49,7 +49,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.17.1"
+  version: "0.17.2"
   license:
     name: Proprietary
     url: https://example.com/
@@ -729,6 +729,8 @@ paths:
     post:
       tags: [Auth]
       summary: Вхід за паролем
+      description: |
+        **Throttle:** одночасно ліміт **5**/хв на IP (`auth-login-ip`) і **30**/хв на нормалізований `user_name` у нижньому регістрі (`auth-login-name`, спільно для всіх IP) — стримує перебір одного ніка з ботнету.
       operationId: authLogin
       security: []
       requestBody:
@@ -753,6 +755,7 @@ paths:
     post:
       tags: [Auth]
       summary: Вхід як гість
+      description: Throttle **12**/хв на IP (`auth-guest`).
       operationId: authGuest
       security: []
       requestBody:
@@ -1961,8 +1964,10 @@ components:
           format: email
         password:
           type: string
+          maxLength: 1024
         password_confirmation:
           type: string
+          maxLength: 1024
         department:
           type: string
           maxLength: 0
@@ -1976,6 +1981,8 @@ components:
           type: string
         password:
           type: string
+          maxLength: 1024
+          description: Обмеження довжини знижує ризик DoS на `Hash::check`.
         remember:
           type: boolean
 

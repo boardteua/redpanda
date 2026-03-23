@@ -19,6 +19,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
+    /**
+     * Bcrypt з відомим відкритим текстом (Laravel testing stub) — для вирівнювання часу відповіді,
+     * коли облікового запису немає / гість / без пароля (зменшує простий таймінг-канал).
+     */
+    private const AUTH_TIMING_DUMMY_BCRYPT = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+
     public function register(RegisterRequest $request): JsonResponse
     {
         if (! ChatSetting::current()->resolvedRegistrationFlags()['registration_open']) {
@@ -42,14 +48,17 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): UserResource
     {
+        $plain = $request->validated('password');
         $user = User::query()->where('user_name', $request->validated('user_name'))->first();
 
-        if (
-            ! $user
-            || $user->guest
-            || ! $user->password
-            || ! Hash::check($request->validated('password'), $user->password)
-        ) {
+        $passwordOk = false;
+        if ($user && ! $user->guest && $user->password) {
+            $passwordOk = Hash::check($plain, $user->password);
+        } else {
+            Hash::check($plain, self::AUTH_TIMING_DUMMY_BCRYPT);
+        }
+
+        if (! $passwordOk || ! $user || $user->guest || ! $user->password) {
             throw ValidationException::withMessages([
                 'user_name' => [__('auth.failed')],
             ]);

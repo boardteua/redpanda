@@ -40,6 +40,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -104,11 +105,21 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('auth-login', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            $ip = $request->ip();
+            $name = Str::lower(trim((string) $request->input('user_name', '')));
+            $limits = [
+                Limit::perMinute(5)->by('auth-login-ip:'.$ip),
+            ];
+            if ($name !== '') {
+                // Обмеження спроб на цільовий нік (усі IP) — стримує розподілений перебір одного акаунта.
+                $limits[] = Limit::perMinute(30)->by('auth-login-name:'.hash('sha256', $name));
+            }
+
+            return $limits;
         });
 
         RateLimiter::for('auth-guest', function (Request $request) {
-            return Limit::perMinute(20)->by($request->ip());
+            return Limit::perMinute(12)->by($request->ip());
         });
 
         RateLimiter::for('landing-read', function (Request $request) {

@@ -134,6 +134,20 @@ class AuthApiTest extends TestCase
             ->assertUnprocessable();
     }
 
+    public function test_login_rejects_password_longer_than_1024_chars(): void
+    {
+        $long = str_repeat('a', 1025);
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/login', [
+                'user_name' => 'anyone',
+                'password' => $long,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['password']);
+    }
+
     public function test_login_throttle_returns_429(): void
     {
         for ($i = 0; $i < 5; $i++) {
