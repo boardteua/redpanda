@@ -4,8 +4,10 @@ import Pusher from 'pusher-js';
 /**
  * Echo для Laravel Reverb (протокол Pusher).
  * Повертає null, якщо немає VITE_REVERB_APP_KEY (наприклад, production build без WS).
+ *
+ * @param {string|null|undefined} bearerToken — опційно: Auth0 access token для POST /broadcasting/auth (T76).
  */
-export function createEcho() {
+export function createEcho(bearerToken = null) {
     const key = import.meta.env.VITE_REVERB_APP_KEY;
     if (!key) {
         return null;
@@ -16,7 +18,8 @@ export function createEcho() {
     const scheme = import.meta.env.VITE_REVERB_SCHEME ?? 'https';
     const port = import.meta.env.VITE_REVERB_PORT;
 
-    return new Echo({
+    /** @type {Record<string, unknown>} */
+    const opts = {
         broadcaster: 'reverb',
         key,
         wsHost: import.meta.env.VITE_REVERB_HOST ?? 'localhost',
@@ -29,5 +32,10 @@ export function createEcho() {
             headers: {},
             withCredentials: true,
         },
-    });
+    };
+    if (bearerToken) {
+        opts.bearerToken = bearerToken;
+    }
+
+    return new Echo(opts);
 }

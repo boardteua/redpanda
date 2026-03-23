@@ -9,6 +9,7 @@
         "test:country-filter": "node --test resources/js/utils/rpCountryComboboxFilter.test.mjs"
     },
     "dependencies": {
+        "@auth0/auth0-spa-js": "^2.18.0",
         "@linusborg/vue-simple-portal": "^0.1.5",
         "favicon-badge-notify": "^1.1.5",
         "laravel-echo": "^2.3.1",

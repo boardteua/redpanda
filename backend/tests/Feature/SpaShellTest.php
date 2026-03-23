@@ -65,4 +65,12 @@ class SpaShellTest extends TestCase
             ->assertSee('<div id="app"></div>', false)
             ->assertSee('type="module"', false);
     }
+
+    public function test_auth_callback_route_returns_spa_shell(): void
+    {
+        $this->get('/auth/callback')
+            ->assertOk()
+            ->assertSee('<div id="app"></div>', false)
+            ->assertSee('type="module"', false);
+    }
 }

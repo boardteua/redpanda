@@ -236,6 +236,11 @@ import UserInfoModal from '../components/UserInfoModal.vue';
 import AddRoomModal from '../components/chat/AddRoomModal.vue';
 import RoomEditModal from '../components/chat/RoomEditModal.vue';
 import { createEcho } from '../lib/echo';
+import {
+    ensureAuth0BootstrapFromLandingApi,
+    getAuth0AccessTokenSilentlyOrNull,
+    logoutAuth0IfLoggedIn,
+} from '../lib/rpAuth0';
 import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
 import {
     markChatSoundUserActivated,
@@ -681,7 +686,7 @@ export default {
                     && this.rooms.some((r) => r.room_id === newRoom)
                 ) {
                     this.selectedRoomId = newRoom;
-                    this.applyRoomSelection();
+                    void this.applyRoomSelection();
 
                     return;
                 }
@@ -899,6 +904,7 @@ export default {
             try {
                 await this.ensureSanctum();
                 await window.axios.post('/api/v1/auth/logout');
+                await logoutAuth0IfLoggedIn();
                 this.teardownEcho(true);
                 this.stopPoll();
                 this.user = null;
@@ -936,6 +942,7 @@ export default {
         async bootstrap() {
             let openChatSettingsAfterBootstrap = false;
             try {
+                await ensureAuth0BootstrapFromLandingApi();
                 this.user = await this.fetchUser();
                 if (!this.user) {
                     await this.$router.replace({ path: '/' });
@@ -1665,12 +1672,13 @@ export default {
                 this.echo = null;
             }
         },
-        setupEcho() {
+        async setupEcho() {
             this.teardownEcho(false);
 
             let echo = this.echo;
             if (!echo) {
-                echo = createEcho();
+                const bearer = await getAuth0AccessTokenSilentlyOrNull();
+                echo = createEcho(bearer || null);
                 if (!echo) {
                     this.wsDegraded = true;
                     this.startPollIfDegraded();
@@ -2564,7 +2572,7 @@ export default {
             this.clearMessages();
             this.loadError = '';
             await this.loadMessages();
-            this.setupEcho();
+            await this.setupEcho();
             this.startPollIfDegraded();
         },
         async selectRoom(roomId) {
@@ -2657,7 +2665,7 @@ export default {
                             this.teardownEcho(false);
                             this.$nextTick(() => {
                                 if (this.selectedRoomId === rid) {
-                                    this.setupEcho();
+                                    void this.setupEcho();
                                 }
                             });
                         }

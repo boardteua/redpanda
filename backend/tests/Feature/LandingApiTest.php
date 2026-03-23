@@ -34,8 +34,10 @@ class LandingApiTest extends TestCase
                     'landing' => ['page_title', 'tagline', 'news_title', 'news_body', 'links'],
                     'registration' => ['registration_open', 'min_age', 'show_social_login_buttons'],
                     'users_online',
+                    'auth0' => ['enabled', 'domain', 'client_id', 'audience'],
                 ],
-            ]);
+            ])
+            ->assertJsonPath('data.auth0.enabled', false);
     }
 
     public function test_admin_patch_landing_visible_on_public_endpoint(): void

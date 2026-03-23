@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\V1\UserAvatarController;
 use App\Http\Controllers\Api\V1\UserLookupController;
 use App\Http\Middleware\RejectBannedIp;
 use App\Http\Middleware\RejectDisabledAccount;
+use App\Http\Middleware\ResolveAuth0BearerUser;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): void {
@@ -33,7 +34,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
 
     Route::middleware('throttle:landing-read')->get('landing', [LandingController::class, 'show']);
 
-    Route::middleware(['auth:sanctum', RejectDisabledAccount::class])->group(function (): void {
+    Route::middleware([ResolveAuth0BearerUser::class, 'auth:sanctum', RejectDisabledAccount::class])->group(function (): void {
         Route::get('auth/user', [AuthController::class, 'user']);
         Route::post('auth/logout', [AuthController::class, 'logout']);
 

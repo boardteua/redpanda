@@ -2666,7 +2666,23 @@ components:
           maximum: 120
         show_social_login_buttons:
           type: boolean
-          description: Заготовка під T76 (Auth0); лише прапорець видимості з адмінки.
+          description: Прапорець видимості соц-кнопок на вітальні (**T76** / Auth0); `false` приховує блок навіть якщо Auth0 увімкнено.
+
+    Auth0PublicPayload:
+      type: object
+      description: Публічні полі для Auth0 SPA SDK (**T76**); без секретів.
+      properties:
+        enabled:
+          type: boolean
+        domain:
+          type: string
+          nullable: true
+        client_id:
+          type: string
+          nullable: true
+        audience:
+          type: string
+          nullable: true
 
     LandingPublicData:
       type: object
@@ -2679,6 +2695,8 @@ components:
         users_online:
           type: integer
           minimum: 0
+        auth0:
+          $ref: "#/components/schemas/Auth0PublicPayload"
 
     LandingPublicResponse:
       type: object

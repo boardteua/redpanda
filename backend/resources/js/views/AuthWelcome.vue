@@ -319,9 +319,42 @@
                         Зайти анонімно
                     </button>
                 </div>
-                <p v-if="showSocialLoginButtons" class="mt-6 text-center text-xs text-[var(--rp-text-muted)]">
-                    Соціальний вхід з’явиться після підключення Auth0 (T76).
-                </p>
+                <div
+                    v-if="socialLoginUiVisible"
+                    class="mt-6 space-y-3"
+                    role="group"
+                    aria-label="Вхід через соціальні мережі"
+                >
+                    <div class="rp-divider" aria-hidden="true">
+                        або соціальний вхід
+                    </div>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
+                        <button
+                            type="button"
+                            class="rp-focusable rp-btn rp-btn-ghost w-full sm:w-auto"
+                            :disabled="loading"
+                            @click="startSocialLogin('google-oauth2')"
+                        >
+                            Google
+                        </button>
+                        <button
+                            type="button"
+                            class="rp-focusable rp-btn rp-btn-ghost w-full sm:w-auto"
+                            :disabled="loading"
+                            @click="startSocialLogin('facebook')"
+                        >
+                            Facebook
+                        </button>
+                        <button
+                            type="button"
+                            class="rp-focusable rp-btn rp-btn-ghost w-full sm:w-auto"
+                            :disabled="loading"
+                            @click="startSocialLogin('twitter')"
+                        >
+                            X
+                        </button>
+                    </div>
+                </div>
                 </template>
                 <p
                     v-else
@@ -374,6 +407,8 @@
 </template>
 
 <script>
+import { cacheAuth0FromLandingPayload, ensureAuth0Client } from '../lib/rpAuth0';
+
 const THEME_KEY = 'redpanda-theme';
 const LANDING_POLL_MS = 45000;
 
@@ -409,6 +444,8 @@ export default {
             forgotPasswordHint: false,
             /** Публічний асет `public/brand/` — не статичний src у шаблоні (Vite). */
             landingLogoUrl: '/brand/board-te-ua-orange.png',
+            /** Публічні поля Auth0 з GET /api/v1/landing (T76). */
+            auth0Public: null,
         };
     },
     computed: {
@@ -453,6 +490,17 @@ export default {
         },
         showSocialLoginButtons() {
             return Boolean(this.registration && this.registration.show_social_login_buttons);
+        },
+        socialLoginUiVisible() {
+            const a0 = this.auth0Public;
+            if (!a0 || !a0.enabled) {
+                return false;
+            }
+            if (this.registration && this.registration.show_social_login_buttons === false) {
+                return false;
+            }
+
+            return true;
         },
         authRegionLabelledBy() {
             if (this.user) {
@@ -516,6 +564,11 @@ export default {
                 this.landing = d.landing && typeof d.landing === 'object' ? d.landing : null;
                 this.registration = d.registration && typeof d.registration === 'object' ? d.registration : null;
                 this.usersOnline = Number(d.users_online) >= 0 ? Number(d.users_online) : 0;
+                this.auth0Public = d.auth0 && typeof d.auth0 === 'object' ? d.auth0 : null;
+                cacheAuth0FromLandingPayload(this.auth0Public);
+                if (this.auth0Public && this.auth0Public.enabled) {
+                    ensureAuth0Client().catch(() => {});
+                }
             } catch {
                 /* залишаємо попередні значення / дефолти */
             }
@@ -629,6 +682,26 @@ export default {
                 await window.axios.post('/api/v1/auth/register', { ...this.registerForm });
                 await this.refreshUser();
                 this.redirectIfAuthenticated();
+            } catch (e) {
+                this.handleAxiosError(e);
+            } finally {
+                this.loading = false;
+            }
+        },
+        async startSocialLogin(connection) {
+            this.clearErrors();
+            this.loading = true;
+            try {
+                await this.ensureSanctum();
+                const client = await ensureAuth0Client();
+                if (!client) {
+                    this.formError = 'Соціальний вхід тимчасово недоступний. Спробуйте пізніше.';
+
+                    return;
+                }
+                await client.loginWithRedirect({
+                    authorizationParams: { connection },
+                });
             } catch (e) {
                 this.handleAxiosError(e);
             } finally {

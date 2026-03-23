@@ -2,6 +2,7 @@ import Vue from 'vue';
 import VueRouter from 'vue-router';
 import ArchiveChat from '../views/ArchiveChat.vue';
 import AuthWelcome from '../views/AuthWelcome.vue';
+import AuthCallback from '../views/AuthCallback.vue';
 import ChatRoom from '../views/ChatRoom.vue';
 import AdminHubView from '../views/AdminHubView.vue';
 import StaffUsersView from '../views/StaffUsersView.vue';
@@ -17,6 +18,11 @@ export default new VueRouter({
             path: '/',
             name: 'home',
             component: AuthWelcome,
+        },
+        {
+            path: '/auth/callback',
+            name: 'auth-callback',
+            component: AuthCallback,
         },
         {
             path: '/chat',
