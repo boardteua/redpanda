@@ -58,18 +58,15 @@ jobs:
           npm run test:msg-parse
           npm run test:country-filter
 
-  # Деплой: push у main + задані SSH-дані.
-  # Важливо: `vars.*` — лише вкладка «Variables». Якщо DEPLOY_* додані в «Secrets», умова vars була б хибною — тому нижче підтримка vars || secrets.
-  # Secrets: DEPLOY_SSH_KEY (обов’язково). Решта — Variables або repository Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_REPO_DIR.
+  # Деплой: push у main. У jobs.<id>.if недоступний контекст secrets (див. GitHub «Contexts reference»).
+  # Увімкнення: Variables — DEPLOY_HOST (непорожній) АБО DEPLOY_ENABLED=true (якщо host/user/repo лише в Secrets).
+  # Secrets: DEPLOY_SSH_KEY; опційно Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_REPO_DIR — підставляються в кроках через ${{ secrets.* }}.
   deploy:
     needs: backend-and-frontend
     if: >-
       github.ref == 'refs/heads/main' &&
       github.event_name == 'push' &&
-      secrets.DEPLOY_SSH_KEY != '' &&
-      (vars.DEPLOY_HOST != '' || secrets.DEPLOY_HOST != '') &&
-      (vars.DEPLOY_USER != '' || secrets.DEPLOY_USER != '') &&
-      (vars.DEPLOY_REPO_DIR != '' || secrets.DEPLOY_REPO_DIR != '')
+      (vars.DEPLOY_HOST != '' || vars.DEPLOY_ENABLED == 'true')
     runs-on: ubuntu-latest
     environment: production
     steps:
