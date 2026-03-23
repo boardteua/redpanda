@@ -1,0 +1,9 @@
+# Локально: cp compose.override.example.yml compose.override.yml
+# Docker Compose автоматично змерджить override; тоді з хоста backend/.env можна DB_HOST=127.0.0.1, REDIS_HOST=127.0.0.1
+services:
+  mysql:
+    ports:
+      - "127.0.0.1:3306:3306"
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"

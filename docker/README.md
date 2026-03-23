@@ -8,11 +8,14 @@
 docker compose -f docker/compose.yaml up -d
 ```
 
-Переконайтеся, що `backend/.env` вказує на `127.0.0.1` і порти `3306` / `6379`, потім у каталозі `backend/`:
+За замовчуванням **MySQL і Redis не проброшені на хост** (щоб на VPS не конфліктувати з локальним Redis/MySQL). Якщо `php artisan` запускаєте **на хості** з Docker-залежностями:
 
 ```bash
-php artisan migrate
+cp docker/compose.override.example.yml docker/compose.override.yml
+docker compose -f docker/compose.yaml up -d
 ```
+
+У `backend/.env`: `DB_HOST=127.0.0.1`, `REDIS_HOST=127.0.0.1`, потім `php artisan migrate`.
 
 ## Профіль `app`: PHP-FPM + Nginx (ліміт завантаження 128MB)
 
@@ -42,4 +45,4 @@ HTTP лишається на **8080**; WebSocket — окремо на **6001** 
 
 ## Приклад віддаленого деплою
 
-Шаблон кроків без секретів: [deploy.example.sh](./deploy.example.sh).
+Кроки деплою на сервері: [deploy.sh](./deploy.sh).

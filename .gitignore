@@ -1,4 +1,7 @@
 .DS_Store
 
+# Локальний проброс MySQL/Redis на хост (див. docker/compose.override.example.yml)
+docker/compose.override.yml
+
 # Legacy board.te.ua CSS snapshot (scp for local analysis; do not commit)
 reference/board-te-ua-css/
