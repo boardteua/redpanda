@@ -40,17 +40,24 @@ if [[ "${DEPLOY_SKIP_REPO_CLEANUP:-}" != "1" ]]; then
     "$REPO_DIR/backend/README.md" || true
 fi
 
-cd "$BACKEND_DIR"
-composer install --no-dev --optimize-autoloader --no-interaction
-npm ci
-npm run build
-php artisan migrate --force
-php artisan optimize
-php artisan queue:restart || true
+# Збірка й artisan у контейнерах (PHP 8.3 + Composer 2.x), щоб не залежати від PHP/Composer на хості.
+COMPOSE=(docker compose -f "$REPO_DIR/docker/compose.yaml")
 
-cd "$REPO_DIR"
-docker compose -f docker/compose.yaml --profile app up -d --build
-docker compose -f docker/compose.yaml --profile app restart php nginx queue reverb
+"${COMPOSE[@]}" up -d mysql redis
+"${COMPOSE[@]}" --profile app build php
+"${COMPOSE[@]}" --profile app run --rm \
+  -e COMPOSER_ALLOW_SUPERUSER=1 \
+  php sh -lc \
+  'composer install --no-dev --optimize-autoloader --no-interaction && php artisan migrate --force && php artisan optimize && (php artisan queue:restart || true)'
+
+docker run --rm \
+  -v "$BACKEND_DIR:/var/www/html" \
+  -w /var/www/html \
+  node:22-bookworm \
+  sh -lc 'npm ci && npm run build'
+
+"${COMPOSE[@]}" --profile app up -d --build
+"${COMPOSE[@]}" --profile app restart php nginx queue reverb
 
 # --- 2) Перевірка готовності (задайте DEPLOY_HEALTH_URL, напр. https://new.board.te.ua/health/ready) ---
 if [[ -n "${DEPLOY_HEALTH_URL:-}" ]]; then
