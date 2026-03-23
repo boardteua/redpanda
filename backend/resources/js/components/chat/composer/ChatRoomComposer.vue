@@ -96,9 +96,6 @@
                 </button>
             </div>
         </div>
-        <p class="px-2 pb-1 text-[0.7rem] text-[var(--rp-text-muted)] sm:px-3">
-            Приват: <code class="rounded bg-[var(--rp-chat-toolbar-bg)] px-1 font-mono text-[0.65rem]">/msg</code> нік текст.
-        </p>
         <input
             ref="imageInput"
             type="file"
