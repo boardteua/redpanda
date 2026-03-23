@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\ChatSetting;
 use App\Models\Image;
 use App\Services\Moderation\UserPostingGate;
+use App\Support\ChatImageUploadValidation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -50,22 +50,7 @@ class ChatImageController extends Controller
 
     public function store(Request $request, UserPostingGate $postingGate): JsonResponse
     {
-        $effectiveBytes = ChatSetting::current()->effectiveMaxChatImageUploadBytes();
-        $maxKb = max(1, (int) ceil($effectiveBytes / 1024));
-
-        $request->validate([
-            'image' => [
-                'required',
-                'file',
-                'max:'.$maxKb,
-                'mimetypes:image/jpeg,image/png,image/gif,image/webp',
-            ],
-        ], [
-            'image.max' => sprintf(
-                'Файл завеликий. Максимум %d байт (налаштування чату та обмеження PHP upload_max_filesize).',
-                $effectiveBytes
-            ),
-        ]);
+        ChatImageUploadValidation::validateUploadedImage($request);
 
         $user = $request->user();
         if ($user->guest) {
