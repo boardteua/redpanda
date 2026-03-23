@@ -286,6 +286,45 @@ class ChatApiTest extends TestCase
         Bus::assertNotDispatched(BroadcastEvent::class);
     }
 
+    public function test_slash_rate_limit_follows_chat_settings(): void
+    {
+        [$public] = $this->seedRooms();
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'slash_command_max_per_window' => 2,
+                'slash_command_window_seconds' => 60,
+            ])
+            ->assertOk();
+
+        Sanctum::actingAs($user);
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/one',
+                'client_message_id' => 'a1000000-0000-4000-8000-000000000011',
+            ])
+            ->assertCreated();
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/two',
+                'client_message_id' => 'a1000000-0000-4000-8000-000000000012',
+            ])
+            ->assertCreated();
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/three',
+                'client_message_id' => 'a1000000-0000-4000-8000-000000000013',
+            ])
+            ->assertStatus(429);
+    }
+
     public function test_same_client_id_in_different_room_returns_422(): void
     {
         [$public, $registered] = $this->seedRooms();

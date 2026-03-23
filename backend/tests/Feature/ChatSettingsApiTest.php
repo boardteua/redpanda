@@ -38,7 +38,9 @@ class ChatSettingsApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.room_create_min_public_messages', 100)
             ->assertJsonPath('data.public_message_count_scope', ChatSetting::SCOPE_ALL_PUBLIC_ROOMS)
-            ->assertJsonPath('data.message_count_room_id', null);
+            ->assertJsonPath('data.message_count_room_id', null)
+            ->assertJsonPath('data.slash_command_max_per_window', 45)
+            ->assertJsonPath('data.slash_command_window_seconds', 60);
     }
 
     public function test_non_admin_patch_returns_403(): void
@@ -104,6 +106,26 @@ class ChatSettingsApiTest extends TestCase
             ->withHeaders($this->statefulHeaders())
             ->getJson('/api/v1/chat/settings')
             ->assertUnauthorized();
+    }
+
+    public function test_admin_can_patch_slash_rate_limits(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'slash_command_max_per_window' => 30,
+                'slash_command_window_seconds' => 120,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.slash_command_max_per_window', 30)
+            ->assertJsonPath('data.slash_command_window_seconds', 120);
+
+        $row = ChatSetting::current();
+        $this->assertSame(30, $row->slash_command_max_per_window);
+        $this->assertSame(120, $row->slash_command_window_seconds);
     }
 
     public function test_admin_cannot_set_message_count_room_to_non_public_room(): void

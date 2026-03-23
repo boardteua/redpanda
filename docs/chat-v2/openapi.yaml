@@ -1156,6 +1156,7 @@ paths:
       summary: Глобальні опції чату (зріз для клієнта)
       description: |
         Поріг **N** і область лічби публічних повідомлень для права створення кімнат (**T51** / **T44**).
+        Ліміт **slash-команд** на користувача: `slash_command_max_per_window` / `slash_command_window_seconds` (див. схему `ChatSettingsData`).
         Доступно будь-якому авторизованому користувачу (у т.ч. гостю); без PII.
       operationId: getChatSettings
       security:
@@ -1722,7 +1723,7 @@ paths:
         `meta.slash` завжди присутній; для відповіді-дубля — `recognized: false` (тіло повторного запиту не застосовується).
         **Slash-команди (T66):** рядок після пробілів, що починається з `/` і має непорожнє ім’я команди (до першого пробілу), обробляється реєстром на бекенді;
         невідома команда зберігається як `type: client_only` (видно лише автору), без події `MessagePosted` у кімнату.
-        Окремий ліміт **45 команд на 60 с** на користувача (`429`); разом із `image_id` такі рядки **422**.
+        Окремий ліміт slash-команд на користувача (`429`): **`slash_command_max_per_window`** спроб за **`slash_command_window_seconds`** с (див. `GET/PATCH /api/v1/chat/settings`); разом із `image_id` такі рядки **422**.
         Потрібен **непорожній** `message` (після trim) або **`image_id`** власного завантаження (`POST /api/v1/images`).
         Поле `message` — **plain text**; max довжина: гість **2000**, користувач **4000**, VIP/модератор/адмін **8000** (інакше **422**).
       operationId: postRoomMessage
@@ -2572,6 +2573,8 @@ components:
       required:
         - room_create_min_public_messages
         - public_message_count_scope
+        - slash_command_max_per_window
+        - slash_command_window_seconds
       properties:
         room_create_min_public_messages:
           type: integer
@@ -2585,6 +2588,16 @@ components:
           type: integer
           nullable: true
           description: Якщо scope = `default_room_only` — `room_id` публічної кімнати; інакше null.
+        slash_command_max_per_window:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          description: Скільки разів за вікно можна ініціювати обробку slash-команди (`/` + непорожня назва) на одного користувача.
+        slash_command_window_seconds:
+          type: integer
+          minimum: 10
+          maximum: 86400
+          description: Тривалість вікна ліміту slash-команд у секундах (разом із `slash_command_max_per_window` — `RateLimiter` на бекенді).
 
     ChatSettingsResponse:
       type: object
@@ -2725,6 +2738,14 @@ components:
           type: integer
           nullable: true
           description: Лише `rooms` з `access === 0` (публічна); інакше 422.
+        slash_command_max_per_window:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        slash_command_window_seconds:
+          type: integer
+          minimum: 10
+          maximum: 86400
 
     PatchChatMessageRequest:
       type: object

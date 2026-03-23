@@ -82,6 +82,38 @@
                     </select>
                 </div>
 
+                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Slash-команди</h3>
+                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                        Обмеження на рядки, що починаються з <span class="font-mono">/</span> (окремо від ліміту на звичайні
+                        повідомлення). Застосовується до кожного користувача; при перевищенні — HTTP 429.
+                    </p>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="rp-label" for="cs-slash-max">Максимум команд за вікно</label>
+                            <input
+                                id="cs-slash-max"
+                                v-model.number="form.slash_command_max_per_window"
+                                type="number"
+                                min="1"
+                                max="65535"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                            />
+                        </div>
+                        <div>
+                            <label class="rp-label" for="cs-slash-window">Тривалість вікна (секунди)</label>
+                            <input
+                                id="cs-slash-window"
+                                v-model.number="form.slash_command_window_seconds"
+                                type="number"
+                                min="10"
+                                max="86400"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex flex-wrap gap-2">
                     <button
                         type="button"
@@ -268,6 +300,8 @@ export default {
                 room_create_min_public_messages: 100,
                 public_message_count_scope: 'all_public_rooms',
                 message_count_room_id: null,
+                slash_command_max_per_window: 45,
+                slash_command_window_seconds: 60,
             },
             emoticonList: [],
             emoticonLoading: false,
@@ -335,6 +369,12 @@ export default {
                             ? 'default_room_only'
                             : 'all_public_rooms',
                     message_count_room_id: d.message_count_room_id != null ? Number(d.message_count_room_id) : null,
+                    slash_command_max_per_window:
+                        Number(d.slash_command_max_per_window) > 0 ? Number(d.slash_command_max_per_window) : 45,
+                    slash_command_window_seconds:
+                        Number(d.slash_command_window_seconds) >= 10
+                            ? Number(d.slash_command_window_seconds)
+                            : 60,
                 };
             } catch {
                 this.loadError = 'Не вдалося завантажити налаштування.';
@@ -350,6 +390,8 @@ export default {
                 const body = {
                     room_create_min_public_messages: this.form.room_create_min_public_messages,
                     public_message_count_scope: this.form.public_message_count_scope,
+                    slash_command_max_per_window: this.form.slash_command_max_per_window,
+                    slash_command_window_seconds: this.form.slash_command_window_seconds,
                 };
                 if (this.form.public_message_count_scope === 'default_room_only') {
                     body.message_count_room_id = this.form.message_count_room_id;

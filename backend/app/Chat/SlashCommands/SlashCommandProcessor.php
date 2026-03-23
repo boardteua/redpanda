@@ -3,6 +3,7 @@
 namespace App\Chat\SlashCommands;
 
 use App\Chat\SlashCommands\Handlers\UnknownSlashCommandHandler;
+use App\Models\ChatSetting;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -20,8 +21,12 @@ final class SlashCommandProcessor
             return SlashCommandOutcome::passThrough($rawMessage);
         }
 
+        $settings = ChatSetting::current();
+        $maxAttempts = max(1, min(65535, (int) $settings->slash_command_max_per_window));
+        $decaySeconds = max(10, min(86400, (int) $settings->slash_command_window_seconds));
+
         $rateKey = 'slash-command:'.$context->user->id;
-        $allowed = RateLimiter::attempt($rateKey, 45, static fn (): bool => true, 60);
+        $allowed = RateLimiter::attempt($rateKey, $maxAttempts, static fn (): bool => true, $decaySeconds);
         if (! $allowed) {
             $retryAfter = RateLimiter::availableIn($rateKey);
 

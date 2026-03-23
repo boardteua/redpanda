@@ -21,6 +21,8 @@ class ChatSetting extends Model
         'room_create_min_public_messages',
         'public_message_count_scope',
         'message_count_room_id',
+        'slash_command_max_per_window',
+        'slash_command_window_seconds',
     ];
 
     /**
@@ -31,6 +33,8 @@ class ChatSetting extends Model
         return [
             'room_create_min_public_messages' => 'integer',
             'message_count_room_id' => 'integer',
+            'slash_command_max_per_window' => 'integer',
+            'slash_command_window_seconds' => 'integer',
         ];
     }
 

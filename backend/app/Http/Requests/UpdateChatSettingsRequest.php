@@ -30,6 +30,8 @@ class UpdateChatSettingsRequest extends FormRequest
                 'integer',
                 Rule::exists('rooms', 'room_id')->where('access', Room::ACCESS_PUBLIC),
             ],
+            'slash_command_max_per_window' => ['sometimes', 'integer', 'min:1', 'max:65535'],
+            'slash_command_window_seconds' => ['sometimes', 'integer', 'min:10', 'max:86400'],
         ];
     }
 }

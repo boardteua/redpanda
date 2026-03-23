@@ -18,6 +18,8 @@ class ChatSettingsResource extends JsonResource
             'room_create_min_public_messages' => (int) $this->room_create_min_public_messages,
             'public_message_count_scope' => (string) $this->public_message_count_scope,
             'message_count_room_id' => $this->message_count_room_id,
+            'slash_command_max_per_window' => (int) $this->slash_command_max_per_window,
+            'slash_command_window_seconds' => (int) $this->slash_command_window_seconds,
         ];
     }
 }
