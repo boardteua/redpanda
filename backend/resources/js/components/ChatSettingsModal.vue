@@ -3,7 +3,8 @@
         :open="open"
         variant="framed"
         size="lg"
-        max-height-class="max-h-[min(90vh,36rem)]"
+        content-sized
+        max-height-class="max-h-[92vh]"
         :aria-labelledby="titleId"
         :scroll-body="true"
         @close="close"

@@ -3,7 +3,8 @@
         :open="Boolean(open && user && !user.guest)"
         variant="framed"
         size="xl"
-        max-height-class="max-h-[min(90vh,40rem)]"
+        content-sized
+        max-height-class="max-h-[92vh]"
         :aria-labelledby="titleId"
         :scroll-body="false"
         @close="close"
@@ -27,7 +28,7 @@
         </template>
 
         <div v-if="user && !user.guest" class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <div class="shrink-0 border-b border-[var(--rp-border-subtle)] px-2 pt-2">
+            <div class="shrink-0">
                     <div class="rp-profile-modal-tabs flex flex-wrap gap-1">
                         <button
                             v-for="t in tabs"

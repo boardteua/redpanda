@@ -133,6 +133,14 @@ export default {
             type: Boolean,
             default: true,
         },
+        /**
+         * Висота панелі за контентом до maxHeightClass (напр. max-h-[92vh]); якщо контент вищий — прокрутка всередині тіла.
+         * Без цього flex-1 тягне модалку на повну max-height навіть при короткому вмісті.
+         */
+        contentSized: {
+            type: Boolean,
+            default: false,
+        },
         /** Якщо є slot header без title — передайте id заголовка всередині шапки. */
         ariaLabelledby: {
             type: String,
@@ -182,12 +190,19 @@ export default {
             return map[this.size] || map.md;
         },
         panelClasses() {
-            return [
+            const classes = [
                 'flex w-full flex-col rounded-lg border border-[var(--rp-border-subtle)] bg-[var(--rp-surface)] shadow-xl outline-none',
                 this.sizeClass,
                 this.maxHeightClass,
-                this.panelClass,
             ];
+            if (this.contentSized) {
+                classes.push('h-auto', 'min-h-0');
+            }
+            if (this.panelClass) {
+                classes.push(this.panelClass);
+            }
+
+            return classes;
         },
         labelledByAttr() {
             if (this.ariaLabelledby) {
