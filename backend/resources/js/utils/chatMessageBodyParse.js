@@ -1,5 +1,5 @@
 /**
- * Парсинг plain-text тіла повідомлення (T46+): URL → посилання / прев’ю картинки / дозволені ембеди.
+ * Парсинг plain-text тіла повідомлення (T46+): URL → посилання / прев’ю картинки / **.mp4** (inline `<video>`) / дозволені ембеди.
  * Текст не інтерпретується як HTML; споживач рендерить сегменти без v-html для type=text.
  *
  * Масштабованість: нові соцмережі — додати запис у {@link EMBED_RESOLVERS} (порядок = пріоритет).
@@ -50,7 +50,7 @@ const URL_TRAILING_JUNK = new Set([')', '.', ',', ';', '!', '?', ']', '"', "'", 
 
 /**
  * @typedef {{ kind: 'embed', iframeSrc: string, provider: string }} EmbedClassification
- * @typedef {{ kind: 'image' } | { kind: 'link' } | EmbedClassification} UrlClassification
+ * @typedef {{ kind: 'image' } | { kind: 'link' } | { kind: 'inlineVideo' } | EmbedClassification} UrlClassification
  */
 
 /**
@@ -145,6 +145,21 @@ export function isLikelyImageUrl(href) {
         const u = new URL(href);
         const path = u.pathname.toLowerCase();
         return /\.(png|jpe?g|gif|webp|avif)(\?.*)?$/i.test(path);
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Пряме посилання на файл **.mp4** (T64). Той самий рівень перевірки шляху, що й для image URL.
+ * @param {string} href
+ * @returns {boolean}
+ */
+export function isLikelyMp4Url(href) {
+    try {
+        const u = new URL(href);
+        const path = u.pathname.toLowerCase();
+        return /\.mp4(\?.*)?$/i.test(path);
     } catch {
         return false;
     }
@@ -435,6 +450,9 @@ export function classifyUrl(trimmed) {
             return hit;
         }
     }
+    if (isLikelyMp4Url(trimmed)) {
+        return { kind: 'inlineVideo' };
+    }
     if (isLikelyImageUrl(trimmed)) {
         return { kind: 'image' };
     }
@@ -445,7 +463,7 @@ export function classifyUrl(trimmed) {
  * Лише URL / ембеди / зображення (без `:code:` смайлів).
  *
  * @param {string} str
- * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string }>}
+ * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'inlineVideo', src: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string }>}
  */
 function parseChatMessageBodyUrlsOnly(str) {
     const segments = [];
@@ -476,6 +494,11 @@ function parseChatMessageBodyUrlsOnly(str) {
                 type: 'oembedPending',
                 href: trimmed,
                 label: trimmed,
+            });
+        } else if (classified.kind === 'inlineVideo') {
+            segments.push({
+                type: 'inlineVideo',
+                src: trimmed,
             });
         } else if (classified.kind === 'image') {
             segments.push({
@@ -554,7 +577,7 @@ function splitEmoticonPieces(str, index) {
 /**
  * @param {string|null|undefined} text
  * @param {{ emoticonIndex?: Record<string, string>|null }|undefined} options
- * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string } | { type: 'emoticon', code: string, src: string }>}
+ * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'inlineVideo', src: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string } | { type: 'emoticon', code: string, src: string }>}
  */
 export function parseChatMessageBody(text, options) {
     if (text == null || text === '') {
@@ -590,7 +613,11 @@ export function parseChatMessageBody(text, options) {
 export function messageHasBlockMedia(text) {
     const segs = parseChatMessageBody(text);
     return segs.some(
-        (s) => s.type === 'embed' || s.type === 'oembedPending' || s.type === 'image',
+        (s) =>
+            s.type === 'embed' ||
+            s.type === 'oembedPending' ||
+            s.type === 'image' ||
+            s.type === 'inlineVideo',
     );
 }
 

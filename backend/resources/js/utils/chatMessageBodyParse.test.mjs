@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     classifyUrl,
     EMBED_RESOLVERS,
+    isLikelyMp4Url,
     isSafeHttpUrl,
     messageHasBlockMedia,
     isSafeEmoticonFilename,
@@ -46,7 +47,29 @@ test('png URL becomes image segment', () => {
     assert.equal(img.src, 'https://cdn.test/x.png');
 });
 
-test('messageHasBlockMedia true for embed / image / oembedPending', () => {
+test('isLikelyMp4Url path suffix only', () => {
+    assert.equal(isLikelyMp4Url('https://cdn.test/movie.mp4'), true);
+    assert.equal(isLikelyMp4Url('https://cdn.test/movie.MP4?token=1'), true);
+    assert.equal(isLikelyMp4Url('https://cdn.test/movie.mp4.exe'), false);
+    assert.equal(isLikelyMp4Url('https://www.youtube.com/watch?v=abc'), false);
+});
+
+test('mp4 URL becomes inlineVideo segment; classifyUrl inlineVideo', () => {
+    const u = 'https://cdn.test/clip.mp4';
+    assert.equal(classifyUrl(u).kind, 'inlineVideo');
+    const segs = parseChatMessageBody(`see ${u} here`);
+    const v = segs.find((s) => s.type === 'inlineVideo');
+    assert.ok(v);
+    assert.equal(v.src, u);
+});
+
+test('mp4 URL with credentials stays plain text (unsafe)', () => {
+    const raw = 'https://u:p@evil.test/x.mp4';
+    const segs = parseChatMessageBody(raw);
+    assert.ok(segs.every((s) => s.type !== 'inlineVideo'));
+});
+
+test('messageHasBlockMedia true for embed / image / oembedPending / inlineVideo', () => {
     assert.equal(messageHasBlockMedia('hi https://example.com only'), false);
     assert.equal(
         messageHasBlockMedia('v https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
@@ -54,6 +77,7 @@ test('messageHasBlockMedia true for embed / image / oembedPending', () => {
     );
     assert.equal(messageHasBlockMedia('pic https://cdn.test/x.png'), true);
     assert.equal(messageHasBlockMedia('https://vimeo.com/123'), true);
+    assert.equal(messageHasBlockMedia('clip https://files.test/a.Mp4?v=1 end'), true);
 });
 
 test('youtube watch URL classified as embed', () => {

@@ -38,6 +38,23 @@
                 {{ embedArchiveLabel(seg) }}
             </a>
             <figure
+                v-else-if="seg.type === 'inlineVideo' && variant !== 'archive'"
+                :key="'vid-' + i"
+                class="my-1.5 block w-full max-w-lg"
+            >
+                <video
+                    :src="seg.src"
+                    class="max-h-64 w-full rounded-md border border-[var(--rp-chat-chrome-border)] bg-black/5 object-contain"
+                    muted
+                    controls
+                    playsinline
+                    preload="metadata"
+                    referrerpolicy="no-referrer"
+                >
+                    Відео за посиланням
+                </video>
+            </figure>
+            <figure
                 v-else-if="seg.type === 'image' && variant !== 'archive'"
                 :key="'img-' + i"
                 class="my-1.5 block max-w-full"
@@ -158,11 +175,15 @@ export default {
         },
         displaySegments() {
             if (this.variant === 'archive') {
-                return this.segments.map((s) =>
-                    s.type === 'oembedPending'
-                        ? { type: 'link', href: s.href, label: s.label }
-                        : s,
-                );
+                return this.segments.map((s) => {
+                    if (s.type === 'oembedPending') {
+                        return { type: 'link', href: s.href, label: s.label };
+                    }
+                    if (s.type === 'inlineVideo') {
+                        return { type: 'link', href: s.src, label: s.src };
+                    }
+                    return s;
+                });
             }
             return this.segments;
         },
