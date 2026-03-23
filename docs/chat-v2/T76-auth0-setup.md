@@ -28,7 +28,7 @@
 2. **Allowed Callback URLs**:  
    - локально: `http://localhost:8000/auth/callback`, `http://127.0.0.1:8000/auth/callback`;  
    - якщо фронт на Vite: `http://localhost:5173/auth/callback` (усі реальні origin додайте явно).
-3. **Allowed Logout URLs**: ті самі origins (напр. `http://localhost:8000`, `http://localhost:5173`).
+3. **Allowed Logout URLs**: ті самі origins (напр. `http://localhost:8000`, `http://localhost:8000`).
 4. **Allowed Web Origins**: ті самі origins без шляху.
 5. Увімкніть **OIDC Conformant** (зазвичай увімкнено для нових додатків).
 6. Скопіюйте **Client ID** → `AUTH0_SPA_CLIENT_ID`.
