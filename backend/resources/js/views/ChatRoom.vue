@@ -235,7 +235,13 @@ import AddRoomModal from '../components/chat/AddRoomModal.vue';
 import RoomEditModal from '../components/chat/RoomEditModal.vue';
 import { createEcho } from '../lib/echo';
 import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
+import {
+    markChatSoundUserActivated,
+    maybePlayNewPostSound,
+    maybePlayPrivateMessageSound,
+} from '../utils/chatNotificationSounds';
 import { normalizePostStyleFromApi } from '../utils/chatMessageStyle';
+import { resetFaviconPrivateUnreadBadge, setFaviconPrivateUnreadBadge } from '../utils/faviconUnreadBadge';
 
 const THEME_KEY = 'redpanda-theme';
 /** Збереження останньої вкладки сайдбару; відсутній/невалідний ключ → «Люди». */
@@ -326,6 +332,8 @@ function createChatRoomSidebarState() {
         friendsIgnoresLoadError: '',
         /** T56: сума непрочитаних вхідних приватних (з meta GET /private/conversations). */
         totalPrivateUnread: 0,
+        /** T65: зняти listeners активації звуку в beforeDestroy. */
+        chatSoundActivateHandler: null,
     };
 }
 
@@ -678,14 +686,20 @@ export default {
             },
             deep: true,
         },
+        /** T65: favicon-бейдж = той самий лічильник, що й вкладка «Приват» (T56). */
+        totalPrivateUnread(n) {
+            setFaviconPrivateUnreadBadge(n);
+        },
     },
     created() {
         this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
     },
     async mounted() {
         document.documentElement.setAttribute('data-theme', this.themeUi);
+        this.attachChatSoundActivation();
         this.initViewportListener();
         await this.bootstrap();
+        setFaviconPrivateUnreadBadge(this.totalPrivateUnread);
         this.$nextTick(() => {
             const c = this.$refs.chatComposer;
             if (c && typeof c.syncComposerInputHeight === 'function') {
@@ -706,8 +720,53 @@ export default {
             clearTimeout(this.markReadDebounceTimer);
             this.markReadDebounceTimer = null;
         }
+        this.detachChatSoundActivation();
+        resetFaviconPrivateUnreadBadge();
     },
     methods: {
+        /** T65: autoplay — після першої взаємодії зі сторінкою. */
+        attachChatSoundActivation() {
+            if (typeof window === 'undefined') {
+                return;
+            }
+            const onActivate = () => {
+                markChatSoundUserActivated();
+                this.detachChatSoundActivation();
+            };
+            this.chatSoundActivateHandler = onActivate;
+            window.addEventListener('pointerdown', onActivate, { capture: true, once: true });
+            window.addEventListener('keydown', onActivate, { capture: true, once: true });
+        },
+        detachChatSoundActivation() {
+            if (typeof window === 'undefined' || !this.chatSoundActivateHandler) {
+                return;
+            }
+            const h = this.chatSoundActivateHandler;
+            window.removeEventListener('pointerdown', h, { capture: true });
+            window.removeEventListener('keydown', h, { capture: true });
+            this.chatSoundActivateHandler = null;
+        },
+        /** T65: newpost — активна кімната (merge уже фільтрує), не себе, видимість вкладки (крім T75). */
+        handleNewRoomMessageSound(m) {
+            if (!m || !this.user) {
+                return;
+            }
+            if (
+                this.selectedRoomId == null
+                || m.post_roomid == null
+                || Number(m.post_roomid) !== Number(this.selectedRoomId)
+            ) {
+                return;
+            }
+            const legacyEveryPost = Boolean(
+                this.chatSettings && this.chatSettings.sound_on_every_post,
+            );
+            maybePlayNewPostSound(this.user, {
+                userId: m.user_id,
+                legacySoundEveryPost: legacyEveryPost,
+                type: m.type,
+            });
+        },
         initViewportListener() {
             if (typeof window === 'undefined' || !window.matchMedia) {
                 return;
@@ -1307,7 +1366,18 @@ export default {
                     `/api/v1/rooms/${this.selectedRoomId}/messages`,
                     { params: { limit: 80 } },
                 );
-                (data.data || []).forEach((row) => this.mergeMessage(row));
+                const prevIds = new Set(this.messageIds);
+                for (const row of data.data || []) {
+                    const m = normalizeMessage(row);
+                    const wasNew = Boolean(m && !prevIds.has(m.post_id));
+                    this.mergeMessage(row);
+                    if (wasNew && m) {
+                        this.handleNewRoomMessageSound(m);
+                    }
+                    if (m) {
+                        prevIds.add(m.post_id);
+                    }
+                }
             } catch {
                 /* ignore */
             }
@@ -1602,7 +1672,12 @@ export default {
             });
 
             channel.listen('.MessagePosted', (payload) => {
+                const m = normalizeMessage(payload);
+                const wasNew = Boolean(m && !this.messageIds.has(m.post_id));
                 this.mergeMessage(payload);
+                if (wasNew) {
+                    this.handleNewRoomMessageSound(m);
+                }
             });
 
             channel.listen('.MessageUpdated', (payload) => {
@@ -1637,7 +1712,12 @@ export default {
                 this.onPrivateWsPayload(payload);
             });
             ch.listen('.RoomInlinePrivatePosted', (payload) => {
+                const m = normalizeMessage(payload);
+                const wasNew = Boolean(m && !this.messageIds.has(m.post_id));
                 this.mergeMessage(payload);
+                if (wasNew) {
+                    this.handleNewRoomMessageSound(m);
+                }
             });
         },
         async onPrivateWsPayload(payload) {
@@ -1646,6 +1726,9 @@ export default {
             }
             if (Number(payload.recipient_id) !== Number(this.user.id)) {
                 return;
+            }
+            if (Number(payload.sender_id) !== Number(this.user.id)) {
+                maybePlayPrivateMessageSound(this.user);
             }
             if (
                 this.privatePeer
