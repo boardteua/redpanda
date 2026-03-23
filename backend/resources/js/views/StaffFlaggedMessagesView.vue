@@ -62,7 +62,13 @@
                 <RpBanner v-if="loadError">
                     {{ loadError }}
                 </RpBanner>
-                <p v-if="statusMsg" class="text-sm text-[var(--rp-text-muted)]" role="status">
+                <p
+                    v-if="statusMsg"
+                    class="text-sm text-[var(--rp-text-muted)]"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                >
                     {{ statusMsg }}
                 </p>
                 <p v-if="loading" class="text-sm text-[var(--rp-text-muted)]" role="status">
@@ -93,7 +99,9 @@
                                 <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">
                                     Прапорець
                                 </th>
-                                <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2"></th>
+                                <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">
+                                    <span class="rp-sr-only">Дії</span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>

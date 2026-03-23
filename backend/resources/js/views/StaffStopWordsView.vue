@@ -94,7 +94,13 @@
                 <RpBanner v-if="loadError">
                     {{ loadError }}
                 </RpBanner>
-                <p v-if="statusMsg" class="text-sm text-[var(--rp-text-muted)]" role="status">
+                <p
+                    v-if="statusMsg"
+                    class="text-sm text-[var(--rp-text-muted)]"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                >
                     {{ statusMsg }}
                 </p>
                 <p v-if="loading" class="text-sm text-[var(--rp-text-muted)]" role="status">
@@ -114,18 +120,24 @@
                                 <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">Збіг</th>
                                 <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">Дія</th>
                                 <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2">Мут (хв.)</th>
-                                <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2"></th>
+                                <th scope="col" class="border-b border-[var(--rp-border-subtle)] px-3 py-2 text-right">
+                                    <span class="rp-sr-only">Дії</span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr
                                 v-for="r in rows"
                                 :key="r.id"
+                                tabindex="0"
                                 :class="[
-                                    'cursor-pointer border-b border-[var(--rp-border-subtle)]',
+                                    'rp-table-row-interactive border-b border-[var(--rp-border-subtle)]',
                                     selected && selected.id === r.id ? 'bg-[var(--rp-surface-elevated)]' : '',
                                 ]"
+                                :aria-label="`Правило ${r.word}, id ${r.id}. Натисніть Enter або пробіл, щоб редагувати.`"
                                 @click="selectRow(r)"
+                                @keydown.enter.prevent="selectRow(r)"
+                                @keydown.space.prevent="selectRow(r)"
                             >
                                 <td class="px-3 py-2 font-mono text-xs">{{ r.id }}</td>
                                 <td class="px-3 py-2 font-medium">{{ r.word }}</td>
@@ -136,7 +148,7 @@
                                 <td class="px-3 py-2 text-right">
                                     <button
                                         type="button"
-                                        class="rp-focusable text-xs font-medium text-[var(--rp-danger)] hover:underline"
+                                        class="rp-focusable text-xs font-medium text-[var(--rp-error)] hover:underline"
                                         @click.stop="removeRow(r)"
                                     >
                                         Видалити

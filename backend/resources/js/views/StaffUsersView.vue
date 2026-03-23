@@ -279,7 +279,13 @@
                 <p v-if="loadError" class="rp-banner" role="alert">
                     {{ loadError }}
                 </p>
-                <p v-if="statusMsg" class="text-sm text-[var(--rp-text-muted)]" role="status">
+                <p
+                    v-if="statusMsg"
+                    class="text-sm text-[var(--rp-text-muted)]"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                >
                     {{ statusMsg }}
                 </p>
 
@@ -328,11 +334,15 @@
                             <tr
                                 v-for="r in rows"
                                 :key="r.id"
+                                tabindex="0"
                                 :class="[
-                                    'cursor-pointer border-b border-[var(--rp-border-subtle)]',
+                                    'rp-table-row-interactive border-b border-[var(--rp-border-subtle)]',
                                     selected && selected.id === r.id ? 'bg-[var(--rp-surface-elevated)]' : '',
                                 ]"
+                                :aria-label="`Користувач ${r.user_name}, id ${r.id}. Натисніть Enter або пробіл, щоб відкрити панель редагування.`"
                                 @click="selectRow(r)"
+                                @keydown.enter.prevent="selectRow(r)"
+                                @keydown.space.prevent="selectRow(r)"
                             >
                                 <td class="px-2 py-2" @click.stop>
                                     <input

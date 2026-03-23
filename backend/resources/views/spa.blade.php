@@ -17,6 +17,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="rp-body antialiased">
+        <a href="#main-content" class="rp-skip-link">Перейти до основного вмісту</a>
         <div id="app"></div>
     </body>
 </html>
