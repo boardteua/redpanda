@@ -1770,6 +1770,9 @@ export default {
                 this.totalPrivateUnread = 0;
                 this.privateListLoadError = 'Не вдалося завантажити список розмов.';
             }
+            this.$nextTick(() => {
+                setFaviconPrivateUnreadBadge(this.totalPrivateUnread);
+            });
         },
         async loadFriendsAndIgnores() {
             if (!this.user) {

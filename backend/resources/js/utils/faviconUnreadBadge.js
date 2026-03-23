@@ -2,9 +2,24 @@
  * T65: бейдж непрочитаних приватів на favicon (canvas), без зовнішніх залежностей.
  */
 
+/** Базова іконка до будь-яких blob/data (щоб після «0 непрочитаних» відновлювалась саме вона). */
 let cachedDefaultHref = null;
-let lastDataUrl = null;
+let lastObjectUrl = null;
 
+function isUsableIconHref(href) {
+    if (!href || typeof href !== 'string') {
+        return false;
+    }
+    const h = href.trim().toLowerCase();
+
+    return h.startsWith('http://')
+        || h.startsWith('https://')
+        || h.startsWith('/');
+}
+
+/**
+ * Перша валідна статична іконка в документі або /favicon.ico (не blob/data і не «порожній» href → URL сторінки).
+ */
 function resolveDefaultIconHref() {
     if (cachedDefaultHref) {
         return cachedDefaultHref;
@@ -12,13 +27,33 @@ function resolveDefaultIconHref() {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
         return '';
     }
-    const el = document.querySelector('link[rel*="icon"]');
-    if (el && el.href) {
-        cachedDefaultHref = el.href;
+    const origin = window.location.origin;
+    const links = document.querySelectorAll('link[rel*="icon"]');
+    for (let i = 0; i < links.length; i += 1) {
+        const raw = links[i].getAttribute('href');
+        if (!raw || raw.startsWith('blob:') || raw.startsWith('data:')) {
+            continue;
+        }
+        try {
+            const abs = new URL(raw, origin).href;
+            if (abs.startsWith('blob:') || abs.startsWith('data:')) {
+                continue;
+            }
+            if (!isUsableIconHref(abs)) {
+                continue;
+            }
+            const path = new URL(abs).pathname || '';
+            if (path && path !== '/' && !/\.(ico|png|svg|gif|webp|jpg|jpeg)$/i.test(path)) {
+                continue;
+            }
+            cachedDefaultHref = abs;
 
-        return cachedDefaultHref;
+            return cachedDefaultHref;
+        } catch {
+            /* */
+        }
     }
-    cachedDefaultHref = `${window.location.origin}/favicon.ico`;
+    cachedDefaultHref = `${origin}/favicon.ico`;
 
     return cachedDefaultHref;
 }
@@ -53,11 +88,19 @@ export function setFaviconPrivateUnreadBadge(count) {
     const link = ensureIconLink();
 
     if (n <= 0) {
-        if (lastDataUrl) {
-            URL.revokeObjectURL(lastDataUrl);
-            lastDataUrl = null;
+        if (lastObjectUrl) {
+            URL.revokeObjectURL(lastObjectUrl);
+            lastObjectUrl = null;
         }
-        link.href = resolveDefaultIconHref();
+        const base = resolveDefaultIconHref();
+        try {
+            const u = new URL(base, window.location.origin);
+            u.searchParams.set('rp_badge', '0');
+            u.searchParams.set('t', String(Date.now()));
+            link.href = u.toString();
+        } catch {
+            link.href = `${base}${base.includes('?') ? '&' : '?'}rp_badge=0&t=${Date.now()}`;
+        }
 
         return;
     }
@@ -98,16 +141,16 @@ export function setFaviconPrivateUnreadBadge(count) {
         ctx.textBaseline = 'middle';
         ctx.fillText(label, cx, cy + 0.5);
 
-        if (lastDataUrl) {
-            URL.revokeObjectURL(lastDataUrl);
-            lastDataUrl = null;
+        if (lastObjectUrl) {
+            URL.revokeObjectURL(lastObjectUrl);
+            lastObjectUrl = null;
         }
         canvas.toBlob((blob) => {
             if (!blob) {
                 return;
             }
-            lastDataUrl = URL.createObjectURL(blob);
-            link.href = lastDataUrl;
+            lastObjectUrl = URL.createObjectURL(blob);
+            link.href = lastObjectUrl;
         }, 'image/png');
     };
     img.onerror = () => {
@@ -125,16 +168,16 @@ export function setFaviconPrivateUnreadBadge(count) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(formatBadgeCount(n), cx, cy + 0.5);
-        if (lastDataUrl) {
-            URL.revokeObjectURL(lastDataUrl);
-            lastDataUrl = null;
+        if (lastObjectUrl) {
+            URL.revokeObjectURL(lastObjectUrl);
+            lastObjectUrl = null;
         }
         canvas.toBlob((blob) => {
             if (!blob) {
                 return;
             }
-            lastDataUrl = URL.createObjectURL(blob);
-            link.href = lastDataUrl;
+            lastObjectUrl = URL.createObjectURL(blob);
+            link.href = lastObjectUrl;
         }, 'image/png');
     };
     img.src = resolveDefaultIconHref();
