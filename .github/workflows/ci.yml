@@ -36,9 +36,7 @@ jobs:
       - name: Composer install
         run: composer install --no-interaction --prefer-dist
 
-      - name: PHPUnit
-        run: composer test
-
+      # Vite manifest потрібен для Feature-тестів, що рендерять spa.blade (@vite).
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -51,6 +49,9 @@ jobs:
 
       - name: Vite build
         run: npm run build
+
+      - name: PHPUnit
+        run: composer test
 
       - name: Node unit tests
         run: |
