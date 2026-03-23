@@ -1,31 +1,48 @@
-# T83 — QA (інкремент 1: CI + локальні контейнери + ADR)
+# T83 — QA (CI/CD, Docker, деплой, rollback)
 
-## Scope цього інкремента
+## Deliverables у репозиторії
 
-- **GitHub Actions** `.github/workflows/ci.yml`: `composer test`, `npm ci`, `npm run build`, `npm run test:msg-parse`, `npm run test:country-filter` у каталозі `backend/` на `push`/`pull_request` до `main`.
-- **`docker/compose.yaml`**: MySQL 8 + Redis 7 для локальної розробки; інструкції в `docker/README.md`.
-- **ADR** [T83-SINGLE-ORIGIN.md](./T83-SINGLE-ORIGIN.md) — один origin vs `api.` та Auth0 audience.
-- **Приклад** `docker/deploy.example.sh` — заглушка кроків деплою без секретів.
-- **PHPUnit:** у `phpunit.xml` додано `AUTH0_ENABLED=false`, щоб `LandingApiTest` не залежав від локального `.env`.
+| Артефакт | Призначення |
+|----------|-------------|
+| `.github/workflows/ci.yml` | PHP-тести, Vite build, Node unit tests, валідація `docker compose config`; опційний **deploy** після зеленого CI |
+| `docker/compose.yaml` | MySQL 8, Redis 7; профіль **`app`**: PHP-FPM, Nginx (:8080), **Reverb** (:6001), **queue worker** |
+| `docker/README.md` | Запуск, змінні для Reverb/Vite |
+| `docker/deploy.example.sh` | Шаблон: бекап MySQL → оновлення коду → migrate / optimize / перезапуск |
+| [T83-SINGLE-ORIGIN.md](./T83-SINGLE-ORIGIN.md) | ADR: один origin vs `api.`, Auth0 audience vs callback URLs |
+| [T83-ROLLBACK.md](./T83-ROLLBACK.md) | Відкат коду, БД, фронту |
 
-## Що лишається для повного закриття T83
-
-- Job **деплою по SSH** з secrets, **бекап MySQL перед деплоєм**, перевірка `GET /health/ready` після релізу — за політикою середовища.
-- За потреби — повний **Docker**-стек (Nginx, PHP-FPM, Reverb, queue worker) замість лише MySQL/Redis.
-
-## Автоматичні перевірки (локально)
+## Локальні перевірки
 
 ```bash
+docker compose -f docker/compose.yaml config
 cd backend && composer test
 cd backend && npm ci && npm run build
 cd backend && npm run test:msg-parse && npm run test:country-filter
-docker compose -f docker/compose.yaml config
 ```
 
-## Доказ для GitHub Actions
+Профіль додатку (після `composer install` у `backend/`):
 
-Після першого успішного run на `main`: вставте посилання на run (GitHub → Actions → workflow **CI**) або короткий `run id` у наступному оновленні цього файлу.
+```bash
+docker compose -f docker/compose.yaml --profile app up -d --build
+```
 
-## Вердикт
+У `backend/.env` для Echo з хоста: `DB_HOST=mysql`, `REDIS_HOST=redis`, `VITE_REVERB_HOST=localhost`, `VITE_REVERB_PORT=6001`, `VITE_REVERB_SCHEME=http`, плюс заповнені `REVERB_APP_*`.
 
-**PASS (інкремент 1)** — після зелених команд вище та успішного CI run.
+## GitHub Actions
+
+- **CI:** кожен PR / push у `main` — job **backend-and-frontend**.
+- **Deploy:** job **deploy** виконується лише на **push** у `main`, якщо задана змінна **`DEPLOY_HOST`**. Потрібні також:
+  - **Variables:** `DEPLOY_USER`, `DEPLOY_REPO_DIR` (корінь репо на сервері, де лежить `docker/deploy.example.sh`)
+  - **Secrets:** `DEPLOY_SSH_KEY` (приватний ключ SSH)
+  - **Environment `production`:** за бажанням — required reviewers / protection (branch protection на `main` — політика команди).
+
+На сервері **розкоментуйте** реальні кроки в `docker/deploy.example.sh`; поточний скрипт навмисно не змінює прод без ручної адаптації.
+
+## Доказ (PASS)
+
+1. Успішний run workflow **CI** на `main` (посилання або run id): _________________
+2. Після налаштування deploy — timestamp успішного деплою та `curl` **GET /health/ready**: _________________
+3. (Опційно) Підтвердження бекапу перед деплоєм (файл, розмір): _________________
+4. Короткий чек real-time (два клієнти) — за [T80](./T80-DEPLOY-CHECKLIST.md): _________________
+
+**Вердикт:** PASS після зелених локальних команд і успішного CI; рядки 2–4 — після першого реального staging/prod-деплою (заповнює оператор).

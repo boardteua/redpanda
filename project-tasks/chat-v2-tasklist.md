@@ -1004,7 +1004,7 @@
 
 ---
 
-### [ ] T83 — **CI/CD і Docker:** GitHub Actions (main), контейнерний стек, SSH-деплой, бекап перед релізом, міграції та безперервність
+### [x] T83 — **CI/CD і Docker:** GitHub Actions (main), контейнерний стек, SSH-деплой, бекап перед релізом, міграції та безперервність
 
 - **Delegate:** **DevOps Automator** (пайплайн, Docker, секрети, бекапи, rollback) + **Senior Developer** / Backend (узгодження `VITE_*` у CI, `SANCTUM_STATEFUL_DOMAINS`, `APP_URL`, health, порядок Laravel-команд з [Laravel Deployment](https://laravel.com/docs/deployment)) + Frontend — лише якщо змінюються шаблони env для збірки
 - **Залежність:** **T84** (бажано — декомпозиція великих Vue-модулів перед автоматизацією релізів, щоб стабілізувати фронтенд-шар); **T80** (канонічний чекліст і змінні — **не суперечити**, а **автоматизувати**); **T76** ([`docs/chat-v2/T76-auth0-setup.md`](../docs/chat-v2/T76-auth0-setup.md)) — callback / Web Origins / audience; **T11** (health/readiness для гейтів після деплою)

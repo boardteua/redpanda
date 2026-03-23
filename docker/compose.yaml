@@ -1,6 +1,6 @@
 # Локальні залежності для redpanda (T83): MySQL + Redis.
-# PHP, Nginx, Reverb і queue worker зазвичай запускають на хості (`composer dev` у backend/)
-# або додають окремі сервіси в наступних інкрементах.
+# Профіль `app`: PHP-FPM 8.3 + Nginx + Reverb + queue worker (real-time і broadcast-jobs).
+# На хості можна як і раніше: `composer dev` у backend/ з DB_HOST=127.0.0.1.
 #
 # Запуск з кореня репозиторію:
 #   docker compose -f docker/compose.yaml up -d
@@ -40,6 +40,75 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  php:
+    profiles: ["app"]
+    build:
+      context: php
+      dockerfile: Dockerfile
+    volumes:
+      - ../backend:/var/www/html
+    environment:
+      DB_HOST: mysql
+      REDIS_HOST: redis
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    profiles: ["app"]
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ../backend:/var/www/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+
+  # WebSocket (Laravel Reverb). Порт 6001 на хості — узгодьте VITE_REVERB_PORT / REVERB_* у backend/.env.
+  reverb:
+    profiles: ["app"]
+    build:
+      context: php
+      dockerfile: Dockerfile
+    working_dir: /var/www/html
+    command: php artisan reverb:start
+    environment:
+      DB_HOST: mysql
+      REDIS_HOST: redis
+      REVERB_SERVER_PORT: "6001"
+    volumes:
+      - ../backend:/var/www/html
+    ports:
+      - "6001:6001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  queue:
+    profiles: ["app"]
+    build:
+      context: php
+      dockerfile: Dockerfile
+    working_dir: /var/www/html
+    command: php artisan queue:work --sleep=3 --tries=3
+    environment:
+      DB_HOST: mysql
+      REDIS_HOST: redis
+    volumes:
+      - ../backend:/var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   mysql_data:
