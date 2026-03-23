@@ -193,6 +193,7 @@ import {
 } from '../utils/chatNotificationSounds';
 import { normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 import { resetFaviconPrivateUnreadBadge, setFaviconPrivateUnreadBadge } from '../utils/faviconUnreadBadge';
+import { buildChatRoomBrowserTitle } from '../utils/chatDocumentTitle';
 
 const THEME_KEY = 'redpanda-theme';
 /** Збереження останньої вкладки сайдбару; відсутній/невалідний ключ → «Люди». */
@@ -495,6 +496,16 @@ export default {
         chatTopicLine() {
             return this.currentRoom && this.currentRoom.topic ? this.currentRoom.topic : '';
         },
+        /** T93 — заголовок вкладки браузера на маршруті `/chat`. */
+        browserDocumentTitleForChat() {
+            return buildChatRoomBrowserTitle({
+                loadError: Boolean(this.loadError),
+                loadingRooms: this.loadingRooms,
+                roomsLength: (this.rooms || []).length,
+                selectedRoomId: this.selectedRoomId,
+                roomName: this.currentRoom && this.currentRoom.room_name,
+            });
+        },
         /** Узгоджено з `StoreChatMessageRequest` / `UpdateChatMessageRequest` (T35). */
         composerMessageMaxLength() {
             const u = this.user;
@@ -668,6 +679,14 @@ export default {
         totalPrivateUnread(n) {
             setFaviconPrivateUnreadBadge(n);
         },
+        browserDocumentTitleForChat() {
+            this.syncChatDocumentTitle();
+        },
+        '$route.path'(path) {
+            if (path === '/chat') {
+                this.syncChatDocumentTitle();
+            }
+        },
     },
     created() {
         this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
@@ -683,6 +702,7 @@ export default {
         this.initViewportListener();
         await this.bootstrap();
         setFaviconPrivateUnreadBadge(this.totalPrivateUnread);
+        this.syncChatDocumentTitle();
         this.$nextTick(() => {
             const c = this.$refs.chatComposer;
             if (c && typeof c.syncComposerInputHeight === 'function') {
@@ -711,6 +731,16 @@ export default {
         resetFaviconPrivateUnreadBadge();
     },
     methods: {
+        /** T93 */
+        syncChatDocumentTitle() {
+            if (typeof document === 'undefined') {
+                return;
+            }
+            if (!this.$route || this.$route.path !== '/chat') {
+                return;
+            }
+            document.title = this.browserDocumentTitleForChat;
+        },
         /** T65: autoplay — після першої взаємодії зі сторінкою. */
         attachChatSoundActivation() {
             if (typeof window === 'undefined') {

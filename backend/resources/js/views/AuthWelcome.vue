@@ -395,6 +395,7 @@
 
 <script>
 import { cacheAuth0FromLandingPayload, ensureAuth0Client } from '../lib/rpAuth0';
+import { CHAT_BRAND_TITLE, sanitizeTitleSegment } from '../utils/chatDocumentTitle';
 
 const THEME_KEY = 'redpanda-theme';
 const LANDING_POLL_MS = 45000;
@@ -525,8 +526,29 @@ export default {
                 this.setMode('login');
             }
         },
+        displayTitle: {
+            immediate: true,
+            handler() {
+                this.syncHomeDocumentTitle();
+            },
+        },
+        '$route.name'() {
+            this.syncHomeDocumentTitle();
+        },
     },
     methods: {
+        /** T93 — канонічний title вітальні (адмінський page_title або бренд). */
+        syncHomeDocumentTitle() {
+            if (typeof document === 'undefined') {
+                return;
+            }
+            if (!this.$route || this.$route.name !== 'home') {
+                return;
+            }
+            const t = sanitizeTitleSegment(this.displayTitle, 160);
+
+            document.title = t || CHAT_BRAND_TITLE;
+        },
         startLandingPoll() {
             this.stopLandingPoll();
             this.landingPollTimer = window.setInterval(() => {

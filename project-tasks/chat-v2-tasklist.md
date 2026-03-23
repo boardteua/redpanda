@@ -1100,8 +1100,9 @@
 
 ---
 
-### [ ] T93 — **document.title** у браузері: `Чат Рудої Панди — %назва кімнати%`
+### [x] T93 — **document.title** у браузері: `Чат Рудої Панди — %назва кімнати%`
 
+- **Статус:** `utils/chatDocumentTitle.js` + `buildChatRoomBrowserTitle`; `ChatRoom` sync при зміні кімнати/стану завантаження; `router.afterEach` + `meta.documentTitle` для staff/archive/admin/callback; вітальня — `AuthWelcome.syncHomeDocumentTitle` від `displayTitle`.
 - **Delegate:** Frontend Developer
 - **Залежність:** **T06** (екран чату / поточна кімната); **T03** (дефолтний title на вітальні/інших маршрутах SPA — **відновлювати** при виході з чату)
 - **Контекст клієнта:** у вкладці браузера має бути брендований заголовок і **динамічна назва активної кімнати**; розділювач узгодити з існуючими title в репо (рекомендовано **em dash** `—` або дефіс `-` — **один стиль на весь SPA**).

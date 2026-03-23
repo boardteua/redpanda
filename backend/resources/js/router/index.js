@@ -11,7 +11,7 @@ import StaffFlaggedMessagesView from '../views/StaffFlaggedMessagesView.vue';
 
 Vue.use(VueRouter);
 
-export default new VueRouter({
+const router = new VueRouter({
     mode: 'history',
     routes: [
         {
@@ -23,6 +23,7 @@ export default new VueRouter({
             path: '/auth/callback',
             name: 'auth-callback',
             component: AuthCallback,
+            meta: { documentTitle: 'Чат Рудої Панди — вхід' },
         },
         {
             path: '/chat',
@@ -33,26 +34,44 @@ export default new VueRouter({
             path: '/chat/admin',
             name: 'admin-hub',
             component: AdminHubView,
+            meta: { documentTitle: 'Чат Рудої Панди — адмін-центр' },
         },
         {
             path: '/archive',
             name: 'archive',
             component: ArchiveChat,
+            meta: { documentTitle: 'Чат Рудої Панди — архів чату' },
         },
         {
             path: '/chat/staff-users',
             name: 'staff-users',
             component: StaffUsersView,
+            meta: { documentTitle: 'Чат Рудої Панди — користувачі (персонал)' },
         },
         {
             path: '/chat/staff-stop-words',
             name: 'staff-stop-words',
             component: StaffStopWordsView,
+            meta: { documentTitle: 'Чат Рудої Панди — стоп-слова' },
         },
         {
             path: '/chat/staff-flagged',
             name: 'staff-flagged',
             component: StaffFlaggedMessagesView,
+            meta: { documentTitle: 'Чат Рудої Панди — черга модерації' },
         },
     ],
 });
+
+/** T93: поза `/chat` і `/` — статичний заголовок з meta; чат і вітальня виставляють title у view. */
+router.afterEach((to) => {
+    if (to.name === 'chat' || to.name === 'home') {
+        return;
+    }
+    const t = to.meta && to.meta.documentTitle;
+    if (typeof t === 'string' && t.trim() !== '') {
+        document.title = t.trim();
+    }
+});
+
+export default router;
