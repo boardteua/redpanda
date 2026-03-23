@@ -1,1 +1,4 @@
 .DS_Store
+
+# Legacy board.te.ua CSS snapshot (scp for local analysis; do not commit)
+reference/board-te-ua-css/

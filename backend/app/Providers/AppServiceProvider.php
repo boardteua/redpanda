@@ -34,6 +34,7 @@ use App\Policies\UserPolicy;
 use App\Support\ChatThrottleRules;
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -49,6 +50,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        if (! in_array('PHP_INI_SCAN_DIR', ServeCommand::$passthroughVariables, true)) {
+            ServeCommand::$passthroughVariables[] = 'PHP_INI_SCAN_DIR';
+        }
+
         $this->app->singleton(SlashCommandRegistry::class, function ($app) {
             $registry = new SlashCommandRegistry;
             $registry->register('manual', $app->make(ManualSlashCommandHandler::class));
