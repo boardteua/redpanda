@@ -59,13 +59,20 @@
                 :key="'img-' + i"
                 class="my-1.5 block max-w-full"
             >
-                <img
-                    :src="seg.src"
-                    :alt="seg.alt"
-                    class="max-h-48 max-w-full rounded-md border border-[var(--rp-chat-chrome-border)] object-contain"
-                    loading="lazy"
-                    referrerpolicy="no-referrer"
-                />
+                <button
+                    type="button"
+                    class="rp-focusable group max-w-full rounded-md border-0 bg-transparent p-0 text-left"
+                    :aria-label="imageLightboxTriggerLabel(seg)"
+                    @click="onImageLightboxOpen(seg, $event)"
+                >
+                    <img
+                        :src="seg.src"
+                        :alt="seg.alt"
+                        class="pointer-events-none max-h-48 max-w-full rounded-md border border-[var(--rp-chat-chrome-border)] object-contain group-hover:opacity-95"
+                        loading="lazy"
+                        referrerpolicy="no-referrer"
+                    />
+                </button>
             </figure>
             <img
                 v-else-if="seg.type === 'image' && variant === 'archive'"
@@ -134,6 +141,7 @@
 
 <script>
 import { parseChatMessageBody } from '../../utils/chatMessageBodyParse';
+import { openImageLightbox } from '../../utils/imageLightboxStore';
 import ChatOembedBlock from './ChatOembedBlock.vue';
 
 /** Провайдери з окремим layout уже в шаблоні вище. */
@@ -203,6 +211,20 @@ export default {
         },
     },
     methods: {
+        imageLightboxTriggerLabel(seg) {
+            const a = seg.alt && String(seg.alt).trim();
+
+            return a ? `Збільшити зображення: ${a}` : 'Збільшити зображення';
+        },
+        onImageLightboxOpen(seg, event) {
+            const el = event && event.currentTarget;
+
+            openImageLightbox({
+                src: seg.src,
+                alt: seg.alt || '',
+                returnFocusEl: el instanceof HTMLElement ? el : null,
+            });
+        },
         socialEmbedWrapperClass(provider) {
             const h = SOCIAL_EMBED_HEIGHT[provider] || 'h-[420px] sm:h-[460px]';
             return [

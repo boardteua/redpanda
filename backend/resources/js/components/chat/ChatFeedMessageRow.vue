@@ -115,12 +115,19 @@
                 variant="feed"
             />
             <figure v-if="!isDeleted && message.image && message.image.url" class="mt-1.5">
-                <img
-                    :src="message.image.url"
-                    alt="Вкладене зображення"
-                    class="max-h-64 max-w-full rounded-md border border-[var(--rp-chat-chrome-border)] object-contain"
-                    loading="lazy"
-                />
+                <button
+                    type="button"
+                    class="rp-focusable group max-w-full rounded-md border-0 bg-transparent p-0 text-left"
+                    aria-label="Збільшити вкладене зображення"
+                    @click="onAttachmentLightbox($event)"
+                >
+                    <img
+                        :src="message.image.url"
+                        alt="Вкладене зображення"
+                        class="pointer-events-none max-h-64 max-w-full rounded-md border border-[var(--rp-chat-chrome-border)] object-contain group-hover:opacity-95"
+                        loading="lazy"
+                    />
+                </button>
             </figure>
         </div>
     </li>
@@ -128,6 +135,7 @@
 
 <script>
 import ChatMessageBody from './ChatMessageBody.vue';
+import { openImageLightbox } from '../../utils/imageLightboxStore';
 import { messageHasBlockMedia } from '../../utils/chatMessageBodyParse';
 import { chatMessageBodyClassList, nickColorStyleForPost } from '../../utils/chatMessageStyle';
 
@@ -186,6 +194,21 @@ export default {
         },
         messageBodyRootClass() {
             return ['rounded', 'px-0.5', 'inline-block', 'max-w-full', 'align-baseline'];
+        },
+    },
+    methods: {
+        onAttachmentLightbox(event) {
+            const url = this.message && this.message.image && this.message.image.url;
+            if (!url) {
+                return;
+            }
+            const el = event && event.currentTarget;
+
+            openImageLightbox({
+                src: url,
+                alt: 'Вкладене зображення',
+                returnFocusEl: el instanceof HTMLElement ? el : null,
+            });
         },
     },
 };
