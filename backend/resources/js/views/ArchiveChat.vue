@@ -8,12 +8,6 @@
                 >
                     ← До чату
                 </router-link>
-                <router-link
-                    to="/"
-                    class="rp-focusable shrink-0 text-sm font-medium text-[var(--rp-link)] hover:text-[var(--rp-link-hover)]"
-                >
-                    На головну
-                </router-link>
                 <div class="min-w-0">
                     <h1 class="text-lg font-semibold text-[var(--rp-text)] sm:text-xl">
                         Архів чату
@@ -23,14 +17,6 @@
                     </p>
                 </div>
             </div>
-            <RpButton
-                variant="ghost"
-                class="text-sm"
-                aria-label="Перемкнути тему оформлення"
-                @click="cycleTheme"
-            >
-                {{ themeLabel }}
-            </RpButton>
         </header>
 
         <main id="main-content" class="mx-auto w-full max-w-5xl flex-1" tabindex="-1">
@@ -205,9 +191,7 @@
 <script>
 import ChatMessageBody from '../components/chat/feed/ChatMessageBody.vue';
 import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
-import { chatMessageBodyClassList, normalizePostStyleFromApi } from '../utils/chatMessageStyle';
-
-const THEME_KEY = 'redpanda-theme';
+import { chatMessageBodyClassList } from '../utils/chatMessageStyle';
 
 export default {
     name: 'ArchiveChat',
@@ -215,7 +199,6 @@ export default {
     data() {
         return {
             user: null,
-            themeUi: 'system',
             loading: false,
             loadingRooms: false,
             loadError: '',
@@ -231,16 +214,6 @@ export default {
         };
     },
     computed: {
-        themeLabel() {
-            if (this.themeUi === 'light') {
-                return 'Тема: світла';
-            }
-            if (this.themeUi === 'dark') {
-                return 'Тема: темна';
-            }
-
-            return 'Тема: як у системі';
-        },
         filterRoomId() {
             const r = this.roomFilter;
 
@@ -252,11 +225,7 @@ export default {
             this.syncRoomFromRoute(to);
         },
     },
-    created() {
-        this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
-    },
     async mounted() {
-        document.documentElement.setAttribute('data-theme', this.themeUi);
         await this.bootstrap();
     },
     methods: {
@@ -271,14 +240,6 @@ export default {
             }
             const n = Number(qRoom);
             this.roomFilter = Number.isFinite(n) ? String(n) : '';
-        },
-        cycleTheme() {
-            const order = ['system', 'light', 'dark'];
-            const i = Math.max(0, order.indexOf(this.themeUi));
-            const next = order[(i + 1) % order.length];
-            this.themeUi = next;
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem(THEME_KEY, next);
         },
         formatArchiveDate(m) {
             const ts = m && m.post_date;
