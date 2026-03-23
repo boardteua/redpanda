@@ -34,6 +34,7 @@ class UpdateChatSettingsRequest extends FormRequest
             'slash_command_window_seconds' => ['sometimes', 'integer', 'min:10', 'max:86400'],
             'mod_slash_default_mute_minutes' => ['sometimes', 'integer', 'min:1', 'max:525600'],
             'mod_slash_default_kick_minutes' => ['sometimes', 'integer', 'min:1', 'max:525600'],
+            'silent_mode' => ['sometimes', 'boolean'],
         ];
     }
 }

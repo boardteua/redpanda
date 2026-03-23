@@ -302,7 +302,7 @@ class ChatMessageController extends Controller
 
         $slashOutcome = $this->slashProcessor->process(
             $raw,
-            new SlashCommandContext($user, $room, (string) $user->user_name),
+            new SlashCommandContext($user, $room, (string) $user->user_name, $clientId),
         );
 
         if ($slashOutcome->mode === SlashCommandOutcome::MODE_HTTP_ERROR) {
@@ -316,60 +316,65 @@ class ChatMessageController extends Controller
         }
 
         $effective = $slashOutcome->text;
-        $mod = $this->automod->applyToPublicMessage($effective, $user);
-        if (! $mod['ok']) {
-            return response()->json(['message' => $mod['message']], 422);
-        }
-        $effective = $mod['text'];
 
-        if (($slashOutcome->slashMeta['topic_apply'] ?? false) === true) {
-            $topicVal = $slashOutcome->slashMeta['topic_value'] ?? null;
-            $room->topic = ($topicVal === null || $topicVal === '') ? null : (string) $topicVal;
-            $room->save();
-            broadcast(new RoomTopicUpdated((int) $room->room_id, $room->topic));
-        }
+        if ($slashOutcome->persistedPublicMessage !== null) {
+            $message = $slashOutcome->persistedPublicMessage;
+        } else {
+            $mod = $this->automod->applyToPublicMessage($effective, $user);
+            if (! $mod['ok']) {
+                return response()->json(['message' => $mod['message']], 422);
+            }
+            $effective = $mod['text'];
 
-        $now = time();
-
-        $avatarUrl = $user->resolveAvatarUrl();
-
-        try {
-            $message = ChatMessage::query()->create([
-                'user_id' => $user->id,
-                'post_date' => $now,
-                'post_time' => date('H:i', $now),
-                'post_user' => $user->user_name,
-                'post_message' => $effective,
-                'post_style' => $postStyle,
-                'post_color' => $user->resolveChatRole()->postColorClass(),
-                'post_roomid' => $room->room_id,
-                'type' => 'public',
-                'post_target' => null,
-                'avatar' => $avatarUrl,
-                'file' => $fileRef,
-                'client_message_id' => $clientId,
-                'moderation_flag_at' => $mod['flag'] ? $now : null,
-            ]);
-        } catch (QueryException $e) {
-            if ($this->isDuplicateKey($e)) {
-                $retry = ChatMessage::query()
-                    ->where('user_id', $user->id)
-                    ->where('client_message_id', $clientId)
-                    ->firstOrFail();
-
-                if ((int) $retry->post_roomid !== (int) $room->room_id) {
-                    return response()->json([
-                        'message' => 'client_message_id already used for another room.',
-                    ], 422);
-                }
-
-                return $this->duplicateMessageResponse($retry);
+            if (($slashOutcome->slashMeta['topic_apply'] ?? false) === true) {
+                $topicVal = $slashOutcome->slashMeta['topic_value'] ?? null;
+                $room->topic = ($topicVal === null || $topicVal === '') ? null : (string) $topicVal;
+                $room->save();
+                broadcast(new RoomTopicUpdated((int) $room->room_id, $room->topic));
             }
 
-            throw $e;
-        }
+            $now = time();
 
-        broadcast(new MessagePosted($message))->toOthers();
+            $avatarUrl = $user->resolveAvatarUrl();
+
+            try {
+                $message = ChatMessage::query()->create([
+                    'user_id' => $user->id,
+                    'post_date' => $now,
+                    'post_time' => date('H:i', $now),
+                    'post_user' => $user->user_name,
+                    'post_message' => $effective,
+                    'post_style' => $postStyle,
+                    'post_color' => $user->resolveChatRole()->postColorClass(),
+                    'post_roomid' => $room->room_id,
+                    'type' => 'public',
+                    'post_target' => null,
+                    'avatar' => $avatarUrl,
+                    'file' => $fileRef,
+                    'client_message_id' => $clientId,
+                    'moderation_flag_at' => $mod['flag'] ? $now : null,
+                ]);
+            } catch (QueryException $e) {
+                if ($this->isDuplicateKey($e)) {
+                    $retry = ChatMessage::query()
+                        ->where('user_id', $user->id)
+                        ->where('client_message_id', $clientId)
+                        ->firstOrFail();
+
+                    if ((int) $retry->post_roomid !== (int) $room->room_id) {
+                        return response()->json([
+                            'message' => 'client_message_id already used for another room.',
+                        ], 422);
+                    }
+
+                    return $this->duplicateMessageResponse($retry);
+                }
+
+                throw $e;
+            }
+
+            broadcast(new MessagePosted($message))->toOthers();
+        }
 
         return ChatMessageResource::make($message)
             ->additional([

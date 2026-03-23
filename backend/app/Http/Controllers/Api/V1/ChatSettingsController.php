@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\ChatSilentModeUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateChatSettingsRequest;
 use App\Http\Resources\ChatSettingsResource;
@@ -37,8 +38,13 @@ class ChatSettingsController extends Controller
         $row->fill($validated);
         $row->save();
 
+        $fresh = $row->fresh();
+        if (array_key_exists('silent_mode', $validated)) {
+            broadcast(new ChatSilentModeUpdated((bool) $fresh->silent_mode));
+        }
+
         return response()->json([
-            'data' => new ChatSettingsResource($row->fresh()),
+            'data' => new ChatSettingsResource($fresh),
         ]);
     }
 }

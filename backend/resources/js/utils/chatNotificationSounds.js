@@ -4,6 +4,8 @@
 
 const URL_NEWPOST = '/sounds/newpost.mp3';
 const URL_PMSOUND = '/sounds/pmsound.mp3';
+/** T71 /gsound — існуючий актив у репо (whistle). */
+const URL_GSOUND = '/sounds/whistle.mp3';
 
 let userActivated = false;
 
@@ -58,6 +60,9 @@ export function maybePlayNewPostSound(user, opts = {}) {
     if (!user || typeof document === 'undefined') {
         return;
     }
+    if (opts.chatSilentMode) {
+        return;
+    }
     const { userId, legacySoundEveryPost = false, type } = opts;
     if (userId != null && Number(userId) === Number(user.id)) {
         return;
@@ -78,8 +83,11 @@ export function maybePlayNewPostSound(user, opts = {}) {
 /**
  * @param {{ notification_sound_prefs?: object, guest?: boolean } | null} user
  */
-export function maybePlayPrivateMessageSound(user) {
+export function maybePlayPrivateMessageSound(user, chatSilentMode = false) {
     if (!user || typeof document === 'undefined') {
+        return;
+    }
+    if (chatSilentMode) {
         return;
     }
     const p = effectivePrefs(user);
@@ -87,4 +95,24 @@ export function maybePlayPrivateMessageSound(user) {
         return;
     }
     playChatNotificationSound(URL_PMSOUND, user);
+}
+
+/**
+ * Глобальний сигнал /gsound (T71): не від себе; ігнор при silent_mode.
+ *
+ * @param {{ notification_sound_prefs?: object, guest?: boolean, id?: number } | null} user
+ * @param {{ actorUserId?: number, chatSilentMode?: boolean }} opts
+ */
+export function maybePlayGlobalGsound(user, opts = {}) {
+    if (!user || typeof document === 'undefined') {
+        return;
+    }
+    if (opts.chatSilentMode) {
+        return;
+    }
+    const aid = opts.actorUserId;
+    if (aid != null && Number(aid) === Number(user.id)) {
+        return;
+    }
+    playChatNotificationSound(URL_GSOUND, user);
 }

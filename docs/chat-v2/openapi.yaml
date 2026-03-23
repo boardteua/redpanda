@@ -2587,6 +2587,7 @@ components:
         - slash_command_window_seconds
         - mod_slash_default_mute_minutes
         - mod_slash_default_kick_minutes
+        - silent_mode
       properties:
         room_create_min_public_messages:
           type: integer
@@ -2620,6 +2621,9 @@ components:
           minimum: 1
           maximum: 525600
           description: Дефолтні хвилини для slash `/kick нік` без другого аргументу (**T69**).
+        silent_mode:
+          type: boolean
+          description: Глобальне приглушення звуків чату (**T71**); slash `/silent On|Off` або `PATCH` адміном.
 
     ChatSettingsResponse:
       type: object
@@ -2768,6 +2772,17 @@ components:
           type: integer
           minimum: 10
           maximum: 86400
+        mod_slash_default_mute_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+        mod_slash_default_kick_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+        silent_mode:
+          type: boolean
+          description: Беззвучний режим чату (**T71**).
 
     PatchChatMessageRequest:
       type: object

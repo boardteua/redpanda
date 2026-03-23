@@ -25,6 +25,7 @@ class ChatSetting extends Model
         'slash_command_window_seconds',
         'mod_slash_default_mute_minutes',
         'mod_slash_default_kick_minutes',
+        'silent_mode',
     ];
 
     /**
@@ -39,6 +40,7 @@ class ChatSetting extends Model
             'slash_command_window_seconds' => 'integer',
             'mod_slash_default_mute_minutes' => 'integer',
             'mod_slash_default_kick_minutes' => 'integer',
+            'silent_mode' => 'boolean',
         ];
     }
 

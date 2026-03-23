@@ -70,6 +70,7 @@ class User extends Authenticatable
             'notification_sound_prefs' => 'array',
             'account_disabled_at' => 'datetime',
             'chat_upload_disabled' => 'boolean',
+            'presence_invisible' => 'boolean',
         ];
     }
 

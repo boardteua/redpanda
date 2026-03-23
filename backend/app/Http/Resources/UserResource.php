@@ -47,6 +47,7 @@ class UserResource extends JsonResource
         $uploadFlag = [];
         if ($auth !== null && (int) $this->id === (int) $auth->id) {
             $uploadFlag['chat_upload_disabled'] = (bool) $this->chat_upload_disabled;
+            $uploadFlag['presence_invisible'] = (bool) $this->presence_invisible;
         }
 
         return array_merge($base, $uploadFlag, [

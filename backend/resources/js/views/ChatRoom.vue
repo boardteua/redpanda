@@ -154,6 +154,7 @@
             :rooms="rooms"
             :ensure-sanctum="ensureSanctum"
             @close="chatSettingsModalOpen = false"
+            @saved="loadChatSettings"
         />
         <UserProfileModal
             :open="profileModalOpen"
@@ -238,6 +239,7 @@ import { createEcho } from '../lib/echo';
 import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
 import {
     markChatSoundUserActivated,
+    maybePlayGlobalGsound,
     maybePlayNewPostSound,
     maybePlayPrivateMessageSound,
 } from '../utils/chatNotificationSounds';
@@ -350,6 +352,7 @@ function normalizePresencePeer(raw) {
         avatar_url: raw.avatar_url != null ? String(raw.avatar_url) : '',
         chat_role: raw.chat_role != null ? String(raw.chat_role) : 'user',
         badge_color: raw.badge_color != null ? String(raw.badge_color) : '',
+        presence_invisible: Boolean(raw.presence_invisible),
     };
 }
 
@@ -762,10 +765,12 @@ export default {
             const legacyEveryPost = Boolean(
                 this.chatSettings && this.chatSettings.sound_on_every_post,
             );
+            const silent = Boolean(this.chatSettings && this.chatSettings.silent_mode);
             maybePlayNewPostSound(this.user, {
                 userId: m.user_id,
                 legacySoundEveryPost: legacyEveryPost,
                 type: m.type,
+                chatSilentMode: silent,
             });
         },
         initViewportListener() {
@@ -1559,7 +1564,7 @@ export default {
             const myId = this.user && this.user.id != null ? Number(this.user.id) : null;
             const list = (users || [])
                 .map((u) => normalizePresencePeer(u))
-                .filter((p) => p && myId !== null && p.id !== myId);
+                .filter((p) => p && myId !== null && p.id !== myId && !p.presence_invisible);
             list.sort((a, b) => a.user_name.localeCompare(b.user_name, 'uk'));
             this.roomPresencePeers = list;
             this.$nextTick(() => this.scheduleFetchPeerPresenceStatuses());
@@ -1567,7 +1572,7 @@ export default {
         addPresencePeer(raw) {
             const p = normalizePresencePeer(raw);
             const myId = this.user && this.user.id != null ? Number(this.user.id) : null;
-            if (!p || myId === null || p.id === myId) {
+            if (!p || myId === null || p.id === myId || p.presence_invisible) {
                 return;
             }
             if (this.roomPresencePeers.some((x) => x.id === p.id)) {
@@ -1717,6 +1722,23 @@ export default {
                 };
             });
 
+            channel.listen('.GlobalSoundPlayed', (payload) => {
+                maybePlayGlobalGsound(this.user, {
+                    actorUserId: payload && payload.actor_user_id,
+                    chatSilentMode: Boolean(this.chatSettings && this.chatSettings.silent_mode),
+                });
+            });
+
+            channel.listen('.ChatSilentModeUpdated', (payload) => {
+                if (!payload || typeof payload.silent_mode === 'undefined') {
+                    return;
+                }
+                this.chatSettings = {
+                    ...(this.chatSettings || {}),
+                    silent_mode: Boolean(payload.silent_mode),
+                };
+            });
+
             this.echoChannel = channel;
             this.ensureUserPrivateListener();
         },
@@ -1814,7 +1836,10 @@ export default {
                 return;
             }
             if (Number(payload.sender_id) !== Number(this.user.id)) {
-                maybePlayPrivateMessageSound(this.user);
+                maybePlayPrivateMessageSound(
+                    this.user,
+                    Boolean(this.chatSettings && this.chatSettings.silent_mode),
+                );
             }
             if (
                 this.privatePeer
@@ -2584,6 +2609,19 @@ export default {
                         }
                         if (data.data && data.data.type === 'public') {
                             await this.refreshAuthUser();
+                        }
+                        const sm = data.meta && data.meta.slash;
+                        if (sm && sm.reconnect_echo) {
+                            const rid = this.selectedRoomId;
+                            this.teardownEcho(false);
+                            this.$nextTick(() => {
+                                if (this.selectedRoomId === rid) {
+                                    this.setupEcho();
+                                }
+                            });
+                        }
+                        if (sm && sm.reload_chat_settings) {
+                            await this.loadChatSettings();
                         }
                     }
                 }

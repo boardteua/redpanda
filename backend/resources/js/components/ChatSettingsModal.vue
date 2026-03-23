@@ -146,6 +146,18 @@
                     </div>
                 </div>
 
+                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Звуки (T71)</h3>
+                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                        Якщо увімкнено, кімнатні та приватні сповіщення не відтворюються (slash
+                        <span class="font-mono">/silent</span> теж змінює цей прапорець).
+                    </p>
+                    <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
+                        <input v-model="form.silent_mode" type="checkbox" class="rp-focusable h-4 w-4 rounded border" />
+                        Беззвучний режим чату
+                    </label>
+                </div>
+
                 <div class="flex flex-wrap gap-2">
                     <button
                         type="button"
@@ -336,6 +348,7 @@ export default {
                 slash_command_window_seconds: 60,
                 mod_slash_default_mute_minutes: 30,
                 mod_slash_default_kick_minutes: 60,
+                silent_mode: false,
             },
             emoticonList: [],
             emoticonLoading: false,
@@ -417,6 +430,7 @@ export default {
                         Number(d.mod_slash_default_kick_minutes) >= 1
                             ? Number(d.mod_slash_default_kick_minutes)
                             : 60,
+                    silent_mode: Boolean(d.silent_mode),
                 };
             } catch {
                 this.loadError = 'Не вдалося завантажити налаштування.';
@@ -436,6 +450,7 @@ export default {
                     slash_command_window_seconds: this.form.slash_command_window_seconds,
                     mod_slash_default_mute_minutes: this.form.mod_slash_default_mute_minutes,
                     mod_slash_default_kick_minutes: this.form.mod_slash_default_kick_minutes,
+                    silent_mode: Boolean(this.form.silent_mode),
                 };
                 if (this.form.public_message_count_scope === 'default_room_only') {
                     body.message_count_room_id = this.form.message_count_room_id;
