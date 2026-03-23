@@ -1039,8 +1039,9 @@
 
 ---
 
-### [ ] T89 — Палітра **legacy board.te.ua** (тема orange): документ знімку CSS і **узгодження `--rp-*`** у SPA
+### [x] T89 — Палітра **legacy board.te.ua** (тема orange): документ знімку CSS і **узгодження `--rp-*`** у SPA
 
+- **Статус:** світла тема узгоджена з `reference/.../themes/orange/orange.css`; артефакти [T89-legacy-orange-palette.md](../docs/chat-v2/T89-legacy-orange-palette.md), [T89-QA.md](../docs/chat-v2/T89-QA.md). Темна тема без змін у цьому проході.
 - **Delegate:** Frontend Developer (+ UI Designer за прийняттям відхилень від контрасту)
 - **Залежність:** **T16**, **T77** (паритет уже частково в `app.css`); **T81** (де заявляється **WCAG AA**); локальний знімок **`reference/board-te-ua-css/`** (у `.gitignore`) — джерело для PR, **не** комітити сам знімок
 - **Контекст дослідження:** з прод-шляху `/var/www/board.te.ua/html/css` витягнуто **`themes/orange/orange.css`** + фрагменти **`main.css`** / **`chat.css`**: градієнт вітальні (`#e48820` → `#eaa727`), кремовий фон (`#fefff6`), шоколадні панелі (`#362709`, `#361202`, `#1f1502`), карамельні кнопки/футер (`#ad6431`, hover/selected `#744f34`), жовте інлайн-меню (`#FFC600`), фон стрічки (`#ebecdb`), бабли (`me`, `global`, `private`, `private_reply`, приватні тощо), семантика ролей (`#1ab334`, `red`, `#f90` для VIP)

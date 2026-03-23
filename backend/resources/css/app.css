@@ -32,55 +32,56 @@
     --rp-error-bg: #fef2f2;
     --rp-link: #1d4ed8;
     --rp-link-hover: #1e3a8a;
-    /* T77 — фон вітальні (board.te.ua) */
-    --rp-landing-hero-top: #fb923c;
-    --rp-landing-hero-bottom: #ea580c;
+    /* T77 / T89 — вітальня: градієнт як themes/orange/orange.css #wrap_login */
+    --rp-landing-hero-top: #eaa727;
+    --rp-landing-hero-bottom: #e48820;
     --rp-landing-card-shadow: 0 25px 50px -12px rgb(124 45 18 / 0.32);
-    /* Чат-вікно — теплий фон стрічки та рамка як у legacy board.te.ua */
-    --rp-chat-app-bg: #e8e2d8;
-    --rp-chat-header-bg: #e3dcd1;
-    --rp-chat-feed-bg: #f3efe6;
+    /* T89 — кремовий зовнішній фон (#external_wrap), стрічка (#background_chat) */
+    --rp-chat-app-bg: #fefff6;
+    --rp-chat-header-bg: #ece9df;
+    --rp-chat-feed-bg: #ebecdb;
     --rp-chat-feed-wash: color-mix(in srgb, var(--rp-primary) 18%, transparent);
     --rp-chat-message-bg: #fffefb;
     --rp-chat-message-border: #d8d0c4;
     --rp-chat-composer-bg: #faf7f0;
     --rp-chat-toolbar-bg: #efebe3;
     --rp-chat-chrome-border: #c9c0b2;
-    /* Правий сайдбар — темний «шоколадний» стовпчик як на board.te.ua */
-    --rp-chat-sidebar-bg: #3d332b;
-    --rp-chat-sidebar-fg: #f4ede3;
-    --rp-chat-sidebar-muted: #a89888;
-    --rp-chat-sidebar-border: #524438;
+    /* T89 — сайдбар як .panels (#362709 / #f7f4f9); лінки як legacy a на панелі */
+    --rp-chat-sidebar-bg: #362709;
+    --rp-chat-sidebar-fg: #f7f4f9;
+    --rp-chat-sidebar-muted: #c4b5a8;
+    --rp-chat-sidebar-border: #312304;
     --rp-chat-sidebar-tab-active-bg: rgb(255 255 255 / 0.12);
     --rp-chat-sidebar-icon: #e8dfd4;
-    --rp-chat-sidebar-link: #c4d9ff;
-    --rp-chat-sidebar-link-hover: #e8f0ff;
+    --rp-chat-sidebar-link: rgb(255 255 255 / 0.92);
+    --rp-chat-sidebar-link-hover: #ffffff;
     --rp-chat-sidebar-input-bg: rgb(255 255 255 / 0.08);
     --rp-chat-sidebar-input-border: rgb(255 255 255 / 0.18);
-    /* T49 — іконки ролі / стать (список «Люди») */
-    --rp-peer-icon-admin: #fca5a5;
-    --rp-peer-icon-mod: #86efac;
-    --rp-peer-icon-vip: #fdba74;
+    /* T49 / T89 — .sadmin / .modo / .vip (orange.css) */
+    --rp-peer-icon-admin: #dc2626;
+    --rp-peer-icon-mod: #1ab334;
+    --rp-peer-icon-vip: #ff9900;
     --rp-peer-icon-sex: #e8dfd4;
-    /* Мобільне бургер-меню панелі (референс board.te.ua — темний шоколад + жовтий акцент) */
+    /* T89 — бургер: .user_option_list #FFC600 + текст #333 */
     --rp-burger-bg: #261f1a;
     --rp-burger-self-bar-bg: #3f352c;
-    --rp-burger-accent-bg: #f7e008;
-    --rp-burger-accent-fg: #1c130a;
-    --rp-burger-accent-hover: #e6d000;
+    --rp-burger-accent-bg: #ffc600;
+    --rp-burger-accent-fg: #333333;
+    --rp-burger-accent-hover: #e6b800;
     --rp-burger-accent-divider: rgb(28 19 10 / 0.12);
     --rp-burger-footer-card-bg: #faf8f4;
     --rp-burger-footer-card-fg: #1a120a;
     --rp-burger-footer-muted: #5c534a;
-    /* Стрічка — чергування рядків (05-chat-viewport.png) */
+    /* Стрічка — чергування на тлі #ebecdb (orange .log2 ≈ +5% чорного) */
     --rp-chat-row-even: #ffffff;
-    --rp-chat-row-odd: #ebe4d8;
+    --rp-chat-row-odd: #e3e5d6;
     /* Інлайн-приват у стрічці (T25) — окремий фон + акцент зліва */
     --rp-chat-row-inline-private-bg: #e8eef6;
     --rp-chat-row-inline-private-border: #4a6fa5;
-    --rp-chat-send-bg: #5c4336;
-    --rp-chat-send-bg-hover: #4a362c;
-    --rp-chat-send-fg: #fffefb;
+    /* T89 — #submit_button / .sub_button */
+    --rp-chat-send-bg: #ad6431;
+    --rp-chat-send-bg-hover: #744f34;
+    --rp-chat-send-fg: #ffffff;
     /* Нік адміна в стрічці (T21) */
     --rp-chat-role-admin: #1a1a1a;
     /* Форматування тіла повідомлення (T30) — пресети з контрастом на чіпі */
