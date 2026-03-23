@@ -3,183 +3,34 @@
         class="flex shrink-0 flex-col border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-composer-bg)]"
         @submit.prevent="emitSubmit"
     >
-        <div ref="chatComposerChrome" class="shrink-0">
-            <div class="rp-chat-toolbar rounded-none" role="toolbar" aria-label="Форматування та дії">
-                <button
-                    type="button"
-                    class="rp-focusable rp-chat-toolbar-btn"
-                    :class="{ 'rp-chat-toolbar-btn--active': composerStyle.bg }"
-                    title="Колір тла повідомлення"
-                    aria-label="Колір тла повідомлення"
-                    :aria-expanded="formatPanel === 'bg' ? 'true' : 'false'"
-                    aria-haspopup="true"
-                    @click="toggleFormatPanel('bg')"
-                >
-                    <svg class="h-[18px] w-[18px]" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                        <circle cx="12" cy="12" r="8" />
-                    </svg>
-                </button>
-                <button
-                    type="button"
-                    class="rp-focusable rp-chat-toolbar-btn"
-                    :class="{ 'rp-chat-toolbar-btn--active': composerStyle.fg }"
-                    title="Колір тексту"
-                    aria-label="Колір тексту"
-                    :aria-expanded="formatPanel === 'fg' ? 'true' : 'false'"
-                    aria-haspopup="true"
-                    :disabled="Boolean(composerStyle.bg)"
-                    :aria-disabled="composerStyle.bg ? 'true' : 'false'"
-                    @click="toggleFormatPanel('fg')"
-                >
-                    <svg class="h-[18px] w-[18px]" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="7.25" stroke="currentColor" stroke-width="2" />
-                    </svg>
-                </button>
-                <button
-                    type="button"
-                    class="rp-focusable rp-chat-toolbar-btn"
-                    :class="{ 'rp-chat-toolbar-btn--active': composerStyle.bold }"
-                    title="Напівжирний"
-                    aria-label="Напівжирний"
-                    :aria-pressed="composerStyle.bold ? 'true' : 'false'"
-                    @click="toggleComposerBold"
-                >
-                    <span class="text-sm font-bold" aria-hidden="true">B</span>
-                </button>
-                <button
-                    type="button"
-                    class="rp-focusable rp-chat-toolbar-btn"
-                    :class="{ 'rp-chat-toolbar-btn--active': composerStyle.italic }"
-                    title="Курсив"
-                    aria-label="Курсив"
-                    :aria-pressed="composerStyle.italic ? 'true' : 'false'"
-                    @click="toggleComposerItalic"
-                >
-                    <span class="text-sm italic" aria-hidden="true">I</span>
-                </button>
-                <button
-                    type="button"
-                    class="rp-focusable rp-chat-toolbar-btn"
-                    :class="{ 'rp-chat-toolbar-btn--active': composerStyle.underline }"
-                    title="Підкреслення"
-                    aria-label="Підкреслення"
-                    :aria-pressed="composerStyle.underline ? 'true' : 'false'"
-                    @click="toggleComposerUnderline"
-                >
-                    <span class="text-sm underline" aria-hidden="true">U</span>
-                </button>
-
-                <span class="rp-chat-toolbar-spacer" aria-hidden="true" />
-               
-                <button
-                    type="button"
-                    class="rp-focusable rp-chat-toolbar-btn"
-                    :disabled="imageUploadBlocked || !selectedRoomId || uploadingImage || editPostId"
-                    title="Мої зображення"
-                    aria-label="Мої зображення"
-                    @click="openMyImagesModal"
-                >
-                    <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
-                        />
-                    </svg>
-                </button>
-                <router-link
-                    :to="archiveRoute"
-                    class="rp-focusable rp-chat-toolbar-btn"
-                    title="Архів чату"
-                >
-                    <span class="rp-sr-only">Архів чату</span>
-                    <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"
-                        />
-                    </svg>
-                </router-link>
-                <button
-                    type="button"
-                    class="rp-focusable rp-chat-toolbar-btn"
-                    title="Вийти з чату"
-                    :disabled="loggingOut"
-                    @click="$emit('logout')"
-                >
-                    <span class="rp-sr-only">Вийти</span>
-                    <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"
-                        />
-                    </svg>
-                </button>
-            </div>
-            <div
-                v-if="formatPanel === 'bg'"
-                class="rp-chat-fmt-palette flex flex-wrap items-center gap-2 border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] px-2 py-2 sm:px-3"
-                role="group"
-                aria-label="Палітра тла повідомлення"
-            >
-                <button
-                    type="button"
-                    class="rp-focusable rounded border border-[var(--rp-chat-chrome-border)] px-2 py-1 text-[0.7rem] text-[var(--rp-text)]"
-                    @click="clearComposerBg"
-                >
-                    Без тла
-                </button>
-                <button
-                    v-for="opt in composerBgPalette"
-                    :key="opt.key"
-                    type="button"
-                    class="rp-focusable rp-chat-fmt-swatch h-7 w-7 rounded border border-[var(--rp-chat-chrome-border)] shadow-sm"
-                    :class="'rp-chat-fmt-swatch--' + opt.key"
-                    :title="opt.label"
-                    :aria-label="opt.label"
-                    @click="setComposerBg(opt.key)"
-                />
-            </div>
-            <div
-                v-if="formatPanel === 'fg'"
-                class="rp-chat-fmt-palette flex flex-wrap items-center gap-2 border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] px-2 py-2 sm:px-3"
-                role="group"
-                aria-label="Палітра кольору тексту"
-            >
-                <button
-                    type="button"
-                    class="rp-focusable rounded border border-[var(--rp-chat-chrome-border)] px-2 py-1 text-[0.7rem] text-[var(--rp-text)]"
-                    @click="clearComposerFg"
-                >
-                    Звичайний колір
-                </button>
-                <button
-                    v-for="opt in composerFgPalette"
-                    :key="opt.key"
-                    type="button"
-                    class="rp-focusable rp-chat-fmt-swatch h-7 w-7 rounded-full border-2 border-[var(--rp-chat-chrome-border)]"
-                    :class="'rp-chat-fmt-swatch-fg--' + opt.key"
-                    :title="opt.label"
-                    :aria-label="opt.label"
-                    @click="setComposerFg(opt.key)"
-                />
-            </div>
-        </div>
-        <div
-            v-if="editPostId"
-            class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] px-2 py-1.5 text-sm sm:px-3"
-            role="status"
-        >
-            <span class="text-[var(--rp-text-muted)]">
-                Редагування повідомлення
-                <span v-if="editExistingImageUrl" class="block text-[0.7rem] font-normal text-[var(--rp-text-muted)]">
-                    Зображення вкладення залишається; змінюються лише текст і форматування.
-                </span>
-            </span>
-            <button
-                type="button"
-                class="rp-focusable rp-btn rp-btn-ghost text-sm"
-                @click="cancelEdit"
-            >
-                Скасувати
-            </button>
-        </div>
+        <ChatRoomComposerToolbar
+            ref="chatComposerChrome"
+            :format-panel="formatPanel"
+            :composer-style="composerStyle"
+            :composer-bg-palette="composerBgPalette"
+            :composer-fg-palette="composerFgPalette"
+            :image-upload-blocked="imageUploadBlocked"
+            :selected-room-id="selectedRoomId"
+            :uploading-image="uploadingImage"
+            :edit-post-id="editPostId"
+            :logging-out="loggingOut"
+            :archive-route="archiveRoute"
+            @toggle-format-panel="toggleFormatPanel"
+            @toggle-bold="toggleComposerBold"
+            @toggle-italic="toggleComposerItalic"
+            @toggle-underline="toggleComposerUnderline"
+            @open-my-images="openMyImagesModal"
+            @logout="$emit('logout')"
+            @clear-bg="clearComposerBg"
+            @set-bg="setComposerBg"
+            @clear-fg="clearComposerFg"
+            @set-fg="setComposerFg"
+        />
+        <ChatRoomComposerEditBanner
+            :edit-post-id="editPostId"
+            :edit-existing-image-url="editExistingImageUrl"
+            @cancel-edit="cancelEdit"
+        />
         <label class="rp-sr-only" for="chat-composer">Повідомлення</label>
         <div class="rp-chat-composer-row">
             <button
@@ -255,46 +106,16 @@
             accept="image/jpeg,image/png,image/gif,image/webp"
             @change="onChatImageSelected"
         />
-        <div
-            v-if="editPostId && editExistingImageUrl"
-            class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)] p-2 sm:mx-3"
-            role="region"
-            aria-label="Поточне вкладене зображення"
-        >
-            <img
-                :src="editExistingImageUrl"
-                alt=""
-                class="max-h-24 max-w-[12rem] rounded object-contain"
-            />
-            <p class="max-w-[14rem] text-[0.75rem] text-[var(--rp-text-muted)]">
-                Це зображення лишиться після збереження. Замінити вкладення в цьому повідомленні не можна — надішли новий допис або видали повідомлення.
-            </p>
-        </div>
-        <div
-            v-if="pendingImageId && pendingPreviewUrl"
-            class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)] p-2 sm:mx-3"
-        >
-            <img
-                :src="pendingPreviewUrl"
-                alt=""
-                class="max-h-24 max-w-[12rem] rounded object-contain"
-            />
-            <button
-                type="button"
-                class="rp-focusable rp-btn rp-btn-ghost text-sm"
-                :disabled="sending || uploadingImage"
-                @click="clearPendingChatImage"
-            >
-                Прибрати фото
-            </button>
-        </div>
-        <p
-            v-if="imageUploadError"
-            class="mx-2 mb-2 text-sm text-[var(--rp-error)] sm:mx-3"
-            role="alert"
-        >
-            {{ imageUploadError }}
-        </p>
+        <ChatRoomComposerAttachmentPreviews
+            :edit-post-id="editPostId"
+            :edit-existing-image-url="editExistingImageUrl"
+            :pending-image-id="pendingImageId"
+            :pending-preview-url="pendingPreviewUrl"
+            :image-upload-error="imageUploadError"
+            :sending="sending"
+            :uploading-image="uploadingImage"
+            @clear-pending-image="clearPendingChatImage"
+        />
         <ChatMyImagesModal
             :open="myImagesModalOpen"
             :ensure-sanctum="ensureSanctum"
@@ -308,6 +129,9 @@
 <script>
 import ChatEmojiModal from './ChatEmojiModal.vue';
 import ChatMyImagesModal from './ChatMyImagesModal.vue';
+import ChatRoomComposerAttachmentPreviews from './ChatRoomComposerAttachmentPreviews.vue';
+import ChatRoomComposerEditBanner from './ChatRoomComposerEditBanner.vue';
+import ChatRoomComposerToolbar from './ChatRoomComposerToolbar.vue';
 import {
     getFirstClipboardImageFile,
     validateChatImageFileForUpload,
@@ -324,7 +148,13 @@ import {
 
 export default {
     name: 'ChatRoomComposer',
-    components: { ChatEmojiModal, ChatMyImagesModal },
+    components: {
+        ChatEmojiModal,
+        ChatMyImagesModal,
+        ChatRoomComposerAttachmentPreviews,
+        ChatRoomComposerEditBanner,
+        ChatRoomComposerToolbar,
+    },
     props: {
         selectedRoomId: {
             default: null,
@@ -549,7 +379,8 @@ export default {
             this.formatPanel = this.formatPanel === which ? null : which;
         },
         onFormatPaletteDocMouseDown(e) {
-            const root = this.$refs.chatComposerChrome;
+            const comp = this.$refs.chatComposerChrome;
+            const root = comp && comp.$el;
             if (root && root.contains(e.target)) {
                 return;
             }
