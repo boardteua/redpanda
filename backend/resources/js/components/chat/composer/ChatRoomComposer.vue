@@ -111,7 +111,6 @@
             :edit-existing-image-url="editExistingImageUrl"
             :pending-image-id="pendingImageId"
             :pending-preview-url="pendingPreviewUrl"
-            :image-upload-error="imageUploadError"
             :sending="sending"
             :uploading-image="uploadingImage"
             @clear-pending-image="onClearPendingImageClick"
@@ -138,6 +137,7 @@ import {
     getFirstClipboardImageFile,
     validateChatImageFileForUpload,
 } from '../../../utils/chatComposerImageUpload';
+import { showError, showProgress, showWarning } from '../../../utils/rpToastStack';
 import {
     COMPOSER_BG_PALETTE,
     COMPOSER_FG_PALETTE,
@@ -187,7 +187,6 @@ export default {
             pendingImageId: null,
             pendingPreviewUrl: '',
             uploadingImage: false,
-            imageUploadError: '',
             myImagesModalOpen: false,
             emojiModalOpen: false,
             editPostId: null,
@@ -312,7 +311,6 @@ export default {
                 this.composerStyle = defaultComposerStyle();
             }
             this.formatPanel = null;
-            this.imageUploadError = '';
             this.$nextTick(() => {
                 this.syncComposerInputHeight();
                 const el = this.$refs.chatComposer;
@@ -340,7 +338,6 @@ export default {
             this.composerText = '';
             this.composerStyle = readComposerStyleFromStorage();
             this.clearPendingChatImage();
-            this.imageUploadError = '';
             this.formatPanel = null;
             this.$nextTick(() => this.syncComposerInputHeight());
         },
@@ -499,7 +496,7 @@ export default {
             }
             e.preventDefault();
             if (this.imageUploadBlocked) {
-                this.imageUploadError = this.imageUploadBlockedTitle + '.';
+                showError(`${this.imageUploadBlockedTitle}.`);
 
                 return;
             }
@@ -507,7 +504,7 @@ export default {
                 return;
             }
             if (this.sending || this.uploadingImage) {
-                this.imageUploadError = 'Зачекайте завершення поточної дії перед вставкою зображення.';
+                showWarning('Зачекайте завершення поточної дії перед вставкою зображення.');
 
                 return;
             }
@@ -525,21 +522,15 @@ export default {
                 el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
             });
         },
-        /**
-         * @param {boolean} clearUploadError — якщо false, залишити `imageUploadError` (після невдалого upload).
-         */
-        clearPendingChatImage(clearUploadError = true) {
+        clearPendingChatImage() {
             this.pendingImageId = null;
             this.pendingPreviewUrl = '';
-            if (clearUploadError) {
-                this.imageUploadError = '';
-            }
             if (this.$refs.imageInput) {
                 this.$refs.imageInput.value = '';
             }
         },
         onClearPendingImageClick() {
-            this.clearPendingChatImage(true);
+            this.clearPendingChatImage();
         },
         formatChatImageUploadError(err) {
             const d = err && err.response ? err.response.data : null;
@@ -571,7 +562,6 @@ export default {
             if (id == null || !url) {
                 return;
             }
-            this.imageUploadError = '';
             this.pendingImageId = id;
             this.pendingPreviewUrl = url;
         },
@@ -588,19 +578,21 @@ export default {
         },
         async uploadChatImageFile(file) {
             if (this.imageUploadBlocked) {
-                this.imageUploadError = `${this.imageUploadBlockedTitle}.`;
-                this.clearPendingChatImage(false);
+                showError(`${this.imageUploadBlockedTitle}.`);
+                this.clearPendingChatImage();
 
                 return;
             }
             const v = validateChatImageFileForUpload(file, this.effectiveChatImageMaxBytes);
             if (!v.ok) {
-                this.imageUploadError = v.message;
-                this.clearPendingChatImage(false);
+                if (v.message) {
+                    showError(v.message);
+                }
+                this.clearPendingChatImage();
 
                 return;
             }
-            this.imageUploadError = '';
+            const progress = showProgress('Завантаження зображення…');
             this.uploadingImage = true;
             try {
                 await this.ensureSanctum();
@@ -608,19 +600,26 @@ export default {
                 form.append('image', file);
                 const { data } = await window.axios.post('/api/v1/images', form, {
                     headers: { 'Content-Type': 'multipart/form-data' },
+                    onUploadProgress: (e) => {
+                        if (e.lengthComputable && e.total > 0) {
+                            progress.setPercent(Math.round((100 * e.loaded) / e.total));
+                        }
+                    },
                 });
+                progress.done();
                 const row = data && data.data;
                 if (!row || row.id == null || !row.url) {
-                    this.imageUploadError = 'Сервер повернув неочікувану відповідь.';
-                    this.clearPendingChatImage(false);
+                    showError('Сервер повернув неочікувану відповідь.');
+                    this.clearPendingChatImage();
 
                     return;
                 }
                 this.pendingImageId = row.id;
                 this.pendingPreviewUrl = row.url;
             } catch (err) {
-                this.imageUploadError = this.formatChatImageUploadError(err);
-                this.clearPendingChatImage(false);
+                progress.done();
+                showError(this.formatChatImageUploadError(err));
+                this.clearPendingChatImage();
             } finally {
                 this.uploadingImage = false;
             }

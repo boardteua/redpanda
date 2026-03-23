@@ -15,14 +15,6 @@
                 Це зображення лишиться після збереження. Замінити вкладення в цьому повідомленні не можна — надішли новий допис або видали повідомлення.
             </p>
         </div>
-        <p
-            v-if="uploadingImage && !pendingImageId"
-            class="mx-2 mb-2 text-sm text-[var(--rp-text-muted)] sm:mx-3"
-            role="status"
-            aria-live="polite"
-        >
-            Завантаження зображення…
-        </p>
         <div
             v-if="pendingImageId && pendingPreviewUrl"
             class="mx-2 mb-2 flex flex-wrap items-center gap-3 rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-row-even)] p-2 sm:mx-3"
@@ -41,13 +33,6 @@
                 Прибрати фото
             </button>
         </div>
-        <p
-            v-if="imageUploadError"
-            class="mx-2 mb-2 text-sm text-[var(--rp-error)] sm:mx-3"
-            role="alert"
-        >
-            {{ imageUploadError }}
-        </p>
     </div>
 </template>
 
@@ -59,7 +44,6 @@ export default {
         editExistingImageUrl: { type: String, default: '' },
         pendingImageId: { default: null, validator: (v) => v === null || v === undefined || typeof v === 'number' },
         pendingPreviewUrl: { type: String, default: '' },
-        imageUploadError: { type: String, default: '' },
         sending: { type: Boolean, default: false },
         uploadingImage: { type: Boolean, default: false },
     },

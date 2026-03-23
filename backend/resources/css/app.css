@@ -660,6 +660,125 @@
     font-weight: 500;
 }
 
+/* T87 — глобальні toast / snackbar (неблокуючі; композер лишає фокус у textarea) */
+.rp-toast-stack {
+    position: fixed;
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    left: max(0.75rem, env(safe-area-inset-left));
+    display: flex;
+    max-height: min(50vh, 22rem);
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+.rp-toast {
+    pointer-events: auto;
+    display: flex;
+    max-width: min(22rem, calc(100vw - 1.5rem));
+    align-items: flex-start;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--rp-border-subtle);
+    padding: 0.65rem 0.5rem 0.65rem 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--rp-text);
+    background: var(--rp-surface);
+    box-shadow:
+        0 2px 8px rgb(15 23 42 / 0.1),
+        0 8px 24px rgb(15 23 42 / 0.08);
+}
+
+.rp-toast--error {
+    border-color: color-mix(in srgb, var(--rp-error) 35%, var(--rp-border-subtle));
+    background: var(--rp-error-bg);
+    color: var(--rp-error);
+}
+
+.rp-toast--warning {
+    border-color: color-mix(in srgb, var(--rp-primary) 40%, var(--rp-border-subtle));
+    background: color-mix(in srgb, var(--rp-primary) 10%, var(--rp-surface));
+    color: var(--rp-text);
+}
+
+.rp-toast--progress {
+    background: var(--rp-surface-elevated);
+}
+
+.rp-toast__main {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.rp-toast__text {
+    margin: 0;
+}
+
+.rp-toast__close {
+    flex-shrink: 0;
+    margin: -0.15rem -0.1rem 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    color: inherit;
+    opacity: 0.75;
+    background: transparent;
+    cursor: pointer;
+}
+
+.rp-toast__close:hover {
+    opacity: 1;
+}
+
+.rp-toast__progress-wrap {
+    margin-top: 0.45rem;
+}
+
+.rp-toast__progress-track {
+    height: 0.28rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--rp-border-subtle);
+}
+
+.rp-toast__progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--rp-primary);
+    transition: width 0.12s ease-out;
+}
+
+.rp-toast__progress-indeterminate {
+    height: 0.28rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--rp-border-subtle);
+}
+
+.rp-toast__progress-indeterminate-inner {
+    display: block;
+    height: 100%;
+    width: 40%;
+    border-radius: 999px;
+    background: var(--rp-primary);
+    animation: rp-toast-indet 1.1s ease-in-out infinite;
+}
+
+@keyframes rp-toast-indet {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(350%);
+    }
+}
+
 .rp-sr-only {
     position: absolute;
     width: 1px;

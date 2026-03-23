@@ -989,7 +989,7 @@
 
 ---
 
-### [ ] T87 — Універсальний компонент **інформаційних попапів** (помилки, попередження, прогрес upload) + інтеграція з композером
+### [x] T87 — Універсальний компонент **інформаційних попапів** (помилки, попередження, прогрес upload) + інтеграція з композером
 
 - **Delegate:** Frontend Developer (+ UI Designer за візуалом; Backend — лише якщо змінюються тексти/коди помилок з **T86**)
 - **Залежність:** **T86** (ліміт на клієнті для перед-перевірки розміру файлу); **T10** / **T29**–**T34** (шляхи вибору файлу, paste, відправка); **T39** (базові модалки — **не** замінювати: цей компонент — **неблокуючі** toast/snackbar/компактний оверлей з чергою повідомлень); **T81** (a11y: `role="status"` / `aria-live` для помилок, фокус не «крадеться» з композера без потреби)
@@ -1021,5 +1021,19 @@
   - **Безпека CI/CD:** branch protection на `main`, обмеження **who can deploy**, опційно **required reviewers** на environment (патерн [Deploying with GitHub Actions](https://docs.github.com/en/actions/deployment/about-deployments/deploying-with-github-actions)); аудит SSH-ключів і ротація
 - **QA evidence:** **`docs/chat-v2/T83-QA.md`**: лінк на успішний run workflow на **staging** (скрін або URL run id); підтвердження бекапу (timestamp + розмір); `curl` **health** після деплою; короткий сценарій **real-time** з T80; для prod — окремий підпис оператора/дати після першого прод-релізу
 - **Трасування:** автоматизація операційного шару з **`project-specs/chat-v2-setup.md`** (prod-готовність) та **T80**; інтеграція з **Auth0** лише через коректні **публічні URL** у Dashboard (див. T76), без зміни контракту API без потреби
+
+---
+
+### [ ] T88 — Уніфікація **кнопок і submit** у SPA: канон як у **модалі налаштувань чату** (`rp-btn` / `RpButton`)
+
+- **Delegate:** Frontend Developer (+ UI Designer, якщо змінюються токени **primary** у CSS)
+- **Залежність:** **T62** (примітиви UI, зокрема `components/ui/RpButton.vue`); **T39** (модалки); референс візуалу та розмітки — **`components/ChatSettingsModal.vue`** (кнопки «Зберегти», «Додати смайл», ghost у таблиці: `rp-focusable rp-btn rp-btn-primary text-sm` / `rp-btn-ghost`)
+- **Контекст клієнта:** прибрати роз’їжджений вигляд primary CTA з довгими Tailwind-класами на кшталт `w-full rounded-md bg-[var(--rp-chat-sidebar-link)] … text-white disabled:opacity-50` (приклад на скріні — **«Створити кімнату»** у `components/chat/room/AddRoomModal.vue`); усі основні дії та **submit** узгодити з одним шаром компонентів/класів, щоб **disabled**, **hover** і **контраст** відповідали канону (**T81** — без «вимитого» disabled на білому фоні модалки).
+- **Deliverables:**
+  - **Канон:** задокументувати в PR (1 абзац + приклад): primary CTA → **`RpButton`** з `variant="primary"` **або** ті самі класи, що в **ChatSettingsModal** (`rp-btn rp-btn-primary`); secondary / небезпечні / другорядні — існуючі `variant` у **`RpButton`** або `rp-btn-*` з `resources/css` / дизайн-токенів, **без** одноразового `bg-[var(--rp-chat-sidebar-link)]` для «головної» кнопки форми.
+  - **Аудит SPA:** пройти `backend/resources/js/**/*.vue` (включно з staff, архівом, модалками) — замінити залишкові «ручні» primary/secondary кнопки довжиною > N класів на **`RpButton`** або узгоджені `rp-btn` + мінімальні layout-класи (`w-full`, `text-sm` тощо); **`<input type="submit">`** у формах — або обгортка/заміна на **`nativeType="submit"`** у **`RpButton`**, або явний виняток у PR з обґрунтуванням.
+  - **Регресія:** мінімум сценаріїв — модал **створення кімнати** (`AddRoomModal`), модал **налаштувань чату** (порівняння «до/після» не гірше за референс), одна staff-форма з **`RpButton`** якщо там ще сирі `<button>`.
+- **QA evidence:** `npm run build` PASS; скріншоти: primary CTA в модалі кімнати + фрагмент налаштувань чату (візуальна узгодженість); `rg`/короткий список у **`docs/chat-v2/T88-QA.md`**: відсутність патерну `bg-[var(--rp-chat-sidebar-link)]` на кнопках submit/primary (або обґрунтовані винятки); ручний чек **disabled** (контраст, курсор) на світлій темі.
+- **Трасування:** поліровка UI поверх **T03** / **T16** / **T62**; не змінює бізнес-логіку API — лише шар представлення та a11y-стабільність фокусу (`rp-focusable` уже на **`RpButton`**).
 
 ---
