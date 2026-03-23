@@ -45,6 +45,13 @@
                     <span class="font-medium">Роль у чаті:</span>
                     {{ roleLabel(viewer.chat_role) }}
                 </p>
+                <p
+                    v-if="!viewer.guest && viewer.chat_upload_disabled"
+                    role="status"
+                    class="rounded-md border border-amber-600/40 bg-amber-500/10 px-2 py-2 text-xs text-[var(--rp-text)]"
+                >
+                    Модератор вимкнув завантаження зображень у чаті та зміну аватарки.
+                </p>
                 <p v-if="viewer.guest">
                     <span class="text-[var(--rp-text-muted)]">Ви увійшли як гість.</span>
                 </p>
@@ -88,6 +95,13 @@
                     <p>
                         <span class="font-medium">Роль:</span>
                         {{ roleLabel(target.chat_role) }}
+                    </p>
+                    <p
+                        v-if="!target.guest && target.chat_upload_disabled"
+                        role="status"
+                        class="rounded-md border border-amber-600/40 bg-amber-500/10 px-2 py-2 text-xs text-[var(--rp-text)]"
+                    >
+                        У цього користувача вимкнено завантаження зображень у чаті.
                     </p>
                     <p v-if="target.guest">
                         <span class="text-[var(--rp-text-muted)]">Гостьовий сеанс.</span>

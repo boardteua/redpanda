@@ -98,7 +98,7 @@
                 <button
                     type="button"
                     class="rp-focusable rp-chat-toolbar-btn"
-                    :disabled="isGuest || !selectedRoomId || uploadingImage || editPostId"
+                    :disabled="imageUploadBlocked || !selectedRoomId || uploadingImage || editPostId"
                     title="Мої зображення"
                     aria-label="Мої зображення"
                     @click="openMyImagesModal"
@@ -230,7 +230,7 @@
                     :maxlength="messageMaxLength"
                     rows="1"
                     :disabled="sending || uploadingImage || !selectedRoomId"
-                    placeholder="Повідомлення — Enter надішле, Shift+Enter — новий рядок; зображення можна вставити з буфера"
+                    :placeholder="composerPlaceholder"
                     @keydown="onChatComposerKeydown"
                     @paste="onChatComposerPaste"
                     @input="syncComposerInputHeight"
@@ -240,9 +240,9 @@
                 <button
                     type="button"
                     class="rp-focusable rp-chat-composer-rail-btn"
-                    :disabled="sending || uploadingImage || !selectedRoomId || isGuest || editPostId"
-                    title="Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)"
-                    aria-label="Додати зображення до повідомлення"
+                    :disabled="sending || uploadingImage || !selectedRoomId || imageUploadBlocked || editPostId"
+                    :title="imageUploadBlocked ? imageUploadBlockedTitle : 'Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)'"
+                    :aria-label="imageUploadBlocked ? imageUploadBlockedTitle : 'Додати зображення до повідомлення'"
                     @click="$refs.imageInput && $refs.imageInput.click()"
                 >
                     <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
@@ -357,6 +357,8 @@ export default {
         sending: { type: Boolean, default: false },
         loggingOut: { type: Boolean, default: false },
         isGuest: { type: Boolean, default: false },
+        /** Модератор вимкнув завантаження зображень (`chat_upload_disabled` у `auth/user`). */
+        chatUploadDisabled: { type: Boolean, default: false },
         /** Узгоджено з `StoreChatMessageRequest` / `UpdateChatMessageRequest` (T35). */
         messageMaxLength: {
             type: Number,
@@ -406,6 +408,26 @@ export default {
             const t = (this.composerText || '').replace(/^\s+/, '');
 
             return t.startsWith('/');
+        },
+        imageUploadBlocked() {
+            return Boolean(this.isGuest || this.chatUploadDisabled);
+        },
+        imageUploadBlockedTitle() {
+            if (this.isGuest) {
+                return 'Завантаження зображень недоступне для гостя';
+            }
+            if (this.chatUploadDisabled) {
+                return 'Модератор вимкнув завантаження зображень для вашого облікового запису';
+            }
+
+            return '';
+        },
+        composerPlaceholder() {
+            if (this.imageUploadBlocked) {
+                return 'Повідомлення — Enter надішле, Shift+Enter — новий рядок';
+            }
+
+            return 'Повідомлення — Enter надішле, Shift+Enter — новий рядок; зображення можна вставити з буфера';
         },
     },
     watch: {
@@ -652,8 +674,8 @@ export default {
                 return;
             }
             e.preventDefault();
-            if (this.isGuest) {
-                this.imageUploadError = 'Завантаження зображень недоступне для гостя.';
+            if (this.imageUploadBlocked) {
+                this.imageUploadError = this.imageUploadBlockedTitle + '.';
 
                 return;
             }
@@ -688,7 +710,7 @@ export default {
             }
         },
         openMyImagesModal() {
-            if (this.isGuest || !this.selectedRoomId || this.uploadingImage) {
+            if (this.imageUploadBlocked || !this.selectedRoomId || this.uploadingImage) {
                 return;
             }
             this.myImagesModalOpen = true;
@@ -707,12 +729,18 @@ export default {
             if (input) {
                 input.value = '';
             }
-            if (!file || !this.selectedRoomId || this.isGuest) {
+            if (!file || !this.selectedRoomId || this.imageUploadBlocked) {
                 return;
             }
             await this.uploadChatImageFile(file);
         },
         async uploadChatImageFile(file) {
+            if (this.imageUploadBlocked) {
+                this.imageUploadError = this.imageUploadBlockedTitle + '.';
+                this.clearPendingChatImage();
+
+                return;
+            }
             const v = validateChatImageFileForUpload(file);
             if (!v.ok) {
                 this.imageUploadError = v.message;

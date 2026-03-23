@@ -10,8 +10,9 @@ use Illuminate\Http\Request;
 
 /**
  * Компактні підказки для списку «Люди» (T49): стать, якщо дозволено політикою приватності.
+ * Для персоналу модерації — також прапорець `chat_upload_disabled` цілі (без розкриття іншим).
  *
- * Гість-переглядач не отримує стать інших (порожній об’єкт).
+ * Гість-переглядач не отримує підказок (порожній об’єкт).
  */
 class RoomPeerHintsController extends Controller
 {
@@ -60,16 +61,22 @@ class RoomPeerHintsController extends Controller
                 continue;
             }
 
-            if ($target->profile_sex_hidden) {
-                continue;
+            $entry = [];
+
+            if (! $target->profile_sex_hidden) {
+                $sex = $target->profile_sex;
+                if (is_string($sex) && in_array($sex, self::ALLOWED_SEX, true)) {
+                    $entry['sex'] = $sex;
+                }
             }
 
-            $sex = $target->profile_sex;
-            if (! is_string($sex) || ! in_array($sex, self::ALLOWED_SEX, true)) {
-                continue;
+            if ($viewer->canModerate()) {
+                $entry['chat_upload_disabled'] = (bool) $target->chat_upload_disabled;
             }
 
-            $out[(string) $uid] = ['sex' => $sex];
+            if ($entry !== []) {
+                $out[(string) $uid] = $entry;
+            }
         }
 
         return response()->json(['data' => (object) $out]);

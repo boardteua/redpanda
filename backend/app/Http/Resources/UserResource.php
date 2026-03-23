@@ -43,7 +43,13 @@ class UserResource extends JsonResource
             $this->notification_sound_prefs ?? []
         );
 
-        return array_merge($base, [
+        $auth = $request->user();
+        $uploadFlag = [];
+        if ($auth !== null && (int) $this->id === (int) $auth->id) {
+            $uploadFlag['chat_upload_disabled'] = (bool) $this->chat_upload_disabled;
+        }
+
+        return array_merge($base, $uploadFlag, [
             'profile' => [
                 'country' => $this->profile_country,
                 'region' => $this->profile_region,

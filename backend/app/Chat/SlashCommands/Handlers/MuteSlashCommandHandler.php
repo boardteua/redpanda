@@ -6,6 +6,7 @@ use App\Chat\SlashCommands\Contracts\SlashCommandHandlerContract;
 use App\Chat\SlashCommands\SlashCommandContext;
 use App\Chat\SlashCommands\SlashCommandOutcome;
 use App\Chat\SlashCommands\Support\ModerationSlashCommandHelper;
+use App\Models\ChatSetting;
 use App\Services\Moderation\ModerationService;
 
 final class MuteSlashCommandHandler implements SlashCommandHandlerContract
@@ -38,7 +39,10 @@ final class MuteSlashCommandHandler implements SlashCommandHandlerContract
         }
 
         if ($minOpt === null) {
-            $minutes = (int) config('chat.slash_mod_default_mute_minutes', 30);
+            $fromDb = (int) ChatSetting::current()->mod_slash_default_mute_minutes;
+            $minutes = $fromDb >= 1 && $fromDb <= 525600
+                ? $fromDb
+                : (int) config('chat.slash_mod_default_mute_minutes', 30);
         } elseif ($minOpt === 0) {
             $minutes = null;
         } else {

@@ -23,6 +23,8 @@ class ChatSetting extends Model
         'message_count_room_id',
         'slash_command_max_per_window',
         'slash_command_window_seconds',
+        'mod_slash_default_mute_minutes',
+        'mod_slash_default_kick_minutes',
     ];
 
     /**
@@ -35,6 +37,8 @@ class ChatSetting extends Model
             'message_count_room_id' => 'integer',
             'slash_command_max_per_window' => 'integer',
             'slash_command_window_seconds' => 'integer',
+            'mod_slash_default_mute_minutes' => 'integer',
+            'mod_slash_default_kick_minutes' => 'integer',
         ];
     }
 

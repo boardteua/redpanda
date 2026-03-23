@@ -104,4 +104,27 @@ class RoomPeerHintsTest extends TestCase
             ->getJson("/api/v1/rooms/{$public->room_id}/peer-hints")
             ->assertUnprocessable();
     }
+
+    public function test_moderator_sees_chat_upload_disabled_even_when_sex_hidden(): void
+    {
+        $public = Room::query()->create([
+            'room_name' => 'Public',
+            'topic' => null,
+            'access' => 0,
+        ]);
+        $mod = User::factory()->moderator()->create();
+        $bob = User::factory()->create([
+            'profile_sex' => 'male',
+            'profile_sex_hidden' => true,
+        ]);
+        $bob->forceFill(['chat_upload_disabled' => true])->save();
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson("/api/v1/rooms/{$public->room_id}/peer-hints?user_ids=".$bob->id)
+            ->assertOk()
+            ->assertJsonPath('data.'.(string) $bob->id.'.chat_upload_disabled', true)
+            ->assertJsonMissingPath('data.'.(string) $bob->id.'.sex');
+    }
 }

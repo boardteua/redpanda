@@ -178,6 +178,10 @@
                                             :aria-label="'Стать: ' + viewerSexMetaRow.label"
                                             :title="viewerSexMetaRow.label"
                                             >{{ viewerSexMetaRow.glyph }}</span>
+                                        <ChatUploadLockBadge
+                                            v-if="viewerChatUploadLocked"
+                                            label="Завантаження зображень у чаті вимкнено модератором"
+                                        />
                                         <ChatPeerRoleIcon :role="user.chat_role" />
                                     </span>
                                 </div>
@@ -232,6 +236,10 @@
                                             :aria-label="'Стать: ' + viewerSexMetaRow.label"
                                             :title="viewerSexMetaRow.label"
                                             >{{ viewerSexMetaRow.glyph }}</span>
+                                        <ChatUploadLockBadge
+                                            v-if="viewerChatUploadLocked"
+                                            label="Завантаження зображень у чаті вимкнено модератором"
+                                        />
                                         <ChatPeerRoleIcon :role="user.chat_role" />
                                     </span>
                                 </div>
@@ -301,6 +309,10 @@
                                             "
                                             :title="peerSexMetaRow(p).label"
                                             >{{ peerSexMetaRow(p).glyph }}</span>
+                                        <ChatUploadLockBadge
+                                            v-if="staffPeerUploadLocked(p)"
+                                            :label="'У ' + p.user_name + ' вимкнено завантаження зображень у чаті'"
+                                        />
                                         <ChatPeerRoleIcon :role="p.chat_role" />
                                     </span>
                                 </div>
@@ -764,6 +776,8 @@
 import UserBadgeInlineActionPanel from '../UserBadgeInlineActionPanel.vue';
 import SidebarHamburgerTrigger from '../SidebarHamburgerTrigger.vue';
 import ChatPeerRoleIcon from './ChatPeerRoleIcon.vue';
+import ChatUploadLockBadge from './ChatUploadLockBadge.vue';
+import { isStaffRole } from '../../lib/userBadgeMenuItems';
 
 export default {
     name: 'ChatRoomSidebar',
@@ -771,6 +785,7 @@ export default {
         UserBadgeInlineActionPanel,
         SidebarHamburgerTrigger,
         ChatPeerRoleIcon,
+        ChatUploadLockBadge,
     },
     props: {
         panelOpen: { type: Boolean, default: false },
@@ -864,6 +879,11 @@ export default {
 
             return this.sexGlyphAndLabel(prof.sex);
         },
+        viewerChatUploadLocked() {
+            const u = this.user;
+
+            return Boolean(u && !u.guest && u.chat_upload_disabled);
+        },
         /** Один розрахунок статусу на рядок (уникаємо чотирикратного виклику в шаблоні). */
         friendsAcceptedDisplayRows() {
             const list = this.friendsAcceptedWithMenuPeer || [];
@@ -946,6 +966,17 @@ export default {
             }
 
             return this.sexGlyphAndLabel(row.sex);
+        },
+        staffPeerUploadLocked(p) {
+            if (!p || p.id == null || !this.user || this.user.guest || p.guest) {
+                return false;
+            }
+            if (!isStaffRole(this.user.chat_role)) {
+                return false;
+            }
+            const row = this.peerSexHintsByUserId[String(p.id)];
+
+            return Boolean(row && row.chat_upload_disabled);
         },
         /** T54: олівець у списку — творець кімнати або модератор/адмін. */
         roomListCanManage(room) {

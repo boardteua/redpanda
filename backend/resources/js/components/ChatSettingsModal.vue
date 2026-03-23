@@ -114,6 +114,38 @@
                     </div>
                 </div>
 
+                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Модерація (slash)</h3>
+                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                        Дефолтні хвилини для <span class="font-mono">/mute</span> та <span class="font-mono">/kick</span>,
+                        коли модератор не вказує другий аргумент (див. T69).
+                    </p>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="rp-label" for="cs-mod-mute">Мут за замовчуванням (хв)</label>
+                            <input
+                                id="cs-mod-mute"
+                                v-model.number="form.mod_slash_default_mute_minutes"
+                                type="number"
+                                min="1"
+                                max="525600"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                            />
+                        </div>
+                        <div>
+                            <label class="rp-label" for="cs-mod-kick">Kick за замовчуванням (хв)</label>
+                            <input
+                                id="cs-mod-kick"
+                                v-model.number="form.mod_slash_default_kick_minutes"
+                                type="number"
+                                min="1"
+                                max="525600"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex flex-wrap gap-2">
                     <button
                         type="button"
@@ -302,6 +334,8 @@ export default {
                 message_count_room_id: null,
                 slash_command_max_per_window: 45,
                 slash_command_window_seconds: 60,
+                mod_slash_default_mute_minutes: 30,
+                mod_slash_default_kick_minutes: 60,
             },
             emoticonList: [],
             emoticonLoading: false,
@@ -375,6 +409,14 @@ export default {
                         Number(d.slash_command_window_seconds) >= 10
                             ? Number(d.slash_command_window_seconds)
                             : 60,
+                    mod_slash_default_mute_minutes:
+                        Number(d.mod_slash_default_mute_minutes) >= 1
+                            ? Number(d.mod_slash_default_mute_minutes)
+                            : 30,
+                    mod_slash_default_kick_minutes:
+                        Number(d.mod_slash_default_kick_minutes) >= 1
+                            ? Number(d.mod_slash_default_kick_minutes)
+                            : 60,
                 };
             } catch {
                 this.loadError = 'Не вдалося завантажити налаштування.';
@@ -392,6 +434,8 @@ export default {
                     public_message_count_scope: this.form.public_message_count_scope,
                     slash_command_max_per_window: this.form.slash_command_max_per_window,
                     slash_command_window_seconds: this.form.slash_command_window_seconds,
+                    mod_slash_default_mute_minutes: this.form.mod_slash_default_mute_minutes,
+                    mod_slash_default_kick_minutes: this.form.mod_slash_default_kick_minutes,
                 };
                 if (this.form.public_message_count_scope === 'default_room_only') {
                     body.message_count_room_id = this.form.message_count_room_id;

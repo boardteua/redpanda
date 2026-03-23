@@ -78,6 +78,7 @@
                         :sending="sending"
                         :logging-out="loggingOut"
                         :is-guest="Boolean(user && user.guest)"
+                        :chat-upload-disabled="Boolean(user && !user.guest && user.chat_upload_disabled)"
                         :message-max-length="composerMessageMaxLength"
                         :ensure-sanctum="ensureSanctum"
                         @submit-message="sendMessage"

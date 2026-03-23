@@ -20,6 +20,8 @@ class ChatSettingsResource extends JsonResource
             'message_count_room_id' => $this->message_count_room_id,
             'slash_command_max_per_window' => (int) $this->slash_command_max_per_window,
             'slash_command_window_seconds' => (int) $this->slash_command_window_seconds,
+            'mod_slash_default_mute_minutes' => (int) $this->mod_slash_default_mute_minutes,
+            'mod_slash_default_kick_minutes' => (int) $this->mod_slash_default_kick_minutes,
         ];
     }
 }

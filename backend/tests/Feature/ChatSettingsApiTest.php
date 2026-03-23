@@ -40,7 +40,9 @@ class ChatSettingsApiTest extends TestCase
             ->assertJsonPath('data.public_message_count_scope', ChatSetting::SCOPE_ALL_PUBLIC_ROOMS)
             ->assertJsonPath('data.message_count_room_id', null)
             ->assertJsonPath('data.slash_command_max_per_window', 45)
-            ->assertJsonPath('data.slash_command_window_seconds', 60);
+            ->assertJsonPath('data.slash_command_window_seconds', 60)
+            ->assertJsonPath('data.mod_slash_default_mute_minutes', 30)
+            ->assertJsonPath('data.mod_slash_default_kick_minutes', 60);
     }
 
     public function test_non_admin_patch_returns_403(): void
@@ -126,6 +128,26 @@ class ChatSettingsApiTest extends TestCase
         $row = ChatSetting::current();
         $this->assertSame(30, $row->slash_command_max_per_window);
         $this->assertSame(120, $row->slash_command_window_seconds);
+    }
+
+    public function test_admin_can_patch_mod_slash_default_minutes(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'mod_slash_default_mute_minutes' => 45,
+                'mod_slash_default_kick_minutes' => 90,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.mod_slash_default_mute_minutes', 45)
+            ->assertJsonPath('data.mod_slash_default_kick_minutes', 90);
+
+        $row = ChatSetting::current();
+        $this->assertSame(45, $row->mod_slash_default_mute_minutes);
+        $this->assertSame(90, $row->mod_slash_default_kick_minutes);
     }
 
     public function test_admin_cannot_set_message_count_room_to_non_public_room(): void

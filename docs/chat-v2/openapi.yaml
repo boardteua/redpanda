@@ -21,11 +21,11 @@ info:
 
     **Прочитане в кімнаті (T47):** `GET .../rooms/{roomId}/messages` — `meta.last_read_post_id`; опційно `since_read=true` → `meta.first_unread_post_id` у межах сторінки; `POST .../rooms/{roomId}/read` з `last_read_post_id` (монотонно). Деталі — [T47-QA.md](T47-QA.md).
 
-    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`**, **`.MessageUpdated`**, **`.MessageDeleted`**, **`.PresenceStatusUpdated`** (статус учасника online/away/inactive, T48) транслюються на той самий presence-канал. Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08) та **`.PrivateThreadCleared`** (T68).
+    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color`, `chat_upload_disabled` для зареєстрованих — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`**, **`.MessageUpdated`**, **`.MessageDeleted`**, **`.PresenceStatusUpdated`** (статус учасника online/away/inactive, T48) транслюються на той самий presence-канал. Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08) та **`.PrivateThreadCleared`** (T68).
 
     **Статус присутності (T48):** `GET /api/v1/rooms/{roomId}/presence-statuses?user_ids=…` — мапа `userId → status` з кешу; `POST /api/v1/rooms/{roomId}/presence-status` з `{"status":"online"|"away"|"inactive"}` — оновлення власного статусу (throttle `presence-status`). Деталі — [T48-QA.md](T48-QA.md).
 
-    **Підказки для списку «Люди» (T49):** `GET /api/v1/rooms/{roomId}/peer-hints?user_ids=…` — стать (`male`/`female`/`other`) лише для **зареєстрованого** переглядача, якщо у цілі поле не приховане; **гість** отримує порожній об’єкт `data`. Ролі staff/VIP — з `chat_role` у presence / `auth/user`. Деталі — [T49-QA.md](T49-QA.md).
+    **Підказки для списку «Люди» (T49):** `GET /api/v1/rooms/{roomId}/peer-hints?user_ids=…` — стать (`male`/`female`/`other`) для **зареєстрованого** переглядача, якщо у цілі поле не приховане; **персонал модерації** додатково отримує `chat_upload_disabled` по кожній не-гостьовій цілі; **гість** отримує порожній об’єкт `data`. Ролі staff/VIP — з `chat_role` у presence / `auth/user`. Деталі — [T49-QA.md](T49-QA.md).
 
     **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09); **`/chat/staff-users`** — пошук і керування користувачами для персоналу (T52); **`/chat/staff-flagged`** — черга повідомлень з прапорцем модерації (T60). З головної з `?history=1` після входу — перехід на архів.
 
@@ -2088,6 +2088,9 @@ components:
         can_create_room:
           type: boolean
           description: Чи дозволено поточному користувачу `POST /api/v1/rooms` (**T44**); лише якщо `guest === false`
+        chat_upload_disabled:
+          type: boolean
+          description: Лише для **власного** облікового запису (`data.id` збігається з авторизованим); модераторське вимкнення завантажень у чаті / аватарки.
 
     UserResponse:
       type: object
@@ -2581,6 +2584,8 @@ components:
         - public_message_count_scope
         - slash_command_max_per_window
         - slash_command_window_seconds
+        - mod_slash_default_mute_minutes
+        - mod_slash_default_kick_minutes
       properties:
         room_create_min_public_messages:
           type: integer
@@ -2604,6 +2609,16 @@ components:
           minimum: 10
           maximum: 86400
           description: Тривалість вікна ліміту slash-команд у секундах (разом із `slash_command_max_per_window` — `RateLimiter` на бекенді).
+        mod_slash_default_mute_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          description: Дефолтні хвилини для slash `/mute нік` без другого аргументу (**T69**); змінює лише **адмін** (`PATCH /api/v1/chat/settings`).
+        mod_slash_default_kick_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          description: Дефолтні хвилини для slash `/kick нік` без другого аргументу (**T69**).
 
     ChatSettingsResponse:
       type: object

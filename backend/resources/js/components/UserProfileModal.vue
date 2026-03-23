@@ -72,7 +72,7 @@
                                     <button
                                         type="button"
                                         class="rp-focusable rp-btn rp-btn-secondary text-sm"
-                                        :disabled="avatarUploading"
+                                        :disabled="avatarUploading || user.chat_upload_disabled"
                                         @click="$refs.avatarInput && $refs.avatarInput.click()"
                                     >
                                         {{ avatarUploading ? 'Завантаження…' : 'Вибрати файл' }}
@@ -85,6 +85,15 @@
                                     JPEG, PNG, GIF або WebP, до 4 МБ (як у чаті).
                                 </p>
                             </div>
+                        </div>
+
+                        <div
+                            v-if="user.chat_upload_disabled"
+                            role="status"
+                            class="rounded-md border border-amber-600/45 bg-amber-500/10 px-3 py-2 text-sm text-[var(--rp-text)]"
+                        >
+                            <span class="font-medium">Завантаження вимкнено модератором.</span>
+                            Не можна додавати зображення в чат і змінювати аватарку, доки обмеження діє.
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
@@ -582,6 +591,12 @@ export default {
             const input = e.target;
             const file = input.files && input.files[0];
             if (!file || !this.user || this.user.guest) {
+                return;
+            }
+            if (this.user.chat_upload_disabled) {
+                this.avatarUploadError =
+                    'Завантаження зображень вимкнено модератором. Зверніться до персоналу чату.';
+
                 return;
             }
             this.avatarUploadError = '';

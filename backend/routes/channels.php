@@ -26,6 +26,7 @@ Broadcast::channel('room.{roomId}', function (User $user, int|string $roomId) {
         'avatar_url' => $user->resolveAvatarUrl() ?? '',
         'chat_role' => $role->value,
         'badge_color' => $role->badgeColor(),
+        'chat_upload_disabled' => ! $user->guest && $user->isChatUploadDisabled(),
     ];
 });
 

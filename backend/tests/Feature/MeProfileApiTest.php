@@ -68,7 +68,8 @@ class MeProfileApiTest extends TestCase
             ->assertJsonPath('data.profile.about', 'Hello')
             ->assertJsonPath('data.notification_sound_prefs.volume_percent', 80)
             ->assertJsonPath('data.message_edit_window_hours', 24)
-            ->assertJsonPath('data.can_create_room', false);
+            ->assertJsonPath('data.can_create_room', false)
+            ->assertJsonPath('data.chat_upload_disabled', false);
 
         $this->from(config('app.url'))
             ->actingAs($user, 'web')
@@ -76,6 +77,19 @@ class MeProfileApiTest extends TestCase
             ->getJson('/api/v1/me/profile')
             ->assertOk()
             ->assertJsonPath('data.profile.country', 'UA');
+    }
+
+    public function test_auth_user_payload_includes_chat_upload_disabled_when_set(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['chat_upload_disabled' => true])->save();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/auth/user')
+            ->assertOk()
+            ->assertJsonPath('data.chat_upload_disabled', true);
     }
 
     public function test_patch_me_profile_persists(): void
