@@ -21,6 +21,21 @@
             <span class="ml-1.5 text-xs text-[var(--rp-text-muted)]">…</span>
         </template>
         <div
+            v-else-if="isLikelyVideoOembedHost"
+            class="relative aspect-video w-full max-w-lg shrink-0 overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-black/5"
+        >
+            <iframe
+                v-if="iframeSrc"
+                :src="iframeSrc"
+                class="absolute inset-0 box-border h-full w-full border-0"
+                :title="iframeTitle"
+                loading="lazy"
+                :allow="iframeAllow"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen
+            />
+        </div>
+        <div
             v-else
             class="relative w-full max-w-lg overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-surface-elevated)] min-h-[200px] sm:min-h-[280px]"
         >
@@ -85,6 +100,21 @@ export default {
     },
     beforeDestroy() {
         this._abort?.abort();
+    },
+    computed: {
+        /** Vimeo, Dailymotion, Twitch — типово 16×9; SoundCloud / TikTok лишаються у гілці з min-height. */
+        isLikelyVideoOembedHost() {
+            try {
+                const h = new URL(this.resourceUrl).hostname.replace(/^www\./, '').toLowerCase();
+                if (h.includes('vimeo.com') || h.includes('dailymotion.com') || h.includes('twitch.tv')) {
+                    return true;
+                }
+
+                return false;
+            } catch {
+                return false;
+            }
+        },
     },
 };
 </script>

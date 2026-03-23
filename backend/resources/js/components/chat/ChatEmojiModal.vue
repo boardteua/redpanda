@@ -33,7 +33,11 @@
                     placeholder="Код або назва…"
                     maxlength="80"
                     :disabled="catalogLoading"
+                    :aria-describedby="usageHintId"
                 />
+                <p :id="usageHintId" class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                    Порядок: спочатку ті, що ви обирали частіше (лише на цьому пристрої).
+                </p>
             </div>
             <div class="min-h-0 flex-1 overflow-y-auto p-4">
                 <p v-if="catalogLoading" class="text-sm text-[var(--rp-text-muted)]" role="status">
@@ -90,6 +94,7 @@
 import RpModal from '../RpModal.vue';
 import { filterEmojiItems } from '../../utils/chatEmojiCatalog';
 import { loadChatEmoticonsCatalog } from '../../utils/chatEmoticons';
+import { getEmoticonUsageCounts, recordEmoticonUsage } from '../../utils/chatEmoticonUsage';
 
 let modalSeq = 0;
 
@@ -108,6 +113,7 @@ export default {
         return {
             titleId: `chat-emoji-title-${modalSeq}`,
             searchId: `chat-emoji-search-${modalSeq}`,
+            usageHintId: `chat-emoji-usage-hint-${modalSeq}`,
             searchQuery: '',
             catalogItems: [],
             catalogLoading: false,
@@ -116,7 +122,20 @@ export default {
     },
     computed: {
         filtered() {
-            return filterEmojiItems(this.catalogItems, this.searchQuery);
+            const items = filterEmojiItems(this.catalogItems, this.searchQuery);
+            const usage = getEmoticonUsageCounts();
+
+            return [...items].sort((a, b) => {
+                const ca = String(a.code || '').toLowerCase();
+                const cb = String(b.code || '').toLowerCase();
+                const ua = usage[ca] || 0;
+                const ub = usage[cb] || 0;
+                if (ub !== ua) {
+                    return ub - ua;
+                }
+
+                return ca.localeCompare(cb, 'uk', { sensitivity: 'base' });
+            });
         },
     },
     watch: {
@@ -147,6 +166,7 @@ export default {
             if (!it || !it.code) {
                 return;
             }
+            recordEmoticonUsage(it.code);
             this.$emit('select', { code: it.code });
             this.close();
         },

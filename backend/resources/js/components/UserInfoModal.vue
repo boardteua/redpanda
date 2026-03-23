@@ -29,6 +29,10 @@
         </template>
         <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm text-[var(--rp-text)]">
             <template v-if="mode === 'self'">
+                <p v-if="!viewer" class="text-[var(--rp-text-muted)]">
+                    Завантаження профілю…
+                </p>
+                <template v-else>
                 <p>
                     <span class="font-medium">Нік:</span>
                     {{ viewer.user_name }}
@@ -46,7 +50,7 @@
                 </p>
                 <!-- T43: гості не мають повного профілю — тема лише локально (localStorage), той самий цикл що в чаті -->
                 <div
-                    v-if="viewer && viewer.guest"
+                    v-if="viewer.guest"
                     class="mt-4 space-y-2 rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] p-3"
                 >
                     <p class="text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
@@ -64,8 +68,13 @@
                         {{ themeLabel }}
                     </button>
                 </div>
+                </template>
             </template>
             <template v-else>
+                <p v-if="!target" class="text-[var(--rp-text-muted)]">
+                    Немає даних про користувача.
+                </p>
+                <template v-else>
                 <p>
                     <span class="font-medium">Нік:</span>
                     {{ target.user_name }}
@@ -94,6 +103,7 @@
                         заглушка.
                     </p>
                 </div>
+                </template>
             </template>
         </div>
     </RpModal>

@@ -26,7 +26,7 @@
             </div>
         </template>
 
-        <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div v-if="user && !user.guest" class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <div class="shrink-0 border-b border-[var(--rp-border-subtle)] px-2 pt-2">
                     <div class="flex flex-wrap gap-1">
                         <button
@@ -308,6 +308,12 @@
                     </div>
                 </div>
         </div>
+        <p v-else-if="!user" class="px-4 py-4 text-sm text-[var(--rp-text-muted)]">
+            Завантаження профілю…
+        </p>
+        <p v-else class="px-4 py-4 text-sm text-[var(--rp-text-muted)]">
+            Повний профіль недоступний у гостьовому режимі. Увійдіть під обліковим записом, щоб редагувати дані.
+        </p>
     </RpModal>
 </template>
 

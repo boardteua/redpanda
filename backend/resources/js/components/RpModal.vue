@@ -1,5 +1,5 @@
 <template>
-    <Teleport to="body">
+    <portal>
         <div
             v-if="open"
             class="fixed inset-0 flex items-end justify-center bg-black/40 p-4 sm:items-center"
@@ -73,7 +73,7 @@
                 </template>
             </div>
         </div>
-    </Teleport>
+    </portal>
 </template>
 
 <script>

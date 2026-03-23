@@ -1,5 +1,6 @@
 import './bootstrap';
 import Vue from 'vue';
+import VuePortal from '@linusborg/vue-simple-portal';
 import App from './App.vue';
 import UserAvatar from './components/UserAvatar.vue';
 import RpBanner from './components/ui/RpBanner.vue';
@@ -7,6 +8,11 @@ import RpButton from './components/ui/RpButton.vue';
 import RpPanel from './components/ui/RpPanel.vue';
 import RpTextField from './components/ui/RpTextField.vue';
 import router from './router';
+
+Vue.use(VuePortal, {
+    /** Стабільний id у DOM; контейнер створюється на body при першому порталі (Vue 2 немає Teleport). */
+    defaultSelector: 'rp-portal-target',
+});
 
 /** Глобально: уникнути «Unknown custom element» у будь-якому view без локального components. */
 Vue.component('UserAvatar', UserAvatar);

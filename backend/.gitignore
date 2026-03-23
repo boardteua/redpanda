@@ -16,6 +16,8 @@
 /public/build
 /public/hot
 /public/storage
+/public/emoticon
+/public/sounds
 /storage/app/chat-images
 /storage/*.key
 /storage/pail
