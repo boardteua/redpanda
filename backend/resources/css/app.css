@@ -622,6 +622,16 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--rp-focus-ring) 35%, transparent);
 }
 
+.rp-chat-composer-input--slash {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    border-left-width: 3px;
+    border-left-color: color-mix(in srgb, var(--rp-focus-ring) 55%, transparent);
+}
+
+.rp-chat-feed-row--slash-client-only {
+    border-left: 2px solid color-mix(in srgb, var(--rp-text-muted) 45%, transparent);
+}
+
 .rp-chat-toolbar {
     display: flex;
     flex-wrap: wrap;

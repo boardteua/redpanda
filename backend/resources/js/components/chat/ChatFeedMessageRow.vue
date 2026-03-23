@@ -25,8 +25,8 @@
             variant="feed"
             decorative
         />
-        <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <div class="min-w-0 flex-1 flex flex-col gap-0.5">
+            <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
                 <div class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
                     <button
                         v-if="viewerName && !isDeleted"
@@ -52,8 +52,12 @@
                         Повідомлення видалено
                     </span>
                     <ChatMessageBody
-                        v-else-if="message.post_message"
-                        class="inline-block max-w-full rounded px-0.5 align-baseline"
+                        v-else-if="
+                            message.post_message
+                                && !postHasBlockMedia
+                                && message.type !== 'slash_client_only'
+                        "
+                        :class="messageBodyRootClass"
                         :body-class="bodyClassList"
                         :text="message.post_message"
                         variant="feed"
@@ -101,6 +105,25 @@
                     </time>
                 </div>
             </div>
+            <div
+                v-if="!isDeleted && message.type === 'slash_client_only' && message.post_message"
+                class="mt-0.5 w-full max-w-full font-mono text-[0.8125rem] leading-relaxed text-[var(--rp-text-muted)] whitespace-pre-wrap break-words"
+                role="status"
+            >
+                {{ message.post_message }}
+            </div>
+            <ChatMessageBody
+                v-if="
+                    !isDeleted
+                        && message.post_message
+                        && postHasBlockMedia
+                        && message.type !== 'slash_client_only'
+                "
+                :class="messageBodyRootClassBlockMedia"
+                :body-class="bodyClassList"
+                :text="message.post_message"
+                variant="feed"
+            />
             <figure v-if="!isDeleted && message.image && message.image.url" class="mt-1.5">
                 <img
                     :src="message.image.url"
@@ -115,6 +138,7 @@
 
 <script>
 import ChatMessageBody from './ChatMessageBody.vue';
+import { messageHasBlockMedia } from '../../utils/chatMessageBodyParse';
 import { chatMessageBodyClassList, nickColorStyleForPost } from '../../utils/chatMessageStyle';
 
 export default {
@@ -147,6 +171,7 @@ export default {
             return [
                 even ? 'bg-[var(--rp-chat-row-even)]' : 'bg-[var(--rp-chat-row-odd)]',
                 m.type === 'inline_private' ? 'rp-chat-feed-row--inline-private' : '',
+                m.type === 'slash_client_only' ? 'rp-chat-feed-row--slash-client-only' : '',
                 this.isDeleted ? 'opacity-90' : '',
             ];
         },
@@ -155,6 +180,16 @@ export default {
         },
         bodyClassList() {
             return chatMessageBodyClassList(this.message.post_style);
+        },
+        postHasBlockMedia() {
+            return messageHasBlockMedia(this.message.post_message);
+        },
+        /** Повний рядок під ніком/часом — коректна ширина для 16:9 ембедів (не flex+baseline колонка). */
+        messageBodyRootClassBlockMedia() {
+            return ['rounded', 'px-0.5', 'block', 'w-full', 'max-w-full', 'min-w-0'];
+        },
+        messageBodyRootClass() {
+            return ['rounded', 'px-0.5', 'inline-block', 'max-w-full', 'align-baseline'];
         },
     },
 };

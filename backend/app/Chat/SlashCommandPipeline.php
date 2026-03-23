@@ -2,44 +2,70 @@
 
 namespace App\Chat;
 
+use App\Chat\Slash\SlashCommandLineParser;
+use App\Chat\Slash\SlashCommandRegistry;
+use App\Chat\Slash\SlashDefaultHandlers;
+use App\Chat\Slash\SlashInvocation;
+use App\Models\Room;
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+
 /**
- * Мінімальний конвеєр slash-команд для розширення в наступних задачах.
+ * Інфраструктура slash-команд (T66): парсер, реєстр, throttle, аудит у логах.
  */
 final class SlashCommandPipeline
 {
-    /**
-     * @return array{message: string, slash: array{name: string|null, recognized: bool}}
-     */
-    public function transform(string $rawMessage, string $displayUserName): array
+    public function __construct(
+        private readonly SlashCommandRegistry $registry,
+    ) {}
+
+    public static function buildDefaultRegistry(): SlashCommandRegistry
     {
-        $trimmed = ltrim($rawMessage);
-        if ($trimmed === '' || $trimmed[0] !== '/') {
-            return [
-                'message' => $rawMessage,
-                'slash' => ['name' => null, 'recognized' => false],
-            ];
+        $r = new SlashCommandRegistry(SlashDefaultHandlers::unknown(...));
+        $r->register('me', SlashDefaultHandlers::me(...));
+        $r->register('noop', SlashDefaultHandlers::noop(...));
+
+        return $r;
+    }
+
+    /**
+     * @return string|null Повідомлення про помилку для 429, або null якщо ліміт не перевищено.
+     */
+    public function ensureSlashThrottle(User $user): ?string
+    {
+        if (! RateLimiter::attempt(
+            'slash-command:'.$user->id,
+            25,
+            fn () => true,
+            60,
+        )) {
+            return 'Забагато slash-команд за хвилину. Спробуйте пізніше.';
         }
 
-        $withoutSlash = substr($trimmed, 1);
-        $space = strpos($withoutSlash, ' ');
-        $command = $space === false
-            ? strtolower($withoutSlash)
-            : strtolower(substr($withoutSlash, 0, $space));
-        $rest = $space === false ? '' : ltrim(substr($withoutSlash, $space + 1));
+        return null;
+    }
 
-        if ($command === 'me') {
-            $body = $rest === '' ? '' : $rest;
-            $formatted = '*'.$displayUserName.($body === '' ? '' : ' '.$body).'*';
-
-            return [
-                'message' => $formatted,
-                'slash' => ['name' => 'me', 'recognized' => true],
-            ];
+    /**
+     * @return array{result: SlashHandlerResult, invocation: SlashInvocation}
+     */
+    public function dispatchParsed(User $user, Room $room, string $trimmedLine): array
+    {
+        $parsed = SlashCommandLineParser::parse($trimmedLine);
+        if ($parsed === null) {
+            throw new \InvalidArgumentException('Expected a line starting with /');
         }
 
-        return [
-            'message' => $rawMessage,
-            'slash' => ['name' => $command !== '' ? $command : null, 'recognized' => false],
-        ];
+        $invocation = new SlashInvocation($user, $room, $trimmedLine, $parsed);
+        $handlerResult = $this->registry->dispatch($invocation);
+
+        Log::info('chat.slash_command', [
+            'command' => $parsed->command === '' ? null : $parsed->command,
+            'user_id' => $user->id,
+            'room_id' => $room->room_id,
+            'outcome' => $handlerResult->kind,
+        ]);
+
+        return ['result' => $handlerResult, 'invocation' => $invocation];
     }
 }

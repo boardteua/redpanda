@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Chat\Slash\SlashCommandRegistry;
+use App\Chat\SlashCommandPipeline;
 use App\Models\ChatMessage;
 use App\Models\Image;
 use App\Models\Room;
@@ -27,7 +29,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(SlashCommandRegistry::class, static fn (): SlashCommandRegistry => SlashCommandPipeline::buildDefaultRegistry());
+
+        $this->app->singleton(SlashCommandPipeline::class, static fn ($app): SlashCommandPipeline => new SlashCommandPipeline(
+            $app->make(SlashCommandRegistry::class),
+        ));
     }
 
     /**

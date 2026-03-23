@@ -708,7 +708,7 @@
 
 ---
 
-### [ ] T66 — Slash-команди: **спільна інфраструктура** (парсер, реєстр, контракт відповіді, композер)
+### [x] T66 — Slash-команди: **спільна інфраструктура** (парсер, реєстр, контракт відповіді, композер)
 
 - **Delegate:** Full stack (Backend Architect + Frontend Developer)
 - **Залежність:** **T04** (розширити pipeline POST / slash — **не** ламати `client_message_id` / idempotency); **T05**/**T06** (стрічка); **T22** — після появи реєстру можна звузити довідник «Команди» до посилання на **`/manual`** або згенерований список
@@ -872,3 +872,20 @@
 - **Негативний scope:** **реклама** (банери, AdSense тощо) та **CMP / cookie-банери** як на legacy — **поки не робити**; окремий таск після рішення продукту
 - **Рішення клієнта (зафіксовано):** лічильник **онлайн** на вітальні показує саме **залогінених у чат** (не «усі відвідувачі сайту»)
 
+---
+
+### [ ] T78 — **AI-агенти / LLM:** специфікація + **`/llms.txt`** (парсинг без JS-SPA)
+
+- **Delegate:** Backend Architect + Technical Writer (контент) + Senior PM (узгодження) + Frontend за потреби (`<link rel="alternate">` у Blade)
+- **Контекст клієнта:** агенти та чати на кшталт **GPT** мають **надійно** отримувати структурований контекст про продукт без повного рендеру Vue SPA; орієнтир — пропозиція **`/llms.txt`** (машинно- та людино-читаний Markdown з розділами та посиланнями), узгоджена з **llms.txt** / **llmstxt.org** та [answerdotai/llms-txt](https://github.com/answerdotai/llms-txt) (структура `# Title`, `> summary`, `## Docs` / `## Examples` / `## Optional`, списки `- [назва](URL): опис`; опційно **`.md`**-версії сторінок за шляхом + `.md`).
+- **Залежність:** наявний **`docs/chat-v2/openapi.yaml`**
+- **Deliverables:**
+  - **`docs/chat-v2/AI-AGENT-FRIENDLY.md`:** сценарії для інтеграторів і LLM; публічні флоу **логін / гість / чат** без припущення виконання JS; **чекліст** розділів **`/llms.txt`**; узгодження з **`project-specs/chat-v2-setup.md`**, **OpenAPI**, **`docs/board-te-ua/`**; **політика: без PII, секретів, staff-URL**; розділ **«Що LLM не бачить без JS»** і як компенсувати (llms.txt, OpenAPI, markdown-огляди); опційно: **`robots.txt`** / правила для **AI-краулерів** (відкрите питання)
+  - Публічний **`GET /llms.txt`** (`public/` або Laravel **контролер**, `text/markdown; charset=utf-8`): контент за документом і proposal — опис **Redpanda Chat v2**, посилання на **OpenAPI** та дозволені публічно **`docs/`** / **`project-specs/`**, auth (Sanctum cookie, гість) **без секретів**
+  - Опційно: **`/llms-full.txt`** або **`## Optional`**; **markdown-дзеркала** (`.html.md`) — лише за наявності серверного HTML; **не** блокувати закриття таску без них
+  - У **`spa.blade.php`** за потреби: `<link rel="alternate" type="text/markdown" href="/llms.txt" title="LLM context">`
+  - **`docs/chat-v2/openapi.yaml`** / **`docs/chat-v2/T78-QA.md`** — лише якщо змінюється контракт або потрібен запис для оператора
+- **QA evidence:** рев’ю **`AI-AGENT-FRIENDLY.md`** у PR + посилання на джерела (llms.txt proposal); **`curl -sI /llms.txt`** → `200`, коректний `content-type`, UTF-8; перевірка лінків у staging; `php artisan test` smoke за наявності коду; **без** секретів у відповіді
+- **Негативний scope:** повна генерація markdown з кожного Vue-компонента; індексація приватних повідомлень або користувацьких даних
+
+---
