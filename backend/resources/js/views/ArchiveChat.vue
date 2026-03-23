@@ -90,7 +90,10 @@
                 Завантаження…
             </p>
 
-            <div v-else class="overflow-x-auto rounded-md border border-[var(--rp-border-subtle)]">
+            <div
+                v-else
+                class="mt-4 overflow-x-auto rounded-md border border-[var(--rp-border-subtle)]"
+            >
                 <table class="w-full min-w-[28rem] border-collapse text-left text-sm text-[var(--rp-text)]">
                     <thead class="bg-[var(--rp-surface-elevated)] text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]">
                         <tr>

@@ -64,15 +64,15 @@
                 <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <button
                         type="submit"
-                        class="rp-focusable rounded-md bg-[var(--rp-chat-sidebar-link)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                        :disabled="savingRoom || deletingRoom"
+                        class="rp-focusable rp-btn rp-btn-primary text-sm"
+                        :disabled="saveDisabled"
                     >
                         {{ savingRoom ? 'Збереження…' : 'Зберегти' }}
                     </button>
                     <button
                         v-if="canDeleteSelected"
                         type="button"
-                        class="rp-focusable rounded-md border border-[var(--rp-error)] px-3 py-2 text-sm font-semibold text-[var(--rp-error)] hover:bg-[var(--rp-error-bg)] disabled:cursor-not-allowed disabled:opacity-50"
+                        class="rp-focusable rp-btn rp-btn-ghost text-sm text-[var(--rp-error)]"
                         :disabled="savingRoom || deletingRoom"
                         @click="requestDelete"
                     >
@@ -149,6 +149,33 @@ export default {
             const isOwner = cid != null && Number(cid) === Number(this.user.id);
             return isOwner && this.messagesCount === 0;
         },
+        /** Є хоча б одне редаговане поле, значення якого відрізняється від поточних даних кімнати. */
+        hasUnsavedChanges() {
+            const r = this.room;
+            if (!r) {
+                return false;
+            }
+            if (this.canEditDetails) {
+                const nameOrig = (r.room_name || '').trim();
+                if ((this.editName || '').trim() !== nameOrig) {
+                    return true;
+                }
+                const topicOrig = r.topic != null ? String(r.topic).trim() : '';
+                if ((this.editTopic || '').trim() !== topicOrig) {
+                    return true;
+                }
+            }
+            if (this.canChangeAccess) {
+                const accessOrig = Number(r.access) || 0;
+                if (Number(this.editAccess) !== accessOrig) {
+                    return true;
+                }
+            }
+            return false;
+        },
+        saveDisabled() {
+            return this.busy || !this.hasUnsavedChanges;
+        },
     },
     watch: {
         room: {
@@ -181,7 +208,7 @@ export default {
         },
         submitEdit() {
             const r = this.room;
-            if (!r) {
+            if (!r || this.saveDisabled) {
                 return;
             }
             const payload = { room_id: r.room_id };
