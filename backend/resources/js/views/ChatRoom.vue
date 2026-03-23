@@ -234,6 +234,7 @@ import UserInfoModal from '../components/UserInfoModal.vue';
 import AddRoomModal from '../components/chat/AddRoomModal.vue';
 import RoomEditModal from '../components/chat/RoomEditModal.vue';
 import { createEcho } from '../lib/echo';
+import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
 import { normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 
 const THEME_KEY = 'redpanda-theme';
@@ -875,7 +876,7 @@ export default {
                     return;
                 }
 
-                await Promise.all([this.loadRooms(), this.loadChatSettings()]);
+                await Promise.all([this.loadRooms(), this.loadChatSettings(), loadChatEmoticonsCatalog()]);
                 const qRoom = this.$route.query.room;
                 const fromQuery = qRoom ? Number(qRoom) : null;
                 if (fromQuery && this.rooms.some((r) => r.room_id === fromQuery)) {

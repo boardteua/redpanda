@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatArchiveController;
+use App\Http\Controllers\Api\V1\ChatEmoticonController;
 use App\Http\Controllers\Api\V1\ChatImageController;
 use App\Http\Controllers\Api\V1\ChatMessageController;
 use App\Http\Controllers\Api\V1\ChatSettingsController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\V1\FriendController;
 use App\Http\Controllers\Api\V1\IgnoreController;
 use App\Http\Controllers\Api\V1\MeAccountController;
 use App\Http\Controllers\Api\V1\MeProfileController;
+use App\Http\Controllers\Api\V1\Mod\ChatEmoticonAdminController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\OEmbedController;
 use App\Http\Controllers\Api\V1\PrivateMessageController;
@@ -45,6 +47,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
             Route::get('rooms', [RoomController::class, 'index']);
             Route::get('rooms/{room}/messages', [ChatMessageController::class, 'index']);
             Route::get('chat/settings', [ChatSettingsController::class, 'show']);
+            Route::middleware('throttle:emoticon-read')->get('chat/emoticons', [ChatEmoticonController::class, 'index']);
         });
 
         Route::middleware('throttle:chat-mark-read')->post(
@@ -113,6 +116,10 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         });
 
         Route::middleware(['can:chat-admin', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
+            Route::get('emoticons', [ChatEmoticonAdminController::class, 'index']);
+            Route::post('emoticons', [ChatEmoticonAdminController::class, 'store']);
+            Route::patch('emoticons/{emoticon}', [ChatEmoticonAdminController::class, 'update']);
+            Route::delete('emoticons/{emoticon}', [ChatEmoticonAdminController::class, 'destroy']);
             Route::get('banned-ips', [ModerationController::class, 'indexBannedIps']);
             Route::post('banned-ips', [ModerationController::class, 'storeBannedIp']);
             Route::delete('banned-ips/{bannedIp}', [ModerationController::class, 'destroyBannedIp']);

@@ -4,6 +4,8 @@ import {
     classifyUrl,
     EMBED_RESOLVERS,
     isSafeHttpUrl,
+    messageHasBlockMedia,
+    isSafeEmoticonFilename,
     parseChatMessageBody,
     shouldTryBackendOembedUrl,
     spotifyEmbedUrl,
@@ -42,6 +44,16 @@ test('png URL becomes image segment', () => {
     const img = segs.find((s) => s.type === 'image');
     assert.ok(img);
     assert.equal(img.src, 'https://cdn.test/x.png');
+});
+
+test('messageHasBlockMedia true for embed / image / oembedPending', () => {
+    assert.equal(messageHasBlockMedia('hi https://example.com only'), false);
+    assert.equal(
+        messageHasBlockMedia('v https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+        true,
+    );
+    assert.equal(messageHasBlockMedia('pic https://cdn.test/x.png'), true);
+    assert.equal(messageHasBlockMedia('https://vimeo.com/123'), true);
 });
 
 test('youtube watch URL classified as embed', () => {
@@ -137,4 +149,33 @@ test('Vimeo watch URL becomes oembedPending segment', () => {
     const pending = segs.find((s) => s.type === 'oembedPending');
     assert.ok(pending);
     assert.equal(pending.href, u);
+});
+
+test('isSafeEmoticonFilename rejects traversal', () => {
+    assert.equal(isSafeEmoticonFilename('ok.gif'), true);
+    assert.equal(isSafeEmoticonFilename('../x.gif'), false);
+    assert.equal(isSafeEmoticonFilename('a/b.gif'), false);
+});
+
+test('known :code: becomes emoticon segment (T63)', () => {
+    const idx = { hi: 'hi.gif' };
+    const segs = parseChatMessageBody('Привіт :hi: всім', { emoticonIndex: idx });
+    const emo = segs.find((s) => s.type === 'emoticon');
+    assert.ok(emo);
+    assert.equal(emo.code, 'hi');
+    assert.equal(emo.src, '/emoticon/hi.gif');
+});
+
+test('unknown :code: stays plain text', () => {
+    const segs = parseChatMessageBody(':unknown:', { emoticonIndex: { hi: 'hi.gif' } });
+    assert.ok(segs.every((s) => s.type === 'text'));
+    assert.equal(segs.map((s) => s.value).join(''), ':unknown:');
+});
+
+test('emoticon coexists with URL in same message', () => {
+    const segs = parseChatMessageBody(':x: https://example.com/y.png', {
+        emoticonIndex: { x: 'x.gif' },
+    });
+    assert.ok(segs.some((s) => s.type === 'emoticon'));
+    assert.ok(segs.some((s) => s.type === 'image'));
 });

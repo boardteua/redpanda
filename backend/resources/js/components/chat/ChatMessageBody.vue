@@ -2,6 +2,16 @@
     <div :class="rootClass">
         <template v-for="(seg, i) in displaySegments">
             <span v-if="seg.type === 'text'" :key="'t-' + i">{{ seg.value }}</span>
+            <img
+                v-else-if="seg.type === 'emoticon'"
+                :key="'emo-' + i"
+                :src="seg.src"
+                :alt="':' + seg.code + ':'"
+                class="mx-0.5 inline-block h-7 w-7 max-h-7 max-w-7 align-text-bottom object-contain [vertical-align:-0.15em]"
+                loading="lazy"
+                decoding="async"
+                referrerpolicy="no-referrer"
+            />
             <ChatOembedBlock
                 v-else-if="seg.type === 'oembedPending'"
                 :key="'oe-' + i"
@@ -52,11 +62,11 @@
             <div v-else-if="seg.type === 'embed' && variant !== 'archive'" :key="'em-' + i" class="my-2 block max-w-full">
                 <div
                     v-if="seg.provider === 'youtube'"
-                    class="relative aspect-video w-full max-w-lg overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-black/5"
+                    class="rp-chat-embed-youtube relative aspect-video w-full max-w-lg shrink-0 overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-black/5"
                 >
                     <iframe
                         :src="seg.src"
-                        class="absolute inset-0 h-full w-full border-0"
+                        class="absolute inset-0 box-border h-full w-full border-0"
                         :title="embedTitle(seg)"
                         loading="lazy"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

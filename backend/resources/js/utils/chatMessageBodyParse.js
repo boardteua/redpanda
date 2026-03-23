@@ -9,6 +9,42 @@
 
 const URL_RE = /https?:\/\/[^\s<>"']+/gi;
 
+/** Глобальний індекс `:code:` → безпечне ім’я файлу в /emoticon/ (T63). */
+let chatEmoticonFilenameByCode = null;
+
+/**
+ * @param {Record<string, string>|null|undefined} map Ключ — code у нижньому регістрі.
+ */
+export function setChatEmoticonIndex(map) {
+    if (map && typeof map === 'object' && Object.keys(map).length > 0) {
+        chatEmoticonFilenameByCode = { ...map };
+    } else {
+        chatEmoticonFilenameByCode = null;
+    }
+}
+
+/**
+ * @returns {Record<string, string>|null}
+ */
+export function getChatEmoticonIndex() {
+    return chatEmoticonFilenameByCode;
+}
+
+/**
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function isSafeEmoticonFilename(name) {
+    if (!name || typeof name !== 'string') {
+        return false;
+    }
+    if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+        return false;
+    }
+
+    return /^[a-zA-Z0-9_.-]+$/.test(name);
+}
+
 /** Символи, що часто «чіпляються» до URL у тексті (дужки, пунктуація). */
 const URL_TRAILING_JUNK = new Set([')', '.', ',', ';', '!', '?', ']', '"', "'", '»', '…']);
 
@@ -406,14 +442,12 @@ export function classifyUrl(trimmed) {
 }
 
 /**
- * @param {string|null|undefined} text
+ * Лише URL / ембеди / зображення (без `:code:` смайлів).
+ *
+ * @param {string} str
  * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string }>}
  */
-export function parseChatMessageBody(text) {
-    if (text == null || text === '') {
-        return [{ type: 'text', value: '' }];
-    }
-    const str = String(text);
+function parseChatMessageBodyUrlsOnly(str) {
     const segments = [];
     let cursor = 0;
     const re = new RegExp(URL_RE.source, URL_RE.flags);
@@ -464,7 +498,100 @@ export function parseChatMessageBody(text) {
     if (segments.length === 0) {
         return [{ type: 'text', value: str }];
     }
+
     return mergeAdjacentTextSegments(segments);
+}
+
+/**
+ * Розбити текст на фрагменти з відомими `:code:` смайлами (T63).
+ *
+ * @param {string} str
+ * @param {Record<string, string>|null} index
+ * @returns {Array<{ type: 'text', value: string } | { type: 'emoticon', code: string, src: string }>}
+ */
+function splitEmoticonPieces(str, index) {
+    if (!index || Object.keys(index).length === 0) {
+        return [{ type: 'text', value: str }];
+    }
+    const out = [];
+    let pos = 0;
+    const len = str.length;
+    while (pos < len) {
+        const colon = str.indexOf(':', pos);
+        if (colon === -1) {
+            out.push({ type: 'text', value: str.slice(pos) });
+            break;
+        }
+        const endColon = str.indexOf(':', colon + 1);
+        if (endColon === -1) {
+            out.push({ type: 'text', value: str.slice(pos) });
+            break;
+        }
+        if (colon > pos) {
+            out.push({ type: 'text', value: str.slice(pos, colon) });
+        }
+        const inner = str.slice(colon + 1, endColon);
+        let filename = null;
+        if (inner.length >= 1 && inner.length <= 64 && /^[a-zA-Z0-9_]+$/.test(inner)) {
+            filename = index[inner.toLowerCase()] ?? null;
+        }
+        if (filename && isSafeEmoticonFilename(filename)) {
+            out.push({
+                type: 'emoticon',
+                code: inner,
+                src: `/emoticon/${filename}`,
+            });
+            pos = endColon + 1;
+        } else {
+            out.push({ type: 'text', value: str.slice(colon, colon + 1) });
+            pos = colon + 1;
+        }
+    }
+
+    return mergeAdjacentTextSegments(out);
+}
+
+/**
+ * @param {string|null|undefined} text
+ * @param {{ emoticonIndex?: Record<string, string>|null }|undefined} options
+ * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string } | { type: 'emoticon', code: string, src: string }>}
+ */
+export function parseChatMessageBody(text, options) {
+    if (text == null || text === '') {
+        return [{ type: 'text', value: '' }];
+    }
+    const str = String(text);
+    const index =
+        options && Object.prototype.hasOwnProperty.call(options, 'emoticonIndex')
+            ? options.emoticonIndex
+            : chatEmoticonFilenameByCode;
+    const emotParts = splitEmoticonPieces(str, index && Object.keys(index).length ? index : null);
+    /** @type {ReturnType<typeof parseChatMessageBody>} */
+    const segments = [];
+    for (let i = 0; i < emotParts.length; i += 1) {
+        const part = emotParts[i];
+        if (part.type === 'emoticon') {
+            segments.push(part);
+        } else {
+            segments.push(...parseChatMessageBodyUrlsOnly(part.value));
+        }
+    }
+
+    return mergeAdjacentTextSegments(segments);
+}
+
+/**
+ * Чи є в повідомленні блоковий медіавміст (ембед, oEmbed, inline-зображення).
+ * Потрібно для layout у стрічці: `inline-block` ламає висоту aspect-ratio / iframe без інтринсичної ширини.
+ *
+ * @param {string|null|undefined} text
+ * @returns {boolean}
+ */
+export function messageHasBlockMedia(text) {
+    const segs = parseChatMessageBody(text);
+    return segs.some(
+        (s) => s.type === 'embed' || s.type === 'oembedPending' || s.type === 'image',
+    );
 }
 
 /**

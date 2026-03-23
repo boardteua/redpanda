@@ -11,7 +11,9 @@ info:
     **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
     доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
 
-    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`, `oembed-read`).
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`, `oembed-read`, `emoticon-read`).
+
+    **Смайли / emoticon (T63):** `GET /api/v1/chat/emoticons` — активні записи каталогу (throttle `emoticon-read`); файли за URL `/emoticon/{file}`. Адмін: `GET|POST|PATCH|DELETE /api/v1/mod/emoticons` (multipart на `POST` / опційно `PATCH`), `can:chat-admin`, throttle `mod-actions`. Деталі — [T63-QA.md](T63-QA.md).
 
     **oEmbed-проксі (T55):** `GET /api/v1/oembed` — лише автентифікований користувач (Sanctum SPA); безпечний проксі до провайдерів з реєстру oEmbed, кеш, SSRF-захист, санітизація `html` (лише `iframe` з дозволених хостів). Деталі — [T55-oembed.md](T55-oembed.md).
 
@@ -46,7 +48,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.16.7"
+  version: "0.16.8"
   license:
     name: Proprietary
     url: https://example.com/
@@ -1196,6 +1198,147 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/chat/emoticons:
+    get:
+      tags: [Chat]
+      summary: Публічний каталог смайлів (активні)
+      description: |
+        Список для модалу композера та клієнтського парсера `:code:` у стрічці (**T63**).
+        Лише `is_active=true`, сортування `sort_order`, `id`.
+      operationId: listChatEmoticons
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Масив у `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatEmoticonPublicListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/emoticons:
+    get:
+      tags: [Moderation]
+      summary: Список смайлів (адмін)
+      description: Усі записи каталогу; **`can:chat-admin`**, throttle `mod-actions`.
+      operationId: modListEmoticons
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Масив у `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatEmoticonAdminListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Moderation]
+      summary: Додати смайл (multipart)
+      description: Поля форми + файл `file` (GIF/PNG/WebP, ≤512 КБ). **`can:chat-admin`**.
+      operationId: modCreateEmoticon
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ModCreateEmoticonMultipart"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatEmoticonAdminOneResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/emoticons/{emoticonId}:
+    patch:
+      tags: [Moderation]
+      summary: Оновити смайл
+      description: JSON або `multipart/form-data` з опційним `file`. **`can:chat-admin`**.
+      operationId: modPatchEmoticon
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - name: emoticonId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModPatchEmoticonRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ModPatchEmoticonMultipart"
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatEmoticonAdminOneResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    delete:
+      tags: [Moderation]
+      summary: Видалити запис смайла
+      description: Видаляє рядок; файл з диска прибирається, якщо більше не посилається іншим записом. **`can:chat-admin`**.
+      operationId: modDeleteEmoticon
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - name: emoticonId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: Видалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -2446,6 +2589,124 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/ChatSettingsData"
+
+    ChatEmoticonPublicItem:
+      type: object
+      required: [code, display_name, file, keywords]
+      properties:
+        code:
+          type: string
+          description: Унікальний код; у тексті `:code:`.
+        display_name:
+          type: string
+        file:
+          type: string
+          description: Базове ім’я файлу в `/emoticon/`.
+        keywords:
+          type: string
+          description: Рядок для пошуку в модалу; може бути порожнім.
+
+    ChatEmoticonPublicListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatEmoticonPublicItem"
+
+    ChatEmoticonAdminItem:
+      type: object
+      required: [id, code, display_name, file, sort_order, is_active]
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        display_name:
+          type: string
+        file:
+          type: string
+        sort_order:
+          type: integer
+        is_active:
+          type: boolean
+        keywords:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ChatEmoticonAdminListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatEmoticonAdminItem"
+
+    ChatEmoticonAdminOneResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatEmoticonAdminItem"
+
+    ModCreateEmoticonMultipart:
+      type: object
+      required: [code, display_name, file]
+      properties:
+        code:
+          type: string
+          maxLength: 64
+          pattern: '^[a-zA-Z0-9_]+$'
+        display_name:
+          type: string
+          maxLength: 200
+        sort_order:
+          type: integer
+          minimum: 0
+        is_active:
+          type: boolean
+        keywords:
+          type: string
+          maxLength: 500
+        file:
+          type: string
+          format: binary
+          description: GIF, PNG або WebP; max 512 KB.
+
+    ModPatchEmoticonRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          maxLength: 200
+        sort_order:
+          type: integer
+          minimum: 0
+        is_active:
+          type: boolean
+        keywords:
+          type: string
+          nullable: true
+          maxLength: 500
+
+    ModPatchEmoticonMultipart:
+      allOf:
+        - $ref: "#/components/schemas/ModPatchEmoticonRequest"
+        - type: object
+          properties:
+            file:
+              type: string
+              format: binary
 
     PatchChatSettingsRequest:
       type: object

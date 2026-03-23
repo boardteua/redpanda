@@ -201,6 +201,7 @@
 
 <script>
 import ChatMessageBody from '../components/chat/ChatMessageBody.vue';
+import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
 import { chatMessageBodyClassList, normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 
 const THEME_KEY = 'redpanda-theme';
@@ -316,6 +317,7 @@ export default {
             }
             this.syncRoomFromRoute(this.$route.query.room);
             await this.loadRooms();
+            await loadChatEmoticonsCatalog();
             await this.loadArchive();
         },
         async loadRooms() {
