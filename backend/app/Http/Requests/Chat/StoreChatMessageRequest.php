@@ -50,6 +50,9 @@ class StoreChatMessageRequest extends FormRequest
             if ($user !== null && $user->guest && $this->filled('image_id')) {
                 $validator->errors()->add('image_id', 'Гості не можуть додавати зображення до повідомлень.');
             }
+            if ($user !== null && ! $user->guest && $this->filled('image_id') && $user->isChatUploadDisabled()) {
+                $validator->errors()->add('image_id', 'Завантаження зображень для вашого облікового запису вимкнено модератором.');
+            }
 
             $msg = trim((string) ($this->input('message') ?? ''));
             $inline = RoomInlinePrivateParser::tryParse((string) ($this->input('message') ?? ''));

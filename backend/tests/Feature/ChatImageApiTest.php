@@ -52,6 +52,19 @@ class ChatImageApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_registered_user_cannot_upload_when_chat_upload_disabled(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['chat_upload_disabled' => true])->save();
+        $file = UploadedFile::fake()->image('blocked.jpg', 40, 40);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->post('/api/v1/images', ['image' => $file])
+            ->assertForbidden();
+    }
+
     public function test_registered_user_can_upload_and_post_message_with_image(): void
     {
         $room = $this->seedPublicRoom();

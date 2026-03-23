@@ -64,6 +64,11 @@ class ChatImageController extends Controller
                 'message' => 'Гості не можуть завантажувати зображення в чат.',
             ], 403);
         }
+        if ($user->isChatUploadDisabled()) {
+            return response()->json([
+                'message' => 'Завантаження зображень для вашого облікового запису вимкнено модератором.',
+            ], 403);
+        }
         $postingGate->ensureCanPost($user);
         $file = $request->file('image');
         $now = time();

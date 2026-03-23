@@ -39,4 +39,13 @@ return [
     */
     'automod_default_mute_minutes' => (int) env('CHAT_AUTOMOD_DEFAULT_MUTE_MINUTES', 30),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Slash-команди модератора (T69): /mute, /kick без другого аргументу
+    |--------------------------------------------------------------------------
+    */
+    'slash_mod_default_mute_minutes' => (int) env('CHAT_SLASH_MOD_DEFAULT_MUTE_MINUTES', 30),
+
+    'slash_mod_default_kick_minutes' => (int) env('CHAT_SLASH_MOD_DEFAULT_KICK_MINUTES', 60),
+
 ];

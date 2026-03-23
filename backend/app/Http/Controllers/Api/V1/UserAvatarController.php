@@ -36,6 +36,12 @@ class UserAvatarController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
+        if ($user->isChatUploadDisabled()) {
+            return response()->json([
+                'message' => 'Завантаження зображень для вашого облікового запису вимкнено модератором.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
         $postingGate->ensureCanPost($user);
 
         $file = $request->file('image');

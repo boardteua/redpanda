@@ -69,7 +69,13 @@ class User extends Authenticatable
             'social_links' => 'array',
             'notification_sound_prefs' => 'array',
             'account_disabled_at' => 'datetime',
+            'chat_upload_disabled' => 'boolean',
         ];
+    }
+
+    public function isChatUploadDisabled(): bool
+    {
+        return (bool) $this->chat_upload_disabled;
     }
 
     public function isMutedAt(?int $now = null): bool

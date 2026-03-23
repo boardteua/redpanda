@@ -3,13 +3,18 @@
 namespace App\Providers;
 
 use App\Chat\SlashCommands\Handlers\AwaySlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\BanSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\ChatUploadGatingSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\FriendSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\IgnoreClearSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\IgnoreSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\KickSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\ManualSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\MeSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\MsgSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\MuteSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\SeenSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\UnmuteSlashCommandHandler;
 use App\Chat\SlashCommands\SlashCommandRegistry;
 use App\Models\ChatMessage;
 use App\Models\Image;
@@ -46,6 +51,12 @@ class AppServiceProvider extends ServiceProvider
             $registry->register('friend', $app->make(FriendSlashCommandHandler::class));
             $registry->register('ignore', $app->make(IgnoreSlashCommandHandler::class));
             $registry->register('ignoreclear', $app->make(IgnoreClearSlashCommandHandler::class));
+            $registry->register('mute', $app->make(MuteSlashCommandHandler::class));
+            $registry->register('kick', $app->make(KickSlashCommandHandler::class));
+            $registry->register('unmute', $app->make(UnmuteSlashCommandHandler::class));
+            $registry->register('upon', new ChatUploadGatingSlashCommandHandler(true));
+            $registry->register('upoff', new ChatUploadGatingSlashCommandHandler(false));
+            $registry->register('ban', $app->make(BanSlashCommandHandler::class));
 
             return $registry;
         });

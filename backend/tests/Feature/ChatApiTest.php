@@ -1439,4 +1439,144 @@ class ChatApiTest extends TestCase
 
         $this->assertSame(0, UserIgnore::query()->where('user_id', $alice->id)->count());
     }
+
+    public function test_slash_mute_forbidden_for_regular_user(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create(['user_name' => 'plain_u']);
+        $bob = User::factory()->create(['user_name' => 'bob_mute']);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/mute bob_mute',
+                'client_message_id' => 'f067ebc9-9c0b-4ef8-bb6d-6bb9bd380301',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_slash_mute_mod_applies_default_minutes(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create(['user_name' => 'mod_mute']);
+        $victim = User::factory()->create(['user_name' => 'vic_mute', 'mute_until' => null]);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/mute vic_mute',
+                'client_message_id' => 'f167ebc9-9c0b-4ef8-bb6d-6bb9bd380302',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'mute')
+            ->assertJsonPath('meta.slash.recognized', true)
+            ->assertJsonPath('meta.slash.client_only', true)
+            ->assertJsonPath('data.type', 'client_only');
+
+        $victim->refresh();
+        $this->assertNotNull($victim->mute_until);
+        $this->assertGreaterThan(time(), (int) $victim->mute_until);
+    }
+
+    public function test_slash_unmute_clears_mute(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create();
+        $victim = User::factory()->create(['user_name' => 'vic_unmute', 'mute_until' => time() + 3600]);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/unmute vic_unmute',
+                'client_message_id' => 'f267ebc9-9c0b-4ef8-bb6d-6bb9bd380303',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'unmute');
+
+        $this->assertNull($victim->fresh()->mute_until);
+    }
+
+    public function test_slash_mod_cannot_target_admin(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create();
+        $admin = User::factory()->admin()->create(['user_name' => 'admin_tgt']);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/mute admin_tgt',
+                'client_message_id' => 'f367ebc9-9c0b-4ef8-bb6d-6bb9bd380304',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_slash_ban_mod_forbidden(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create();
+        $victim = User::factory()->create(['user_name' => 'vic_ban']);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/ban vic_ban',
+                'client_message_id' => 'f467ebc9-9c0b-4ef8-bb6d-6bb9bd380305',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_slash_ban_admin_disables_account(): void
+    {
+        [$public] = $this->seedRooms();
+        $admin = User::factory()->admin()->create();
+        $victim = User::factory()->create(['user_name' => 'vic_ban2', 'account_disabled_at' => null]);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/ban vic_ban2',
+                'client_message_id' => 'f567ebc9-9c0b-4ef8-bb6d-6bb9bd380306',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'ban');
+
+        $this->assertNotNull($victim->fresh()->account_disabled_at);
+    }
+
+    public function test_slash_upoff_blocks_chat_image_upload(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create();
+        $victim = User::factory()->create(['user_name' => 'vic_up']);
+        $victim->forceFill(['chat_upload_disabled' => false])->save();
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/upoff vic_up',
+                'client_message_id' => 'f667ebc9-9c0b-4ef8-bb6d-6bb9bd380307',
+            ])
+            ->assertCreated();
+
+        $this->assertTrue($victim->fresh()->isChatUploadDisabled());
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/upon vic_up',
+                'client_message_id' => 'f767ebc9-9c0b-4ef8-bb6d-6bb9bd380308',
+            ])
+            ->assertCreated();
+
+        $this->assertFalse($victim->fresh()->isChatUploadDisabled());
+    }
 }
