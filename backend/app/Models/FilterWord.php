@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Cache;
 
 class FilterWord extends Model
 {
-    public const CACHE_KEY = 'moderation.filter_word_rules';
+    /** v2: кеш лише масивів атрибутів (без серіалізації моделей — уникнення __PHP_Incomplete_Class у Redis). */
+    public const CACHE_KEY = 'moderation.filter_word_rules_v2';
 
     public const MATCH_SUBSTRING = 'substring';
 
@@ -41,14 +42,34 @@ class FilterWord extends Model
     }
 
     /**
-     * @return Collection<int, self>
+     * @return Collection<int, self> моделі лише в пам’яті (з атрибутів кешу), не з БД
      */
     public static function cachedRules(): Collection
     {
-        return Cache::remember(self::CACHE_KEY, 120, function () {
+        /** @var array<int, array<string, mixed>> $rows */
+        $rows = Cache::remember(self::CACHE_KEY, 120, function (): array {
             return static::query()
                 ->orderByRaw('LENGTH(word) DESC')
-                ->get();
+                ->get()
+                // Поля кешу = контракт для ChatAutomoderationService: нові колонки правил — додати сюди й переглянути споживачів.
+                ->map(fn (self $w) => $w->only([
+                    'id',
+                    'word',
+                    'category',
+                    'match_mode',
+                    'action',
+                    'mute_minutes',
+                ]))
+                ->values()
+                ->all();
+        });
+
+        return collect($rows)->map(function (array $attrs): self {
+            $m = new self;
+            $m->forceFill($attrs);
+            $m->syncOriginal();
+
+            return $m;
         });
     }
 
