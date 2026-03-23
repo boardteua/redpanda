@@ -247,7 +247,6 @@
                         Нікого іншого онлайн у цій кімнаті.
                     </p>
                     <div class="mt-4 space-y-2 border-t border-[var(--rp-chat-sidebar-border)] pt-3">
-                        <label class="rp-label" for="pm-lookup">Почати приватний чат</label>
                         <div class="flex flex-wrap items-start gap-2">
                             <div class="relative min-w-[8rem] flex-1">
                                 <input
@@ -257,13 +256,13 @@
                                     aria-autocomplete="list"
                                     :aria-controls="peerAutocompleteOpen ? 'pm-lookup-listbox' : undefined"
                                     :aria-activedescendant="peerAutocompleteActiveDescendantId"
-                                    aria-label="Почати приватний чат, введіть нік або початок ніка"
+                                    aria-label="Почати приватний чат"
                                     :value="peerLookupName"
                                     type="text"
                                     maxlength="191"
                                     autocomplete="off"
                                     class="rp-input rp-focusable w-full"
-                                    placeholder="нік або початок ніка"
+                                    placeholder="Швидкий приват"
                                     @input="onPeerLookupInput"
                                     @keydown="onPmLookupKeydown"
                                 />

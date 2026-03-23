@@ -1294,11 +1294,6 @@
     .rp-chat-external-wrap {
         flex-direction: row;
         overflow: hidden;
-        border-radius: 0.5rem;
-        border: 1px solid var(--rp-chat-chrome-border);
-        box-shadow:
-            0 2px 8px rgb(15 23 42 / 0.08),
-            0 12px 28px rgb(15 23 42 / 0.06);
     }
 }
 
@@ -1315,19 +1310,15 @@
 .rp-chat-sidebar .rp-input {
     color: var(--rp-chat-sidebar-fg);
     background: var(--rp-chat-sidebar-input-bg);
-    border-color: var(--rp-chat-sidebar-input-border);
+    border: none;
 }
 
 .rp-chat-sidebar .rp-input::placeholder {
     color: var(--rp-chat-sidebar-muted);
 }
 
-.rp-chat-sidebar .rp-input:hover {
-    border-color: var(--rp-chat-sidebar-icon);
-}
-
 .rp-chat-sidebar .rp-input:focus-visible {
-    border-color: var(--rp-focus-ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--rp-focus-ring) 35%, transparent);
 }
 
 .rp-chat-sidebar .rp-tab {

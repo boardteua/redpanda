@@ -29,7 +29,7 @@
                     :id="'chat-tab-m-' + tab.id"
                     type="button"
                     role="tab"
-                    class="rp-focusable relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/95"
+                    class="rp-focusable relative flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white/95"
                     :class="
                         sidebarTab === tab.id
                             ? 'bg-white/20 ring-1 ring-white/35'
@@ -68,7 +68,7 @@
                     :id="'chat-tab-d-' + tab.id"
                     type="button"
                     role="tab"
-                    class="rp-focusable relative flex h-11 min-w-0 flex-1 items-center justify-center rounded-md border-2 text-[var(--rp-chat-sidebar-icon)]"
+                    class="rp-focusable relative flex h-11 min-w-0 flex-1 cursor-pointer items-center justify-center rounded-md border-2 text-[var(--rp-chat-sidebar-icon)]"
                     :class="
                         sidebarTab === tab.id
                             ? 'border-[var(--rp-chat-sidebar-border)] bg-[var(--rp-chat-sidebar-tab-active-bg)] text-[var(--rp-chat-sidebar-fg)]'
