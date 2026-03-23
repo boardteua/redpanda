@@ -79,4 +79,4 @@ jobs:
             REPO="${{ vars.DEPLOY_REPO_DIR }}"
             test -n "$REPO"
             cd "$REPO"
-            ./docker/deploy.example.sh
+            ./docker/deploy.sh

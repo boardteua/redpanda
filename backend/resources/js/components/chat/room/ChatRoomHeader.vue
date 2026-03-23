@@ -3,16 +3,16 @@
         class="mb-3 flex w-full min-w-0 flex-shrink-0 items-center gap-2 px-2 py-2 sm:px-3"
     >
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-            <p
-                v-if="chatBreadcrumb"
-                class="truncate text-xs font-semibold tracking-wide text-[var(--rp-text-muted)]"
-                :title="chatBreadcrumb"
+            <h1
+                v-if="chatTitle"
+                class="truncate text-base font-semibold leading-snug text-[var(--rp-chat-main-header-title)] sm:text-lg"
+                :title="chatTitle"
             >
-                {{ chatBreadcrumb }}
-            </p>
+                {{ chatTitle }}
+            </h1>
             <p
                 v-if="chatTopicLine"
-                class="truncate text-base leading-snug text-[var(--rp-text-muted)]"
+                class="truncate text-sm leading-snug text-[var(--rp-text-muted)]"
                 :title="chatTopicLine"
             >
                 {{ chatTopicLine }}
@@ -66,7 +66,7 @@
 export default {
     name: 'ChatRoomHeader',
     props: {
-        chatBreadcrumb: { type: String, default: '' },
+        chatTitle: { type: String, default: '' },
         chatTopicLine: { type: String, default: '' },
         panelOpen: { type: Boolean, default: false },
         wsDegraded: { type: Boolean, default: false },

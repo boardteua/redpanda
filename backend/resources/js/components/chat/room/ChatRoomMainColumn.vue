@@ -4,7 +4,7 @@
     >
         <ChatRoomHeader
             ref="chatRoomHeader"
-            :chat-breadcrumb="chatBreadcrumb"
+            :chat-title="chatTitle"
             :chat-topic-line="chatTopicLine"
             :panel-open="panelOpen"
             :ws-degraded="wsDegraded"
@@ -55,7 +55,7 @@ export default {
     props: {
         /** Панель сайдбару відкрита — для кнопки «бургер» у шапці. */
         panelOpen: { type: Boolean, default: false },
-        chatBreadcrumb: { type: String, default: '' },
+        chatTitle: { type: String, default: '' },
         chatTopicLine: { type: String, default: '' },
         wsDegraded: { type: Boolean, default: false },
         logoutError: { type: String, default: '' },

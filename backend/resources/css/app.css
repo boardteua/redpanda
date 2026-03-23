@@ -99,6 +99,8 @@
     --rp-chat-sidebar-link-hover: #ffffff;
     --rp-chat-sidebar-input-bg: rgb(255 255 255 / 0.08);
     --rp-chat-sidebar-input-border: rgb(255 255 255 / 0.18);
+    /* Заголовок кімнати в основній колонці — «колір сайдбару» (на світлому тлі — фон панелі) */
+    --rp-chat-main-header-title: var(--rp-chat-sidebar-bg);
     /* T49 / T89 — .sadmin / .modo / .vip (orange.css) */
     --rp-peer-icon-admin: #dc2626;
     --rp-peer-icon-mod: #1ab334;
@@ -190,6 +192,7 @@
     --rp-chat-sidebar-link-hover: var(--rp-link-hover);
     --rp-chat-sidebar-input-bg: var(--rp-surface-elevated);
     --rp-chat-sidebar-input-border: var(--rp-border-subtle);
+    --rp-chat-main-header-title: var(--rp-chat-sidebar-fg);
     --rp-peer-icon-admin: #fca5a5;
     --rp-peer-icon-mod: #86efac;
     --rp-peer-icon-vip: #fdba74;
@@ -274,6 +277,7 @@
         --rp-chat-sidebar-link-hover: var(--rp-link-hover);
         --rp-chat-sidebar-input-bg: var(--rp-surface-elevated);
         --rp-chat-sidebar-input-border: var(--rp-border-subtle);
+        --rp-chat-main-header-title: var(--rp-chat-sidebar-fg);
         --rp-peer-icon-admin: #fca5a5;
         --rp-peer-icon-mod: #86efac;
         --rp-peer-icon-vip: #fdba74;

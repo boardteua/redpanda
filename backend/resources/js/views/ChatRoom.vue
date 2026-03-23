@@ -16,7 +16,7 @@
             <ChatRoomMainColumn
                 ref="chatMainColumn"
                 :panel-open="panelOpen"
-                :chat-breadcrumb="chatBreadcrumb"
+                :chat-title="chatTitle"
                 :chat-topic-line="chatTopicLine"
                 :ws-degraded="wsDegraded"
                 :logout-error="logoutError"
@@ -478,20 +478,10 @@ export default {
         currentRoom() {
             return this.rooms.find((r) => r.room_id === this.selectedRoomId) || null;
         },
-        chatBreadcrumb() {
-            const u = this.user && this.user.user_name;
+        chatTitle() {
             const r = this.currentRoom && this.currentRoom.room_name;
-            if (u && r) {
-                return `${u} › ${r}`;
-            }
-            if (r) {
-                return r;
-            }
-            if (u) {
-                return u;
-            }
 
-            return '';
+            return r ? String(r) : '';
         },
         chatTopicLine() {
             return this.currentRoom && this.currentRoom.topic ? this.currentRoom.topic : '';
