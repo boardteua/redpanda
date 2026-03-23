@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\GuestRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\ChatSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,12 @@ class AuthController extends Controller
 {
     public function register(RegisterRequest $request): JsonResponse
     {
+        if (! ChatSetting::current()->resolvedRegistrationFlags()['registration_open']) {
+            return response()->json([
+                'message' => 'Реєстрацію тимчасово вимкнено адміністратором.',
+            ], 403);
+        }
+
         $user = User::query()->create([
             'user_name' => $request->validated('user_name'),
             'email' => $request->validated('email'),

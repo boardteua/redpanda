@@ -428,6 +428,16 @@
     border-radius: 0.125rem;
 }
 
+/* Honeypot: не display:none — частина ботів ігнорує такі поля */
+.rp-honeypot {
+    position: absolute;
+    left: -10000px;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
 .rp-app {
     min-height: 100vh;
 }

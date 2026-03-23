@@ -179,7 +179,7 @@
 
                     <form
                         v-else-if="registrationOpen"
-                        class="mt-4 space-y-4"
+                        class="relative mt-4 space-y-4"
                         novalidate
                         @submit.prevent="submitRegister"
                     >
@@ -187,8 +187,19 @@
                             v-if="registrationMinAge != null"
                             class="text-sm text-[var(--rp-text-muted)]"
                         >
-                            Мінімальний вік для реєстрації: {{ registrationMinAge }}.
+                            Мінімальний вік для реєстрації: {{ registrationMinAge }} (підказка; підтвердження віку на сервері не вимагається).
                         </p>
+                        <div class="rp-honeypot" aria-hidden="true">
+                            <label class="rp-label" for="reg-department">Відділ</label>
+                            <input
+                                id="reg-department"
+                                v-model="registerForm.department"
+                                type="text"
+                                name="department"
+                                tabindex="-1"
+                                autocomplete="off"
+                            />
+                        </div>
                         <div>
                             <label class="rp-label" for="reg-user_name">Ім’я користувача</label>
                             <input
@@ -388,6 +399,7 @@ export default {
                 email: '',
                 password: '',
                 password_confirmation: '',
+                department: '',
             },
             themeUi: 'system',
             landing: null,
@@ -572,6 +584,15 @@ export default {
             if (status === 422) {
                 this.fieldErrors = err.response.data.errors || {};
                 this.formError = err.response.data.message || 'Перевірте поля форми.';
+
+                return;
+            }
+            if (status === 403) {
+                const msg = err.response?.data?.message;
+                this.formError =
+                    typeof msg === 'string' && msg.trim() !== ''
+                        ? msg
+                        : 'Цю дію зараз заборонено.';
 
                 return;
             }

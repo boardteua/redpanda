@@ -21,6 +21,8 @@ class RegisterRequest extends FormRequest
             'user_name' => ['required', 'string', 'min:2', 'max:191', 'unique:users,user_name', 'regex:/^[\p{L}\p{N}_-]+$/u'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
+            // Honeypot: легітимний клієнт лишає порожнім або не надсилає поле.
+            'department' => ['sometimes', 'nullable', 'string', 'max:0'],
         ];
     }
 }

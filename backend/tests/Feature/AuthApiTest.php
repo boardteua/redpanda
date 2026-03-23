@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ChatSetting;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -178,5 +179,42 @@ class AuthApiTest extends TestCase
                 'password_confirmation' => 'password-secure-1',
             ])
             ->assertStatus(429);
+    }
+
+    public function test_register_returns_403_when_registration_closed(): void
+    {
+        $row = ChatSetting::current();
+        $flags = is_array($row->registration_flags) ? $row->registration_flags : [];
+        $row->registration_flags = array_merge($flags, ['registration_open' => false]);
+        $row->save();
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/register', [
+                'user_name' => 'ClosedReg',
+                'email' => 'closed@example.com',
+                'password' => 'password-secure-1',
+                'password_confirmation' => 'password-secure-1',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Реєстрацію тимчасово вимкнено адміністратором.');
+
+        $this->assertDatabaseMissing('users', ['user_name' => 'ClosedReg']);
+    }
+
+    public function test_register_rejects_non_empty_honeypot(): void
+    {
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/register', [
+                'user_name' => 'HpUser',
+                'email' => 'hp@example.com',
+                'password' => 'password-secure-1',
+                'password_confirmation' => 'password-secure-1',
+                'department' => 'Sales',
+            ])
+            ->assertUnprocessable();
+
+        $this->assertDatabaseMissing('users', ['user_name' => 'HpUser']);
     }
 }

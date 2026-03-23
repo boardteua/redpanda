@@ -49,7 +49,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.17.0"
+  version: "0.17.1"
   license:
     name: Proprietary
     url: https://example.com/
@@ -693,6 +693,9 @@ paths:
     post:
       tags: [Auth]
       summary: Реєстрація
+      description: |
+        Якщо в налаштуваннях чату вимкнено реєстрацію (`registration_open: false`), повертається **403** навіть при валідному тілі.
+        Поле `department` — honeypot: має бути відсутнім або порожнім рядком.
       operationId: authRegister
       security: []
       requestBody:
@@ -708,6 +711,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
+        "403":
+          description: Реєстрацію вимкнено в налаштуваннях чату
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
         "422":
           $ref: "#/components/responses/ValidationError"
         "429":
@@ -1951,6 +1963,10 @@ components:
           type: string
         password_confirmation:
           type: string
+        department:
+          type: string
+          maxLength: 0
+          description: Honeypot (антиспам). Не заповнювати; лише порожній рядок або відсутнє поле.
 
     LoginRequest:
       type: object
