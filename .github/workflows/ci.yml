@@ -65,8 +65,7 @@ jobs:
     needs: backend-and-frontend
     if: >-
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'push' &&
-      (vars.DEPLOY_HOST != '' || vars.DEPLOY_ENABLED == 'true')
+      github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: production
     steps:
