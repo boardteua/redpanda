@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Chat\ChatRole;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -44,7 +45,7 @@ class User extends Authenticatable
     public const RANK_ADMIN = 2;
 
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use CanResetPassword, HasApiTokens, HasFactory, Notifiable;
 
     /**
      * Get the attributes that should be cast.

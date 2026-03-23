@@ -23,7 +23,8 @@ class AuthController extends Controller
      * Bcrypt з відомим відкритим текстом (Laravel testing stub) — для вирівнювання часу відповіді,
      * коли облікового запису немає / гість / без пароля (зменшує простий таймінг-канал).
      */
-    private const AUTH_TIMING_DUMMY_BCRYPT = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+    /** Публічний констант для узгодженого timing-mitigation з іншими auth-ендпоінтами (T94). */
+    public const AUTH_TIMING_DUMMY_BCRYPT = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
 
     public function register(RegisterRequest $request): JsonResponse
     {

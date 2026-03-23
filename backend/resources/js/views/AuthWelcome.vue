@@ -144,21 +144,12 @@
                             </p>
                         </div>
                         <p class="rp-auth-landing-forgot">
-                            <button
-                                type="button"
-                                class="rp-auth-landing-forgot-btn rp-focusable text-sm"
-                                @click="onForgotPassword"
+                            <router-link
+                                to="/forgot-password"
+                                class="rp-auth-landing-forgot-btn rp-focusable inline-block text-sm"
                             >
                                 Забули пароль?
-                            </button>
-                        </p>
-                        <p
-                            v-if="forgotPasswordHint"
-                            class="mb-2 text-sm text-[var(--rp-text-muted)]"
-                            role="status"
-                            aria-live="polite"
-                        >
-                            Відновлення пароля ще не підключено. Зверніться до адміністрації або увійдіть як гість.
+                            </router-link>
                         </p>
                         <label class="flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text-muted)]">
                             <input
@@ -429,7 +420,6 @@ export default {
             registration: null,
             usersOnline: 0,
             landingPollTimer: null,
-            forgotPasswordHint: false,
             /** Публічний асет `public/brand/` — не статичний src у шаблоні (Vite). */
             landingLogoUrl: '/brand/board-te-ua-orange.png',
             /** Публічні поля Auth0 з GET /api/v1/landing (T76). */
@@ -598,9 +588,6 @@ export default {
         setMode(m) {
             this.mode = m;
             this.clearErrors();
-        },
-        onForgotPassword() {
-            this.forgotPasswordHint = true;
         },
         cycleTheme() {
             const order = ['system', 'light', 'dark'];

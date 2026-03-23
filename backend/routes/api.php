@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\MeProfileController;
 use App\Http\Controllers\Api\V1\Mod\ChatEmoticonAdminController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\OEmbedController;
+use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\PrivateMessageController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomPeerHintsController;
@@ -31,6 +32,9 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
     Route::middleware('throttle:auth-register')->post('auth/register', [AuthController::class, 'register']);
     Route::middleware('throttle:auth-login')->post('auth/login', [AuthController::class, 'login']);
     Route::middleware('throttle:auth-guest')->post('auth/guest', [AuthController::class, 'guest']);
+
+    Route::middleware('throttle:auth-forgot-password')->post('auth/forgot-password', [PasswordResetController::class, 'forgot']);
+    Route::middleware('throttle:auth-reset-password')->post('auth/reset-password', [PasswordResetController::class, 'reset']);
 
     Route::middleware('throttle:landing-read')->get('landing', [LandingController::class, 'show']);
 

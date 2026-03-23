@@ -33,9 +33,11 @@ use App\Policies\RoomPolicy;
 use App\Policies\UserPolicy;
 use App\Support\ChatThrottleRules;
 use Illuminate\Auth\Events\Authenticated;
+use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -92,6 +94,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        ResetPasswordNotification::toMailUsing(function (object $notifiable, #[\SensitiveParameter] string $token): MailMessage {
+            $email = urlencode((string) $notifiable->getEmailForPasswordReset());
+            $url = rtrim((string) config('app.url'), '/').'/reset-password?token='.urlencode($token).'&email='.$email;
+            $expire = (int) config('auth.passwords.'.config('auth.defaults.passwords').'.expire');
+
+            return (new MailMessage)
+                ->subject('Скидання пароля')
+                ->line('Ви отримали цей лист, бо для вашого облікового запису запитали скидання пароля.')
+                ->action('Скинути пароль', $url)
+                ->line("Посилання діє {$expire} хвилин.")
+                ->line('Якщо ви цього не робили — проігноруйте лист; пароль не зміниться.');
+        });
+
         Event::listen(Authenticated::class, function (Authenticated $event): void {
             Log::shareContext(['user_id' => $event->user->getAuthIdentifier()]);
         });
@@ -125,6 +140,14 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('auth-guest', function (Request $request) {
             return Limit::perMinute(12)->by($request->ip());
+        });
+
+        RateLimiter::for('auth-forgot-password', function (Request $request) {
+            return Limit::perMinute(5)->by('auth-forgot-password:'.$request->ip());
+        });
+
+        RateLimiter::for('auth-reset-password', function (Request $request) {
+            return Limit::perMinute(10)->by('auth-reset-password:'.$request->ip());
         });
 
         RateLimiter::for('landing-read', function (Request $request) {

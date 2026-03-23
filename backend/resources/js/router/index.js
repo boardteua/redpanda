@@ -3,6 +3,8 @@ import VueRouter from 'vue-router';
 import ArchiveChat from '../views/ArchiveChat.vue';
 import AuthWelcome from '../views/AuthWelcome.vue';
 import AuthCallback from '../views/AuthCallback.vue';
+import ForgotPassword from '../views/ForgotPassword.vue';
+import ResetPassword from '../views/ResetPassword.vue';
 import ChatRoom from '../views/ChatRoom.vue';
 import AdminHubView from '../views/AdminHubView.vue';
 import StaffUsersView from '../views/StaffUsersView.vue';
@@ -18,6 +20,18 @@ const router = new VueRouter({
             path: '/',
             name: 'home',
             component: AuthWelcome,
+        },
+        {
+            path: '/forgot-password',
+            name: 'forgot-password',
+            component: ForgotPassword,
+            meta: { documentTitle: 'Чат Рудої Панди — відновлення пароля' },
+        },
+        {
+            path: '/reset-password',
+            name: 'reset-password',
+            component: ResetPassword,
+            meta: { documentTitle: 'Чат Рудої Панди — новий пароль' },
         },
         {
             path: '/auth/callback',

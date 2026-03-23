@@ -1116,8 +1116,9 @@
 
 ---
 
-### [ ] T94 — **Відновлення пароля** (forgot / reset) для зареєстрованих користувачів
+### [x] T94 — **Відновлення пароля** (forgot / reset) для зареєстрованих користувачів
 
+- **Статус:** `POST /api/v1/auth/forgot-password` + `POST /api/v1/auth/reset-password`; уніфікована відповідь forgot; лист UK через `ResetPassword::toMailUsing`; SPA `/forgot-password`, `/reset-password`; сесії DB + Sanctum PAT інвалідація після reset; тести `PasswordResetApiTest`; OpenAPI + `docs/chat-v2/T94-MAIL-QA.md`.
 - **Delegate:** Backend Architect + Frontend Developer
 - **Залежність:** **T02** (Sanctum SPA, auth API); **T03** (форми вітальні, токени/a11y); **T24** зміни пароля «в профілі» — **не дублювати** валідацію, узгодити **Password::defaults()** / мінімальну довжину; таблиця **`password_reset_tokens`** уже в базовій міграції Laravel (`0001_01_01_000000_create_users_table.php`)
 - **Контекст клієнта:** користувач, який має **локальний пароль**, може **запросити лист** з посиланням/токеном і **встановити новий пароль**; **гість** і сценарії **без email** — поза scope (явно відхилити або не показувати флоу).

@@ -775,6 +775,61 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Запит посилання для скидання пароля (T94)
+      description: |
+        Завжди **200** з однаковим `message` (немає user enumeration). Лист надсилається лише якщо знайдено **не-гостьовий**
+        обліковий запис з **непорожнім паролем** і валідною email. Throttle **5**/хв на IP (`auth-forgot-password`).
+      operationId: authForgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        "200":
+          description: OK (однакова відповідь незалежно від існування email)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Підтвердження нового пароля за токеном з листа (T94)
+      description: |
+        Після успіху інші сесії користувача в `SESSION_DRIVER=database` видаляються з таблиці `sessions`;
+        персональні токени Sanctum (`personal_access_tokens`) — також. Пароль — `Password::defaults()` як у реєстрації.
+        Throttle **10**/хв на IP (`auth-reset-password`).
+      operationId: authResetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "200":
+          description: Пароль оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/landing:
     get:
       tags: [Auth]
@@ -2037,6 +2092,31 @@ components:
           type: string
           nullable: true
           description: Якщо null/відсутнє — сервер генерує нік.
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordRequest:
+      type: object
+      required: [email, token, password, password_confirmation]
+      properties:
+        email:
+          type: string
+          format: email
+        token:
+          type: string
+          description: Токен з листа (plain, не хеш)
+        password:
+          type: string
+          maxLength: 1024
+        password_confirmation:
+          type: string
+          maxLength: 1024
 
     ApiPlainMessageResponse:
       type: object
