@@ -58,26 +58,31 @@ jobs:
           npm run test:msg-parse
           npm run test:country-filter
 
-  # Опційно: налаштуйте в GitHub → Settings → Secrets and variables → Actions:
-  #   Variables: DEPLOY_HOST, DEPLOY_USER, DEPLOY_REPO_DIR (напр. /var/www/redpanda)
-  #   Secrets: DEPLOY_SSH_KEY (приватний ключ deploy-користувача)
-  # На сервері має бути розкоментований реальний deploy (див. docker/deploy.example.sh).
+  # Деплой: push у main + задані SSH-дані.
+  # Важливо: `vars.*` — лише вкладка «Variables». Якщо DEPLOY_* додані в «Secrets», умова vars була б хибною — тому нижче підтримка vars || secrets.
+  # Secrets: DEPLOY_SSH_KEY (обов’язково). Решта — Variables або repository Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_REPO_DIR.
   deploy:
     needs: backend-and-frontend
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOY_HOST != ''
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      secrets.DEPLOY_SSH_KEY != '' &&
+      (vars.DEPLOY_HOST != '' || secrets.DEPLOY_HOST != '') &&
+      (vars.DEPLOY_USER != '' || secrets.DEPLOY_USER != '') &&
+      (vars.DEPLOY_REPO_DIR != '' || secrets.DEPLOY_REPO_DIR != '')
     runs-on: ubuntu-latest
     environment: production
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ vars.DEPLOY_HOST }}
-          username: ${{ vars.DEPLOY_USER }}
+          host: ${{ vars.DEPLOY_HOST || secrets.DEPLOY_HOST }}
+          username: ${{ vars.DEPLOY_USER || secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script_stop: true
           script: |
             set -euo pipefail
-            REPO="${{ vars.DEPLOY_REPO_DIR }}"
+            REPO="${{ vars.DEPLOY_REPO_DIR || secrets.DEPLOY_REPO_DIR }}"
             test -n "$REPO"
             cd "$REPO"
             ./docker/deploy.sh
