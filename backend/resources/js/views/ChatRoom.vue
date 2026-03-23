@@ -2522,6 +2522,10 @@ export default {
                     }
                     if (status === 201 || status === 200) {
                         comp.resetAfterSend();
+                        const slashName = data.meta && data.meta.slash && data.meta.slash.name;
+                        if (slashName === 'ignore' || slashName === 'ignoreclear') {
+                            await this.loadFriendsAndIgnores();
+                        }
                         if (data.data && data.data.type === 'public') {
                             await this.refreshAuthUser();
                         }
