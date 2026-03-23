@@ -1967,6 +1967,7 @@ components:
         country:
           type: string
           nullable: true
+          description: ISO 3166-1 alpha-2 (два символи A–Z), напр. UA, PL; null якщо не обрано
         region:
           type: string
           nullable: true
@@ -2357,7 +2358,10 @@ components:
       type: object
       description: Лише для `guest === false` у рядку пошуку / відповіді PATCH
       properties:
-        country: { type: string, nullable: true }
+        country:
+          type: string
+          nullable: true
+          description: ISO 3166-1 alpha-2 (A–Z)
         region: { type: string, nullable: true }
         age: { type: integer, nullable: true }
         sex:

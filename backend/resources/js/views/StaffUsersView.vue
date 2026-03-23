@@ -445,13 +445,12 @@
                             <template v-if="viewerIsAdmin">
                                 <div class="grid gap-3 sm:grid-cols-2">
                                     <div>
-                                        <label class="rp-label" for="staff-country">Країна</label>
-                                        <input
-                                            id="staff-country"
-                                            v-model="draftCountry"
-                                            type="text"
-                                            maxlength="100"
-                                            class="rp-input rp-focusable mt-1 w-full"
+                                        <RpCountryCombobox
+                                            input-id="staff-country"
+                                            label="Країна"
+                                            class="mt-1"
+                                            :value="draftCountry"
+                                            @input="draftCountry = $event"
                                         />
                                     </div>
                                     <div>
@@ -695,12 +694,16 @@
 
 <script>
 import RpModal from '../components/RpModal.vue';
+import RpCountryCombobox from '../components/ui/RpCountryCombobox.vue';
+import countryRows from '../../data/iso3166-alpha2-uk.json';
+import { normalizeStoredCountryCode } from '../utils/countryProfile.js';
 
 const THEME_KEY = 'redpanda-theme';
+const VALID_COUNTRY_CODES = new Set(countryRows.map((r) => r.code));
 
 export default {
     name: 'StaffUsersView',
-    components: { RpModal },
+    components: { RpModal, RpCountryCombobox },
     data() {
         return {
             user: null,
@@ -876,7 +879,7 @@ export default {
             const p = r.profile || {};
             this.draftAbout = p.about != null ? String(p.about) : '';
             this.draftOccupation = p.occupation != null ? String(p.occupation) : '';
-            this.draftCountry = p.country != null ? String(p.country) : '';
+            this.draftCountry = normalizeStoredCountryCode(p.country, VALID_COUNTRY_CODES);
             this.draftRegion = p.region != null ? String(p.region) : '';
             this.statusMsg = '';
         },
@@ -1088,7 +1091,7 @@ export default {
                     occupation: this.draftOccupation,
                 };
                 if (this.viewerIsAdmin) {
-                    profile.country = this.draftCountry;
+                    profile.country = this.draftCountry ? String(this.draftCountry).trim().toUpperCase() : null;
                     profile.region = this.draftRegion;
                 }
                 const { data } = await window.axios.patch(`/api/v1/mod/users/${this.selected.id}/profile`, {

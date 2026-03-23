@@ -160,4 +160,52 @@ class MeProfileApiTest extends TestCase
         $this->assertSame('newmail@example.com', $user->email);
         $this->assertNull($user->email_verified_at);
     }
+
+    public function test_patch_me_profile_normalizes_country_to_uppercase(): void
+    {
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/me/profile', [
+                'profile' => [
+                    'country' => 'de',
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.profile.country', 'DE');
+
+        $this->assertSame('DE', $user->fresh()->profile_country);
+    }
+
+    public function test_patch_me_profile_rejects_invalid_country_code(): void
+    {
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/me/profile', [
+                'profile' => [
+                    'country' => 'ZZ',
+                ],
+            ])
+            ->assertUnprocessable();
+    }
+
+    public function test_patch_me_profile_rejects_free_text_country(): void
+    {
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/me/profile', [
+                'profile' => [
+                    'country' => 'Україна',
+                ],
+            ])
+            ->assertUnprocessable();
+    }
 }

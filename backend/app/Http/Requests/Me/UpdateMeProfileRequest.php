@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Me;
 
+use App\Support\Iso3166Alpha2Uk;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -12,6 +13,25 @@ class UpdateMeProfileRequest extends FormRequest
         $user = $this->user();
 
         return $user !== null && ! $user->guest;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('profile')) {
+            return;
+        }
+        $profile = $this->input('profile');
+        if (! is_array($profile) || ! array_key_exists('country', $profile)) {
+            return;
+        }
+        $country = $profile['country'];
+        if ($country === null || $country === '') {
+            $profile['country'] = null;
+        } elseif (is_string($country)) {
+            $c = strtoupper(trim($country));
+            $profile['country'] = $c === '' ? null : $c;
+        }
+        $this->merge(['profile' => $profile]);
     }
 
     /**
@@ -25,7 +45,7 @@ class UpdateMeProfileRequest extends FormRequest
 
         return [
             'profile' => ['sometimes', 'array'],
-            'profile.country' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'profile.country' => ['sometimes', 'nullable', 'string', Rule::in(Iso3166Alpha2Uk::codes())],
             'profile.region' => ['sometimes', 'nullable', 'string', 'max:100'],
             'profile.age' => ['sometimes', 'nullable', 'integer', 'min:13', 'max:120'],
             'profile.sex' => ['sometimes', 'nullable', 'string', Rule::in($sexValues)],

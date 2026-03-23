@@ -28,7 +28,7 @@
 
         <div v-if="user && !user.guest" class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <div class="shrink-0 border-b border-[var(--rp-border-subtle)] px-2 pt-2">
-                    <div class="flex flex-wrap gap-1">
+                    <div class="rp-profile-modal-tabs flex flex-wrap gap-1">
                         <button
                             v-for="t in tabs"
                             :key="t.id"
@@ -98,13 +98,11 @@
 
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
-                                <label class="rp-label" for="pf-country">Країна</label>
-                                <input
-                                    id="pf-country"
-                                    v-model.trim="personal.country"
-                                    type="text"
-                                    maxlength="100"
-                                    class="rp-input rp-focusable w-full"
+                                <RpCountryCombobox
+                                    input-id="pf-country"
+                                    label="Країна"
+                                    :value="personal.country"
+                                    @input="personal.country = $event"
                                 />
                                 <label class="mt-1 flex items-center gap-2 text-xs text-[var(--rp-text-muted)]">
                                     <input v-model="personal.country_hidden" type="checkbox" class="rp-focusable" />
@@ -328,13 +326,18 @@
 
 <script>
 import RpModal from './RpModal.vue';
+import RpCountryCombobox from './ui/RpCountryCombobox.vue';
 import UserAvatar from './UserAvatar.vue';
+import countryRows from '../../data/iso3166-alpha2-uk.json';
+import { normalizeStoredCountryCode } from '../utils/countryProfile.js';
+
+const VALID_COUNTRY_CODES = new Set(countryRows.map((r) => r.code));
 
 let titleSeq = 0;
 
 export default {
     name: 'UserProfileModal',
-    components: { RpModal, UserAvatar },
+    components: { RpModal, RpCountryCombobox, UserAvatar },
     props: {
         open: {
             type: Boolean,
@@ -440,7 +443,7 @@ export default {
             }
             const pr = u.profile || {};
             this.personal = {
-                country: pr.country != null ? String(pr.country) : '',
+                country: normalizeStoredCountryCode(pr.country, VALID_COUNTRY_CODES),
                 region: pr.region != null ? String(pr.region) : '',
                 age: pr.age != null && pr.age !== '' ? Number(pr.age) : null,
                 sex: pr.sex != null ? pr.sex : null,
@@ -499,7 +502,7 @@ export default {
                 const ageVal = this.personal.age === '' || this.personal.age === null ? null : Number(this.personal.age);
                 const { data } = await window.axios.patch('/api/v1/me/profile', {
                     profile: {
-                        country: this.personal.country || null,
+                        country: this.personal.country ? String(this.personal.country).trim().toUpperCase() : null,
                         region: this.personal.region || null,
                         age: Number.isFinite(ageVal) ? ageVal : null,
                         sex: this.personal.sex,

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Iso3166Alpha2Uk;
 use App\Services\Moderation\ModerationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -348,12 +349,24 @@ class StaffUserController extends Controller
             abort(422, 'Профіль гостя не редагується через цей ендпоінт.');
         }
 
+        $profileIn = $request->input('profile');
+        if (is_array($profileIn) && array_key_exists('country', $profileIn)) {
+            $country = $profileIn['country'];
+            if ($country === null || $country === '') {
+                $profileIn['country'] = null;
+            } elseif (is_string($country)) {
+                $c = strtoupper(trim($country));
+                $profileIn['country'] = $c === '' ? null : $c;
+            }
+            $request->merge(['profile' => $profileIn]);
+        }
+
         $sexValues = ['male', 'female', 'other', 'prefer_not'];
         $socialRule = ['sometimes', 'nullable', 'string', 'max:500'];
 
         $validated = $request->validate([
             'profile' => ['sometimes', 'array'],
-            'profile.country' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'profile.country' => ['sometimes', 'nullable', 'string', Rule::in(Iso3166Alpha2Uk::codes())],
             'profile.region' => ['sometimes', 'nullable', 'string', 'max:100'],
             'profile.age' => ['sometimes', 'nullable', 'integer', 'min:13', 'max:120'],
             'profile.sex' => ['sometimes', 'nullable', 'string', Rule::in($sexValues)],

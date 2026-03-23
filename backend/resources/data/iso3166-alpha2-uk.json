@@ -1,0 +1,1002 @@
+[
+  {
+    "code": "AU",
+    "labelUk": "Австралія"
+  },
+  {
+    "code": "AT",
+    "labelUk": "Австрія"
+  },
+  {
+    "code": "AZ",
+    "labelUk": "Азербайджан"
+  },
+  {
+    "code": "AX",
+    "labelUk": "Аландські Острови"
+  },
+  {
+    "code": "AL",
+    "labelUk": "Албанія"
+  },
+  {
+    "code": "DZ",
+    "labelUk": "Алжир"
+  },
+  {
+    "code": "AS",
+    "labelUk": "Американське Самоа"
+  },
+  {
+    "code": "AI",
+    "labelUk": "Ангілья"
+  },
+  {
+    "code": "AO",
+    "labelUk": "Ангола"
+  },
+  {
+    "code": "AD",
+    "labelUk": "Андорра"
+  },
+  {
+    "code": "AQ",
+    "labelUk": "Антарктика"
+  },
+  {
+    "code": "AG",
+    "labelUk": "Антигуа і Барбуда"
+  },
+  {
+    "code": "AR",
+    "labelUk": "Аргентина"
+  },
+  {
+    "code": "AW",
+    "labelUk": "Аруба"
+  },
+  {
+    "code": "AF",
+    "labelUk": "Афганістан"
+  },
+  {
+    "code": "BS",
+    "labelUk": "Багамські Острови"
+  },
+  {
+    "code": "BD",
+    "labelUk": "Бангладеш"
+  },
+  {
+    "code": "BB",
+    "labelUk": "Барбадос"
+  },
+  {
+    "code": "BH",
+    "labelUk": "Бахрейн"
+  },
+  {
+    "code": "BZ",
+    "labelUk": "Беліз"
+  },
+  {
+    "code": "BE",
+    "labelUk": "Бельгія"
+  },
+  {
+    "code": "BJ",
+    "labelUk": "Бенін"
+  },
+  {
+    "code": "BM",
+    "labelUk": "Бермудські Острови"
+  },
+  {
+    "code": "BY",
+    "labelUk": "Білорусь"
+  },
+  {
+    "code": "BG",
+    "labelUk": "Болгарія"
+  },
+  {
+    "code": "BO",
+    "labelUk": "Болівія"
+  },
+  {
+    "code": "BA",
+    "labelUk": "Боснія і Герцеговина"
+  },
+  {
+    "code": "BW",
+    "labelUk": "Ботсвана"
+  },
+  {
+    "code": "BR",
+    "labelUk": "Бразилія"
+  },
+  {
+    "code": "IO",
+    "labelUk": "Британська Територія в Індійському Океані"
+  },
+  {
+    "code": "VG",
+    "labelUk": "Британські Віргінські Острови"
+  },
+  {
+    "code": "BN",
+    "labelUk": "Бруней-Даруссалам"
+  },
+  {
+    "code": "BF",
+    "labelUk": "Буркіна-Фасо"
+  },
+  {
+    "code": "BI",
+    "labelUk": "Бурунді"
+  },
+  {
+    "code": "BT",
+    "labelUk": "Бутан"
+  },
+  {
+    "code": "VN",
+    "labelUk": "В'єтнам"
+  },
+  {
+    "code": "VU",
+    "labelUk": "Вануату"
+  },
+  {
+    "code": "VA",
+    "labelUk": "Ватикан"
+  },
+  {
+    "code": "GB",
+    "labelUk": "Великобританія"
+  },
+  {
+    "code": "VE",
+    "labelUk": "Венесуела"
+  },
+  {
+    "code": "VI",
+    "labelUk": "Віргінські Острови (США)"
+  },
+  {
+    "code": "AM",
+    "labelUk": "Вірменія"
+  },
+  {
+    "code": "WF",
+    "labelUk": "Волліс і Футуна"
+  },
+  {
+    "code": "GA",
+    "labelUk": "Габон"
+  },
+  {
+    "code": "HT",
+    "labelUk": "Гаїті"
+  },
+  {
+    "code": "GM",
+    "labelUk": "Гамбія"
+  },
+  {
+    "code": "GH",
+    "labelUk": "Гана"
+  },
+  {
+    "code": "GY",
+    "labelUk": "Гаяна"
+  },
+  {
+    "code": "GP",
+    "labelUk": "Гваделупа"
+  },
+  {
+    "code": "GT",
+    "labelUk": "Гватемала"
+  },
+  {
+    "code": "GF",
+    "labelUk": "Гвіана"
+  },
+  {
+    "code": "GN",
+    "labelUk": "Гвінея"
+  },
+  {
+    "code": "GW",
+    "labelUk": "Гвінея-Бісау"
+  },
+  {
+    "code": "GG",
+    "labelUk": "Гернсі"
+  },
+  {
+    "code": "GI",
+    "labelUk": "Гібралтар"
+  },
+  {
+    "code": "HN",
+    "labelUk": "Гондурас"
+  },
+  {
+    "code": "HK",
+    "labelUk": "Гонконг"
+  },
+  {
+    "code": "GD",
+    "labelUk": "Гренада"
+  },
+  {
+    "code": "GL",
+    "labelUk": "Гренландія"
+  },
+  {
+    "code": "GR",
+    "labelUk": "Греція"
+  },
+  {
+    "code": "GE",
+    "labelUk": "Грузія"
+  },
+  {
+    "code": "GU",
+    "labelUk": "Гуам"
+  },
+  {
+    "code": "DK",
+    "labelUk": "Данія"
+  },
+  {
+    "code": "CD",
+    "labelUk": "Демократична Республіка Конго"
+  },
+  {
+    "code": "JE",
+    "labelUk": "Джерсі"
+  },
+  {
+    "code": "DJ",
+    "labelUk": "Джибуті"
+  },
+  {
+    "code": "DM",
+    "labelUk": "Домініка"
+  },
+  {
+    "code": "DO",
+    "labelUk": "Домініканська Республіка"
+  },
+  {
+    "code": "EC",
+    "labelUk": "Еквадор"
+  },
+  {
+    "code": "GQ",
+    "labelUk": "Екваторіальна Гвінея"
+  },
+  {
+    "code": "ER",
+    "labelUk": "Еритрея"
+  },
+  {
+    "code": "SZ",
+    "labelUk": "Есватіні"
+  },
+  {
+    "code": "EE",
+    "labelUk": "Естонія"
+  },
+  {
+    "code": "ET",
+    "labelUk": "Ефіопія"
+  },
+  {
+    "code": "EG",
+    "labelUk": "Єгипет"
+  },
+  {
+    "code": "YE",
+    "labelUk": "Ємен"
+  },
+  {
+    "code": "ZM",
+    "labelUk": "Замбія"
+  },
+  {
+    "code": "EH",
+    "labelUk": "Західна Сахара"
+  },
+  {
+    "code": "ZW",
+    "labelUk": "Зімбабве"
+  },
+  {
+    "code": "UM",
+    "labelUk": "Зовнішні Віддалені Острови (США)"
+  },
+  {
+    "code": "IL",
+    "labelUk": "Ізраїль"
+  },
+  {
+    "code": "IN",
+    "labelUk": "Індія"
+  },
+  {
+    "code": "ID",
+    "labelUk": "Індонезія"
+  },
+  {
+    "code": "IQ",
+    "labelUk": "Ірак"
+  },
+  {
+    "code": "IR",
+    "labelUk": "Іран"
+  },
+  {
+    "code": "IE",
+    "labelUk": "Ірландія"
+  },
+  {
+    "code": "IS",
+    "labelUk": "Ісландія"
+  },
+  {
+    "code": "ES",
+    "labelUk": "Іспанія"
+  },
+  {
+    "code": "IT",
+    "labelUk": "Італія"
+  },
+  {
+    "code": "JO",
+    "labelUk": "Йорданія"
+  },
+  {
+    "code": "CV",
+    "labelUk": "Кабо-Верде"
+  },
+  {
+    "code": "KZ",
+    "labelUk": "Казахстан"
+  },
+  {
+    "code": "KY",
+    "labelUk": "Кайманові Острови"
+  },
+  {
+    "code": "KH",
+    "labelUk": "Камбоджа"
+  },
+  {
+    "code": "CM",
+    "labelUk": "Камерун"
+  },
+  {
+    "code": "CA",
+    "labelUk": "Канада"
+  },
+  {
+    "code": "BQ",
+    "labelUk": "Карибські Нідерланди"
+  },
+  {
+    "code": "QA",
+    "labelUk": "Катар"
+  },
+  {
+    "code": "KE",
+    "labelUk": "Кенія"
+  },
+  {
+    "code": "KG",
+    "labelUk": "Киргизстан"
+  },
+  {
+    "code": "CN",
+    "labelUk": "Китай"
+  },
+  {
+    "code": "CY",
+    "labelUk": "Кіпр"
+  },
+  {
+    "code": "KI",
+    "labelUk": "Кірибаті"
+  },
+  {
+    "code": "CC",
+    "labelUk": "Кокосові Острови"
+  },
+  {
+    "code": "CO",
+    "labelUk": "Колумбія"
+  },
+  {
+    "code": "KM",
+    "labelUk": "Комори"
+  },
+  {
+    "code": "CG",
+    "labelUk": "Конго"
+  },
+  {
+    "code": "KP",
+    "labelUk": "Корейська Народно-Демократична Республіка"
+  },
+  {
+    "code": "XK",
+    "labelUk": "Косово"
+  },
+  {
+    "code": "CR",
+    "labelUk": "Коста-Рика"
+  },
+  {
+    "code": "CI",
+    "labelUk": "Кот-Д'Івуар"
+  },
+  {
+    "code": "CU",
+    "labelUk": "Куба"
+  },
+  {
+    "code": "KW",
+    "labelUk": "Кувейт"
+  },
+  {
+    "code": "CW",
+    "labelUk": "Кюрасао"
+  },
+  {
+    "code": "LA",
+    "labelUk": "Лаос"
+  },
+  {
+    "code": "LV",
+    "labelUk": "Латвія"
+  },
+  {
+    "code": "LS",
+    "labelUk": "Лесото"
+  },
+  {
+    "code": "LT",
+    "labelUk": "Литва"
+  },
+  {
+    "code": "LR",
+    "labelUk": "Ліберія"
+  },
+  {
+    "code": "LB",
+    "labelUk": "Ліван"
+  },
+  {
+    "code": "LY",
+    "labelUk": "Лівія"
+  },
+  {
+    "code": "LI",
+    "labelUk": "Ліхтенштейн"
+  },
+  {
+    "code": "LU",
+    "labelUk": "Люксембург"
+  },
+  {
+    "code": "MM",
+    "labelUk": "М'янма"
+  },
+  {
+    "code": "MU",
+    "labelUk": "Маврикій"
+  },
+  {
+    "code": "MR",
+    "labelUk": "Мавританія"
+  },
+  {
+    "code": "MG",
+    "labelUk": "Мадагаскар"
+  },
+  {
+    "code": "YT",
+    "labelUk": "Майотта"
+  },
+  {
+    "code": "MO",
+    "labelUk": "Макао"
+  },
+  {
+    "code": "MW",
+    "labelUk": "Малаві"
+  },
+  {
+    "code": "MY",
+    "labelUk": "Малайзія"
+  },
+  {
+    "code": "ML",
+    "labelUk": "Малі"
+  },
+  {
+    "code": "MV",
+    "labelUk": "Мальдіви"
+  },
+  {
+    "code": "MT",
+    "labelUk": "Мальта"
+  },
+  {
+    "code": "MA",
+    "labelUk": "Марокко"
+  },
+  {
+    "code": "MQ",
+    "labelUk": "Мартиніка"
+  },
+  {
+    "code": "MH",
+    "labelUk": "Маршаллові Острови"
+  },
+  {
+    "code": "MX",
+    "labelUk": "Мексика"
+  },
+  {
+    "code": "FM",
+    "labelUk": "Мікронезія"
+  },
+  {
+    "code": "MZ",
+    "labelUk": "Мозамбік"
+  },
+  {
+    "code": "MD",
+    "labelUk": "Молдова"
+  },
+  {
+    "code": "MC",
+    "labelUk": "Монако"
+  },
+  {
+    "code": "MN",
+    "labelUk": "Монголія"
+  },
+  {
+    "code": "MS",
+    "labelUk": "Монтсеррат"
+  },
+  {
+    "code": "NA",
+    "labelUk": "Намібія"
+  },
+  {
+    "code": "NR",
+    "labelUk": "Науру"
+  },
+  {
+    "code": "NP",
+    "labelUk": "Непал"
+  },
+  {
+    "code": "NE",
+    "labelUk": "Нігер"
+  },
+  {
+    "code": "NG",
+    "labelUk": "Нігерія"
+  },
+  {
+    "code": "NL",
+    "labelUk": "Нідерланди"
+  },
+  {
+    "code": "NI",
+    "labelUk": "Нікарагуа"
+  },
+  {
+    "code": "DE",
+    "labelUk": "Німеччина"
+  },
+  {
+    "code": "NU",
+    "labelUk": "Ніуе"
+  },
+  {
+    "code": "NZ",
+    "labelUk": "Нова Зеландія"
+  },
+  {
+    "code": "NC",
+    "labelUk": "Нова Каледонія"
+  },
+  {
+    "code": "NO",
+    "labelUk": "Норвегія"
+  },
+  {
+    "code": "AE",
+    "labelUk": "Об'єднані Арабські Емірати"
+  },
+  {
+    "code": "OM",
+    "labelUk": "Оман"
+  },
+  {
+    "code": "BV",
+    "labelUk": "Острів Буве"
+  },
+  {
+    "code": "HM",
+    "labelUk": "Острів Герд і Острови Макдоналд"
+  },
+  {
+    "code": "IM",
+    "labelUk": "Острів Мен"
+  },
+  {
+    "code": "NF",
+    "labelUk": "Острів Норфолк"
+  },
+  {
+    "code": "CX",
+    "labelUk": "Острів Різдва"
+  },
+  {
+    "code": "SH",
+    "labelUk": "Острів Святої Єлени"
+  },
+  {
+    "code": "CK",
+    "labelUk": "Острови Кука"
+  },
+  {
+    "code": "TC",
+    "labelUk": "Острови Теркс і Кайкос"
+  },
+  {
+    "code": "SJ",
+    "labelUk": "Острови Шпіцберген та Ян-Маєн"
+  },
+  {
+    "code": "PK",
+    "labelUk": "Пакистан"
+  },
+  {
+    "code": "PW",
+    "labelUk": "Палау"
+  },
+  {
+    "code": "PS",
+    "labelUk": "Палестина"
+  },
+  {
+    "code": "PA",
+    "labelUk": "Панама"
+  },
+  {
+    "code": "PG",
+    "labelUk": "Папуа-Нова Гвінея"
+  },
+  {
+    "code": "PY",
+    "labelUk": "Парагвай"
+  },
+  {
+    "code": "PE",
+    "labelUk": "Перу"
+  },
+  {
+    "code": "ZA",
+    "labelUk": "Південна Африка"
+  },
+  {
+    "code": "GS",
+    "labelUk": "Південна Джорджія та Південні Сандвічеві Острови"
+  },
+  {
+    "code": "SS",
+    "labelUk": "Південний Судан"
+  },
+  {
+    "code": "MK",
+    "labelUk": "Північна Македонія"
+  },
+  {
+    "code": "MP",
+    "labelUk": "Північні Маріанські Острови"
+  },
+  {
+    "code": "PN",
+    "labelUk": "Піткерн"
+  },
+  {
+    "code": "PL",
+    "labelUk": "Польща"
+  },
+  {
+    "code": "PT",
+    "labelUk": "Португалія"
+  },
+  {
+    "code": "PR",
+    "labelUk": "Пуерто-Рико"
+  },
+  {
+    "code": "KR",
+    "labelUk": "Республіка Корея"
+  },
+  {
+    "code": "RE",
+    "labelUk": "Реюньйон"
+  },
+  {
+    "code": "RU",
+    "labelUk": "Росія"
+  },
+  {
+    "code": "RW",
+    "labelUk": "Руанда"
+  },
+  {
+    "code": "RO",
+    "labelUk": "Румунія"
+  },
+  {
+    "code": "SV",
+    "labelUk": "Сальвадор"
+  },
+  {
+    "code": "WS",
+    "labelUk": "Самоа"
+  },
+  {
+    "code": "SM",
+    "labelUk": "Сан-Марино"
+  },
+  {
+    "code": "ST",
+    "labelUk": "Сан-Томе і Принсіпі"
+  },
+  {
+    "code": "SA",
+    "labelUk": "Саудівська Аравія"
+  },
+  {
+    "code": "SC",
+    "labelUk": "Сейшельські Острови"
+  },
+  {
+    "code": "BL",
+    "labelUk": "Сен-Бартелемі"
+  },
+  {
+    "code": "MF",
+    "labelUk": "Сен-Мартен"
+  },
+  {
+    "code": "PM",
+    "labelUk": "Сен-П'єр і Мікелон"
+  },
+  {
+    "code": "SN",
+    "labelUk": "Сенегал"
+  },
+  {
+    "code": "VC",
+    "labelUk": "Сент-Вінсент і Гренадіни"
+  },
+  {
+    "code": "KN",
+    "labelUk": "Сент-Кітс і Невіс"
+  },
+  {
+    "code": "LC",
+    "labelUk": "Сент-Люсія"
+  },
+  {
+    "code": "RS",
+    "labelUk": "Сербія"
+  },
+  {
+    "code": "SG",
+    "labelUk": "Сингапур"
+  },
+  {
+    "code": "SY",
+    "labelUk": "Сирія"
+  },
+  {
+    "code": "SX",
+    "labelUk": "Сінт-Мартен"
+  },
+  {
+    "code": "SK",
+    "labelUk": "Словаччина"
+  },
+  {
+    "code": "SI",
+    "labelUk": "Словенія"
+  },
+  {
+    "code": "SB",
+    "labelUk": "Соломонові Острови"
+  },
+  {
+    "code": "SO",
+    "labelUk": "Сомалі"
+  },
+  {
+    "code": "SD",
+    "labelUk": "Судан"
+  },
+  {
+    "code": "SR",
+    "labelUk": "Суринам"
+  },
+  {
+    "code": "US",
+    "labelUk": "США"
+  },
+  {
+    "code": "SL",
+    "labelUk": "Сьєрра-Леоне"
+  },
+  {
+    "code": "TJ",
+    "labelUk": "Таджикистан"
+  },
+  {
+    "code": "TH",
+    "labelUk": "Таїланд"
+  },
+  {
+    "code": "TW",
+    "labelUk": "Тайвань, Провінція Китаю"
+  },
+  {
+    "code": "TZ",
+    "labelUk": "Танзанія"
+  },
+  {
+    "code": "TL",
+    "labelUk": "Тимор-Лешті"
+  },
+  {
+    "code": "TG",
+    "labelUk": "Того"
+  },
+  {
+    "code": "TK",
+    "labelUk": "Токелау"
+  },
+  {
+    "code": "TO",
+    "labelUk": "Тонга"
+  },
+  {
+    "code": "TT",
+    "labelUk": "Тринідад і Тобаго"
+  },
+  {
+    "code": "TV",
+    "labelUk": "Тувалу"
+  },
+  {
+    "code": "TN",
+    "labelUk": "Туніс"
+  },
+  {
+    "code": "TR",
+    "labelUk": "Туреччина"
+  },
+  {
+    "code": "TM",
+    "labelUk": "Туркменистан"
+  },
+  {
+    "code": "UG",
+    "labelUk": "Уганда"
+  },
+  {
+    "code": "HU",
+    "labelUk": "Угорщина"
+  },
+  {
+    "code": "UZ",
+    "labelUk": "Узбекистан"
+  },
+  {
+    "code": "UA",
+    "labelUk": "Україна"
+  },
+  {
+    "code": "UY",
+    "labelUk": "Уругвай"
+  },
+  {
+    "code": "FO",
+    "labelUk": "Фарерські Острови"
+  },
+  {
+    "code": "FJ",
+    "labelUk": "Фіджі"
+  },
+  {
+    "code": "PH",
+    "labelUk": "Філіппіни"
+  },
+  {
+    "code": "FI",
+    "labelUk": "Фінляндія"
+  },
+  {
+    "code": "FK",
+    "labelUk": "Фолклендські Острови"
+  },
+  {
+    "code": "FR",
+    "labelUk": "Франція"
+  },
+  {
+    "code": "PF",
+    "labelUk": "Французька Полінезія"
+  },
+  {
+    "code": "TF",
+    "labelUk": "Французькі Південні і Антарктичні Території"
+  },
+  {
+    "code": "HR",
+    "labelUk": "Хорватія"
+  },
+  {
+    "code": "CF",
+    "labelUk": "Центральноафриканська Республіка"
+  },
+  {
+    "code": "TD",
+    "labelUk": "Чад"
+  },
+  {
+    "code": "CZ",
+    "labelUk": "Чехія"
+  },
+  {
+    "code": "CL",
+    "labelUk": "Чилі"
+  },
+  {
+    "code": "ME",
+    "labelUk": "Чорногорія"
+  },
+  {
+    "code": "CH",
+    "labelUk": "Швейцарія"
+  },
+  {
+    "code": "SE",
+    "labelUk": "Швеція"
+  },
+  {
+    "code": "LK",
+    "labelUk": "Шри-Ланка"
+  },
+  {
+    "code": "JM",
+    "labelUk": "Ямайка"
+  },
+  {
+    "code": "JP",
+    "labelUk": "Японія"
+  }
+]
