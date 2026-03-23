@@ -12,6 +12,7 @@ use App\Events\MessagePosted;
 use App\Events\MessageUpdated;
 use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
+use App\Events\RoomTopicUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StoreChatMessageRequest;
 use App\Http\Requests\Chat\UpdateChatMessageRequest;
@@ -320,6 +321,14 @@ class ChatMessageController extends Controller
             return response()->json(['message' => $mod['message']], 422);
         }
         $effective = $mod['text'];
+
+        if (($slashOutcome->slashMeta['topic_apply'] ?? false) === true) {
+            $topicVal = $slashOutcome->slashMeta['topic_value'] ?? null;
+            $room->topic = ($topicVal === null || $topicVal === '') ? null : (string) $topicVal;
+            $room->save();
+            broadcast(new RoomTopicUpdated((int) $room->room_id, $room->topic));
+        }
+
         $now = time();
 
         $avatarUrl = $user->resolveAvatarUrl();

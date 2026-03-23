@@ -83,6 +83,7 @@ class ChatMessage extends Model
     public function scopeVisibleInRoomForUser(Builder $query, Room $room, int $userId): void
     {
         $query->where('post_roomid', $room->room_id)
+            ->whereNull('post_deleted_at')
             ->where(function ($outer) use ($userId) {
                 $outer->where('type', 'public')
                     ->orWhere(function ($q) use ($userId) {

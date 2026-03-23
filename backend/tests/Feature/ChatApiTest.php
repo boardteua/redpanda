@@ -1579,4 +1579,114 @@ class ChatApiTest extends TestCase
 
         $this->assertFalse($victim->fresh()->isChatUploadDisabled());
     }
+
+    public function test_slash_topic_forbidden_without_room_rights(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/topic New',
+                'client_message_id' => 'f867ebc9-9c0b-4ef8-bb6d-6bb9bd380400',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_slash_topic_mod_updates_room_and_posts_public_line(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create(['user_name' => 'mod_top']);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/topic Обговорення',
+                'client_message_id' => 'f877ebc9-9c0b-4ef8-bb6d-6bb9bd380401',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'topic')
+            ->assertJsonPath('data.type', 'public');
+
+        $public->refresh();
+        $this->assertSame('Обговорення', $public->topic);
+    }
+
+    public function test_slash_clear_mod_soft_deletes_public_messages_only(): void
+    {
+        [$public] = $this->seedRooms();
+        $mod = User::factory()->moderator()->create();
+        $alice = User::factory()->create();
+        $bob = User::factory()->create();
+
+        $pubA = $this->seedPublicChatMessage($public, $alice, ['post_message' => 'pub-a']);
+        $pubB = $this->seedPublicChatMessage($public, $alice, ['post_message' => 'pub-b']);
+        $inline = $this->seedPublicChatMessage($public, $alice, [
+            'post_message' => 'inline-x',
+            'type' => 'inline_private',
+            'post_target' => (string) $bob->id,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/clear',
+                'client_message_id' => 'f887ebc9-9c0b-4ef8-bb6d-6bb9bd380402',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'clear')
+            ->assertJsonPath('data.type', 'client_only');
+
+        $this->assertNotNull(ChatMessage::query()->find($pubA->post_id)?->post_deleted_at);
+        $this->assertNotNull(ChatMessage::query()->find($pubB->post_id)?->post_deleted_at);
+        $this->assertNull(ChatMessage::query()->find($inline->post_id)?->post_deleted_at);
+
+        $visibleForAlice = ChatMessage::query()
+            ->visibleInRoomForUser($public, (int) $alice->id)
+            ->orderBy('post_id')
+            ->get();
+        $this->assertCount(1, $visibleForAlice);
+        $this->assertSame('inline_private', $visibleForAlice[0]->type);
+
+        Sanctum::actingAs($alice);
+        $resp = $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=50');
+
+        $resp->assertOk();
+        $rows = $resp->json('data');
+        $this->assertIsArray($rows);
+        $this->assertCount(1, $rows, 'Alice має бачити лише інлайн-приват після /clear.');
+        $this->assertSame('inline_private', $rows[0]['type'] ?? null);
+        $this->assertSame((int) $inline->post_id, (int) ($rows[0]['post_id'] ?? 0));
+        $ids = collect($rows)->pluck('post_id')->map(static fn ($v) => (int) $v);
+        $this->assertFalse($ids->contains((int) $pubA->post_id));
+        $this->assertFalse($ids->contains((int) $pubB->post_id));
+    }
+
+    public function test_messages_index_excludes_soft_deleted_public(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_message' => 'gone']);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertOk();
+
+        $resp = $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=50');
+
+        $resp->assertOk();
+        $ids = collect($resp->json('data'))->pluck('post_id');
+        $this->assertFalse($ids->contains($msg->post_id));
+    }
 }

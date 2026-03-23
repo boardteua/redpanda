@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Chat\SlashCommands\Handlers\AwaySlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\BanSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\ChatUploadGatingSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\ClearRoomJournalSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\FriendSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\IgnoreClearSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\IgnoreSlashCommandHandler;
@@ -14,6 +15,7 @@ use App\Chat\SlashCommands\Handlers\MeSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\MsgSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\MuteSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\SeenSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\TopicSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\UnmuteSlashCommandHandler;
 use App\Chat\SlashCommands\SlashCommandRegistry;
 use App\Models\ChatMessage;
@@ -57,6 +59,8 @@ class AppServiceProvider extends ServiceProvider
             $registry->register('upon', new ChatUploadGatingSlashCommandHandler(true));
             $registry->register('upoff', new ChatUploadGatingSlashCommandHandler(false));
             $registry->register('ban', $app->make(BanSlashCommandHandler::class));
+            $registry->register('topic', $app->make(TopicSlashCommandHandler::class));
+            $registry->register('clear', $app->make(ClearRoomJournalSlashCommandHandler::class));
 
             return $registry;
         });

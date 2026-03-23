@@ -63,6 +63,7 @@ class ChatArchiveController extends Controller
         $query = ChatMessage::query()
             ->whereIn('post_roomid', $accessibleIds)
             ->where('type', 'public')
+            ->whereNull('post_deleted_at')
             ->orderByDesc('post_id');
 
         $search = isset($validated['q']) ? trim($validated['q']) : '';

@@ -96,6 +96,37 @@ class ChatArchiveApiTest extends TestCase
             ->assertJsonPath('data.0.post_message', 'public only');
     }
 
+    public function test_archive_excludes_soft_deleted_public_messages(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $this->seedMessage($public, $user, 'still here', 1_700_000_050);
+        ChatMessage::query()->create([
+            'user_id' => $user->id,
+            'post_date' => 1_700_000_051,
+            'post_time' => '12:00',
+            'post_user' => $user->user_name,
+            'post_message' => '',
+            'post_color' => 'user',
+            'post_roomid' => $public->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => null,
+            'file' => 0,
+            'post_deleted_at' => time(),
+            'client_message_id' => 'b3333333-3333-4333-8333-333333333333',
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/archive/messages?per_page=10')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.post_message', 'still here');
+    }
+
     public function test_unauthenticated_archive_returns_401(): void
     {
         $this->seedRooms();

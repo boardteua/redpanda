@@ -1698,6 +1698,14 @@ export default {
                 this.mergeMessage(payload);
             });
 
+            channel.listen('.RoomTopicUpdated', (payload) => {
+                this.onRoomTopicUpdatedWs(payload);
+            });
+
+            channel.listen('.RoomJournalCleared', (payload) => {
+                this.onRoomJournalClearedWs(payload);
+            });
+
             channel.listen('.PresenceStatusUpdated', (payload) => {
                 if (!payload || payload.user_id == null || !payload.status) {
                     return;
@@ -1732,6 +1740,50 @@ export default {
                     this.handleNewRoomMessageSound(m);
                 }
             });
+        },
+        onRoomTopicUpdatedWs(payload) {
+            if (!payload || payload.room_id == null) {
+                return;
+            }
+            const rid = Number(payload.room_id);
+            if (!Number.isFinite(rid)) {
+                return;
+            }
+            const rawTopic = payload.topic;
+            const topic =
+                rawTopic == null || rawTopic === '' ? null : String(rawTopic);
+            this.rooms = this.rooms.map((r) =>
+                Number(r.room_id) === rid ? { ...r, topic } : r,
+            );
+        },
+        onRoomJournalClearedWs(payload) {
+            if (!payload || payload.room_id == null) {
+                return;
+            }
+            const rid = Number(payload.room_id);
+            if (!Number.isFinite(rid)) {
+                return;
+            }
+            this.applyRoomJournalCleared(rid);
+        },
+        applyRoomJournalCleared(roomId) {
+            const rid = Number(roomId);
+            if (!Number.isFinite(rid) || Number(this.selectedRoomId) !== rid) {
+                return;
+            }
+            const nextMessages = [];
+            const nextIds = new Set();
+            for (const m of this.messages) {
+                if (m && m.type === 'public') {
+                    continue;
+                }
+                nextMessages.push(m);
+                if (m && m.post_id != null) {
+                    nextIds.add(m.post_id);
+                }
+            }
+            this.messages = nextMessages;
+            this.messageIds = nextIds;
         },
         onPrivateThreadClearedWs(payload) {
             if (!payload || !this.user) {
@@ -2526,6 +2578,9 @@ export default {
                         const slashName = data.meta && data.meta.slash && data.meta.slash.name;
                         if (slashName === 'ignore' || slashName === 'ignoreclear') {
                             await this.loadFriendsAndIgnores();
+                        }
+                        if (slashName === 'clear') {
+                            this.applyRoomJournalCleared(this.selectedRoomId);
                         }
                         if (data.data && data.data.type === 'public') {
                             await this.refreshAuthUser();
