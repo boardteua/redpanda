@@ -268,15 +268,42 @@
                         Реєстрацію тимчасово вимкнено адміністратором.
                     </p>
                 </div>
-
+                <div
+                    v-if="socialLoginUiVisible"
+                    class="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center"
+                    role="group"
+                    aria-label="Вхід через соціальні мережі"
+                >
+                    <RpButton
+                        variant="ghost"
+                        class="w-full sm:w-auto"
+                        :disabled="loading"
+                        @click="startSocialLogin('google-oauth2')"
+                    >
+                        Google
+                    </RpButton>
+                    <RpButton
+                        variant="ghost"
+                        class="w-full sm:w-auto"
+                        :disabled="loading"
+                        @click="startSocialLogin('facebook')"
+                    >
+                        Facebook
+                    </RpButton>
+                    <RpButton
+                        variant="ghost"
+                        class="w-full sm:w-auto"
+                        :disabled="loading"
+                        @click="startSocialLogin('twitter')"
+                    >
+                        X
+                    </RpButton>
+                </div>
                 <div class="mt-8">
                     <div class="rp-divider" aria-hidden="true">
-                        або
+                        Швидкий вхід без облікового запису
                     </div>
                     <h4 class="rp-sr-only">Анонімний вхід</h4>
-                    <p class="text-center text-sm text-[var(--rp-text-muted)]">
-                        Швидкий вхід без облікового запису
-                    </p>
                     <div class="mt-4">
                         <label class="rp-label" for="guest-user_name">
                             Нік (необов’язково)
@@ -296,42 +323,6 @@
                     <RpButton class="mt-4 w-full" :loading="loading" :disabled="loading" @click="submitGuest">
                         Зайти анонімно
                     </RpButton>
-                </div>
-                <div
-                    v-if="socialLoginUiVisible"
-                    class="mt-6 space-y-3"
-                    role="group"
-                    aria-label="Вхід через соціальні мережі"
-                >
-                    <div class="rp-divider" aria-hidden="true">
-                        або соціальний вхід
-                    </div>
-                    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
-                        <RpButton
-                            variant="ghost"
-                            class="w-full sm:w-auto"
-                            :disabled="loading"
-                            @click="startSocialLogin('google-oauth2')"
-                        >
-                            Google
-                        </RpButton>
-                        <RpButton
-                            variant="ghost"
-                            class="w-full sm:w-auto"
-                            :disabled="loading"
-                            @click="startSocialLogin('facebook')"
-                        >
-                            Facebook
-                        </RpButton>
-                        <RpButton
-                            variant="ghost"
-                            class="w-full sm:w-auto"
-                            :disabled="loading"
-                            @click="startSocialLogin('twitter')"
-                        >
-                            X
-                        </RpButton>
-                    </div>
                 </div>
                 </template>
                 <p
