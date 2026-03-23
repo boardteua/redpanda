@@ -2,7 +2,12 @@
 
 namespace App\Providers;
 
+use App\Chat\SlashCommands\Handlers\AwaySlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\FriendSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\ManualSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\MeSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\MsgSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\SeenSlashCommandHandler;
 use App\Chat\SlashCommands\SlashCommandRegistry;
 use App\Models\ChatMessage;
 use App\Models\Image;
@@ -31,7 +36,12 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(SlashCommandRegistry::class, function ($app) {
             $registry = new SlashCommandRegistry;
+            $registry->register('manual', $app->make(ManualSlashCommandHandler::class));
+            $registry->register('away', $app->make(AwaySlashCommandHandler::class));
             $registry->register('me', $app->make(MeSlashCommandHandler::class));
+            $registry->register('seen', $app->make(SeenSlashCommandHandler::class));
+            $registry->register('msg', $app->make(MsgSlashCommandHandler::class));
+            $registry->register('friend', $app->make(FriendSlashCommandHandler::class));
 
             return $registry;
         });

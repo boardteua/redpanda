@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Events\MessageDeleted;
 use App\Events\MessagePosted;
 use App\Events\MessageUpdated;
+use App\Events\PresenceStatusUpdated;
 use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
 use App\Models\ChatMessage;
+use App\Models\Friendship;
 use App\Models\Image;
 use App\Models\Room;
 use App\Models\RoomReadState;
@@ -1243,6 +1245,133 @@ class ChatApiTest extends TestCase
             ->withHeaders($this->statefulHeaders())
             ->postJson('/api/v1/rooms/'.$public->room_id.'/read', [
                 'last_read_post_id' => 999999999,
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_slash_manual_is_client_only_and_recognized(): void
+    {
+        [$public] = $this->seedRooms();
+        $guest = User::factory()->guest()->create();
+
+        $res = $this->from(config('app.url'))
+            ->actingAs($guest, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/manual',
+                'client_message_id' => 'd167ebc9-9c0b-4ef8-bb6d-6bb9bd380101',
+            ]);
+
+        $res->assertCreated()
+            ->assertJsonPath('data.type', 'client_only')
+            ->assertJsonPath('meta.slash.name', 'manual')
+            ->assertJsonPath('meta.slash.recognized', true)
+            ->assertJsonPath('meta.slash.client_only', true);
+
+        $this->assertStringContainsString('/away', (string) $res->json('data.post_message'));
+    }
+
+    public function test_slash_friend_forbidden_for_guest(): void
+    {
+        [$public] = $this->seedRooms();
+        $guest = User::factory()->guest()->create();
+        $bob = User::factory()->create(['user_name' => 'bob_fr']);
+
+        $this->from(config('app.url'))
+            ->actingAs($guest, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/friend bob_fr',
+                'client_message_id' => 'd267ebc9-9c0b-4ef8-bb6d-6bb9bd380102',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_slash_friend_creates_pending_friendship(): void
+    {
+        [$public] = $this->seedRooms();
+        $alice = User::factory()->create(['user_name' => 'alice_fr']);
+        $bob = User::factory()->create(['user_name' => 'bob_fr2']);
+
+        $this->from(config('app.url'))
+            ->actingAs($alice, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/friend bob_fr2',
+                'client_message_id' => 'd367ebc9-9c0b-4ef8-bb6d-6bb9bd380103',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.type', 'client_only')
+            ->assertJsonPath('meta.slash.name', 'friend')
+            ->assertJsonPath('meta.slash.recognized', true);
+
+        $this->assertDatabaseHas('friendships', [
+            'requester_id' => $alice->id,
+            'addressee_id' => $bob->id,
+            'status' => Friendship::STATUS_PENDING,
+        ]);
+    }
+
+    public function test_slash_seen_shows_last_message_in_room(): void
+    {
+        [$public] = $this->seedRooms();
+        $bob = User::factory()->create(['user_name' => 'seen_bob']);
+        $viewer = User::factory()->create();
+        $this->seedPublicChatMessage($public, $bob, ['post_message' => 'hello seen']);
+
+        $res = $this->from(config('app.url'))
+            ->actingAs($viewer, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/seen seen_bob',
+                'client_message_id' => 'd467ebc9-9c0b-4ef8-bb6d-6bb9bd380104',
+            ]);
+
+        $res->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'seen')
+            ->assertJsonPath('meta.slash.recognized', true);
+
+        $body = (string) $res->json('data.post_message');
+        $this->assertStringContainsString('seen_bob', $body);
+        $this->assertStringContainsString('Останнє повідомлення', $body);
+    }
+
+    public function test_slash_away_dispatches_presence_status_updated(): void
+    {
+        Bus::fake([BroadcastEvent::class]);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/away',
+                'client_message_id' => 'd567ebc9-9c0b-4ef8-bb6d-6bb9bd380105',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'away');
+
+        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) use ($public, $user) {
+            return $job->event instanceof PresenceStatusUpdated
+                && (int) $job->event->roomId === (int) $public->room_id
+                && (int) $job->event->userId === (int) $user->id
+                && $job->event->status === 'away';
+        });
+    }
+
+    public function test_slash_msg_without_peer_returns_422(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/msg',
+                'client_message_id' => 'd667ebc9-9c0b-4ef8-bb6d-6bb9bd380106',
             ])
             ->assertStatus(422);
     }
