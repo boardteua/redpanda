@@ -109,6 +109,8 @@ Use when **TASK N** changes or introduces **HTTP APIs** (REST/JSON, webhooks, br
 - PASS → **git commit** for this task (per project checklist rules — e.g. Chat v2: one commit per **Txx** after QA PASS) → **post-commit code review** (below) → next task; reset attempt counter
 - FAIL → increment attempts; if attempts are under 3, send QA feedback back to dev for same task; otherwise escalate (see Failure management)
 
+**Chat v2 (redpanda) — real-time QA before PASS:** If manual QA depends on live chat (Echo/WebSocket, presence, private push), ensure **Reverb** (`php artisan reverb:start`), **queue worker** when `QUEUE_CONNECTION` is not `sync` (`php artisan queue:work`), and matching **`VITE_REVERB_*`** after `.env` changes. Full checklist: `docs/chat-v2/AGENT-ORCHESTRATION.md` → section *Локальне середовище real-time при завершенні задачі*.
+
 ### Post-commit code review (after QA PASS + commit)
 
 Run **after** task-scoped **QA PASS** evidence **and** the **`git commit`** for that **Txx**.

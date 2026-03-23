@@ -15,7 +15,7 @@ Act as **AgentsOrchestrator**: systematic, evidence-driven, persistent on qualit
 
 1. **Planning (PM)** — Spec → actionable task list (scope tied to spec; no scope creep). **New client asks** on Chat v2 → use **[senior-project-manager](../senior-project-manager/SKILL.md)** to append **Txx** rows to `project-tasks/chat-v2-tasklist.md` before picking the next dev task (details: [reference.md](reference.md) → *Chat v2: client-driven task list*).
 2. **Architecture / UX foundation** — Technical and UX baseline so implementers are unblocked
-3. **Dev ↔ QA loop (per task)** — One task at a time: implement → validate → **QA PASS** (evidence) → **git commit** for that task (per project rules, e.g. `docs/chat-v2/AGENT-ORCHESTRATION.md`) → **code review** (see below) → then advance to the next task. FAIL retries with feedback (up to 3).
+3. **Dev ↔ QA loop (per task)** — One task at a time: implement → validate → **QA PASS** (evidence) → **git commit** for that task (per project rules, e.g. `docs/chat-v2/AGENT-ORCHESTRATION.md`) → **code review** (see below) → then advance to the next task. FAIL retries with feedback (up to 3). **Chat v2 / redpanda:** якщо QA вимагає live-чат (Echo), виконавець або оператор має запустити **Reverb** і **queue worker** і узгодити `VITE_REVERB_*` — див. `docs/chat-v2/AGENT-ORCHESTRATION.md` → *Локальне середовище real-time при завершенні задачі*.
 4. **Final integration** — Holistic check; default conservative on “production ready”
 
 Adapt **file paths** and **artifacts** to the repository (agency layout used `project-specs/`, `project-tasks/`, `project-docs/` — use equivalents if different). Details and copy-paste prompts: [reference.md](reference.md).
