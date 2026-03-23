@@ -1,5 +1,7 @@
 # T11 — Короткий runbook (Reverb / Redis / здоров’я сервісу)
 
+Повний чекліст **staging / production** (деплой, ENV, проксі WebSocket, черга, backup, real-time після релізу): **[T80-DEPLOY-CHECKLIST.md](T80-DEPLOY-CHECKLIST.md)**.
+
 ## Що перевіряти
 
 | Симптом | Ймовірна причина | Дія |

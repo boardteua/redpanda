@@ -904,7 +904,7 @@
 
 ---
 
-### [ ] T80 — **Staging / production:** деплой-чекліст, змінні середовища, спостережуваність і стійкість real-time
+### [x] T80 — **Staging / production:** деплой-чекліст, змінні середовища, спостережуваність і стійкість real-time
 
 - **Delegate:** . / Backend Architect (+ Frontend за `VITE_*` у CI)
 - **Залежність:** **T11** (health, structured logs, runbook); **T05** (Reverb); черги за фактичним `QUEUE_CONNECTION`
