@@ -26,6 +26,20 @@ git fetch origin
 git checkout "$DEPLOY_GIT_REF"
 git pull --ff-only origin "$DEPLOY_GIT_REF"
 
+# На проді не потрібні Cursor, внутрішні спеки та дока в репо (не чіпаємо backend/resources/markdown — там контент для Vite).
+if [[ "${DEPLOY_SKIP_REPO_CLEANUP:-}" != "1" ]]; then
+  rm -rf \
+    "$REPO_DIR/.cursor" \
+    "$REPO_DIR/docs" \
+    "$REPO_DIR/project-tasks" \
+    "$REPO_DIR/project-specs"
+  rm -f \
+    "$REPO_DIR/AGENTS.md" \
+    "$REPO_DIR/README.md" \
+    "$REPO_DIR/docker/README.md" \
+    "$REPO_DIR/backend/README.md" || true
+fi
+
 cd "$BACKEND_DIR"
 composer install --no-dev --optimize-autoloader --no-interaction
 npm ci
