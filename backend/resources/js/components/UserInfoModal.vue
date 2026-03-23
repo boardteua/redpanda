@@ -66,14 +66,14 @@
                     <p class="text-xs text-[var(--rp-text-muted)]">
                         Тема зберігається лише на цьому пристрої (без облікового запису).
                     </p>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-secondary w-full text-sm"
+                    <RpButton
+                        variant="secondary"
+                        class="w-full text-sm"
                         aria-label="Перемкнути тему оформлення"
                         @click="$emit('cycle-theme')"
                     >
                         {{ themeLabel }}
-                    </button>
+                    </RpButton>
                 </div>
                 </template>
             </template>

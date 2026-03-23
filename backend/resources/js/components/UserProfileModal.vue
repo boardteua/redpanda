@@ -70,14 +70,15 @@
                                     @change="onAvatarFileSelected"
                                 />
                                 <div class="flex flex-wrap gap-2">
-                                    <button
-                                        type="button"
-                                        class="rp-focusable rp-btn rp-btn-secondary text-sm"
+                                    <RpButton
+                                        variant="secondary"
+                                        class="text-sm"
+                                        :loading="avatarUploading"
                                         :disabled="avatarUploading || user.chat_upload_disabled"
                                         @click="$refs.avatarInput && $refs.avatarInput.click()"
                                     >
                                         {{ avatarUploading ? 'Завантаження…' : 'Вибрати файл' }}
-                                    </button>
+                                    </RpButton>
                                 </div>
                                 <p v-if="avatarUploadError" class="text-xs text-[var(--rp-error)]" role="alert">
                                     {{ avatarUploadError }}
@@ -174,14 +175,14 @@
                                 class="rp-input rp-focusable w-full resize-y"
                             />
                         </div>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-primary w-full sm:w-auto"
+                        <RpButton
+                            class="w-full sm:w-auto"
+                            :loading="saving"
                             :disabled="saving"
                             @click="savePersonal"
                         >
                             {{ saving ? 'Збереження…' : 'Зберегти персональні дані' }}
-                        </button>
+                        </RpButton>
                     </div>
 
                     <!-- Оформлення (T43): тема лише локально, без API -->
@@ -190,14 +191,14 @@
                             Світла, темна або як у системі. Застосовується до всього чату на цьому пристрої
                             (зберігається в браузері).
                         </p>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-secondary text-sm"
+                        <RpButton
+                            variant="secondary"
+                            class="text-sm"
                             aria-label="Перемкнути тему оформлення"
                             @click="$emit('cycle-theme')"
                         >
                             {{ themeLabel }}
-                        </button>
+                        </RpButton>
                     </div>
 
                     <!-- Акаунт -->
@@ -245,14 +246,14 @@
                                 class="rp-input rp-focusable w-full"
                             />
                         </div>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-primary w-full sm:w-auto"
+                        <RpButton
+                            class="w-full sm:w-auto"
+                            :loading="saving"
                             :disabled="saving"
                             @click="saveAccount"
                         >
                             {{ saving ? 'Збереження…' : 'Зберегти акаунт' }}
-                        </button>
+                        </RpButton>
                     </div>
 
                     <!-- Соцмережі -->
@@ -267,14 +268,14 @@
                                 class="rp-input rp-focusable w-full"
                             />
                         </div>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-primary w-full sm:w-auto"
+                        <RpButton
+                            class="w-full sm:w-auto"
+                            :loading="saving"
                             :disabled="saving"
                             @click="saveSocial"
                         >
                             {{ saving ? 'Збереження…' : 'Зберегти соцмережі' }}
-                        </button>
+                        </RpButton>
                     </div>
 
                     <!-- Звуки -->
@@ -305,14 +306,14 @@
                                 class="rp-focusable w-full"
                             />
                         </div>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-primary w-full sm:w-auto"
+                        <RpButton
+                            class="w-full sm:w-auto"
+                            :loading="saving"
                             :disabled="saving"
                             @click="saveSounds"
                         >
                             {{ saving ? 'Збереження…' : 'Зберегти звуки' }}
-                        </button>
+                        </RpButton>
                     </div>
                 </div>
         </div>

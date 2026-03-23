@@ -303,14 +303,9 @@
                                     </template>
                                 </ul>
                             </div>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-btn rp-btn-primary shrink-0"
-                                :disabled="!String(peerLookupName || '').trim()"
-                                @click="$emit('lookup-private')"
-                            >
+                            <RpButton class="shrink-0" :disabled="!String(peerLookupName || '').trim()" @click="$emit('lookup-private')">
                                 Відкрити
-                            </button>
+                            </RpButton>
                         </div>
                     </div>
                 </div>
@@ -386,13 +381,9 @@
                                             @activate="$emit('open-peer-badge-menu', $event, f.menuPeer, 'friend-' + f.user.id)"
                                         />
                                     </div>
-                                    <button
-                                        type="button"
-                                        class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-sm"
-                                        @click="$emit('open-private-peer', f.user)"
-                                    >
+                                    <RpButton variant="ghost" class="shrink-0 text-sm" @click="$emit('open-private-peer', f.user)">
                                         Приват
-                                    </button>
+                                    </RpButton>
                                 </div>
                                 <UserBadgeInlineActionPanel
                                     v-if="isBadgeMenuOpen('friend-' + f.user.id) && user"
@@ -439,20 +430,12 @@
                                             @activate="$emit('open-peer-badge-menu', $event, r.menuPeer, 'fin-' + r.user.id)"
                                         />
                                     </div>
-                                    <button
-                                        type="button"
-                                        class="rp-focusable rp-btn rp-btn-primary shrink-0 text-xs"
-                                        @click="$emit('accept-friend', r.user.id)"
-                                    >
+                                    <RpButton class="shrink-0 text-xs" @click="$emit('accept-friend', r.user.id)">
                                         Прийняти
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-xs"
-                                        @click="$emit('reject-friend', r.user.id)"
-                                    >
+                                    </RpButton>
+                                    <RpButton variant="ghost" class="shrink-0 text-xs" @click="$emit('reject-friend', r.user.id)">
                                         Відхилити
-                                    </button>
+                                    </RpButton>
                                 </div>
                                 <UserBadgeInlineActionPanel
                                     v-if="isBadgeMenuOpen('fin-' + r.user.id) && user"

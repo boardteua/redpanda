@@ -62,22 +62,24 @@
                     </select>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    <button
-                        type="submit"
-                        class="rp-focusable rp-btn rp-btn-primary text-sm"
+                    <RpButton
+                        native-type="submit"
+                        variant="primary"
+                        class="text-sm"
+                        :loading="savingRoom"
                         :disabled="saveDisabled"
                     >
                         {{ savingRoom ? 'Збереження…' : 'Зберегти' }}
-                    </button>
-                    <button
+                    </RpButton>
+                    <RpButton
                         v-if="canDeleteSelected"
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-ghost text-sm text-[var(--rp-error)]"
+                        variant="ghost"
+                        class="text-sm text-[var(--rp-error)]"
                         :disabled="savingRoom || deletingRoom"
                         @click="requestDelete"
                     >
                         Видалити кімнату
-                    </button>
+                    </RpButton>
                 </div>
                 <p v-if="!canDeleteSelected && messagesCount > 0" class="text-xs text-[var(--rp-text-muted)]">
                     Видалення недоступне: у кімнаті вже є повідомлення в історії.

@@ -17,14 +17,14 @@
                     </p>
                 </div>
             </div>
-            <button
-                type="button"
-                class="rp-focusable rp-btn rp-btn-ghost text-sm"
+            <RpButton
+                variant="ghost"
+                class="text-sm"
                 aria-label="Перемкнути тему оформлення"
                 @click="cycleTheme"
             >
                 {{ themeLabel }}
-            </button>
+            </RpButton>
         </header>
 
         <main id="main-content" class="mx-auto w-full max-w-5xl flex-1 space-y-4" tabindex="-1">
@@ -35,22 +35,17 @@
             <template v-else>
                 <div class="rp-panel space-y-4">
                     <div class="flex flex-wrap items-center gap-2">
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-secondary text-sm"
+                        <RpButton
+                            variant="secondary"
+                            class="text-sm"
                             :disabled="loading"
                             @click="openCreateModal"
                         >
                             Новий користувач
-                        </button>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost text-sm"
-                            :disabled="loading"
-                            @click="reloadCatalog"
-                        >
+                        </RpButton>
+                        <RpButton variant="ghost" class="text-sm" :disabled="loading" @click="reloadCatalog">
                             Оновити список
-                        </button>
+                        </RpButton>
                     </div>
 
                     <div class="flex flex-wrap gap-2">
@@ -65,22 +60,12 @@
                             :disabled="loading"
                             @keyup.enter="applySearch"
                         />
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-primary shrink-0"
-                            :disabled="loading"
-                            @click="applySearch"
-                        >
+                        <RpButton class="shrink-0" :disabled="loading" @click="applySearch">
                             Шукати
-                        </button>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-sm"
-                            :disabled="loading"
-                            @click="clearSearchToCatalog"
-                        >
+                        </RpButton>
+                        <RpButton variant="ghost" class="shrink-0 text-sm" :disabled="loading" @click="clearSearchToCatalog">
                             Каталог
-                        </button>
+                        </RpButton>
                     </div>
 
                     <div
@@ -258,22 +243,12 @@
                     <p class="text-sm text-[var(--rp-text)]">
                         Обрано: <strong>{{ selectedIds.length }}</strong>
                     </p>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-secondary text-sm"
-                        :disabled="loading"
-                        @click="openBulkModal"
-                    >
+                    <RpButton variant="secondary" class="text-sm" :disabled="loading" @click="openBulkModal">
                         Масова дія…
-                    </button>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-ghost text-sm"
-                        :disabled="loading"
-                        @click="clearSelection"
-                    >
+                    </RpButton>
+                    <RpButton variant="ghost" class="text-sm" :disabled="loading" @click="clearSelection">
                         Скинути вибір
-                    </button>
+                    </RpButton>
                 </div>
 
                 <p v-if="loadError" class="rp-banner" role="alert">
@@ -397,22 +372,22 @@
                         Сторінка {{ meta.current_page }} з {{ meta.last_page }} (усього {{ meta.total }})
                     </p>
                     <div class="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                        <RpButton
+                            variant="ghost"
+                            class="text-sm"
                             :disabled="loading || meta.current_page <= 1"
                             @click="goPage(meta.current_page - 1)"
                         >
                             Попередня
-                        </button>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                        </RpButton>
+                        <RpButton
+                            variant="ghost"
+                            class="text-sm"
                             :disabled="loading || meta.current_page >= meta.last_page"
                             @click="goPage(meta.current_page + 1)"
                         >
                             Наступна
-                        </button>
+                        </RpButton>
                     </div>
                 </nav>
 
@@ -478,14 +453,15 @@
                                     </div>
                                 </div>
                             </template>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-btn rp-btn-secondary text-sm"
+                            <RpButton
+                                variant="secondary"
+                                class="text-sm"
+                                :loading="savingProfile"
                                 :disabled="savingProfile"
                                 @click="saveProfile"
                             >
                                 Зберегти профіль
-                            </button>
+                            </RpButton>
                         </div>
                         <p v-else class="text-sm text-[var(--rp-text-muted)]">
                             Профіль гостя тут не редагується.
@@ -535,14 +511,14 @@
                                     </option>
                                 </select>
                             </div>
-                            <button
-                                type="button"
-                                class="rp-focusable rp-btn rp-btn-primary text-sm"
+                            <RpButton
+                                class="text-sm"
+                                :loading="savingRoles"
                                 :disabled="savingRoles || selected.guest"
                                 @click="saveRoles"
                             >
                                 Зберегти ролі та статус облікового запису
-                            </button>
+                            </RpButton>
                         </div>
                     </template>
                 </div>
@@ -626,17 +602,12 @@
                 <div
                     class="flex flex-col-reverse gap-2 border-t border-[var(--rp-border-subtle)] px-4 py-4 sm:flex-row sm:justify-end"
                 >
-                    <button type="button" class="rp-focusable rp-btn rp-btn-ghost text-sm" @click="closeBulkModal">
+                    <RpButton variant="ghost" class="text-sm" @click="closeBulkModal">
                         Скасувати
-                    </button>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-primary text-sm"
-                        :disabled="bulkSubmitting"
-                        @click="submitBulk"
-                    >
+                    </RpButton>
+                    <RpButton class="text-sm" :loading="bulkSubmitting" :disabled="bulkSubmitting" @click="submitBulk">
                         Застосувати
-                    </button>
+                    </RpButton>
                 </div>
             </template>
         </RpModal>
@@ -688,17 +659,12 @@
                 <div
                     class="flex flex-col-reverse gap-2 border-t border-[var(--rp-border-subtle)] px-4 py-4 sm:flex-row sm:justify-end"
                 >
-                    <button type="button" class="rp-focusable rp-btn rp-btn-ghost text-sm" @click="closeCreateModal">
+                    <RpButton variant="ghost" class="text-sm" @click="closeCreateModal">
                         Скасувати
-                    </button>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-primary text-sm"
-                        :disabled="createSubmitting"
-                        @click="submitCreateUser"
-                    >
+                    </RpButton>
+                    <RpButton class="text-sm" :loading="createSubmitting" :disabled="createSubmitting" @click="submitCreateUser">
                         Створити
-                    </button>
+                    </RpButton>
                 </div>
             </template>
         </RpModal>

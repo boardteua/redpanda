@@ -3,9 +3,9 @@
         <p class="mt-2 text-sm text-[var(--rp-text-muted)]">
             {{ body }}
         </p>
-        <button type="button" class="rp-focusable rp-btn rp-btn-primary mt-4 w-full" @click="close">
+        <RpButton class="mt-4 w-full" @click="close">
             Закрити
-        </button>
+        </RpButton>
     </RpModal>
 </template>
 

@@ -306,14 +306,14 @@
                 </div>
 
                 <div class="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-primary text-sm"
+                    <RpButton
+                        class="text-sm"
+                        :loading="saving"
                         :disabled="saving || loading"
                         @click="save"
                     >
                         {{ saving ? 'Збереження…' : 'Зберегти' }}
-                    </button>
+                    </RpButton>
                 </div>
             </fieldset>
 
@@ -366,22 +366,22 @@
                                 </td>
                                 <td class="border-b border-[var(--rp-border-subtle)] px-2 py-1">
                                     <div class="flex flex-wrap gap-1">
-                                        <button
-                                            type="button"
-                                            class="rp-focusable rp-btn rp-btn-ghost text-xs"
+                                        <RpButton
+                                            variant="ghost"
+                                            class="text-xs"
                                             :disabled="emoticonBusy"
                                             @click="toggleEmoticon(e)"
                                         >
                                             {{ e.is_active ? 'Вимкнути' : 'Увімкнути' }}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="rp-focusable rp-btn rp-btn-ghost text-xs text-[var(--rp-error)]"
+                                        </RpButton>
+                                        <RpButton
+                                            variant="ghost"
+                                            class="text-xs text-[var(--rp-error)]"
                                             :disabled="emoticonBusy"
                                             @click="deleteEmoticon(e)"
                                         >
                                             Видалити
-                                        </button>
+                                        </RpButton>
                                     </div>
                                 </td>
                             </tr>
@@ -451,13 +451,9 @@
                             @change="onEmoticonFile"
                         />
                     </div>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-primary text-sm"
-                        @click="submitNewEmoticon"
-                    >
+                    <RpButton class="text-sm" :loading="emoticonBusy" :disabled="emoticonBusy" @click="submitNewEmoticon">
                         {{ emoticonBusy ? 'Збереження…' : 'Додати смайл' }}
-                    </button>
+                    </RpButton>
                 </fieldset>
             </div>
         </div>
@@ -629,6 +625,16 @@ export default {
                     min_age: minA === null || minA === undefined || minA === '' ? null : Number(minA),
                     show_social_login_buttons: Boolean(rf.show_social_login_buttons),
                 };
+                const attBytes = Number(d.max_attachment_bytes);
+                if (Number.isFinite(attBytes) && attBytes >= 1024) {
+                    const mbRaw = attBytes / (1024 * 1024);
+                    this.form.max_attachment_mb = Math.max(0.01, Math.round(mbRaw * 100) / 100);
+                } else {
+                    this.form.max_attachment_mb = 4;
+                }
+                const effHint = Number(d.max_chat_image_upload_bytes);
+                this.attachmentEffectiveBytesHint =
+                    Number.isFinite(effHint) && effHint > 0 ? effHint : null;
             } catch {
                 this.loadError = 'Не вдалося завантажити налаштування.';
             } finally {

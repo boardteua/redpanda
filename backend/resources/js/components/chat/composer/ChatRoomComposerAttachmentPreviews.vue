@@ -24,14 +24,14 @@
                 alt=""
                 class="max-h-24 max-w-[12rem] rounded object-contain"
             />
-            <button
-                type="button"
-                class="rp-focusable rp-btn rp-btn-ghost text-sm"
+            <RpButton
+                variant="ghost"
+                class="text-sm"
                 :disabled="sending || uploadingImage"
                 @click="$emit('clear-pending-image')"
             >
                 Прибрати фото
-            </button>
+            </RpButton>
         </div>
     </div>
 </template>

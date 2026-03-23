@@ -10,9 +10,9 @@
                 Зображення вкладення залишається; змінюються лише текст і форматування.
             </span>
         </span>
-        <button type="button" class="rp-focusable rp-btn rp-btn-ghost text-sm" @click="$emit('cancel-edit')">
+        <RpButton variant="ghost" class="text-sm" @click="$emit('cancel-edit')">
             Скасувати
-        </button>
+        </RpButton>
     </div>
 </template>
 

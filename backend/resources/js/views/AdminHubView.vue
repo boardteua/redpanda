@@ -15,14 +15,9 @@
                     </p>
                 </div>
             </div>
-            <button
-                type="button"
-                class="rp-focusable rp-btn rp-btn-ghost text-sm"
-                aria-label="Перемкнути тему оформлення"
-                @click="cycleTheme"
-            >
+            <RpButton variant="ghost" class="text-sm" aria-label="Перемкнути тему оформлення" @click="cycleTheme">
                 {{ themeLabel }}
-            </button>
+            </RpButton>
         </header>
 
         <main id="main-content" class="mx-auto w-full max-w-5xl flex-1" tabindex="-1">

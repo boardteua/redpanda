@@ -46,13 +46,14 @@
                             :disabled="creatingRoom"
                         />
                     </div>
-                    <button
-                        type="submit"
-                        class="rp-focusable w-full rounded-md bg-[var(--rp-chat-sidebar-link)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    <RpButton
+                        native-type="submit"
+                        class="w-full text-sm"
+                        :loading="creatingRoom"
                         :disabled="creatingRoom || !createName.trim()"
                     >
                         {{ creatingRoom ? 'Створення…' : 'Створити кімнату' }}
-                    </button>
+                    </RpButton>
                 </form>
             </template>
             <p v-else-if="user && !user.guest && chatSettings" class="text-sm leading-relaxed text-[var(--rp-text-muted)]">

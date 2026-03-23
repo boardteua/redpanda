@@ -1024,7 +1024,7 @@
 
 ---
 
-### [ ] T88 — Уніфікація **кнопок і submit** у SPA: канон як у **модалі налаштувань чату** (`rp-btn` / `RpButton`)
+### [x] T88 — Уніфікація **кнопок і submit** у SPA: канон як у **модалі налаштувань чату** (`rp-btn` / `RpButton`)
 
 - **Delegate:** Frontend Developer (+ UI Designer, якщо змінюються токени **primary** у CSS)
 - **Залежність:** **T62** (примітиви UI, зокрема `components/ui/RpButton.vue`); **T39** (модалки); референс візуалу та розмітки — **`components/ChatSettingsModal.vue`** (кнопки «Зберегти», «Додати смайл», ghost у таблиці: `rp-focusable rp-btn rp-btn-primary text-sm` / `rp-btn-ghost`)

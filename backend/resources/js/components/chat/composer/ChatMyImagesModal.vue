@@ -15,9 +15,9 @@
                 <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">
                     Останні додані картинки
                 </h2>
-                <button type="button" class="rp-focusable rp-btn rp-btn-ghost text-sm" @click="close">
+                <RpButton variant="ghost" class="text-sm" @click="close">
                     Закрити
-                </button>
+                </RpButton>
             </div>
         </template>
         <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -61,14 +61,15 @@
                     </button>
                 </div>
                 <div v-if="items.length > 0 && currentPage < lastPage" class="mt-4 flex justify-center">
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-ghost text-sm"
+                    <RpButton
+                        variant="ghost"
+                        class="text-sm"
+                        :loading="loadingMore"
                         :disabled="loadingMore"
                         @click="loadMore"
                     >
                         {{ loadingMore ? 'Завантаження…' : 'Завантажити ще' }}
-                    </button>
+                    </RpButton>
                 </div>
             </div>
         </div>

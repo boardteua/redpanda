@@ -1,14 +1,14 @@
 <template>
     <div class="rp-auth-landing flex flex-col px-4 py-10 pb-12 sm:px-6">
         <div class="rp-auth-landing-theme">
-            <button
-                type="button"
-                class="rp-focusable rp-btn rp-btn-ghost shrink-0 text-sm"
+            <RpButton
+                variant="ghost"
+                class="shrink-0 text-sm"
                 aria-label="Перемкнути тему оформлення"
                 @click="cycleTheme"
             >
                 {{ themeLabel }}
-            </button>
+            </RpButton>
         </div>
 
         <main
@@ -168,13 +168,9 @@
                             />
                             Запам’ятати мене
                         </label>
-                        <button
-                            type="submit"
-                            class="rp-focusable rp-btn rp-btn-primary w-full"
-                            :disabled="loading"
-                        >
+                        <RpButton native-type="submit" class="w-full" :loading="loading" :disabled="loading">
                             Увійти
-                        </button>
+                        </RpButton>
                     </form>
 
                     <form
@@ -268,13 +264,9 @@
                                 {{ fieldError('password_confirmation') }}
                             </p>
                         </div>
-                        <button
-                            type="submit"
-                            class="rp-focusable rp-btn rp-btn-primary w-full"
-                            :disabled="loading"
-                        >
+                        <RpButton native-type="submit" class="w-full" :loading="loading" :disabled="loading">
                             Зареєструватися
-                        </button>
+                        </RpButton>
                     </form>
 
                     <p
@@ -310,14 +302,9 @@
                             {{ guestFieldError }}
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        class="rp-focusable rp-btn rp-btn-primary mt-4 w-full"
-                        :disabled="loading"
-                        @click="submitGuest"
-                    >
+                    <RpButton class="mt-4 w-full" :loading="loading" :disabled="loading" @click="submitGuest">
                         Зайти анонімно
-                    </button>
+                    </RpButton>
                 </div>
                 <div
                     v-if="socialLoginUiVisible"
@@ -329,30 +316,30 @@
                         або соціальний вхід
                     </div>
                     <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost w-full sm:w-auto"
+                        <RpButton
+                            variant="ghost"
+                            class="w-full sm:w-auto"
                             :disabled="loading"
                             @click="startSocialLogin('google-oauth2')"
                         >
                             Google
-                        </button>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost w-full sm:w-auto"
+                        </RpButton>
+                        <RpButton
+                            variant="ghost"
+                            class="w-full sm:w-auto"
                             :disabled="loading"
                             @click="startSocialLogin('facebook')"
                         >
                             Facebook
-                        </button>
-                        <button
-                            type="button"
-                            class="rp-focusable rp-btn rp-btn-ghost w-full sm:w-auto"
+                        </RpButton>
+                        <RpButton
+                            variant="ghost"
+                            class="w-full sm:w-auto"
                             :disabled="loading"
                             @click="startSocialLogin('twitter')"
                         >
                             X
-                        </button>
+                        </RpButton>
                     </div>
                 </div>
                 </template>
