@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ChatMessage;
+use App\Models\ChatSetting;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -50,6 +51,19 @@ class ChatImageApiTest extends TestCase
             ->withHeaders($this->statefulHeaders())
             ->post('/api/v1/images', ['image' => $file])
             ->assertForbidden();
+    }
+
+    public function test_registered_user_cannot_upload_image_larger_than_chat_setting(): void
+    {
+        ChatSetting::query()->update(['max_attachment_bytes' => 2048]);
+        $user = User::factory()->create();
+        $file = UploadedFile::fake()->create('big.jpg', 4, 'image/jpeg');
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->post('/api/v1/images', ['image' => $file])
+            ->assertUnprocessable();
     }
 
     public function test_registered_user_cannot_upload_when_chat_upload_disabled(): void

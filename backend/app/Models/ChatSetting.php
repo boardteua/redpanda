@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Глобальні параметри чату (один рядок). Для **T44** — поріг N і область лічби публічних повідомлень.
@@ -14,6 +15,12 @@ class ChatSetting extends Model
 
     /** Лічба лише в одній кімнаті (публічні повідомлення; приват не враховуються у T44). */
     public const SCOPE_DEFAULT_ROOM_ONLY = 'default_room_only';
+
+    /** Дефолтний ліміт вкладень у чат (байти), узгоджено з колишнім `max:4096` KB у {@see \App\Http\Controllers\Api\V1\ChatImageController}. */
+    public const DEFAULT_MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+    /** Верхня межа значення в адмінці (байти); фактичне завантаження обмежує ще й PHP `upload_max_filesize`. */
+    public const ADMIN_MAX_ATTACHMENT_BYTES_CAP = 100 * 1024 * 1024;
 
     protected $table = 'chat_settings';
 
@@ -29,6 +36,7 @@ class ChatSetting extends Model
         'landing_settings',
         'registration_flags',
         'sound_on_every_post',
+        'max_attachment_bytes',
     ];
 
     /**
@@ -47,7 +55,22 @@ class ChatSetting extends Model
             'landing_settings' => 'array',
             'registration_flags' => 'array',
             'sound_on_every_post' => 'boolean',
+            'max_attachment_bytes' => 'integer',
         ];
+    }
+
+    /**
+     * Максимальний розмір файлу для {@see \App\Http\Controllers\Api\V1\ChatImageController}: мінімум з налаштування чату та {@see UploadedFile::getMaxFilesize()}.
+     */
+    public function effectiveMaxChatImageUploadBytes(): int
+    {
+        $configured = max(1024, (int) ($this->max_attachment_bytes ?: self::DEFAULT_MAX_ATTACHMENT_BYTES));
+        $phpMax = (int) UploadedFile::getMaxFilesize();
+        if ($phpMax <= 0) {
+            return $configured;
+        }
+
+        return min($configured, $phpMax);
     }
 
     public static function current(): self

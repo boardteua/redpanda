@@ -31,10 +31,11 @@ class ChatSettingsApiTest extends TestCase
     {
         $guest = User::factory()->guest()->create();
 
-        $this->from(config('app.url'))
+        $response = $this->from(config('app.url'))
             ->actingAs($guest, 'web')
             ->withHeaders($this->statefulHeaders())
-            ->getJson('/api/v1/chat/settings')
+            ->getJson('/api/v1/chat/settings');
+        $response
             ->assertOk()
             ->assertJsonPath('data.room_create_min_public_messages', 100)
             ->assertJsonPath('data.public_message_count_scope', ChatSetting::SCOPE_ALL_PUBLIC_ROOMS)
@@ -44,8 +45,14 @@ class ChatSettingsApiTest extends TestCase
             ->assertJsonPath('data.mod_slash_default_mute_minutes', 30)
             ->assertJsonPath('data.mod_slash_default_kick_minutes', 60)
             ->assertJsonPath('data.sound_on_every_post', false)
+            ->assertJsonPath('data.max_attachment_bytes', 4 * 1024 * 1024)
             ->assertJsonPath('data.landing_settings.links', [])
             ->assertJsonPath('data.registration_flags.registration_open', true);
+
+        $eff = (int) $response->json('data.max_chat_image_upload_bytes');
+        $cfg = (int) $response->json('data.max_attachment_bytes');
+        $this->assertGreaterThan(0, $eff);
+        $this->assertLessThanOrEqual($cfg, $eff);
     }
 
     public function test_non_admin_patch_returns_403(): void
@@ -151,6 +158,37 @@ class ChatSettingsApiTest extends TestCase
         $row = ChatSetting::current();
         $this->assertSame(45, $row->mod_slash_default_mute_minutes);
         $this->assertSame(90, $row->mod_slash_default_kick_minutes);
+    }
+
+    public function test_admin_can_patch_max_attachment_bytes(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $target = 8 * 1024 * 1024;
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'max_attachment_bytes' => $target,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.max_attachment_bytes', $target);
+
+        $this->assertSame($target, (int) ChatSetting::current()->max_attachment_bytes);
+    }
+
+    public function test_admin_cannot_set_max_attachment_bytes_above_cap(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'max_attachment_bytes' => ChatSetting::ADMIN_MAX_ATTACHMENT_BYTES_CAP + 1,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['max_attachment_bytes']);
     }
 
     public function test_admin_cannot_set_message_count_room_to_non_public_room(): void

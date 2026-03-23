@@ -48,6 +48,7 @@
                     :logging-out="loggingOut"
                     :is-guest="Boolean(user && user.guest)"
                     :chat-upload-disabled="Boolean(user && !user.guest && user.chat_upload_disabled)"
+                    :max-chat-image-upload-bytes="maxChatImageUploadBytesFromSettings"
                     :message-max-length="composerMessageMaxLength"
                     :ensure-sanctum="ensureSanctum"
                     @submit-message="sendMessage"
@@ -506,6 +507,16 @@ export default {
             }
 
             return 4000;
+        },
+        /** T86: фактичний ліміт байтів для `POST /api/v1/images` (мінімум з адмін-налаштування та PHP). */
+        maxChatImageUploadBytesFromSettings() {
+            const cs = this.chatSettings;
+            if (!cs || cs.max_chat_image_upload_bytes == null) {
+                return null;
+            }
+            const n = Number(cs.max_chat_image_upload_bytes);
+
+            return Number.isFinite(n) && n > 0 ? n : null;
         },
         sidebarTabs() {
             return [

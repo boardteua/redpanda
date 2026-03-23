@@ -68,7 +68,7 @@
                     type="button"
                     class="rp-focusable rp-chat-composer-rail-btn"
                     :disabled="sending || uploadingImage || !selectedRoomId || imageUploadBlocked || editPostId"
-                    :title="imageUploadBlocked ? imageUploadBlockedTitle : 'Додати зображення (JPEG, PNG, GIF, WebP, до 4 МБ)'"
+                    :title="imageUploadBlocked ? imageUploadBlockedTitle : imageAttachTitle"
                     :aria-label="imageUploadBlocked ? imageUploadBlockedTitle : 'Додати зображення до повідомлення'"
                     @click="$refs.imageInput && $refs.imageInput.click()"
                 >
@@ -133,6 +133,8 @@ import ChatRoomComposerAttachmentPreviews from './ChatRoomComposerAttachmentPrev
 import ChatRoomComposerEditBanner from './ChatRoomComposerEditBanner.vue';
 import ChatRoomComposerToolbar from './ChatRoomComposerToolbar.vue';
 import {
+    CHAT_IMAGE_MAX_BYTES,
+    formatChatImageMaxLabel,
     getFirstClipboardImageFile,
     validateChatImageFileForUpload,
 } from '../../../utils/chatComposerImageUpload';
@@ -165,6 +167,11 @@ export default {
         isGuest: { type: Boolean, default: false },
         /** Модератор вимкнув завантаження зображень (`chat_upload_disabled` у `auth/user`). */
         chatUploadDisabled: { type: Boolean, default: false },
+        /** З `GET /api/v1/chat/settings` → `max_chat_image_upload_bytes` (T86). */
+        maxChatImageUploadBytes: {
+            default: null,
+            validator: (v) => v === null || v === undefined || (typeof v === 'number' && Number.isFinite(v)),
+        },
         /** Узгоджено з `StoreChatMessageRequest` / `UpdateChatMessageRequest` (T35). */
         messageMaxLength: {
             type: Number,
@@ -196,6 +203,16 @@ export default {
             }
 
             return Boolean(this.composerText.trim()) || Boolean(this.pendingImageId);
+        },
+        effectiveChatImageMaxBytes() {
+            const n = Number(this.maxChatImageUploadBytes);
+
+            return Number.isFinite(n) && n > 0 ? n : CHAT_IMAGE_MAX_BYTES;
+        },
+        imageAttachTitle() {
+            const label = formatChatImageMaxLabel(this.effectiveChatImageMaxBytes);
+
+            return `Додати зображення (JPEG, PNG, GIF, WebP, до ${label})`;
         },
         composerBgPalette() {
             return COMPOSER_BG_PALETTE;
@@ -548,7 +565,7 @@ export default {
 
                 return;
             }
-            const v = validateChatImageFileForUpload(file);
+            const v = validateChatImageFileForUpload(file, this.effectiveChatImageMaxBytes);
             if (!v.ok) {
                 this.imageUploadError = v.message;
                 this.clearPendingChatImage();

@@ -17,6 +17,8 @@ class ChatSettingsResource extends JsonResource
         /** @var ChatSetting $m */
         $m = $this->resource;
 
+        $configuredMax = max(1024, (int) ($m->max_attachment_bytes ?: ChatSetting::DEFAULT_MAX_ATTACHMENT_BYTES));
+
         return [
             'room_create_min_public_messages' => (int) $this->room_create_min_public_messages,
             'public_message_count_scope' => (string) $this->public_message_count_scope,
@@ -27,6 +29,8 @@ class ChatSettingsResource extends JsonResource
             'mod_slash_default_kick_minutes' => (int) $this->mod_slash_default_kick_minutes,
             'silent_mode' => (bool) $this->silent_mode,
             'sound_on_every_post' => (bool) ($m->sound_on_every_post ?? false),
+            'max_attachment_bytes' => $configuredMax,
+            'max_chat_image_upload_bytes' => $m->effectiveMaxChatImageUploadBytes(),
             'landing_settings' => $m->resolvedLandingSettings(),
             'registration_flags' => $m->resolvedRegistrationFlags(),
         ];

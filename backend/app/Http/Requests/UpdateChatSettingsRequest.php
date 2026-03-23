@@ -37,6 +37,12 @@ class UpdateChatSettingsRequest extends FormRequest
             'mod_slash_default_kick_minutes' => ['sometimes', 'integer', 'min:1', 'max:525600'],
             'silent_mode' => ['sometimes', 'boolean'],
             'sound_on_every_post' => ['sometimes', 'boolean'],
+            'max_attachment_bytes' => [
+                'sometimes',
+                'integer',
+                'min:1024',
+                'max:'.ChatSetting::ADMIN_MAX_ATTACHMENT_BYTES_CAP,
+            ],
             'landing_settings' => ['sometimes', 'array'],
             'landing_settings.page_title' => ['nullable', 'string', 'max:120'],
             'landing_settings.tagline' => ['nullable', 'string', 'max:200'],

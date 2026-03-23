@@ -831,7 +831,7 @@ paths:
       summary: Завантажити аватар профілю
       description: |
         Лише для зареєстрованих користувачів (`guest === false`). Гість отримує **403**.
-        Обмеження як у `POST /api/v1/images`: JPEG, PNG, GIF, WebP; max 4 МБ.
+        Обмеження як у `POST /api/v1/images`: JPEG, PNG, GIF, WebP; розмір — див. `max_chat_image_upload_bytes` у `GET /api/v1/chat/settings`.
         Відповідь — оновлений профіль у форматі `UserResponse` (поле `avatar_url` вказує на `GET /api/v1/images/{id}/file`).
       operationId: uploadProfileAvatar
       security:
@@ -1516,7 +1516,8 @@ paths:
       tags: [Chat]
       summary: Завантажити зображення (чернетка перед повідомленням)
       description: |
-        `multipart/form-data`, поле **`image`**. Дозволені MIME: `image/jpeg`, `image/png`, `image/gif`, `image/webp`; максимум **4096 КБ**.
+        `multipart/form-data`, поле **`image`**. Дозволені MIME: `image/jpeg`, `image/png`, `image/gif`, `image/webp`.
+        Максимальний розмір — **мінімум** з `max_attachment_bytes` (адмін, `GET/PATCH /api/v1/chat/settings`) та обмеження PHP `upload_max_filesize` / `post_max_size`; фактична межа в байтах — поле **`max_chat_image_upload_bytes`** у `GET /api/v1/chat/settings`. При перевищенні — **422** з поясненням у `message` / `errors`.
         У відповіді — `data.id` для передачі в `POST /api/v1/rooms/{roomId}/messages` як `image_id`.
       operationId: uploadChatImage
       security:
@@ -2774,6 +2775,8 @@ components:
         - mod_slash_default_kick_minutes
         - silent_mode
         - sound_on_every_post
+        - max_attachment_bytes
+        - max_chat_image_upload_bytes
         - landing_settings
         - registration_flags
       properties:
@@ -2815,6 +2818,14 @@ components:
         sound_on_every_post:
           type: boolean
           description: Legacy-опція «звук на кожен пост» (**T75**); клієнтський newpost (див. T65).
+        max_attachment_bytes:
+          type: integer
+          minimum: 1024
+          description: Ліміт розміру вкладення в чат (байти), задає **адмін** (**T86**); верхня межа в застосунку — 100 MiB; PHP може обмежити нижче.
+        max_chat_image_upload_bytes:
+          type: integer
+          minimum: 1
+          description: Фактична межа для `POST /api/v1/images` — `min(max_attachment_bytes, PHP upload_max_filesize)`; для перевірки на клієнті перед відправкою.
         landing_settings:
           $ref: "#/components/schemas/LandingSettingsPayload"
         registration_flags:
@@ -2980,6 +2991,11 @@ components:
           description: Беззвучний режим чату (**T71**).
         sound_on_every_post:
           type: boolean
+        max_attachment_bytes:
+          type: integer
+          minimum: 1024
+          maximum: 104857600
+          description: Максимальний розмір файлу вкладення в чат (байти); **T86**.
         landing_settings:
           type: object
           properties:

@@ -171,6 +171,31 @@
                 </div>
 
                 <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                    <h3 class="text-sm font-semibold text-[var(--rp-text)]">Вкладення в чат (T86)</h3>
+                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                        Максимальний розмір файлу зображення для <span class="font-mono">POST /api/v1/images</span>. Фактична
+                        межа на сервері не перевищує PHP
+                        <span class="font-mono">upload_max_filesize</span> — див. підказку нижче після збереження/завантаження.
+                    </p>
+                    <div class="mt-3">
+                        <label class="rp-label" for="cs-max-att-mb">Максимум розміру файлу (МБ)</label>
+                        <input
+                            id="cs-max-att-mb"
+                            v-model.number="form.max_attachment_mb"
+                            type="number"
+                            min="0.01"
+                            max="100"
+                            step="0.1"
+                            class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                        />
+                        <p v-if="attachmentEffectiveLabel" class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Зараз клієнти обмежені приблизно до <strong>{{ attachmentEffectiveLabel }}</strong> (мінімум з цього
+                            значення та обмежень PHP).
+                        </p>
+                    </div>
+                </div>
+
+                <div class="border-t border-[var(--rp-border-subtle)] pt-4">
                     <h3 class="text-sm font-semibold text-[var(--rp-text)]">Вхідна сторінка (T75)</h3>
                     <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
                         Публічний зріз без авторизації: <span class="font-mono">GET /api/v1/landing</span>. Без HTML і
@@ -441,6 +466,7 @@
 
 <script>
 import RpModal from './RpModal.vue';
+import { formatChatImageMaxLabel } from '../utils/chatComposerImageUpload';
 import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
 
 let titleSeq = 0;
@@ -489,7 +515,9 @@ export default {
                     min_age: null,
                     show_social_login_buttons: false,
                 },
+                max_attachment_mb: 4,
             },
+            attachmentEffectiveBytesHint: null,
             emoticonList: [],
             emoticonLoading: false,
             emoticonBusy: false,
@@ -508,6 +536,11 @@ export default {
             const list = this.rooms || [];
 
             return list.filter((r) => Number(r.access) === 0);
+        },
+        attachmentEffectiveLabel() {
+            const n = Number(this.attachmentEffectiveBytesHint);
+
+            return Number.isFinite(n) && n > 0 ? formatChatImageMaxLabel(n) : '';
         },
         roomSelect: {
             get() {
@@ -644,6 +677,17 @@ export default {
                 } else {
                     body.message_count_room_id = null;
                 }
+                const mb = Number(this.form.max_attachment_mb);
+                if (!Number.isFinite(mb) || mb <= 0) {
+                    this.saveError = 'Вкажіть коректний ліміт розміру файлу (МБ).';
+                    this.saving = false;
+
+                    return;
+                }
+                body.max_attachment_bytes = Math.min(
+                    100 * 1024 * 1024,
+                    Math.max(1024, Math.round(mb * 1024 * 1024)),
+                );
                 await window.axios.patch('/api/v1/chat/settings', body);
                 this.$emit('saved');
                 this.close();

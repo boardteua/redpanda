@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\ChatMessage;
+use App\Models\ChatSetting;
 use App\Models\Image;
 use App\Models\User;
 use App\Services\Moderation\UserPostingGate;
@@ -18,13 +19,21 @@ class UserAvatarController extends Controller
 {
     public function store(Request $request, UserPostingGate $postingGate): JsonResponse
     {
+        $effectiveBytes = ChatSetting::current()->effectiveMaxChatImageUploadBytes();
+        $maxKb = max(1, (int) ceil($effectiveBytes / 1024));
+
         $request->validate([
             'image' => [
                 'required',
                 'file',
-                'max:4096',
+                'max:'.$maxKb,
                 'mimetypes:image/jpeg,image/png,image/gif,image/webp',
             ],
+        ], [
+            'image.max' => sprintf(
+                'Файл завеликий. Максимум %d байт (налаштування чату та обмеження PHP upload_max_filesize).',
+                $effectiveBytes
+            ),
         ]);
 
         /** @var User $user */
