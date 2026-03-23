@@ -17,6 +17,6 @@
 
 ## Зміни в структурі
 
-- Нові SFC: `ChatRoomComposerToolbar.vue`, `ChatRoomComposerEditBanner.vue`, `ChatRoomComposerAttachmentPreviews.vue`.
-- Додатково: `ChatRoomMainColumn.vue`, `ChatSidebarTabBars.vue`, `ChatRoomModals.vue` (декомпозиція `ChatRoom.vue` / сайдбару).
+- Нові SFC: `components/chat/composer/ChatRoomComposerToolbar.vue` (та інші підкомпоненти композера), `room/ChatRoomMainColumn.vue`, `sidebar/ChatSidebarTabBars.vue`, `room/ChatRoomModals.vue`.
+- Структура: `chat/feed|composer|sidebar|room/` — див. `docs/chat-v2/T84-vue-decomposition.md`.
 - Інвентаризація та наступні кандидати: `docs/chat-v2/T84-vue-decomposition.md`.

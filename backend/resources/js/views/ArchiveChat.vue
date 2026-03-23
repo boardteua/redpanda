@@ -203,7 +203,7 @@
 </template>
 
 <script>
-import ChatMessageBody from '../components/chat/ChatMessageBody.vue';
+import ChatMessageBody from '../components/chat/feed/ChatMessageBody.vue';
 import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
 import { chatMessageBodyClassList, normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 

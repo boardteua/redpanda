@@ -140,8 +140,8 @@
 </template>
 
 <script>
-import { parseChatMessageBody } from '../../utils/chatMessageBodyParse';
-import { openImageLightbox } from '../../utils/imageLightboxStore';
+import { parseChatMessageBody } from '../../../utils/chatMessageBodyParse';
+import { openImageLightbox } from '../../../utils/imageLightboxStore';
 import ChatOembedBlock from './ChatOembedBlock.vue';
 
 /** Провайдери з окремим layout уже в шаблоні вище. */

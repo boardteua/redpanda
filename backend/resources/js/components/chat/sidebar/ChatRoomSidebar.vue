@@ -678,12 +678,12 @@
 </template>
 
 <script>
-import UserBadgeInlineActionPanel from '../UserBadgeInlineActionPanel.vue';
-import SidebarHamburgerTrigger from '../SidebarHamburgerTrigger.vue';
+import UserBadgeInlineActionPanel from '../../UserBadgeInlineActionPanel.vue';
+import SidebarHamburgerTrigger from '../../SidebarHamburgerTrigger.vue';
 import ChatPeerRoleIcon from './ChatPeerRoleIcon.vue';
 import ChatSidebarTabBars from './ChatSidebarTabBars.vue';
 import ChatUploadLockBadge from './ChatUploadLockBadge.vue';
-import { isStaffRole } from '../../lib/userBadgeMenuItems';
+import { isStaffRole } from '../../../lib/userBadgeMenuItems';
 
 export default {
     name: 'ChatRoomSidebar',

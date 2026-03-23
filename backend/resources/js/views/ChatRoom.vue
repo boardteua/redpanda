@@ -165,11 +165,11 @@
 </template>
 
 <script>
-import ChatFeedMessageList from '../components/chat/ChatFeedMessageList.vue';
-import ChatRoomComposer from '../components/chat/ChatRoomComposer.vue';
-import ChatRoomMainColumn from '../components/chat/ChatRoomMainColumn.vue';
-import ChatRoomModals from '../components/chat/ChatRoomModals.vue';
-import ChatRoomSidebar from '../components/chat/ChatRoomSidebar.vue';
+import ChatFeedMessageList from '../components/chat/feed/ChatFeedMessageList.vue';
+import ChatRoomComposer from '../components/chat/composer/ChatRoomComposer.vue';
+import ChatRoomMainColumn from '../components/chat/room/ChatRoomMainColumn.vue';
+import ChatRoomModals from '../components/chat/room/ChatRoomModals.vue';
+import ChatRoomSidebar from '../components/chat/sidebar/ChatRoomSidebar.vue';
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
 import { createEcho } from '../lib/echo';
 import {

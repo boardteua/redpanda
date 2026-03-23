@@ -82,7 +82,7 @@
 </template>
 
 <script>
-import ChatMessageBody from './chat/ChatMessageBody.vue';
+import ChatMessageBody from './chat/feed/ChatMessageBody.vue';
 
 export default {
     name: 'PrivateChatPanel',

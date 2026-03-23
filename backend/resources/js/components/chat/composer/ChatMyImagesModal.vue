@@ -76,7 +76,7 @@
 </template>
 
 <script>
-import RpModal from '../RpModal.vue';
+import RpModal from '../../RpModal.vue';
 
 let modalSeq = 0;
 

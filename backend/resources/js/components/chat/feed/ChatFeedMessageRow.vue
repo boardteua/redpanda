@@ -135,9 +135,9 @@
 
 <script>
 import ChatMessageBody from './ChatMessageBody.vue';
-import { openImageLightbox } from '../../utils/imageLightboxStore';
-import { messageHasBlockMedia } from '../../utils/chatMessageBodyParse';
-import { chatMessageBodyClassList, nickColorStyleForPost } from '../../utils/chatMessageStyle';
+import { openImageLightbox } from '../../../utils/imageLightboxStore';
+import { messageHasBlockMedia } from '../../../utils/chatMessageBodyParse';
+import { chatMessageBodyClassList, nickColorStyleForPost } from '../../../utils/chatMessageStyle';
 
 export default {
     name: 'ChatFeedMessageRow',

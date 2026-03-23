@@ -54,7 +54,7 @@
 </template>
 
 <script>
-import { fetchOembed, parseIframeFromOembedHtml } from '../../utils/oembedClient';
+import { fetchOembed, parseIframeFromOembedHtml } from '../../../utils/oembedClient';
 
 export default {
     name: 'ChatOembedBlock',

@@ -91,10 +91,10 @@
 </template>
 
 <script>
-import RpModal from '../RpModal.vue';
-import { filterEmojiItems } from '../../utils/chatEmojiCatalog';
-import { loadChatEmoticonsCatalog } from '../../utils/chatEmoticons';
-import { getEmoticonUsageCounts, recordEmoticonUsage } from '../../utils/chatEmoticonUsage';
+import RpModal from '../../RpModal.vue';
+import { filterEmojiItems } from '../../../utils/chatEmojiCatalog';
+import { loadChatEmoticonsCatalog } from '../../../utils/chatEmoticons';
+import { getEmoticonUsageCounts, recordEmoticonUsage } from '../../../utils/chatEmoticonUsage';
 
 let modalSeq = 0;
 

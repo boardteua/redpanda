@@ -69,7 +69,7 @@
 </template>
 
 <script>
-import RpModal from '../RpModal.vue';
+import RpModal from '../../RpModal.vue';
 
 export default {
     name: 'AddRoomModal',

@@ -70,12 +70,12 @@
 
 <script>
 import AddRoomModal from './AddRoomModal.vue';
-import ChatSettingsModal from '../ChatSettingsModal.vue';
-import CommandsHelpModal from '../CommandsHelpModal.vue';
-import ConfirmDialogModal from '../ConfirmDialogModal.vue';
+import ChatSettingsModal from '../../ChatSettingsModal.vue';
+import CommandsHelpModal from '../../CommandsHelpModal.vue';
+import ConfirmDialogModal from '../../ConfirmDialogModal.vue';
 import RoomEditModal from './RoomEditModal.vue';
-import UserInfoModal from '../UserInfoModal.vue';
-import UserProfileModal from '../UserProfileModal.vue';
+import UserInfoModal from '../../UserInfoModal.vue';
+import UserProfileModal from '../../UserProfileModal.vue';
 
 export default {
     name: 'ChatRoomModals',

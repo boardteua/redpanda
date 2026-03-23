@@ -135,7 +135,7 @@ import ChatRoomComposerToolbar from './ChatRoomComposerToolbar.vue';
 import {
     getFirstClipboardImageFile,
     validateChatImageFileForUpload,
-} from '../../utils/chatComposerImageUpload';
+} from '../../../utils/chatComposerImageUpload';
 import {
     COMPOSER_BG_PALETTE,
     COMPOSER_FG_PALETTE,
@@ -144,7 +144,7 @@ import {
     normalizePostStyleFromApi,
     readComposerStyleFromStorage,
     persistComposerStyle,
-} from '../../utils/chatMessageStyle';
+} from '../../../utils/chatMessageStyle';
 
 export default {
     name: 'ChatRoomComposer',
