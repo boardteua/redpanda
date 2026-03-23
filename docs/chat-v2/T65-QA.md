@@ -14,7 +14,7 @@
 - **`/sounds/newpost.mp3`** — лише для **нових** повідомлень у **поточній** кімнаті, **не від себе**, якщо увімкнено `notification_sound_prefs.public_messages`; у **фоновій** вкладці звук **не** відтворюється (крім майбутнього прапорця **`chatSettings.sound_on_every_post`** для паритету з **T75**, коли поле з’явиться в API).
 - **`/sounds/pmsound.mp3`** — при вхідному **`PrivateMessagePosted`** (не від себе), якщо увімкнено `notification_sound_prefs.private`; у фоновій вкладці **не** глушиться (узгоджено з формулюванням задачі).
 - **Інлайн-приват** у стрічці (`type === 'inline_private'`) — **без** newpost (отримувач уже чує pmsound), щоб уникнути подвійного сигналу.
-- **Favicon** — червоний бейдж з числом за **`totalPrivateUnread`** (той самий джерело, що й T56); при **0** — відновлення стандартної іконки.
+- **Favicon** — пакет **[favicon-badge-notify](https://github.com/jsdeveloperr/favicon-badge-notify)**; базова іконка **`/board-te-ua-favicon.ico`** (файл з legacy [board.te.ua](https://www.board.te.ua/) — у HTML там `<link rel="shortcut icon" href="favicon.ico" />`). Бейдж за **`totalPrivateUnread`** (T56); при **0** — знову базова іконка.
 - **Autoplay:** відтворення після **першої** `pointerdown` / `keydown` на вікні (обхід політики браузера).
 
 ## Ручний чекліст (оператор)
