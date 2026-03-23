@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Events\PrivateMessageCreated;
+use App\Events\PrivateThreadCleared;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StorePrivateMessageRequest;
 use App\Http\Resources\PrivateMessageResource;
@@ -16,6 +17,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class PrivateMessageController extends Controller
@@ -229,6 +231,56 @@ class PrivateMessageController extends Controller
             ->additional(['meta' => ['duplicate' => false]])
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    /**
+     * Видалити всю історію привату між поточним користувачем і peer (T68).
+     */
+    public function destroyThread(Request $request, User $peer): JsonResponse
+    {
+        $user = $request->user();
+        if ((int) $peer->id === (int) $user->id) {
+            return response()->json(['message' => 'Неможливо застосувати до себе.'], 422);
+        }
+        if (PrivateMessageGate::isBlocked($user, $peer)) {
+            return response()->json(['message' => 'Повідомлення недоступні.'], 403);
+        }
+
+        $uid = (int) $user->id;
+        $pid = (int) $peer->id;
+
+        DB::transaction(function () use ($uid, $pid): void {
+            PrivateMessage::query()
+                ->where(function ($q) use ($uid, $pid) {
+                    $q->where(function ($q2) use ($uid, $pid) {
+                        $q2->where('sender_id', $uid)->where('recipient_id', $pid);
+                    })->orWhere(function ($q2) use ($uid, $pid) {
+                        $q2->where('sender_id', $pid)->where('recipient_id', $uid);
+                    });
+                })
+                ->delete();
+
+            PrivateMessageReadState::query()
+                ->where(function ($q) use ($uid, $pid) {
+                    $q->where(function ($q2) use ($uid, $pid) {
+                        $q2->where('user_id', $uid)->where('peer_id', $pid);
+                    })->orWhere(function ($q2) use ($uid, $pid) {
+                        $q2->where('user_id', $pid)->where('peer_id', $uid);
+                    });
+                })
+                ->delete();
+        });
+
+        $pairLo = min($uid, $pid);
+        $pairHi = max($uid, $pid);
+        broadcast(new PrivateThreadCleared($uid, $pairLo, $pairHi));
+
+        return response()->json([
+            'meta' => [
+                'ok' => true,
+                'cleared_peer_id' => $pid,
+            ],
+        ]);
     }
 
     private function countUnreadIncoming(int $readerId, int $peerId, int $lastReadIncomingMessageId): int

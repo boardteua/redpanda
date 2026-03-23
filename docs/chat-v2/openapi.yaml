@@ -21,7 +21,7 @@ info:
 
     **Прочитане в кімнаті (T47):** `GET .../rooms/{roomId}/messages` — `meta.last_read_post_id`; опційно `since_read=true` → `meta.first_unread_post_id` у межах сторінки; `POST .../rooms/{roomId}/read` з `last_read_post_id` (монотонно). Деталі — [T47-QA.md](T47-QA.md).
 
-    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`**, **`.MessageUpdated`**, **`.MessageDeleted`**, **`.PresenceStatusUpdated`** (статус учасника online/away/inactive, T48) транслюються на той самий presence-канал. Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08).
+    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color` — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`**, **`.MessageUpdated`**, **`.MessageDeleted`**, **`.PresenceStatusUpdated`** (статус учасника online/away/inactive, T48) транслюються на той самий presence-канал. Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08) та **`.PrivateThreadCleared`** (T68).
 
     **Статус присутності (T48):** `GET /api/v1/rooms/{roomId}/presence-statuses?user_ids=…` — мапа `userId → status` з кешу; `POST /api/v1/rooms/{roomId}/presence-status` з `{"status":"online"|"away"|"inactive"}` — оновлення власного статусу (throttle `presence-status`). Деталі — [T48-QA.md](T48-QA.md).
 
@@ -41,14 +41,15 @@ info:
 
     **Персонал: користувачі (T52):** `GET|PATCH /api/v1/mod/users` та `PATCH …/profile` — **`can:chat-admin`** (лише адміністратор чату); throttle `mod-user-read` / `mod-actions`. Пошук: підрядок у `user_name`, числовий `id`, за `email` якщо в `q` є `@`; у відповіді `email` для не-гостей. `PATCH …/{id}` — `vip` та `user_rank` (ціль з нижчим рангом); `PATCH …/profile` — повний набір як `PATCH /me/profile` (без зміни e-mail/пароля). **Модератор** ці ендпоінти **не** викликає; mute/kick лишаються під `can:moderate` (`POST …/mute|kick`). Деталі — [T52-QA.md](T52-QA.md).
 
-    **Приват і соціальне (T08, T56):** `GET /api/v1/private/conversations` — у кожному елементі `unread_count` (вхідні від peer, ще не «прочитані»), у корені `meta.total_private_unread` (сума).
+    **Приват і соціальне (T08, T56, T68):** `GET /api/v1/private/conversations` — у кожному елементі `unread_count` (вхідні від peer, ще не «прочитані»), у корені `meta.total_private_unread` (сума).
     `GET|POST /api/v1/private/peers/{userId}/messages`; `POST /api/v1/private/peers/{userId}/read` — позначити вхідні від peer прочитаними (throttle `private-read`, ідемпотентно).
+    `DELETE /api/v1/private/peers/{userId}/thread` — видалити всю історію привату між поточним користувачем і peer (throttle `private-post`); **403** при взаємному ігнорі; подія **`.PrivateThreadCleared`** на **`private-user.{userId}`** для **обох** учасників (`peer_one_id`, `peer_two_id`, `cleared_by_user_id`).
     `GET /api/v1/users/lookup`, ендпоінти `friends*` та `ignores*` (деталі та сценарії — [T08-QA.md](T08-QA.md)); непрочитані приватні — [T56-QA.md](T56-QA.md).
     **Друзі (T50):** `GET /api/v1/friends` — усі прийняті друзі (без фільтра онлайн); `DELETE /api/v1/friends/{userId}` — прибрати з друзів або скасувати вихідний запит (throttle `private-post`).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.16.8"
+  version: "0.16.9"
   license:
     name: Proprietary
     url: https://example.com/
@@ -1726,6 +1727,7 @@ paths:
         **T67 (користувач / гість):** `/manual` — довідник (client_only); `/away` — перемикання away/online у кімнаті + broadcast `PresenceStatusUpdated`;
         `/me` — публічне «дійове» повідомлення; `/seen нік` — client_only (активність у кімнаті); `/msg нік текст` — інлайн-приват (як T25, `meta.slash.name: msg`); голий `/msg` — **422**;
         `/friend нік` — запит у друзі (client_only або помилки як у `POST /friends/{user}`); **гостю** `/friend` — **403**.
+        **T68:** `/ignore нік`, `/ignoreclear` — **403** для гостя; очищення приватного треду — **`DELETE …/private/peers/{peer}/thread`** або рядок **`/clear`** у полі привату (Vue), не через `POST …/rooms/.../messages`.
         Окремий ліміт slash-команд на користувача (`429`): **`slash_command_max_per_window`** спроб за **`slash_command_window_seconds`** с (див. `GET/PATCH /api/v1/chat/settings`); разом із `image_id` такі рядки **422**.
         Потрібен **непорожній** `message` (після trim) або **`image_id`** власного завантаження (`POST /api/v1/images`).
         Поле `message` — **plain text**; max довжина: гість **2000**, користувач **4000**, VIP/модератор/адмін **8000** (інакше **422**).

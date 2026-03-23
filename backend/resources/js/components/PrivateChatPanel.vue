@@ -59,6 +59,9 @@
         </ul>
         <form class="shrink-0 border-t border-[var(--rp-border-subtle)] p-2" @submit.prevent="onSubmit">
             <label class="rp-sr-only" for="private-composer">Текст приватного повідомлення</label>
+            <p id="private-composer-keys-hint" class="rp-sr-only">
+                Enter — надіслати повідомлення. Shift+Enter — новий рядок.
+            </p>
             <textarea
                 id="private-composer"
                 :value="composerText"
@@ -66,8 +69,10 @@
                 maxlength="4000"
                 rows="2"
                 :disabled="sending"
-                placeholder="Повідомлення…"
+                placeholder="Повідомлення… (команда /clear — очистити тред)"
+                aria-describedby="private-composer-keys-hint"
                 @input="$emit('update:composerText', $event.target.value)"
+                @keydown="onComposerKeydown"
             />
             <RpButton native-type="submit" class="w-full" :disabled="sending || !composerText.trim()">
                 Надіслати
@@ -155,6 +160,20 @@ export default {
                 return;
             }
             this.$emit('send', t);
+        },
+        /** Enter — відправка; Shift+Enter — перенос рядка (як у месенджерах). */
+        onComposerKeydown(e) {
+            if (e.key !== 'Enter') {
+                return;
+            }
+            if (e.shiftKey) {
+                return;
+            }
+            if (e.isComposing || e.keyCode === 229) {
+                return;
+            }
+            e.preventDefault();
+            this.onSubmit();
         },
     },
 };

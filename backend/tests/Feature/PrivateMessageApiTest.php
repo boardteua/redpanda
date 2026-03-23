@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Events\PrivateMessageCreated;
+use App\Events\PrivateThreadCleared;
 use App\Models\PrivateMessage;
+use App\Models\PrivateMessageReadState;
 use App\Models\User;
 use App\Models\UserIgnore;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -207,5 +209,65 @@ class PrivateMessageApiTest extends TestCase
 
         $this->getJson('/api/v1/users/lookup?name=nobody_here_xyz')
             ->assertNotFound();
+    }
+
+    public function test_destroy_thread_clears_messages_read_state_and_dispatches_event(): void
+    {
+        Event::fake([PrivateThreadCleared::class]);
+
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        PrivateMessage::query()->create([
+            'sender_id' => $a->id,
+            'recipient_id' => $b->id,
+            'body' => 'x',
+            'sent_at' => time(),
+            'sent_time' => '12:00',
+            'client_message_id' => 'c5eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+        ]);
+
+        PrivateMessageReadState::query()->create([
+            'user_id' => $a->id,
+            'peer_id' => $b->id,
+            'last_read_incoming_message_id' => 1,
+        ]);
+
+        Sanctum::actingAs($a);
+        $this->deleteJson('/api/v1/private/peers/'.$b->id.'/thread')
+            ->assertOk()
+            ->assertJsonPath('meta.ok', true)
+            ->assertJsonPath('meta.cleared_peer_id', $b->id);
+
+        $this->assertSame(0, PrivateMessage::query()->count());
+        $this->assertSame(0, PrivateMessageReadState::query()->count());
+
+        Event::assertDispatched(PrivateThreadCleared::class);
+    }
+
+    public function test_destroy_thread_forbidden_when_pair_is_blocked_by_ignore(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        PrivateMessage::query()->create([
+            'sender_id' => $a->id,
+            'recipient_id' => $b->id,
+            'body' => 'x',
+            'sent_at' => time(),
+            'sent_time' => '12:00',
+            'client_message_id' => 'c6eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+        ]);
+
+        UserIgnore::query()->create([
+            'user_id' => $b->id,
+            'ignored_user_id' => $a->id,
+        ]);
+
+        Sanctum::actingAs($a);
+        $this->deleteJson('/api/v1/private/peers/'.$b->id.'/thread')
+            ->assertForbidden();
+
+        $this->assertSame(1, PrivateMessage::query()->count());
     }
 }

@@ -1720,6 +1720,9 @@ export default {
             ch.listen('.PrivateMessagePosted', (payload) => {
                 this.onPrivateWsPayload(payload);
             });
+            ch.listen('.PrivateThreadCleared', (payload) => {
+                this.onPrivateThreadClearedWs(payload);
+            });
             ch.listen('.RoomInlinePrivatePosted', (payload) => {
                 const m = normalizeMessage(payload);
                 const wasNew = Boolean(m && !this.messageIds.has(m.post_id));
@@ -1728,6 +1731,27 @@ export default {
                     this.handleNewRoomMessageSound(m);
                 }
             });
+        },
+        onPrivateThreadClearedWs(payload) {
+            if (!payload || !this.user) {
+                return;
+            }
+            const a = Number(payload.peer_one_id);
+            const b = Number(payload.peer_two_id);
+            const myId = Number(this.user.id);
+            if (!Number.isFinite(a) || !Number.isFinite(b) || (myId !== a && myId !== b)) {
+                return;
+            }
+            const pair = new Set([a, b]);
+            if (
+                this.privatePeer
+                && pair.has(myId)
+                && pair.has(Number(this.privatePeer.id))
+            ) {
+                this.privateMessages = [];
+                this.privateMessageIds = new Set();
+            }
+            this.loadConversations();
         },
         async onPrivateWsPayload(payload) {
             if (!payload || typeof payload.id === 'undefined' || !this.user) {
@@ -2328,12 +2352,36 @@ export default {
                 client_message_id: raw.client_message_id,
             });
         },
+        async clearPrivateThreadFromPanel() {
+            if (!this.privatePeer || this.sendingPrivate) {
+                return;
+            }
+            this.sendingPrivate = true;
+            this.privateLoadError = '';
+            await this.ensureSanctum();
+            try {
+                await window.axios.delete(`/api/v1/private/peers/${this.privatePeer.id}/thread`);
+                this.privateMessages = [];
+                this.privateMessageIds = new Set();
+                this.privateComposerText = '';
+                await this.loadConversations();
+            } catch (e) {
+                this.privateLoadError =
+                    e.response?.data?.message || 'Не вдалося очистити приватний тред.';
+            } finally {
+                this.sendingPrivate = false;
+            }
+        },
         async sendPrivateMessageFromPanel(body) {
             if (!this.privatePeer || this.sendingPrivate) {
                 return;
             }
             const text = typeof body === 'string' ? body.trim() : '';
             if (!text) {
+                return;
+            }
+            if (/^\/clear$/iu.test(text)) {
+                await this.clearPrivateThreadFromPanel();
                 return;
             }
             this.sendingPrivate = true;

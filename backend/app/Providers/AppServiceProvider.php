@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Chat\SlashCommands\Handlers\AwaySlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\FriendSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\IgnoreClearSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\IgnoreSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\ManualSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\MeSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\MsgSlashCommandHandler;
@@ -42,6 +44,8 @@ class AppServiceProvider extends ServiceProvider
             $registry->register('seen', $app->make(SeenSlashCommandHandler::class));
             $registry->register('msg', $app->make(MsgSlashCommandHandler::class));
             $registry->register('friend', $app->make(FriendSlashCommandHandler::class));
+            $registry->register('ignore', $app->make(IgnoreSlashCommandHandler::class));
+            $registry->register('ignoreclear', $app->make(IgnoreClearSlashCommandHandler::class));
 
             return $registry;
         });

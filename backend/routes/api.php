@@ -97,6 +97,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         });
 
         Route::middleware('throttle:private-post')->post('private/peers/{peer}/messages', [PrivateMessageController::class, 'store']);
+        Route::middleware('throttle:private-post')->delete('private/peers/{peer}/thread', [PrivateMessageController::class, 'destroyThread']);
 
         Route::get('friends', [FriendController::class, 'index']);
         Route::get('friends/requests/incoming', [FriendController::class, 'incoming']);

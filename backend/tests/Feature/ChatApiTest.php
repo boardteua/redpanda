@@ -14,6 +14,7 @@ use App\Models\Image;
 use App\Models\Room;
 use App\Models\RoomReadState;
 use App\Models\User;
+use App\Models\UserIgnore;
 use Illuminate\Broadcasting\BroadcastEvent;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -1374,5 +1375,68 @@ class ChatApiTest extends TestCase
                 'client_message_id' => 'd667ebc9-9c0b-4ef8-bb6d-6bb9bd380106',
             ])
             ->assertStatus(422);
+    }
+
+    public function test_slash_ignore_forbidden_for_guest(): void
+    {
+        [$public] = $this->seedRooms();
+        $guest = User::factory()->guest()->create();
+        $bob = User::factory()->create(['user_name' => 'bob_ign']);
+
+        $this->from(config('app.url'))
+            ->actingAs($guest, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/ignore bob_ign',
+                'client_message_id' => 'e167ebc9-9c0b-4ef8-bb6d-6bb9bd380201',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_slash_ignore_adds_to_ignore_list(): void
+    {
+        [$public] = $this->seedRooms();
+        $alice = User::factory()->create(['user_name' => 'alice_ign']);
+        $bob = User::factory()->create(['user_name' => 'bob_ign2']);
+
+        $this->from(config('app.url'))
+            ->actingAs($alice, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/ignore bob_ign2',
+                'client_message_id' => 'e267ebc9-9c0b-4ef8-bb6d-6bb9bd380202',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'ignore')
+            ->assertJsonPath('meta.slash.recognized', true);
+
+        $this->assertDatabaseHas('user_ignores', [
+            'user_id' => $alice->id,
+            'ignored_user_id' => $bob->id,
+        ]);
+    }
+
+    public function test_slash_ignoreclear_removes_all_ignores_for_user(): void
+    {
+        [$public] = $this->seedRooms();
+        $alice = User::factory()->create();
+        $bob = User::factory()->create();
+
+        UserIgnore::query()->create([
+            'user_id' => $alice->id,
+            'ignored_user_id' => $bob->id,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($alice, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/ignoreclear',
+                'client_message_id' => 'e367ebc9-9c0b-4ef8-bb6d-6bb9bd380203',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'ignoreclear');
+
+        $this->assertSame(0, UserIgnore::query()->where('user_id', $alice->id)->count());
     }
 }
