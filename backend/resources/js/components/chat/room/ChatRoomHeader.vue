@@ -1,6 +1,6 @@
 <template>
     <header
-        class="mb-3 flex w-full min-w-0 flex-shrink-0 items-center gap-2 px-2 py-2 sm:px-3"
+        class="flex w-full min-w-0 flex-shrink-0 items-center gap-2 px-2 py-2 sm:px-3"
     >
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
             <h1
