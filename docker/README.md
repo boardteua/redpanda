@@ -52,6 +52,16 @@ HTTP лишається на **8080**; WebSocket — окремо на **6001** 
 
 Файли `docker/compose.override.yml` і `docker/compose.deploy.env` у `.gitignore`.
 
+## Бекап MySQL
+
+Потрібен запущений контейнер `mysql`:
+
+```bash
+./docker/backup-mysql.sh
+```
+
+Архів: `backups/redpanda-UTC.sql.gz` (каталог задається змінною `BACKUP_DIR`).
+
 ## Приклад віддаленого деплою
 
 Кроки деплою на сервері: [deploy.sh](./deploy.sh).
