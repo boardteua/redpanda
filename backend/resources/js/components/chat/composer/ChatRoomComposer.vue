@@ -1,6 +1,6 @@
 <template>
     <form
-        class="flex shrink-0 flex-col border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-composer-bg)]"
+        class="flex min-w-0 w-full max-w-full shrink-0 flex-col border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-composer-bg)]"
         @submit.prevent="emitSubmit"
     >
         <ChatRoomComposerToolbar
@@ -32,7 +32,7 @@
             @cancel-edit="cancelEdit"
         />
         <label class="rp-sr-only" for="chat-composer">Повідомлення</label>
-        <div class="rp-chat-composer-row">
+        <div class="rp-chat-composer-row min-w-0 w-full max-w-full">
             <button
                 type="button"
                 class="rp-focusable rp-chat-composer-rail-btn rounded-full"

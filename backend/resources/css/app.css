@@ -122,10 +122,10 @@
     /* Інлайн-приват у стрічці (T25) — окремий фон + акцент зліва */
     --rp-chat-row-inline-private-bg: color-mix(in srgb, #e8eef6 88%, transparent);
     --rp-chat-row-inline-private-border: #4a6fa5;
-    /* T89 — #submit_button / .sub_button */
-    --rp-chat-send-bg: #ad6431;
-    --rp-chat-send-bg-hover: #744f34;
-    --rp-chat-send-fg: #ffffff;
+    /* Надіслати — ті самі акценти, що й --rp-primary (узгоджено з темною темою / WebKit) */
+    --rp-chat-send-bg: var(--rp-primary);
+    --rp-chat-send-bg-hover: var(--rp-primary-hover);
+    --rp-chat-send-fg: var(--rp-on-primary);
     /* Нік адміна в стрічці (T21) */
     --rp-chat-role-admin: #1a1a1a;
     /* Форматування тіла повідомлення (T30) — пресети з контрастом на чіпі */
@@ -232,6 +232,27 @@
     --rp-burger-footer-card-bg: #faf8f4;
     --rp-burger-footer-card-fg: #1a120a;
     --rp-burger-footer-muted: #5c534a;
+}
+
+/* Нативні контроли / submit (iOS Safari) узгоджуються з обраною темою */
+html {
+    color-scheme: light;
+}
+
+html[data-theme='dark'] {
+    color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    html[data-theme='system'] {
+        color-scheme: dark;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    html[data-theme='system'] {
+        color-scheme: light;
+    }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1042,6 +1063,12 @@
     z-index: 1;
 }
 
+/* Менше «підкручування» сторінки при досягненні краю стрічки на touch (без JS) */
+.rp-chat-feed-wash > ul[role='log'] {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
 .rp-chat-composer-input {
     display: block;
     width: 100%;
@@ -1077,10 +1104,18 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--rp-focus-ring) 35%, transparent);
 }
 
-/* T119: на мобільному — компактна одна лінія порожнього поля; кнопки рейки лишаються 44px */
+/* T119: мобільний композер — без зуму iOS при фокусі (font ≥16px), одна лінія порожнього поля */
 @media (max-width: 767px) {
     .rp-chat-composer-input {
         min-height: 2.25rem;
+        font-size: 1rem;
+        line-height: 1.35;
+    }
+
+    .rp-chat-composer-row {
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: hidden;
     }
 }
 
@@ -1356,7 +1391,10 @@
     padding: 0;
     border: none;
     border-radius: 0.375rem;
-    background: var(--rp-chat-send-bg);
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: var(--rp-chat-send-bg);
+    background-image: none;
     color: var(--rp-chat-send-fg);
     cursor: pointer;
     box-shadow: none;
@@ -1371,7 +1409,7 @@
 }
 
 .rp-chat-send-primary:hover:not(:disabled) {
-    background: var(--rp-chat-send-bg-hover);
+    background-color: var(--rp-chat-send-bg-hover);
 }
 
 .rp-chat-send-primary:disabled {
