@@ -13,7 +13,7 @@ import {
     trimUrlTrailing,
     tryFacebookPostEmbed,
     tryTelegramPostEmbed,
-    tryThreadsPostCard,
+    tryThreadsPostEmbed,
     tryTwitterStatusEmbed,
     youtubeVideoId,
 } from './chatMessageBodyParse.js';
@@ -78,10 +78,6 @@ test('messageHasBlockMedia true for embed / image / oembedPending / inlineVideo'
     assert.equal(messageHasBlockMedia('pic https://cdn.test/x.png'), true);
     assert.equal(messageHasBlockMedia('https://vimeo.com/123'), true);
     assert.equal(messageHasBlockMedia('clip https://files.test/a.Mp4?v=1 end'), true);
-    assert.equal(
-        messageHasBlockMedia('https://www.threads.net/@x/post/AbCdEfGh12345'),
-        true,
-    );
 });
 
 test('youtube watch URL classified as embed', () => {
@@ -117,6 +113,7 @@ test('EMBED_RESOLVERS is ordered and has known ids', () => {
     const ids = EMBED_RESOLVERS.map((r) => r.id);
     assert.ok(ids.includes('youtube'));
     assert.ok(ids.includes('twitter'));
+    assert.ok(ids.includes('threads'));
     assert.ok(ids.includes('telegram'));
     assert.ok(ids.includes('facebook'));
     assert.ok(ids.indexOf('youtube') < ids.indexOf('twitter'));
@@ -131,30 +128,12 @@ test('X / Twitter status URL → platform embed', () => {
     assert.equal(classifyUrl(u).kind, 'embed');
 });
 
-test('Threads post URL → threadsCard (no iframe)', () => {
+test('Threads post URL → threads.net embed', () => {
     const u = 'https://www.threads.net/@meta/post/AbCdEfGh12345';
-    const e = tryThreadsPostCard(u);
+    const e = tryThreadsPostEmbed(u);
     assert.ok(e);
-    assert.equal(e.kind, 'threadsCard');
-    assert.equal(e.href, u);
-    assert.equal(classifyUrl(u).kind, 'threadsCard');
-    const segs = parseChatMessageBody(`Ось тред ${u} тут`);
-    const card = segs.find((s) => s.type === 'threadsCard');
-    assert.ok(card);
-    assert.equal(card.href, u);
-    const pending = segs.filter((s) => s.type === 'oembedPending');
-    assert.equal(pending.length, 0);
-});
-
-test('Threads + TikTok in one message → separate segments (no oEmbed for Threads)', () => {
-    const th = 'https://www.threads.com/@user/post/AbCdEfGh12345';
-    const tk = 'https://vm.tiktok.com/ZMxxxxxxx/';
-    const segs = parseChatMessageBody(`${th} ${tk}`);
-    assert.ok(segs.some((s) => s.type === 'threadsCard' && s.href === th));
-    const tik = segs.find((s) => s.type === 'oembedPending');
-    assert.ok(tik);
-    assert.equal(tik.href, trimUrlTrailing(tk));
-    assert.equal(shouldTryBackendOembedUrl('https://vm.tiktok.com/ZMxxxxxxx/'), true);
+    assert.equal(e.provider, 'threads');
+    assert.ok(e.iframeSrc.includes('threads.net/embed/post/AbCdEfGh12345'));
 });
 
 test('Telegram public post → t.me ?embed=1', () => {
