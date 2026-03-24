@@ -51,7 +51,7 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 | **Laravel** | `APP_DEBUG=false`, `APP_ENV=production`, стабільний `APP_KEY`. Розгляньте `SESSION_ENCRYPT=true` (у шаблоні `production.env.example` вже увімкнено для проду). |
 | **Проксі** | `TRUSTED_PROXIES` — IP хостового nginx (часто `127.0.0.1`; якщо трафік іде з docker bridge — додайте відповідну адресу). Уникайте `*` без явної причини. |
 | **Логи** | У шаблоні прод: `LOG_LEVEL=warning` (зменшує витік деталей у логах). |
-| **Ротація MySQL** | Після бекапу: `OLD_MYSQL_ROOT_PASSWORD`, `NEW_MYSQL_ROOT_PASSWORD`, `NEW_MYSQL_PASSWORD` → [`rotate-mysql-passwords.sh`](./rotate-mysql-passwords.sh), потім оновіть `production.env` і перезапустіть стек. |
+| **Ротація MySQL** | Після бекапу: [`rotate-mysql-passwords.sh`](./rotate-mysql-passwords.sh) — без змінних бере поточний root з контейнера `mysql` і генерує нові паролі (вивід скопіювати в `production.env`); або задайте `OLD_*` / `NEW_*` вручну. |
 
 ## Бекап MySQL
 
