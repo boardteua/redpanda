@@ -32,7 +32,7 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 ## Продакшен: `docker/production.env` (не в git), **без** окремого prod-override
 
 1. `cp docker/production.env.example docker/production.env` — заповніть секрети (`openssl rand -base64 32` тощо).
-2. Рекомендовано **`ln -sf ../docker/production.env backend/.env`** (з `backend/`), щоб `npm run build` у `deploy.sh` бачив `VITE_*`.
+2. Рекомендовано **`ln -sf ../docker/production.env backend/.env`** (з `backend/`), щоб `npm run build` у `deploy.sh` бачив `VITE_*`. **`APP_URL` має бути `https://…`** публічного домену (інакше mixed content: асети з `@vite` / `url()` підуть через `http://`).
 3. **`docker/compose.override.yml` для прод не потрібен** — паролі MySQL/Redis і healthcheck’и вже в `compose.yaml`. Якщо на сервері лишився старий override лише заради prod-секретів — після оновлення репозиторію його можна **видалити**, щоб не дублювати й не роз’їжджатися з каноном.
 4. `deploy.sh` додає `--env-file docker/production.env`, якщо файл існує; інакше — legacy `docker/compose.deploy.env`.
 

@@ -42,6 +42,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
@@ -94,6 +95,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // За TLS-термінатором (nginx → Docker) без цього @vite() / url() дають http:// → mixed content на https://.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         ResetPasswordNotification::toMailUsing(function (object $notifiable, #[\SensitiveParameter] string $token): MailMessage {
             $email = urlencode((string) $notifiable->getEmailForPasswordReset());
             $url = rtrim((string) config('app.url'), '/').'/reset-password?token='.urlencode($token).'&email='.$email;
