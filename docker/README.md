@@ -52,6 +52,10 @@ HTTP лишається на **8080**; WebSocket — окремо на **6001** 
 
 Файли `docker/compose.override.yml` і `docker/compose.deploy.env` у `.gitignore`.
 
+**Пароль MySQL змінили в `compose.deploy.env`, а том `mysql_data` уже був?** Змінні `MYSQL_*` при старті контейнера **не** оновлюють пароль існуючого користувача в БД — зробіть `ALTER USER 'redpanda'@'%'` або пересоздайте том. Інакше Laravel (навіть з правильним env у контейнері) отримає **1045 Access denied**.
+
+Після `php artisan optimize` у `bootstrap/cache/config.php` лежить старий пароль — **`deploy.sh` перед `composer install` очищає ці файли**, щоб `package:discover` не ходив у MySQL з кешованим `DB_PASSWORD`.
+
 ## Бекап MySQL
 
 Потрібен запущений контейнер `mysql`:

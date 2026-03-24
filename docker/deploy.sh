@@ -53,7 +53,9 @@ COMPOSE=(docker compose "${COMPOSE_ENV[@]}" -f "$REPO_DIR/docker/compose.yaml")
 "${COMPOSE[@]}" --profile app run --rm \
   -e COMPOSER_ALLOW_SUPERUSER=1 \
   php sh -lc \
-  'composer install --no-dev --optimize-autoloader --no-interaction && php artisan migrate --force && php artisan optimize && (php artisan queue:restart || true)'
+  'rm -f bootstrap/cache/config.php bootstrap/cache/routes-*.php bootstrap/cache/services.php 2>/dev/null || true; \
+   composer install --no-dev --optimize-autoloader --no-interaction && \
+   php artisan migrate --force && php artisan optimize && (php artisan queue:restart || true)'
 
 docker run --rm \
   -v "$BACKEND_DIR:/var/www/html" \
