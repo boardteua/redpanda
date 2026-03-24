@@ -2,8 +2,10 @@
 
 # Локальний проброс MySQL/Redis на хост (див. docker/compose.override.example.yml)
 docker/compose.override.yml
-# Секрети продакшен-Compose (копія з compose.deploy.env.example)
+# Секрети продакшен-Compose (копія з compose.deploy.env.example; legacy)
 docker/compose.deploy.env
+# Єдиний прод-файл для Compose + Laravel (копія з docker/production.env.example)
+docker/production.env
 
 # Legacy board.te.ua CSS snapshot (scp for local analysis; do not commit)
 reference/board-te-ua-css/

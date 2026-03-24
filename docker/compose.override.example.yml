@@ -1,5 +1,13 @@
-# Локально: cp compose.override.example.yml compose.override.yml
-# Docker Compose автоматично змерджить override; тоді з хоста backend/.env можна DB_HOST=127.0.0.1, REDIS_HOST=127.0.0.1
+# Локально: cp compose.override.example.yml compose.override.yml (усередині docker/).
+#
+# З кореня репозиторію Compose НЕ підхоплює override автоматично, якщо задано лише -f docker/compose.yaml.
+# Варіанти:
+#   docker compose -f docker/compose.yaml -f docker/compose.override.yml up -d
+# або з каталогу docker/ (тоді змерджаться compose.yaml + compose.override.yml):
+#   cd docker && docker compose up -d
+#
+# Проброс портів — для php artisan на хості; у backend/.env: DB_HOST=127.0.0.1, REDIS_HOST=127.0.0.1.
+
 services:
   mysql:
     ports:

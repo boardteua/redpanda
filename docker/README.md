@@ -2,24 +2,19 @@
 
 ## `compose.yaml`
 
-Піднімає **MySQL 8** і **Redis 7** для локальної розробки. Паролі та імена БД — лише для dev; у production використовуйте секрети та окремі політики.
+Один маніфест для **dev і prod**: паролі та імена БД задаються через змінні з дефолтами для локальної розробки (`${VAR:-default}`). У продакшені ті самі ключі передають через **`docker/production.env`** і `--env-file` (робить `deploy.sh` / `backup-mysql.sh`).
 
 ```bash
 docker compose -f docker/compose.yaml up -d
 ```
 
-За замовчуванням **MySQL і Redis не проброшені на хост** (щоб на VPS не конфліктувати з локальним Redis/MySQL). Якщо `php artisan` запускаєте **на хості** з Docker-залежностями:
-
-```bash
-cp docker/compose.override.example.yml docker/compose.override.yml
-docker compose -f docker/compose.yaml up -d
-```
+За замовчуванням **MySQL і Redis не проброшені на хост**. Якщо `php artisan` на **хості** з Docker-залежностями — див. коментарі в [`compose.override.example.yml`](./compose.override.example.yml): потрібні **два** `-f` або `cd docker && docker compose up`.
 
 У `backend/.env`: `DB_HOST=127.0.0.1`, `REDIS_HOST=127.0.0.1`, потім `php artisan migrate`.
 
 ## Профіль `app`: PHP-FPM + Nginx (ліміт завантаження 128MB)
 
-HTTP через контейнери (порт **8080**). У `backend/.env` для цього режиму вкажіть **`DB_HOST=mysql`**, **`REDIS_HOST=redis`** (не `127.0.0.1`).
+HTTP через контейнери (порт **8080**). У повному Docker-режимі в `backend/.env`: **`DB_HOST=mysql`**, **`REDIS_HOST=redis`**.
 
 ```bash
 docker compose -f docker/compose.yaml --profile app up -d --build
@@ -28,44 +23,46 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 - **PHP:** `upload_max_filesize` і `post_max_size` = **128M** (`docker/php/conf.d/uploads.ini`).
 - **Nginx:** `client_max_body_size` = **128m** (`docker/nginx/default.conf`).
 
-Після `up` змонтуйте `backend/` (включно з `vendor` після `composer install` на хості або всередині `php`).
-
 ### Reverb і queue (`--profile app`)
 
-Піднімаються сервіси **`reverb`** (порт **6001** → `REVERB_SERVER_PORT`) і **`queue`** (`php artisan queue:work`). У `backend/.env` для браузера (Vite) вкажіть зазвичай:
+Сервіси **`reverb`** (порт **6001**) і **`queue`**. Для Echo/Vite локально зазвичай `VITE_REVERB_HOST=localhost`, `VITE_REVERB_PORT=6001`, `VITE_REVERB_SCHEME=http`; у проді — `wss` і публічний хост (див. [T80](../docs/chat-v2/T80-DEPLOY-CHECKLIST.md)).
 
-- `VITE_REVERB_HOST=localhost`
-- `VITE_REVERB_PORT=6001`
-- `VITE_REVERB_SCHEME=http`
-- `REVERB_APP_ID` / `REVERB_APP_KEY` / `REVERB_APP_SECRET` — як у [T80](../docs/chat-v2/T80-DEPLOY-CHECKLIST.md); перебудуйте фронт після зміни `VITE_*`.
+## Продакшен: `docker/production.env` (не в git), **без** окремого prod-override
 
-HTTP лишається на **8080**; WebSocket — окремо на **6001** (типовий локальний сценарій Echo / Pusher-протокол).
+1. `cp docker/production.env.example docker/production.env` — заповніть секрети (`openssl rand -base64 32` тощо).
+2. Рекомендовано **`ln -sf ../docker/production.env backend/.env`** (з `backend/`), щоб `npm run build` у `deploy.sh` бачив `VITE_*`.
+3. **`docker/compose.override.yml` для прод не потрібен** — паролі MySQL/Redis і healthcheck’и вже в `compose.yaml`. Якщо на сервері лишився старий override лише заради prod-секретів — після оновлення репозиторію його можна **видалити**, щоб не дублювати й не роз’їжджатися з каноном.
+4. `deploy.sh` додає `--env-file docker/production.env`, якщо файл є; інакше — legacy `docker/compose.deploy.env`.
 
-Деталі процесів і прод-проксі — [T80-DEPLOY-CHECKLIST.md](../docs/chat-v2/T80-DEPLOY-CHECKLIST.md), перевірка — [T83-QA.md](../docs/chat-v2/T83-QA.md).
+Файли `docker/production.env`, `docker/compose.deploy.env`, `docker/compose.override.yml` у `.gitignore`.
 
-## Продакшен: паролі MySQL/Redis (не в git)
+**Пароль MySQL змінили, а том `mysql_data` уже ініціалізований?** Змінні при старті контейнера **не** оновлюють пароль у БД — `ALTER USER` або новий том. Інакше буде **1045**.
 
-1. `cp docker/compose.override.prod.example.yml docker/compose.override.yml`
-2. `cp docker/compose.deploy.env.example docker/compose.deploy.env` — заповніть `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `REDIS_PASSWORD` (напр. `openssl rand -base64 32`).
-3. У `backend/.env`: ті самі `DB_PASSWORD` і `REDIS_PASSWORD`, що в `compose.deploy.env`; `DB_USERNAME=redpanda`.
-4. `deploy.sh` сам додасть `--env-file docker/compose.deploy.env`, якщо файл існує.
-
-Файли `docker/compose.override.yml` і `docker/compose.deploy.env` у `.gitignore`.
-
-**Пароль MySQL змінили в `compose.deploy.env`, а том `mysql_data` уже був?** Змінні `MYSQL_*` при старті контейнера **не** оновлюють пароль існуючого користувача в БД — зробіть `ALTER USER 'redpanda'@'%'` або пересоздайте том. Інакше Laravel (навіть з правильним env у контейнері) отримає **1045 Access denied**.
-
-Після `php artisan optimize` у `bootstrap/cache/config.php` лежить старий пароль — **`deploy.sh` перед `composer install` очищає ці файли**, щоб `package:discover` не ходив у MySQL з кешованим `DB_PASSWORD`.
+`deploy.sh` перед `composer install` очищає `bootstrap/cache/*`, щоб не тягнути старий кешований `DB_PASSWORD`.
 
 ## Бекап MySQL
 
-Потрібен запущений контейнер `mysql`:
+Запущений контейнер `mysql` і той самий `--env-file`, що в деплої:
 
 ```bash
 ./docker/backup-mysql.sh
 ```
 
-Архів: `backups/redpanda-UTC.sql.gz` (каталог задається змінною `BACKUP_DIR`).
+Архіви: `$REPO_DIR/backups/redpanda-<UTC>.sql.gz`.
 
-## Приклад віддаленого деплою
+### Перед міграціями у `deploy.sh`
 
-Кроки деплою на сервері: [deploy.sh](./deploy.sh).
+**`BACKUP_BEFORE_DEPLOY=1`** викликає лише `docker/backup-mysql.sh`. Потрібен уже запущений `mysql` (перший деплой — тимчасово вимкніть або спочатку `up` без бекапу).
+
+### Cron і retention
+
+Приклад (шляхи підставити свої):
+
+```cron
+0 3 * * * REPO_DIR=/var/www/redpanda BACKUP_DIR=/var/www/redpanda/backups /var/www/redpanda/docker/backup-mysql.sh >>/var/www/redpanda/backups/backup.log 2>&1
+15 3 * * * find /var/www/redpanda/backups -maxdepth 1 -name 'redpanda-*.sql.gz' -mtime +14 -delete
+```
+
+## Віддалений деплой
+
+[deploy.sh](./deploy.sh). Перевірка з SSH — [T80, «Перевірка на VPS (SSH)»](../docs/chat-v2/T80-DEPLOY-CHECKLIST.md).

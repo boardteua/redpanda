@@ -1,4 +1,5 @@
-# T83: перевірки на кожен PR і push у main; опційний SSH-деплой на push у main, якщо задані vars/secrets.
+# T83: на кожен PR і push у main — тести; деплой лише після зеленого test job, лише push у main (vars/secrets).
+# Гейт: job deploy має needs: test — поки PHPUnit / Node-тести не пройшли, SSH-деплой не стартує.
 name: CI
 
 on:
@@ -7,12 +8,12 @@ on:
   pull_request:
     branches: [main]
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  backend-and-frontend:
+  test:
+    name: Test (Compose, PHP, Vite, PHPUnit)
+    concurrency:
+      group: ci-test-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,11 +59,16 @@ jobs:
           npm run test:msg-parse
           npm run test:country-filter
 
-  # Деплой: push у main. У jobs.<id>.if недоступний контекст secrets (див. GitHub «Contexts reference»).
+  # Деплой: push у main після успішного test. У jobs.<id>.if недоступний контекст secrets (див. GitHub «Contexts reference»).
   # Увімкнення: Variables — DEPLOY_HOST (непорожній) АБО DEPLOY_ENABLED=true (якщо host/user/repo лише в Secrets).
   # Secrets: DEPLOY_SSH_KEY; опційно Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_REPO_DIR — підставляються в кроках через ${{ secrets.* }}.
+  # Окрема concurrency: не скасовувати напівзавершений SSH-деплой при новому push; нові деплої чекають у черзі (cancel-in-progress: false).
   deploy:
-    needs: backend-and-frontend
+    name: Deploy to production (SSH)
+    needs: test
+    concurrency:
+      group: deploy-production-redpanda-main
+      cancel-in-progress: false
     if: >-
       github.ref == 'refs/heads/main' &&
       github.event_name == 'push'

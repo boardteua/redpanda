@@ -103,3 +103,16 @@
 | `LOG_*` | Рівень логів і канали для prod |
 
 **Без секретів у Git:** реальні значення лише в secret manager / `.env` на сервері.
+
+---
+
+## Перевірка на VPS (SSH)
+
+Чекліст після змін nginx, Compose або змінних Reverb/Vite (узгоджено з `docker/README.md` і `docker/deploy.sh`).
+
+- [ ] З хоста: **`127.0.0.1:8080`** відповідає контейнерному nginx (`8080:80` у `docker/compose.yaml`). Напр.: `curl -sI http://127.0.0.1:8080 | head -n1`.
+- [ ] З хоста: **`127.0.0.1:6001`** слухає Reverb (`6001:6001`). Напр.: `ss -lntp | grep 6001` або перевірка після `docker compose ... ps`.
+- [ ] У системному nginx для публічного домену: **`location /app/`** (або ваш шлях WS) узгоджений із **`VITE_REVERB_*`** / **`REVERB_*`** (схема `wss`, хост, шлях); після змін env — повна перезбірка фронту в деплої.
+- [ ] У репозиторії на сервері: **`docker/production.env`** (або legacy **`compose.deploy.env`**) на місці; **`docker/compose.yaml`** канонічний (prod-секрети через `--env-file`, без обов’язкового prod-override). Якщо є **`docker/compose.override.yml`** — лише для локальних нюансів (порти), не дублювати прод-паролі окремо від `production.env`.
+- [ ] Змінні деплою/бекапу на хості (GitHub SSH, systemd, `profile.d`): **`REPO_DIR`**, **`DEPLOY_GIT_REF`**, опційно **`DEPLOY_HEALTH_URL`**, **`BACKUP_BEFORE_DEPLOY`**, **`BACKUP_DIR`** — за домовленістю; див. коментарі в `docker/deploy.sh`.
+- [ ] Публічний smoke: **`https://new.board.te.ua/health/ready`** (або ваш `DEPLOY_HEALTH_URL`) повертає успішну відповідь після деплою.

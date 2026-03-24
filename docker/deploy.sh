@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # T83 — послідовність на сервері (адаптуйте шляхи, гілку, compose).
-# Секрети не в репозиторії: DB_* / BACKUP_* задавайте в env (systemd, /etc/profile.d, тощо).
+# Один маніфест: docker/compose.yaml + опційно --env-file docker/production.env (prod). Окремий prod-override не потрібен.
+# Секрети не в репозиторії: docker/production.env (або legacy compose.deploy.env).
+# BACKUP_BEFORE_DEPLOY / DEPLOY_* — змінні середовища хоста (systemd, /etc/profile.d).
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-/var/www/redpanda}"
@@ -8,17 +10,18 @@ BACKEND_DIR="${BACKEND_DIR:-$REPO_DIR/backend}"
 BACKUP_DIR="${BACKUP_DIR:-$REPO_DIR/backups}"
 DEPLOY_GIT_REF="${DEPLOY_GIT_REF:-main}"
 
-# --- 1) Опційний бекап MySQL перед міграціями (prod): BACKUP_BEFORE_DEPLOY=1 + DB_* у середовищі ---
+if [[ -f "$REPO_DIR/docker/production.env" ]]; then
+  COMPOSE_ENV=(--env-file "$REPO_DIR/docker/production.env")
+elif [[ -f "$REPO_DIR/docker/compose.deploy.env" ]]; then
+  COMPOSE_ENV=(--env-file "$REPO_DIR/docker/compose.deploy.env")
+else
+  COMPOSE_ENV=()
+fi
+
+# --- 1) Опційний бекап MySQL перед міграціями: BACKUP_BEFORE_DEPLOY=1 (лише docker/backup-mysql.sh, без mysqldump на хості) ---
 if [[ "${BACKUP_BEFORE_DEPLOY:-}" == "1" ]]; then
-  : "${DB_HOST:?set DB_HOST or unset BACKUP_BEFORE_DEPLOY}"
-  : "${DB_USER:?}"
-  : "${DB_PASSWORD:?}"
-  : "${DB_DATABASE:?}"
   mkdir -p "$BACKUP_DIR"
-  TS="$(date -u +%Y%m%dT%H%M%SZ)"
-  mysqldump -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_DATABASE" \
-    | gzip -c > "$BACKUP_DIR/redpanda-$TS.sql.gz"
-  test -s "$BACKUP_DIR/redpanda-$TS.sql.gz"
+  REPO_DIR="$REPO_DIR" BACKUP_DIR="$BACKUP_DIR" "$REPO_DIR/docker/backup-mysql.sh"
 fi
 
 cd "$REPO_DIR"
@@ -41,12 +44,11 @@ if [[ "${DEPLOY_SKIP_REPO_CLEANUP:-}" != "1" ]]; then
 fi
 
 # Збірка й artisan у контейнерах (PHP 8.3 + Composer 2.x), щоб не залежати від PHP/Composer на хості.
-# Опційно: docker/compose.deploy.env + compose.override.yml (див. compose.override.prod.example.yml).
-COMPOSE_ENV=()
-if [[ -f "$REPO_DIR/docker/compose.deploy.env" ]]; then
-  COMPOSE_ENV=(--env-file "$REPO_DIR/docker/compose.deploy.env")
-fi
-COMPOSE=(docker compose "${COMPOSE_ENV[@]}" -f "$REPO_DIR/docker/compose.yaml")
+# --env-file: docker/production.env (канон) або docker/compose.deploy.env (legacy).
+# Опційно другий -f: docker/compose.override.yml (лише локальний проброс портів; на VPS зазвичай відсутній).
+COMPOSE_FILES=(-f "$REPO_DIR/docker/compose.yaml")
+[[ -f "$REPO_DIR/docker/compose.override.yml" ]] && COMPOSE_FILES+=(-f "$REPO_DIR/docker/compose.override.yml")
+COMPOSE=(docker compose "${COMPOSE_ENV[@]}" "${COMPOSE_FILES[@]}")
 
 "${COMPOSE[@]}" up -d mysql redis
 "${COMPOSE[@]}" --profile app build php

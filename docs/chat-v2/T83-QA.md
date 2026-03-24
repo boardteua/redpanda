@@ -30,13 +30,13 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 
 ## GitHub Actions
 
-- **CI:** кожен PR / push у `main` — job **backend-and-frontend**.
-- **Deploy:** job **deploy** виконується лише на **push** у `main`, якщо задана змінна **`DEPLOY_HOST`**. Потрібні також:
-  - **Variables:** `DEPLOY_USER`, `DEPLOY_REPO_DIR` (корінь репо на сервері, де лежить `docker/deploy.example.sh`)
+- **CI:** кожен PR / push у `main` — job **`test`** (Compose validate, Composer, Vite build, PHPUnit, Node unit tests). Деплой не стартує без успішного **`test`** (`needs: test`).
+- **Deploy:** job **`deploy`** виконується лише на **push** у `main`, якщо задана змінна **`DEPLOY_HOST`**. Потрібні також:
+  - **Variables:** `DEPLOY_USER`, `DEPLOY_REPO_DIR` (корінь репо на сервері, де лежить `docker/deploy.sh`)
   - **Secrets:** `DEPLOY_SSH_KEY` (приватний ключ SSH)
   - **Environment `production`:** за бажанням — required reviewers / protection (branch protection на `main` — політика команди).
 
-На сервері **розкоментуйте** реальні кроки в `docker/deploy.example.sh` і **приберіть** фінальний `exit 1` (він потрібен, щоб CI не показував успішний деплой, поки скрипт лише заглушка). За бажанням перейменуйте скрипт на `deploy.sh` і оновіть виклик у `.github/workflows/ci.yml`.
+На сервері налаштуйте `docker/production.env` і змінні для `docker/deploy.sh` (див. `docker/README.md`, T80). Окремий prod-`compose.override.yml` не потрібен.
 
 ## Доказ (PASS)
 
