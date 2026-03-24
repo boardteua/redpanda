@@ -116,11 +116,11 @@
     --rp-burger-footer-card-bg: #faf8f4;
     --rp-burger-footer-card-fg: #1a120a;
     --rp-burger-footer-muted: #5c534a;
-    /* Стрічка — чергування на тлі #ebecdb (orange .log2 ≈ +5% чорного) */
-    --rp-chat-row-even: #ffffff;
-    --rp-chat-row-odd: #e3e5d6;
+    /* Стрічка — чергування (T114: напівпрозорі смуги, просвічується фон панди T91) */
+    --rp-chat-row-even: color-mix(in srgb, #ffffff 86%, transparent);
+    --rp-chat-row-odd: color-mix(in srgb, #e3e5d6 82%, transparent);
     /* Інлайн-приват у стрічці (T25) — окремий фон + акцент зліва */
-    --rp-chat-row-inline-private-bg: #e8eef6;
+    --rp-chat-row-inline-private-bg: color-mix(in srgb, #e8eef6 88%, transparent);
     --rp-chat-row-inline-private-border: #4a6fa5;
     /* T89 — #submit_button / .sub_button */
     --rp-chat-send-bg: #ad6431;
@@ -197,9 +197,9 @@
     --rp-peer-icon-mod: #86efac;
     --rp-peer-icon-vip: #fdba74;
     --rp-peer-icon-sex: #cbd5e1;
-    --rp-chat-row-even: #1b2739;
-    --rp-chat-row-odd: #152033;
-    --rp-chat-row-inline-private-bg: #243047;
+    --rp-chat-row-even: color-mix(in srgb, #1b2739 86%, transparent);
+    --rp-chat-row-odd: color-mix(in srgb, #152033 82%, transparent);
+    --rp-chat-row-inline-private-bg: color-mix(in srgb, #243047 88%, transparent);
     --rp-chat-row-inline-private-border: #7ea3d9;
     --rp-chat-send-bg: var(--rp-primary);
     --rp-chat-send-bg-hover: var(--rp-primary-hover);
@@ -282,14 +282,32 @@
         --rp-peer-icon-mod: #86efac;
         --rp-peer-icon-vip: #fdba74;
         --rp-peer-icon-sex: #cbd5e1;
-        --rp-chat-row-even: #1b2739;
-        --rp-chat-row-odd: #152033;
-        --rp-chat-row-inline-private-bg: #243047;
+        --rp-chat-row-even: color-mix(in srgb, #1b2739 86%, transparent);
+        --rp-chat-row-odd: color-mix(in srgb, #152033 82%, transparent);
+        --rp-chat-row-inline-private-bg: color-mix(in srgb, #243047 88%, transparent);
         --rp-chat-row-inline-private-border: #7ea3d9;
         --rp-chat-send-bg: var(--rp-primary);
         --rp-chat-send-bg-hover: var(--rp-primary-hover);
         --rp-chat-send-fg: var(--rp-on-primary);
         --rp-chat-role-admin: #cbd5e1;
+        --rp-chat-fmt-bg-amber: #854d0e;
+        --rp-chat-fmt-on-amber: #fef9c3;
+        --rp-chat-fmt-bg-mint: #365314;
+        --rp-chat-fmt-on-mint: #ecfccb;
+        --rp-chat-fmt-bg-sky: #075985;
+        --rp-chat-fmt-on-sky: #e0f2fe;
+        --rp-chat-fmt-bg-lavender: #5b21b6;
+        --rp-chat-fmt-on-lavender: #f3e8ff;
+        --rp-chat-fmt-bg-rose: #9f1239;
+        --rp-chat-fmt-on-rose: #ffe4e6;
+        --rp-chat-fmt-bg-sand: #713f12;
+        --rp-chat-fmt-on-sand: #fef3c7;
+        --rp-chat-fmt-fg-blue: #93c5fd;
+        --rp-chat-fmt-fg-emerald: #6ee7b7;
+        --rp-chat-fmt-fg-rose: #fda4af;
+        --rp-chat-fmt-fg-violet: #c4b5fd;
+        --rp-chat-fmt-fg-amber: #fcd34d;
+        --rp-chat-fmt-fg-slate: #cbd5e1;
         --rp-burger-bg: #261f1a;
         --rp-burger-self-bar-bg: #3f352c;
         --rp-burger-accent-bg: #f7e008;
