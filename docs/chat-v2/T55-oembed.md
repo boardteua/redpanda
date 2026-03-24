@@ -5,11 +5,11 @@
 1. Клієнт (автентифікований, Sanctum SPA) викликає `GET /api/v1/oembed?url=...` з опційними `maxwidth`, `maxheight`.
 2. Бекенд валідує довжину та схему `url` (`http` / `https`, без credentials).
 3. **SSRF (вхідний URL):** хост має бути «публічним» — літеральні IP проходять `FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE`; для імені хоста виконується DNS (`A` / `AAAA`) і **кожна** отримана адреса має бути публічною. Інакше **422** (узагальнене повідомлення для клієнта).
-4. **Реєстр провайдерів:** `backend/data/oembed-providers.json` (копія з npm [`oembed-providers`](https://www.npmjs.com/package/oembed-providers), див. `backend/data/oembed-providers.source.txt`). Для `url` шукається перший `endpoint`, у якого одна з `schemes` збігається з нормалізованим URL (wildcard `*` у схемі → `.*` у regex, порівняння без урахування регістру схеми/хоста).
+4. **Реєстр провайдерів:** `backend/data/oembed-providers.json` (копія з npm [`oembed-providers`](https://www.npmjs.com/package/oembed-providers), див. `backend/data/oembed-providers.source.txt`). До масиву додаються **кураторські** записи (наприклад **Threads** → `graph.threads.net`, short TikTok — див. **T118** у `docs/chat-v2/T118-QA.md`). Для `url` шукається перший `endpoint`, у якого одна з `schemes` збігається з нормалізованим URL (wildcard `*` у схемі → `.*` у regex, порівняння без урахування регістру схеми/хоста).
 5. Якщо провайдера немає — **422**, зовнішній HTTP не виконується.
 6. **Вихідний запит** — лише GET на `endpoint.url` з реєстру з параметрами `url`, `format=json`, опційно `maxwidth` / `maxheight`. Редіректи вимкнені (`allow_redirects` = false), таймаут і максимальний розмір тіла — `config/oembed.php` / env.
 7. Відповідь JSON кешується (`Cache` store додатку) з ключем від SHA-256 нормалізованого `url` + розмірів; TTL — `cache_age` з відповіді (у межах `max_cache_ttl_seconds`) або дефолт.
-8. Поле `html` санітизується: залишаються лише теги `iframe` з `src` на **https** і хостом з білого списку `allowed_iframe_hosts` у `config/oembed.php`. Атрибути на кшталт `on*` відкидаються.
+8. Поле `html` санітизується: для більшості провайдерів залишаються лише теги `iframe` з `src` на **https** і хостом з білого списку `allowed_iframe_hosts` у `config/oembed.php`. Для **Threads** (endpoint `graph.threads.net`) — окремий шлях: rich **blockquote** `text-post-media` з очищенням скриптів і небезпечних атрибутів (деталі — T118). Атрибути на кшталт `on*` відкидаються.
 
 ## Оновлення `providers.json`
 

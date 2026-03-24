@@ -36,6 +36,11 @@
             />
         </div>
         <div
+            v-else-if="phase === 'threadsRich'"
+            class="threads-rich-oembed rp-chat-threads-oembed my-2 w-full max-w-[658px] overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-surface-elevated)] min-h-[200px]"
+            v-html="threadsRichHtml"
+        />
+        <div
             v-else
             class="relative w-full max-w-lg overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-surface-elevated)] min-h-[200px] sm:min-h-[280px]"
         >
@@ -54,7 +59,13 @@
 </template>
 
 <script>
-import { fetchOembed, parseIframeFromOembedHtml } from '../../../utils/oembedClient';
+import {
+    ensureThreadsEmbedScript,
+    fetchOembed,
+    isThreadsRichOembedPayload,
+    notifyThreadsEmbedsProcessed,
+    parseIframeFromOembedHtml,
+} from '../../../utils/oembedClient';
 
 export default {
     name: 'ChatOembedBlock',
@@ -71,6 +82,7 @@ export default {
             iframeTitle: 'Вбудований контент',
             iframeAllow:
                 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; web-share',
+            threadsRichHtml: '',
         };
     },
     mounted() {
@@ -90,6 +102,16 @@ export default {
                         this.iframeAllow = parsed.allow;
                     }
                     this.phase = 'embed';
+                    return;
+                }
+                if (html && isThreadsRichOembedPayload(data, this.resourceUrl)) {
+                    this.threadsRichHtml = html;
+                    ensureThreadsEmbedScript();
+                    this.phase = 'threadsRich';
+                    this.$nextTick(() => {
+                        notifyThreadsEmbedsProcessed();
+                        window.setTimeout(() => notifyThreadsEmbedsProcessed(), 250);
+                    });
                     return;
                 }
                 this.phase = 'link';

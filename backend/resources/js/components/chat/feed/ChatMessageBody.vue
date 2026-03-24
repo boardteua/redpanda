@@ -147,7 +147,6 @@ import ChatOembedBlock from './ChatOembedBlock.vue';
 /** Провайдери з окремим layout уже в шаблоні вище. */
 const SOCIAL_EMBED_HEIGHT = {
     twitter: 'h-[500px] sm:h-[540px]',
-    threads: 'h-[580px] sm:h-[640px]',
     telegram: 'h-[400px]',
     facebook: 'h-[520px] sm:h-[580px]',
 };

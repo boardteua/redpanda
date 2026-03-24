@@ -121,4 +121,65 @@ class OEmbedApiTest extends TestCase
             ->assertStatus(502)
             ->assertJsonStructure(['message']);
     }
+
+    public function test_threads_post_uses_graph_threads_net_with_omitscript_and_maxwidth(): void
+    {
+        Http::fake([
+            'https://graph.threads.net/v1.0/oembed*' => Http::response([
+                'type' => 'rich',
+                'version' => '1.0',
+                'html' => '<blockquote class="text-post-media" data-text-post-permalink="https://www.threads.com/t/ABC"><a href="https://www.threads.com/t/ABC">View</a></blockquote><script>alert(1)</script>',
+                'provider_name' => 'Threads',
+                'width' => 658,
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $resource = 'https://www.threads.com/@example/post/ShortCodeOk12';
+        $json = $this->getJson('/api/v1/oembed?url='.rawurlencode($resource))
+            ->assertOk()
+            ->json();
+
+        $this->assertArrayHasKey('html', $json);
+        $this->assertStringContainsString('text-post-media', (string) $json['html']);
+        $this->assertStringNotContainsString('<script', strtolower((string) $json['html']));
+
+        Http::assertSent(function ($request) use ($resource): bool {
+            $u = $request->url();
+
+            return str_starts_with($u, 'https://graph.threads.net/v1.0/oembed')
+                && str_contains($u, 'omitscript=true')
+                && str_contains($u, 'maxwidth=')
+                && str_contains($u, 'url='.rawurlencode($resource));
+        });
+    }
+
+    public function test_tiktok_short_url_hits_tiktok_oembed_endpoint(): void
+    {
+        Http::fake([
+            'https://www.tiktok.com/oembed*' => Http::response([
+                'type' => 'video',
+                'version' => '1.0',
+                'title' => 'Tik',
+                'html' => '<iframe src="https://www.tiktok.com/embed/v1/abc" width="200" height="200"></iframe>',
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $short = 'https://vm.tiktok.com/ZM123abc/';
+        $this->getJson('/api/v1/oembed?url='.rawurlencode($short))
+            ->assertOk()
+            ->assertJsonPath('title', 'Tik');
+
+        Http::assertSent(function ($request) use ($short): bool {
+            $u = $request->url();
+
+            return str_starts_with($u, 'https://www.tiktok.com/oembed')
+                && str_contains($u, 'url='.rawurlencode($short));
+        });
+    }
 }

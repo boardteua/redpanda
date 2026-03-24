@@ -1,5 +1,20 @@
 [
     {
+        "provider_name": "Threads",
+        "provider_url": "https://www.threads.com/",
+        "endpoints": [
+            {
+                "schemes": [
+                    "https://www.threads.com/*",
+                    "https://threads.com/*",
+                    "https://www.threads.net/*",
+                    "https://threads.net/*"
+                ],
+                "url": "https://graph.threads.net/v1.0/oembed"
+            }
+        ]
+    },
+    {
         "provider_name": "23HQ",
         "provider_url": "http://www.23hq.com",
         "endpoints": [
@@ -189,7 +204,9 @@
             {
                 "schemes": [
                     "https://www.tiktok.com/*",
-                    "https://www.tiktok.com/*/video/*"
+                    "https://www.tiktok.com/*/video/*",
+                    "https://vm.tiktok.com/*",
+                    "https://vt.tiktok.com/*"
                 ],
                 "url": "https://www.tiktok.com/oembed"
             }

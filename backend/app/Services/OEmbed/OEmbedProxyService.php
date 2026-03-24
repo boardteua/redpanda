@@ -43,11 +43,24 @@ class OEmbedProxyService
             return $cached;
         }
 
-        $payload = $this->requestProvider($resourceUrl, $maxwidth, $maxheight, $endpoint['endpoint_url']);
+        $endpointUrl = $endpoint['endpoint_url'];
+        $reqMaxW = $maxwidth;
+        $reqMaxH = $maxheight;
+        if ($this->isThreadsGraphEndpoint($endpointUrl)) {
+            $reqMaxW = $this->clampThreadsMaxWidth($maxwidth);
+            $reqMaxH = null;
+        }
+
+        $payload = $this->requestProvider($resourceUrl, $reqMaxW, $reqMaxH, $endpointUrl);
         $allowedHosts = (array) config('oembed.allowed_iframe_hosts', []);
-        $html = isset($payload['html']) && is_string($payload['html'])
-            ? $this->htmlSanitizer->sanitizeIframeHtml($payload['html'], $allowedHosts)
-            : null;
+        $htmlRaw = isset($payload['html']) && is_string($payload['html']) ? $payload['html'] : null;
+        if ($this->isThreadsGraphEndpoint($endpointUrl)) {
+            $html = $this->htmlSanitizer->sanitizeThreadsOembedHtml($htmlRaw);
+        } else {
+            $html = $htmlRaw !== null
+                ? $this->htmlSanitizer->sanitizeIframeHtml($htmlRaw, $allowedHosts)
+                : null;
+        }
 
         $shaped = $this->shapeResponse($payload, $html);
         $ttl = $this->resolveTtlFromPayload($payload);
@@ -61,12 +74,19 @@ class OEmbedProxyService
      */
     private function requestProvider(string $resourceUrl, ?int $maxwidth, ?int $maxheight, string $endpointUrl): array
     {
-        $query = array_filter([
+        $query = [
             'url' => $resourceUrl,
             'format' => 'json',
-            'maxwidth' => $maxwidth,
-            'maxheight' => $maxheight,
-        ], fn (mixed $v): bool => $v !== null && $v !== '');
+        ];
+        if ($maxwidth !== null) {
+            $query['maxwidth'] = $maxwidth;
+        }
+        if ($maxheight !== null) {
+            $query['maxheight'] = $maxheight;
+        }
+        if ($this->isThreadsGraphEndpoint($endpointUrl)) {
+            $query['omitscript'] = 'true';
+        }
 
         $sep = str_contains($endpointUrl, '?') ? '&' : '?';
         $requestUrl = $endpointUrl.$sep.http_build_query($query);
@@ -140,6 +160,26 @@ class OEmbedProxyService
         $fingerprint = hash('sha256', $norm.'|'.($maxwidth ?? '').'|'.($maxheight ?? ''));
 
         return 'oembed:v1:'.$fingerprint;
+    }
+
+    private function isThreadsGraphEndpoint(string $endpointUrl): bool
+    {
+        $host = parse_url($endpointUrl, PHP_URL_HOST);
+
+        return is_string($host) && strtolower($host) === 'graph.threads.net';
+    }
+
+    private function clampThreadsMaxWidth(?int $maxwidth): int
+    {
+        $w = $maxwidth ?? 550;
+        if ($w < 320) {
+            return 320;
+        }
+        if ($w > 658) {
+            return 658;
+        }
+
+        return $w;
     }
 
     /**

@@ -33,7 +33,7 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
-        <env name="OEMBED_TESTING_SKIP_DNS_HOSTS" value="www.youtube.com,youtube.com,example.com"/>
+        <env name="OEMBED_TESTING_SKIP_DNS_HOSTS" value="www.youtube.com,youtube.com,example.com,graph.threads.net,www.threads.com,threads.com,www.threads.net,threads.net,www.tiktok.com,tiktok.com,vm.tiktok.com,vt.tiktok.com"/>
         <env name="AUTH0_ENABLED" value="false"/>
     </php>
 </phpunit>

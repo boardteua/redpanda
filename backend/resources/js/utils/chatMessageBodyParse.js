@@ -3,8 +3,8 @@
  * Текст не інтерпретується як HTML; споживач рендерить сегменти без v-html для type=text.
  *
  * Масштабованість: нові соцмережі — додати запис у {@link EMBED_RESOLVERS} (порядок = пріоритет).
- * Для частини хостів (Vimeo, SoundCloud, …) без локального резолвера — сегмент `oembedPending`;
- * клієнт викликає GET `/api/v1/oembed` (T55) і підставляє iframe з санітизованого `html`.
+ * Для частини хостів (Vimeo, SoundCloud, Threads permalink, …) без локального резолвера — сегмент `oembedPending`;
+ * клієнт викликає GET `/api/v1/oembed` (T55) і підставляє iframe або rich Threads (blockquote + embed.js) з санітизованого `html` (T118).
  */
 
 const URL_RE = /https?:\/\/[^\s<>"']+/gi;
@@ -108,6 +108,25 @@ export function isSafeHttpUrl(href) {
  * @returns {boolean}
  */
 /**
+ * Permalink публічного поста Threads (офіційний oEmbed через graph.threads.net, T118).
+ * @param {string} trimmed
+ * @returns {boolean}
+ */
+export function isThreadsPostOembedUrl(trimmed) {
+    try {
+        const u = new URL(trimmed);
+        const host = u.hostname.replace(/^www\./, '').toLowerCase();
+        if (host !== 'threads.net' && host !== 'threads.com') {
+            return false;
+        }
+        const path = u.pathname;
+        return /\/@[\w.]+\/post\/[^/]+/.test(path) || /^\/t\/[^/]+/.test(path);
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Чи варто питати бекенд oEmbed (обмежений список хостів, без дублювання жорстких ембедів).
  * @param {string} trimmed
  * @returns {boolean}
@@ -116,6 +135,9 @@ export function shouldTryBackendOembedUrl(trimmed) {
     try {
         const u = new URL(trimmed);
         const h = u.hostname.replace(/^www\./, '').toLowerCase();
+        if (isThreadsPostOembedUrl(trimmed)) {
+            return true;
+        }
         if (h === 'player.vimeo.com') {
             return true;
         }
@@ -278,36 +300,6 @@ export function tryTwitterStatusEmbed(trimmed) {
 }
 
 /**
- * Meta Threads: /(@user/)post/{postId}
- * @param {string} trimmed
- * @returns {EmbedClassification|null}
- */
-export function tryThreadsPostEmbed(trimmed) {
-    try {
-        const u = new URL(trimmed);
-        const host = u.hostname.replace(/^www\./, '').toLowerCase();
-        if (host !== 'threads.net' && host !== 'threads.com') {
-            return null;
-        }
-        const m = u.pathname.match(/\/(?:@[\w.]+\/)?post\/([A-Za-z0-9_-]+)\/?/);
-        if (!m) {
-            return null;
-        }
-        const postId = m[1];
-        if (postId.length < 5 || postId.length > 80) {
-            return null;
-        }
-        return {
-            kind: 'embed',
-            iframeSrc: `https://www.threads.net/embed/post/${encodeURIComponent(postId)}/`,
-            provider: 'threads',
-        };
-    } catch {
-        return null;
-    }
-}
-
-/**
  * Публічний пост каналу/бота: t.me/name/123 → iframe з ?embed=1
  * @param {string} trimmed
  * @returns {EmbedClassification|null}
@@ -424,10 +416,6 @@ export const EMBED_RESOLVERS = Object.freeze([
     {
         id: 'twitter',
         resolve: tryTwitterStatusEmbed,
-    },
-    {
-        id: 'threads',
-        resolve: tryThreadsPostEmbed,
     },
     {
         id: 'telegram',

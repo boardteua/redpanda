@@ -11,9 +11,9 @@ import {
     shouldTryBackendOembedUrl,
     spotifyEmbedUrl,
     trimUrlTrailing,
+    isThreadsPostOembedUrl,
     tryFacebookPostEmbed,
     tryTelegramPostEmbed,
-    tryThreadsPostEmbed,
     tryTwitterStatusEmbed,
     youtubeVideoId,
 } from './chatMessageBodyParse.js';
@@ -113,7 +113,6 @@ test('EMBED_RESOLVERS is ordered and has known ids', () => {
     const ids = EMBED_RESOLVERS.map((r) => r.id);
     assert.ok(ids.includes('youtube'));
     assert.ok(ids.includes('twitter'));
-    assert.ok(ids.includes('threads'));
     assert.ok(ids.includes('telegram'));
     assert.ok(ids.includes('facebook'));
     assert.ok(ids.indexOf('youtube') < ids.indexOf('twitter'));
@@ -128,12 +127,32 @@ test('X / Twitter status URL → platform embed', () => {
     assert.equal(classifyUrl(u).kind, 'embed');
 });
 
-test('Threads post URL → threads.net embed', () => {
+test('Threads post permalink → oembedPending (T118, не iframe threads.net)', () => {
     const u = 'https://www.threads.net/@meta/post/AbCdEfGh12345';
-    const e = tryThreadsPostEmbed(u);
-    assert.ok(e);
-    assert.equal(e.provider, 'threads');
-    assert.ok(e.iframeSrc.includes('threads.net/embed/post/AbCdEfGh12345'));
+    assert.equal(classifyUrl(u).kind, 'link');
+    assert.equal(isThreadsPostOembedUrl(u), true);
+    assert.equal(shouldTryBackendOembedUrl(u), true);
+    const segs = parseChatMessageBody(`see ${u}`);
+    const pending = segs.find((s) => s.type === 'oembedPending');
+    assert.ok(pending);
+    assert.equal(pending.href, u);
+});
+
+test('Threads /t/ short permalink → oembedPending', () => {
+    const u = 'https://www.threads.com/t/DDzbnVKx57R';
+    assert.equal(isThreadsPostOembedUrl(u), true);
+    const segs = parseChatMessageBody(u);
+    assert.ok(segs.some((s) => s.type === 'oembedPending' && s.href === u));
+});
+
+test('multiple URLs: Threads and TikTok keep distinct oembedPending hrefs', () => {
+    const th = 'https://www.threads.com/@x/post/SHORT1';
+    const tk = 'https://vm.tiktok.com/ZZZ123/';
+    const segs = parseChatMessageBody(`a ${th} b ${tk} c`);
+    const pendings = segs.filter((s) => s.type === 'oembedPending');
+    assert.equal(pendings.length, 2);
+    assert.ok(pendings.some((p) => p.href === th));
+    assert.ok(pendings.some((p) => p.href === tk));
 });
 
 test('Telegram public post → t.me ?embed=1', () => {
@@ -162,6 +181,7 @@ test('shouldTryBackendOembedUrl for Vimeo and SoundCloud', () => {
     assert.equal(shouldTryBackendOembedUrl('https://player.vimeo.com/video/1'), true);
     assert.equal(shouldTryBackendOembedUrl('https://soundcloud.com/artist/track'), true);
     assert.equal(shouldTryBackendOembedUrl('https://www.twitch.tv/name'), true);
+    assert.equal(shouldTryBackendOembedUrl('https://vm.tiktok.com/AbC'), true);
     assert.equal(shouldTryBackendOembedUrl('https://example.com/x'), false);
     assert.equal(shouldTryBackendOembedUrl('https://www.youtube.com/watch?v=abc'), false);
 });
