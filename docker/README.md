@@ -43,6 +43,15 @@ HTTP лишається на **8080**; WebSocket — окремо на **6001** 
 
 Деталі процесів і прод-проксі — [T80-DEPLOY-CHECKLIST.md](../docs/chat-v2/T80-DEPLOY-CHECKLIST.md), перевірка — [T83-QA.md](../docs/chat-v2/T83-QA.md).
 
+## Продакшен: паролі MySQL/Redis (не в git)
+
+1. `cp docker/compose.override.prod.example.yml docker/compose.override.yml`
+2. `cp docker/compose.deploy.env.example docker/compose.deploy.env` — заповніть `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `REDIS_PASSWORD` (напр. `openssl rand -base64 32`).
+3. У `backend/.env`: ті самі `DB_PASSWORD` і `REDIS_PASSWORD`, що в `compose.deploy.env`; `DB_USERNAME=redpanda`.
+4. `deploy.sh` сам додасть `--env-file docker/compose.deploy.env`, якщо файл існує.
+
+Файли `docker/compose.override.yml` і `docker/compose.deploy.env` у `.gitignore`.
+
 ## Приклад віддаленого деплою
 
 Кроки деплою на сервері: [deploy.sh](./deploy.sh).

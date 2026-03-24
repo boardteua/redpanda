@@ -1,0 +1,53 @@
+# Продакшен: на сервері
+#   cp docker/compose.override.prod.example.yml docker/compose.override.yml
+#   cp docker/compose.deploy.env.example docker/compose.deploy.env
+# Заповніть compose.deploy.env (openssl rand -base64 32), узгодьте backend/.env (DB_*, REDIS_*).
+# deploy.sh автоматично додає --env-file docker/compose.deploy.env, якщо файл є.
+
+services:
+  mysql:
+    env_file:
+      - compose.deploy.env
+    environment:
+      # Перекриває слабкі значення з compose.yaml (інакше лишиться root/redpanda з бази).
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: redpanda
+      MYSQL_USER: redpanda
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  redis:
+    env_file:
+      - compose.deploy.env
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\""]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  php:
+    env_file:
+      - compose.deploy.env
+    environment:
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  reverb:
+    env_file:
+      - compose.deploy.env
+    environment:
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  queue:
+    env_file:
+      - compose.deploy.env
+    environment:
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}

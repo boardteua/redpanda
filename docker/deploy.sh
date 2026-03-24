@@ -41,7 +41,12 @@ if [[ "${DEPLOY_SKIP_REPO_CLEANUP:-}" != "1" ]]; then
 fi
 
 # Збірка й artisan у контейнерах (PHP 8.3 + Composer 2.x), щоб не залежати від PHP/Composer на хості.
-COMPOSE=(docker compose -f "$REPO_DIR/docker/compose.yaml")
+# Опційно: docker/compose.deploy.env + compose.override.yml (див. compose.override.prod.example.yml).
+COMPOSE_ENV=()
+if [[ -f "$REPO_DIR/docker/compose.deploy.env" ]]; then
+  COMPOSE_ENV=(--env-file "$REPO_DIR/docker/compose.deploy.env")
+fi
+COMPOSE=(docker compose "${COMPOSE_ENV[@]}" -f "$REPO_DIR/docker/compose.yaml")
 
 "${COMPOSE[@]}" up -d mysql redis
 "${COMPOSE[@]}" --profile app build php
