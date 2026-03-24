@@ -18,19 +18,31 @@
         >
             <div class="rp-auth-landing-card">
                 <div class="rp-auth-landing-brand">
-                    <a
-                        href="/"
-                        class="rp-auth-landing-logo-link rp-focusable"
-                        aria-label="На головну чату"
-                    >
-                        <img
-                            class="rp-auth-landing-logo"
-                            :src="landingLogoUrl"
-                            width="128"
-                            height="128"
-                            alt="Логотип чату — руда панда"
-                        />
-                    </a>
+                    <div class="rp-auth-landing-brand-leading">
+                        <a
+                            href="/"
+                            class="rp-auth-landing-logo-link rp-focusable"
+                            aria-label="На головну чату"
+                        >
+                            <img
+                                class="rp-auth-landing-logo"
+                                :src="landingLogoUrl"
+                                width="128"
+                                height="128"
+                                alt="Логотип чату — руда панда"
+                            />
+                        </a>
+                        <p
+                            v-if="!user"
+                            class="rp-auth-landing-online-header"
+                            role="status"
+                            aria-live="polite"
+                            aria-atomic="true"
+                        >
+                            Користувачі онлайн
+                            <strong>{{ usersOnline }}</strong>
+                        </p>
+                    </div>
                     <div class="rp-auth-landing-brand-titles">
                         <h1>{{ displayTitle }}</h1>
                         <h2 class="rp-auth-landing-tagline">
@@ -362,14 +374,6 @@
                 </nav>
             </aside>
                 </div>
-
-                <h3
-                    v-if="!user"
-                    class="rp-auth-landing-online"
-                >
-                    Користувачі онлайн
-                    <strong>{{ usersOnline }}</strong>
-                </h3>
             </div>
         </main>
     </div>
