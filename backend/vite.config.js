@@ -60,6 +60,19 @@ function resolveReverbClientScheme(env) {
     return '';
 }
 
+/** Ключ додатку в URL `/app/{key}`; має збігатися з REVERB_APP_KEY у Reverb. */
+function resolveReverbAppKey(env) {
+    const vite = env.VITE_REVERB_APP_KEY;
+    if (vite && !isUnresolvedRef(vite) && String(vite).trim() !== '') {
+        return String(vite).trim();
+    }
+    const rk = env.REVERB_APP_KEY;
+    if (rk && !isUnresolvedRef(rk) && String(rk).trim() !== '') {
+        return String(rk).trim();
+    }
+    return '';
+}
+
 function resolveReverbClientPort(env) {
     const vite = env.VITE_REVERB_PORT;
     if (vite && !isUnresolvedRef(vite)) {
@@ -88,9 +101,13 @@ export default defineConfig(({ mode }) => {
     const reverbClientHost = resolveReverbClientHost(env);
     const reverbClientScheme = resolveReverbClientScheme(env);
     const reverbClientPort = resolveReverbClientPort(env);
+    const reverbAppKey = resolveReverbAppKey(env);
 
     /** @type {Record<string, string>} */
     const defineReverb = {};
+    if (reverbAppKey !== '') {
+        defineReverb['import.meta.env.VITE_REVERB_APP_KEY'] = JSON.stringify(reverbAppKey);
+    }
     if (reverbClientHost !== '') {
         defineReverb['import.meta.env.VITE_REVERB_HOST'] = JSON.stringify(reverbClientHost);
     }
