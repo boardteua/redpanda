@@ -10,6 +10,7 @@ use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\File\UploadedFile as SymfonyUploadedFile;
 use Tests\TestCase;
 
 class UserAvatarApiTest extends TestCase
@@ -156,6 +157,47 @@ class UserAvatarApiTest extends TestCase
 
         $this->assertDatabaseHas('images', ['id' => $imageId]);
         $this->assertNotSame($imageId, (int) $user->avatar_image_id);
+    }
+
+    public function test_avatar_rejects_dimensions_above_avatar_limit(): void
+    {
+        Storage::fake('chat_images');
+
+        $user = User::factory()->create(['guest' => false]);
+        $file = UploadedFile::fake()->image('huge.png', 4100, 40);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->post('/api/v1/me/avatar', ['image' => $file])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['image']);
+    }
+
+    public function test_avatar_rejects_non_image_bytes_even_with_png_client_type(): void
+    {
+        Storage::fake('chat_images');
+
+        $user = User::factory()->create(['guest' => false]);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'badimg');
+        $this->assertNotFalse($tmp);
+        // Коректний заголовок PNG, але без валідних чанків — проходить mimetypes, падає на getimagesize (інспектор T19).
+        file_put_contents($tmp, "\x89PNG\r\n\x1a\n".str_repeat("\0", 128));
+        $file = new SymfonyUploadedFile($tmp, 'disguise.png', 'image/png', UPLOAD_ERR_OK, true);
+
+        try {
+            $this->from(config('app.url'))
+                ->actingAs($user, 'web')
+                ->withHeaders($this->statefulHeaders())
+                ->post('/api/v1/me/avatar', ['image' => $file])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(['image']);
+        } finally {
+            if (is_file($tmp)) {
+                unlink($tmp);
+            }
+        }
     }
 
     public function test_other_user_can_fetch_avatar_image_file_for_profile_avatar(): void

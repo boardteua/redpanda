@@ -64,4 +64,22 @@ class ChatThrottleRulesTest extends TestCase
         $mod->forceFill(['user_rank' => User::RANK_MODERATOR]);
         $this->assertSame(30, ChatThrottleRules::imageUploadsPerMinute($mod));
     }
+
+    public function test_avatar_uploads_per_minute_tiers(): void
+    {
+        $guest = User::factory()->guest()->make();
+        $this->assertSame(3, ChatThrottleRules::avatarUploadsPerMinute($guest));
+
+        $plain = User::factory()->make(['guest' => false, 'vip' => false]);
+        $plain->forceFill(['user_rank' => User::RANK_USER]);
+        $this->assertSame(10, ChatThrottleRules::avatarUploadsPerMinute($plain));
+
+        $vip = User::factory()->make(['guest' => false, 'vip' => true]);
+        $vip->forceFill(['user_rank' => User::RANK_USER]);
+        $this->assertSame(20, ChatThrottleRules::avatarUploadsPerMinute($vip));
+
+        $mod = User::factory()->make(['guest' => false, 'vip' => false]);
+        $mod->forceFill(['user_rank' => User::RANK_MODERATOR]);
+        $this->assertSame(20, ChatThrottleRules::avatarUploadsPerMinute($mod));
+    }
 }

@@ -31,4 +31,16 @@ final class ChatThrottleRules
             default => 20,
         };
     }
+
+    /**
+     * Окремий ліміт для зміни аватара (T19): нижче за загальний image-upload, щоб зменшити флуд.
+     */
+    public static function avatarUploadsPerMinute(User $user): int
+    {
+        return match (true) {
+            $user->guest => 3,
+            $user->isVip() || $user->canModerate() => 20,
+            default => 10,
+        };
+    }
 }

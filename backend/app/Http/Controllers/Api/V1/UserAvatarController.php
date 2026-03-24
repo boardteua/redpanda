@@ -9,6 +9,7 @@ use App\Models\Image;
 use App\Models\User;
 use App\Services\Moderation\UserPostingGate;
 use App\Support\ChatImageUploadValidation;
+use App\Support\ChatUploadedImageInspector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,12 @@ class UserAvatarController extends Controller
         $postingGate->ensureCanPost($user);
 
         $file = $request->file('image');
+        $inspected = ChatUploadedImageInspector::inspectOrFail(
+            $file,
+            ChatUploadedImageInspector::AVATAR_MAX_DIMENSION,
+            ChatUploadedImageInspector::AVATAR_MAX_DIMENSION,
+        );
+
         $now = time();
         $path = $file->store($user->id.'/avatars', 'chat_images');
         if ($path === false) {
@@ -55,10 +62,13 @@ class UserAvatarController extends Controller
         }
 
         $original = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        $displayName = $original !== '' ? mb_substr($original, 0, 200) : 'avatar';
+        $displayName = ChatUploadedImageInspector::sanitizeDisplayBasename(
+            $original !== '' ? $original : '',
+            'avatar',
+        );
 
         try {
-            DB::transaction(function () use ($user, $file, $path, $displayName, $now): void {
+            DB::transaction(function () use ($user, $file, $path, $displayName, $now, $inspected): void {
                 $previousId = $user->avatar_image_id;
 
                 $image = Image::query()->create([
@@ -66,7 +76,7 @@ class UserAvatarController extends Controller
                     'user_name' => $user->user_name,
                     'disk_path' => $path,
                     'file_name' => $displayName,
-                    'mime' => (string) ($file->getMimeType() ?? 'application/octet-stream'),
+                    'mime' => $inspected['mime'],
                     'size_bytes' => (int) $file->getSize(),
                     'date_sent' => $now,
                 ]);

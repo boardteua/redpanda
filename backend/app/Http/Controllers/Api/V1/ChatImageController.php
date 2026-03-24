@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Image;
 use App\Services\Moderation\UserPostingGate;
 use App\Support\ChatImageUploadValidation;
+use App\Support\ChatUploadedImageInspector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -67,6 +68,12 @@ class ChatImageController extends Controller
         }
         $postingGate->ensureCanPost($user);
         $file = $request->file('image');
+        $inspected = ChatUploadedImageInspector::inspectOrFail(
+            $file,
+            ChatUploadedImageInspector::CHAT_IMAGE_MAX_DIMENSION,
+            ChatUploadedImageInspector::CHAT_IMAGE_MAX_DIMENSION,
+        );
+
         $now = time();
         $path = $file->store((string) $user->id, 'chat_images');
         if ($path === false) {
@@ -81,7 +88,10 @@ class ChatImageController extends Controller
         }
 
         $original = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        $displayName = $original !== '' ? mb_substr($original, 0, 200) : 'image';
+        $displayName = ChatUploadedImageInspector::sanitizeDisplayBasename(
+            $original !== '' ? $original : '',
+            'image',
+        );
 
         try {
             $image = Image::query()->create([
@@ -89,7 +99,7 @@ class ChatImageController extends Controller
                 'user_name' => $user->user_name,
                 'disk_path' => $path,
                 'file_name' => $displayName,
-                'mime' => (string) ($file->getMimeType() ?? 'application/octet-stream'),
+                'mime' => $inspected['mime'],
                 'size_bytes' => (int) $file->getSize(),
                 'date_sent' => $now,
             ]);

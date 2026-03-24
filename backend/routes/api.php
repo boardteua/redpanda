@@ -42,7 +42,7 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::get('auth/user', [AuthController::class, 'user']);
         Route::post('auth/logout', [AuthController::class, 'logout']);
 
-        Route::middleware('throttle:image-upload')->post('me/avatar', [UserAvatarController::class, 'store']);
+        Route::middleware('throttle:avatar-upload')->post('me/avatar', [UserAvatarController::class, 'store']);
 
         Route::middleware('throttle:me-profile')->group(function (): void {
             Route::get('me/profile', [MeProfileController::class, 'show']);

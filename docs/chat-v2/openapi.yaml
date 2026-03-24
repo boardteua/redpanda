@@ -888,7 +888,9 @@ paths:
       summary: Завантажити аватар профілю
       description: |
         Лише для зареєстрованих користувачів (`guest === false`). Гість отримує **403**.
-        Обмеження як у `POST /api/v1/images`: JPEG, PNG, GIF, WebP; розмір — див. `max_chat_image_upload_bytes` у `GET /api/v1/chat/settings`.
+        Обмеження як у `POST /api/v1/images`: JPEG, PNG, GIF, WebP; розмір файлу — див. `max_chat_image_upload_bytes` у `GET /api/v1/chat/settings`.
+        Додатково (T19): фактичний тип і декодування перевіряються за вмістом (magic bytes / `getimagesize`); максимальний розмір зображення **4096×4096 px**; MIME у БД береться з вмісту, а не лише з заголовка клієнта.
+        Окремий throttle **`avatar-upload`** (нижчий за загальний `image-upload` для вкладень у чат).
         Відповідь — оновлений профіль у форматі `UserResponse` (поле `avatar_url` вказує на `GET /api/v1/images/{id}/file`).
       operationId: uploadProfileAvatar
       security:
@@ -2027,6 +2029,7 @@ paths:
       description: |
         `multipart/form-data`, поле **`image`**. Дозволені MIME: `image/jpeg`, `image/png`, `image/gif`, `image/webp`.
         Максимальний розмір — **мінімум** з `max_attachment_bytes` (адмін, `GET/PATCH /api/v1/chat/settings`) та обмеження PHP `upload_max_filesize` / `post_max_size`; фактична межа в байтах — поле **`max_chat_image_upload_bytes`** у `GET /api/v1/chat/settings`. При перевищенні — **422** з поясненням у `message` / `errors`.
+        Додатково (T19): перевірка **фактичного вмісту** (magic bytes + декодування) і ліміт розмірів зображення **8192×8192 px**; збережений `mime` узгоджений з вмістом.
         У відповіді — `data.id` для передачі в `POST /api/v1/rooms/{roomId}/messages` як `image_id`.
       operationId: uploadChatImage
       security:

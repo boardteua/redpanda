@@ -205,6 +205,14 @@ class AppServiceProvider extends ServiceProvider
                 ->by('u:'.$user->id);
         });
 
+        RateLimiter::for('avatar-upload', function (Request $request) {
+            /** @var User $user маршрут під auth:sanctum */
+            $user = $request->user();
+
+            return Limit::perMinute(ChatThrottleRules::avatarUploadsPerMinute($user))
+                ->by('u:'.$user->id);
+        });
+
         RateLimiter::for('image-read', function (Request $request) {
             $user = $request->user();
 

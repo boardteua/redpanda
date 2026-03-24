@@ -606,11 +606,13 @@ export default {
                     this.$emit('updated', data.data);
                 }
             } catch (err) {
-                this.avatarUploadError =
-                    err.response?.data?.message ||
-                    (err.response?.status === 403
-                        ? 'Гості не можуть завантажувати аватарку.'
-                        : 'Не вдалося оновити аватарку.');
+                if (err.response?.status === 403) {
+                    this.avatarUploadError = 'Гості не можуть завантажувати аватарку.';
+                } else {
+                    const msg = this.formatValidationMessage(err);
+                    this.avatarUploadError =
+                        msg !== 'Не вдалося зберегти.' ? msg : 'Не вдалося оновити аватарку.';
+                }
             } finally {
                 this.avatarUploading = false;
                 input.value = '';
