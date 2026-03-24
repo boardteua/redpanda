@@ -37,6 +37,8 @@
 ## Reverse proxy і WebSocket
 
 - HTTP і **WS** — різні потреби: проксі має прокидати `Upgrade` та `Connection` для Reverb (приклад у [документації Reverb](https://laravel.com/docs/13.x/reverb)).
+- Reverb очікує **два** префікси URI: **`/app`** (WebSocket) і **`/apps`** (HTTP API). Якщо на хостовому nginx проксується лише `/app`, частина запитів може потрапляти в Laravel і ламати real-time — додайте `location /apps` на той самий upstream, що й Reverb (див. `docker/nginx/host-nginx-reverb-proxy.example.conf`).
+- У `docker/production.env`: **`REVERB_HOST=reverb`** (або інше ім’я сервісу в мережі Docker) для **PHP → Reverb**; **`VITE_REVERB_*`** або порожні значення з **`APP_URL=https://…`** (після збірки Vite підставляє публічний хост і **443**) — для **браузера**. Не використовуйте `REVERB_HOST=reverb` у `VITE_REVERB_HOST`.
 - Для великої кількості з’єднань — підняти ліміти worker/process (nginx `worker_connections`, supervisor `minfds` тощо) за рекомендаціями Laravel.
 
 ## Масштабування Reverb

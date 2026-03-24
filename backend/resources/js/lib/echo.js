@@ -5,6 +5,8 @@ import Pusher from 'pusher-js';
  * Echo для Laravel Reverb (протокол Pusher).
  * Повертає null, якщо немає VITE_REVERB_APP_KEY (наприклад, production build без WS).
  *
+ * Прод за nginx: публічний хост/443 у бандл підставляє vite.config.js з APP_URL (див. docker/nginx/host-nginx-reverb-proxy.example.conf).
+ *
  * @param {string|null|undefined} bearerToken — опційно: Auth0 access token для POST /broadcasting/auth (T76).
  */
 export function createEcho(bearerToken = null) {
@@ -15,7 +17,11 @@ export function createEcho(bearerToken = null) {
 
     window.Pusher = Pusher;
 
-    const scheme = import.meta.env.VITE_REVERB_SCHEME ?? 'https';
+    const schemeRaw = import.meta.env.VITE_REVERB_SCHEME;
+    const scheme =
+        schemeRaw !== undefined && schemeRaw !== null && String(schemeRaw).trim() !== ''
+            ? String(schemeRaw).trim()
+            : 'https';
     const rawPort = import.meta.env.VITE_REVERB_PORT;
     const parsed =
         rawPort !== undefined && rawPort !== null && String(rawPort).trim() !== ''
@@ -23,11 +29,17 @@ export function createEcho(bearerToken = null) {
             : NaN;
     const wsPort = Number.isFinite(parsed) && parsed > 0 ? parsed : scheme === 'https' ? 443 : 80;
 
+    const hostRaw = import.meta.env.VITE_REVERB_HOST;
+    const wsHost =
+        hostRaw !== undefined && hostRaw !== null && String(hostRaw).trim() !== ''
+            ? String(hostRaw).trim()
+            : 'localhost';
+
     /** @type {Record<string, unknown>} */
     const opts = {
         broadcaster: 'reverb',
         key,
-        wsHost: import.meta.env.VITE_REVERB_HOST ?? 'localhost',
+        wsHost,
         wsPort,
         wssPort: wsPort,
         forceTLS: scheme === 'https',

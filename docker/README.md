@@ -27,7 +27,7 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 
 ### Reverb і queue (`--profile app`)
 
-Сервіси **`reverb`** (порт **6001**) і **`queue`**. Для Echo/Vite локально зазвичай `VITE_REVERB_HOST=localhost`, `VITE_REVERB_PORT=6001`, `VITE_REVERB_SCHEME=http`; у проді — `wss` і публічний хост (див. [T80](../docs/chat-v2/T80-DEPLOY-CHECKLIST.md)).
+Сервіси **`reverb`** (порт **6001**) і **`queue`**. Для Echo/Vite локально зазвичай `VITE_REVERB_HOST=localhost`, `VITE_REVERB_PORT=6001`, `VITE_REVERB_SCHEME=http`; у проді — публічний хост і **443** (або порожні `VITE_REVERB_*` + `APP_URL=https://…` — підстановка в `vite.config.js`). Хостовий nginx: **`/app` і `/apps`** на Reverb — [приклад](nginx/host-nginx-reverb-proxy.example.conf); повний чекліст — [T80](../docs/chat-v2/T80-DEPLOY-CHECKLIST.md).
 
 ## Продакшен: `docker/production.env` (не в git), **без** окремого prod-override
 

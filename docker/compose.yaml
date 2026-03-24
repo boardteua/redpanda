@@ -75,6 +75,10 @@ services:
       # Має збігатися з reverb: інакше `php artisan optimize` у контейнері php закешує порт 8080
       # (дефолт у config/reverb.php), а Docker пробросить 6001 — WS з хоста не дістане Reverb.
       REVERB_SERVER_PORT: "6001"
+      # PHP → Reverb усередині мережі compose (не localhost у контейнері).
+      REVERB_HOST: reverb
+      REVERB_PORT: "6001"
+      REVERB_SCHEME: http
     depends_on:
       mysql:
         condition: service_healthy
@@ -110,6 +114,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-${MYSQL_PASSWORD:-redpanda}}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REVERB_SERVER_PORT: "6001"
+      REVERB_HOST: reverb
+      REVERB_PORT: "6001"
+      REVERB_SCHEME: http
     volumes:
       - ../backend:/var/www/html
     ports:
@@ -139,6 +146,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-${MYSQL_PASSWORD:-redpanda}}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REVERB_SERVER_PORT: "6001"
+      REVERB_HOST: reverb
+      REVERB_PORT: "6001"
+      REVERB_SCHEME: http
     volumes:
       - ../backend:/var/www/html
     depends_on:

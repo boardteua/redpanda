@@ -3,33 +3,106 @@ import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue2';
 import tailwindcss from '@tailwindcss/vite';
 
+/** Рядок на кшталт "${REVERB_HOST}" з .env без розгортання — не використовувати в клієнті. */
+function isUnresolvedRef(value) {
+    const s = value == null ? '' : String(value).trim();
+    return s.startsWith('${');
+}
+
+function parseAppUrl(env) {
+    const raw = env.APP_URL;
+    if (!raw || isUnresolvedRef(raw)) {
+        return null;
+    }
+    try {
+        return new URL(String(raw).trim());
+    } catch {
+        return null;
+    }
+}
+
 /**
- * PHP dotenv розгортає ${REVERB_PORT} у .env; Vite loadEnv — ні. Тоді в клієнт потрапляє
- * буквальний рядок або порожнє значення, Echo падає на порт сторінки (напр. 8080), а не Reverb.
- * На проді `npm run build` має бачити вже розгорнуті `VITE_REVERB_*` (symlink `backend/.env` → `docker/production.env`).
+ * PHP dotenv розгортає ${REVERB_*}; Vite loadEnv — ні. Тоді в бандл потрапляє буквальний "${…}" або порожньо.
+ * Підставляємо з APP_URL (публічний хост після nginx), інакше з REVERB_* для локальної розробки.
  */
-function resolveReverbClientPort(env) {
-    const vite = env.VITE_REVERB_PORT;
-    if (vite && !String(vite).startsWith('${')) {
+function resolveReverbClientHost(env) {
+    const vite = env.VITE_REVERB_HOST;
+    if (vite && !isUnresolvedRef(vite)) {
         return String(vite).trim();
     }
-    if (env.REVERB_PORT) {
-        return String(env.REVERB_PORT).trim();
+    const app = parseAppUrl(env);
+    if (app?.hostname) {
+        return app.hostname;
+    }
+    const rh = env.REVERB_HOST;
+    if (rh && !isUnresolvedRef(rh)) {
+        return String(rh).trim();
+    }
+    return '';
+}
+
+function resolveReverbClientScheme(env) {
+    const vite = env.VITE_REVERB_SCHEME;
+    if (vite && !isUnresolvedRef(vite)) {
+        return String(vite).trim();
+    }
+    const app = parseAppUrl(env);
+    if (app?.protocol === 'https:') {
+        return 'https';
+    }
+    if (app?.protocol === 'http:') {
+        return 'http';
+    }
+    const rs = env.REVERB_SCHEME;
+    if (rs && !isUnresolvedRef(rs)) {
+        return String(rs).trim();
+    }
+    return '';
+}
+
+function resolveReverbClientPort(env) {
+    const vite = env.VITE_REVERB_PORT;
+    if (vite && !isUnresolvedRef(vite)) {
+        return String(vite).trim();
+    }
+    const app = parseAppUrl(env);
+    // HTTPS у APP_URL → браузер завжди через nginx (443), не на внутрішній REVERB_PORT=6001.
+    if (app?.protocol === 'https:') {
+        return app.port || '443';
+    }
+    if (app?.protocol === 'http:' && app.port) {
+        return app.port;
+    }
+    const rp = env.REVERB_PORT;
+    if (rp && !isUnresolvedRef(rp)) {
+        return String(rp).trim();
+    }
+    if (app?.protocol === 'http:') {
+        return '80';
     }
     return '';
 }
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
+    const reverbClientHost = resolveReverbClientHost(env);
+    const reverbClientScheme = resolveReverbClientScheme(env);
     const reverbClientPort = resolveReverbClientPort(env);
 
+    /** @type {Record<string, string>} */
+    const defineReverb = {};
+    if (reverbClientHost !== '') {
+        defineReverb['import.meta.env.VITE_REVERB_HOST'] = JSON.stringify(reverbClientHost);
+    }
+    if (reverbClientScheme !== '') {
+        defineReverb['import.meta.env.VITE_REVERB_SCHEME'] = JSON.stringify(reverbClientScheme);
+    }
+    if (reverbClientPort !== '') {
+        defineReverb['import.meta.env.VITE_REVERB_PORT'] = JSON.stringify(reverbClientPort);
+    }
+
     return {
-        define:
-            reverbClientPort !== ''
-                ? {
-                      'import.meta.env.VITE_REVERB_PORT': JSON.stringify(reverbClientPort),
-                  }
-                : {},
+        define: defineReverb,
         plugins: [
             laravel({
                 input: ['resources/css/app.css', 'resources/js/app.js'],
