@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ChatMessageResource;
 use App\Models\ChatMessage;
 use App\Models\Room;
+use App\Support\ChatMessageListAbilityMap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -76,6 +77,11 @@ class ChatArchiveController extends Controller
         }
 
         $paginator = $query->paginate($perPage, ['*'], 'page', $page)->appends($request->query());
+
+        $request->attributes->set(
+            ChatMessageResource::ABILITY_MAP_REQUEST_KEY,
+            ChatMessageListAbilityMap::forMessages($user, $paginator->getCollection()),
+        );
 
         return ChatMessageResource::collection($paginator);
     }

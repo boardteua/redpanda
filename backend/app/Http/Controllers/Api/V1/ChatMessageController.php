@@ -27,6 +27,7 @@ use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\UserPostingGate;
 use App\Services\PrivateMessageGate;
 use App\Support\ChatMessageBodyStyle;
+use App\Support\ChatMessageListAbilityMap;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -71,7 +72,14 @@ class ChatMessageController extends Controller
             $query->where('post_id', '<', $before);
         }
 
-        $page = $query->limit($limit)->get()->sortBy('post_id')->values();
+        $page = $query->limit($limit)->get();
+        $page->loadMissing('room');
+        $page = $page->sortBy('post_id')->values();
+
+        $request->attributes->set(
+            ChatMessageResource::ABILITY_MAP_REQUEST_KEY,
+            ChatMessageListAbilityMap::forMessages($request->user(), $page),
+        );
 
         $nextCursor = $page->isNotEmpty() ? $page->first()->post_id : null;
 

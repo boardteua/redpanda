@@ -1295,14 +1295,14 @@
 
 ---
 
-### [ ] T105 — (Опційно) **T99 P2:** `ChatMessageResource` — менше O(n) викликів **Gate** на стрічці або задокументований trade-off
+### [x] T105 — (Опційно) **T99 P2:** `ChatMessageResource` — менше O(n) викликів **Gate** на стрічці або задокументований trade-off
 
 - **Контекст клієнта:** T99: на кожен рядок стрічки **`Gate::allows('update'|'delete')`** — при **`limit=50`** це **100** перевірок політик; кеш здібностей частково допомагає, але вартість зростає з **n**.
 - **Delegate:** Backend Architect
 - **Залежність:** **T99**; **T36**/**T37** (редагування/видалення) — регресія критична
 - **Deliverables (варіант A):** батчеве обчислення `can_edit`/`can_delete` для сторінки повідомлень (наприклад, один прохід у контролері або кастомний resource collection) з **тим самим** результатом для кожного `post_id`, що зараз.
 - **Deliverables (варіант B):** якщо оптимізація відкладена — додати **`docs/chat-v2/`** короткий документ (на кшталт **`T105-CHAT-MESSAGE-LIST-PERMISSIONS.md`**) з виміряним/оціненим trade-off і посиланням на T99.
-- **QA evidence:** **`php artisan test`** PASS (політики, повідомлення); за варіантом A — тест на список з кількома повідомленнями від різних авторів (модератор/звичайний).
+- **QA evidence:** **PASS (2026-03-24):** `ChatMessageActionRules` + `ChatMessageListAbilityMap`; `ChatMessageController::index` і `ChatArchiveController::index` виставляють `ChatMessageResource::ABILITY_MAP_REQUEST_KEY`; одиничні відповіді без мапи лишаються на **Gate**. `composer test` зелений; **`ChatMessageListAbilitiesSyncTest`** — паритет Gate ↔ JSON для кожного рядка списку кімнати.
 - **Трасування:** T99 § N+1 / ChatMessageResource, план P2 п.1.
 
 ---
