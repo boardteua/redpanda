@@ -1,6 +1,7 @@
 # T83: на кожен PR і push у main — тести; деплой лише після зеленого test job, лише push у main (vars/secrets).
 # Гейт: job deploy має needs: test — поки PHPUnit / Node-тести не пройшли, SSH-деплой не стартує.
 # Compose: `docker compose -f docker/compose.yaml config` (без production.env — лише валідація маніфесту).
+# T107: job dependency-audit — composer audit + npm audit (інформативно); завжди exit 0, не блокує merge/деплой; політика — без fail-hard за low (див. крок summary).
 name: CI
 
 on:
@@ -59,6 +60,74 @@ jobs:
         run: |
           npm run test:msg-parse
           npm run test:country-filter
+
+  # T107: паралельно з test; deploy лишається needs: test — аудит не гейтить реліз.
+  dependency-audit:
+    name: Dependency audit (informative, T107)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP (composer)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer
+
+      - name: Setup Node (npm)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: composer audit + npm audit (non-blocking)
+        shell: bash
+        env:
+          AUDIT_OUT: ${{ github.workspace }}/.audit-out
+        run: |
+          set +e
+          mkdir -p "$AUDIT_OUT"
+          composer audit --format=json > "$AUDIT_OUT/composer-audit.json" 2>&1
+          echo -n $? > "$AUDIT_OUT/composer-exit.code"
+          # package-lock-only: без npm ci, той самий lock, що в репо
+          npm audit --package-lock-only --json > "$AUDIT_OUT/npm-audit.json" 2>&1
+          echo -n $? > "$AUDIT_OUT/npm-exit.code"
+          set -e
+          {
+            echo "### Dependency audit (T107)"
+            echo "Інформативний крок: **не блокує** merge і деплой. Політика репо: **без fail-hard** за низьку серйозність; повний вивід — артефакт **dependency-audits**."
+            echo ""
+            C_EXIT=$(cat "$AUDIT_OUT/composer-exit.code")
+            N_EXIT=$(cat "$AUDIT_OUT/npm-exit.code")
+            echo "| Команда | Exit code |"
+            echo "|---------|-----------|"
+            echo "| composer audit | $C_EXIT |"
+            echo "| npm audit | $N_EXIT |"
+            echo ""
+            if jq -e . "$AUDIT_OUT/composer-audit.json" >/dev/null 2>&1; then
+              CAB=$(jq '.advisories | length' "$AUDIT_OUT/composer-audit.json")
+              ABN=$(jq '.abandoned | length' "$AUDIT_OUT/composer-audit.json")
+              echo "- **Composer:** advisories=$CAB, abandoned=$ABN"
+            else
+              echo "- **Composer:** вивід не JSON (мережа/Packagist або помилка CLI) — див. \`composer-audit.json\` у артефакті."
+            fi
+            if jq -e .metadata "$AUDIT_OUT/npm-audit.json" >/dev/null 2>&1; then
+              jq -r '"- **npm:** total=" + (.metadata.vulnerabilities.total|tostring) + " (critical=" + (.metadata.vulnerabilities.critical|tostring) + ", high=" + (.metadata.vulnerabilities.high|tostring) + ", moderate=" + (.metadata.vulnerabilities.moderate|tostring) + ", low=" + (.metadata.vulnerabilities.low|tostring) + ")"' "$AUDIT_OUT/npm-audit.json" || echo "- **npm:** див. \`npm-audit.json\` у артефакті."
+            else
+              echo "- **npm:** не вдалося прочитати metadata — див. \`npm-audit.json\` у артефакті."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+          exit 0
+
+      - name: Upload audit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audits
+          path: ${{ github.workspace }}/.audit-out/
 
   # Деплой: push у main після успішного test. У jobs.<id>.if недоступний контекст secrets (див. GitHub «Contexts reference»).
   # Увімкнення: Variables — DEPLOY_HOST (непорожній) АБО DEPLOY_ENABLED=true (якщо host/user/repo лише в Secrets).

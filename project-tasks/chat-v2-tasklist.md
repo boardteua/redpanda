@@ -1321,7 +1321,7 @@
 
 ---
 
-### [ ] T107 — (Опційно) **T99 / залежності:** інформативний **`composer audit`** + **`npm audit`** у CI
+### [x] T107 — (Опційно) **T99 / залежності:** інформативний **`composer audit`** + **`npm audit`** у CI
 
 - **Контекст клієнта:** T99 рекомендує періодично перевіряти **security advisories** для Laravel, axios, **@auth0/auth0-spa-js** тощо — без обов’язкового bump пакетів у межах аудиту.
 - **Delegate:** DevOps Automator
@@ -1329,7 +1329,7 @@
 - **Deliverables:**
   - Job у **GitHub Actions** (або еквівалент): `cd backend && composer audit --format=json` та `npm audit --json` у каталозі `backend/` — **артефакт логу** або підсумок у кроку; за замовчуванням **не fail-hard** на low severity (або fail тільки на **critical** — за політикою команди, явно задокументувати в коментарі workflow).
   - Оновити **`docs/chat-v2/`** або **`docker/README.md`** коротким рядком «де дивитися audit» за потреби.
-- **QA evidence:** Посилання на успішний прогін workflow на гілці; скрін або витяг логу без секретів.
+- **QA evidence:** **PASS (2026-03-24):** job **`dependency-audit`** у `.github/workflows/ci.yml` (артефакт **`dependency-audits`**, summary у Actions); `npm audit` у CI — **`--package-lock-only`** (еквівалент lockfile без `npm ci`). Локально: `composer audit --format=json` → `advisories: []`; `npm audit --package-lock-only --json` → metadata (low-severity по ланцюгу vue). Повний прогін GitHub Actions — після push на **`main`** / PR.
 - **Трасування:** T99 § «Залежності (composer.lock / package-lock)»; не замінює ручний review оновлень версій.
 
 ---

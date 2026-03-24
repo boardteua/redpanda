@@ -126,3 +126,7 @@
 - [ ] У репозиторії на сервері: **`docker/production.env`** (або legacy **`compose.deploy.env`**) на місці; **`docker/compose.yaml`** канонічний (prod-секрети через `--env-file`, без обов’язкового prod-override). Якщо є **`docker/compose.override.yml`** — лише для локальних нюансів (порти), не дублювати прод-паролі окремо від `production.env`.
 - [ ] Змінні деплою/бекапу на хості (GitHub SSH, systemd, `profile.d`): **`REPO_DIR`**, **`DEPLOY_GIT_REF`**, опційно **`DEPLOY_HEALTH_URL`**, **`BACKUP_BEFORE_DEPLOY`**, **`BACKUP_DIR`** — за домовленістю; див. коментарі в `docker/deploy.sh`.
 - [ ] Публічний smoke: **`https://new.board.te.ua/health/ready`** (або ваш `DEPLOY_HEALTH_URL`) повертає успішну відповідь після деплою.
+
+## Залежності та security advisories (T107)
+
+- На кожен PR/push у **main** у GitHub Actions виконується job **Dependency audit (informative, T107)**: `composer audit --format=json` і `npm audit --package-lock-only --json` у каталозі **`backend/`**; підсумок у **Summary** кроку workflow, повні JSON — артефакт **`dependency-audits`**. Крок **не** ламає CI за наявності low-severity; ручний перегляд і bump версій — окремо від аудиту.
