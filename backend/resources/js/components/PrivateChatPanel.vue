@@ -58,7 +58,7 @@
                 maxlength="4000"
                 rows="2"
                 :disabled="sending"
-                placeholder="Повідомлення… (команда /clear — очистити тред)"
+                :placeholder="privateComposerPlaceholder"
                 aria-describedby="private-composer-keys-hint"
                 @input="$emit('update:composerText', $event.target.value)"
                 @keydown="onComposerKeydown"
@@ -112,6 +112,20 @@ export default {
         currentUserAvatarUrl: {
             type: String,
             default: '',
+        },
+        /** T115: згадка slash-команд у placeholder лише для адміна чату. */
+        showSlashDocs: {
+            type: Boolean,
+            default: false,
+        },
+    },
+    computed: {
+        privateComposerPlaceholder() {
+            if (this.showSlashDocs) {
+                return 'Повідомлення… (команда /clear — очистити тред)';
+            }
+
+            return 'Повідомлення — Enter надішле, Shift+Enter — новий рядок';
         },
     },
     watch: {

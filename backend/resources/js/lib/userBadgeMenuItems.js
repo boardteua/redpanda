@@ -22,8 +22,8 @@ export function buildUserBadgeMenuItems(mode, viewer, target) {
 
     if (mode === 'self') {
         add('info', 'Інформація');
-        add('commands', 'Команди');
         if (v && v.chat_role === 'admin') {
+            add('commands', 'Команди');
             add('admin-hub', 'Панель адміна');
         }
         if (v && v.chat_role !== 'admin' && isStaffRole(v.chat_role)) {

@@ -1,6 +1,10 @@
 <template>
     <div>
-        <CommandsHelpModal :open="commandsHelpOpen" @close="$emit('commands-help-close')" />
+        <CommandsHelpModal
+            v-if="user && user.chat_role === 'admin'"
+            :open="commandsHelpOpen"
+            @close="$emit('commands-help-close')"
+        />
         <UserInfoModal
             :open="userInfoModalOpen"
             :mode="userInfoModalMode"

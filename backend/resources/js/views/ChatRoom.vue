@@ -165,6 +165,7 @@
             :current-user-id="user.id"
             :current-user-name="user.user_name"
             :current-user-avatar-url="user.avatar_url || ''"
+            :show-slash-docs="user.chat_role === 'admin'"
             @close="closePrivatePanel"
             @send="sendPrivateMessageFromPanel"
         />
@@ -1928,6 +1929,9 @@ export default {
                 return;
             }
             if (id === 'commands') {
+                if (!this.user || this.user.chat_role !== 'admin') {
+                    return;
+                }
                 this.commandsHelpOpen = true;
 
                 return;
