@@ -41,6 +41,8 @@
 - У `docker/production.env`: **`REVERB_HOST=reverb`** (або інше ім’я сервісу в мережі Docker) для **PHP → Reverb**; **`VITE_REVERB_*`** або порожні значення з **`APP_URL=https://…`** (після збірки Vite підставляє публічний хост і **443**) — для **браузера**. Не використовуйте `REVERB_HOST=reverb` у `VITE_REVERB_HOST`.
 - Для великої кількості з’єднань — підняти ліміти worker/process (nginx `worker_connections`, supervisor `minfds` тощо) за рекомендаціями Laravel.
 
+**Діагностика, коли в браузері `ERR_CONNECTION_RESET`, а `error.log` порожній:** nginx може **закрити з’єднання без рядка в error.log** (наприклад, **Request URI Too Large** / ліміт заголовків). WebSocket-рукостискання несе **Cookie** — при великій сесії додайте в `server` **`large_client_header_buffers 4 32k;`**. Увімкніть **access_log** для vhost і перевірте наявність **`GET /app/`** під час відкриття чату. Порівняйте: **curl Upgrade з іншої машини** vs **браузер**; на сервері **`tcpdump -i lo port 6001`** — чи є пакети до Reverb, коли рветься клієнт.
+
 ## Масштабування Reverb
 
 - Кілька інстансів Reverb за балансувальником: `REVERB_SCALING_ENABLED=true` і доступний Redis (див. [Reverb scaling](https://laravel.com/docs/13.x/reverb)).

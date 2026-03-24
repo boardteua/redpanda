@@ -16,6 +16,7 @@
 | Повільний чат, черга не рухається, jobs зависли | **Redis** потрібен для cache/queue, але недоступний | Перевірити `redis-cli ping`; у `.env` `REDIS_*`. Увімкнути `HEALTH_CHECK_REDIS=true` або перевести cache/queue на redis — тоді `GET /health/ready` покаже `checks.redis`. |
 | 503 на `GET /health/ready` | **MySQL** недоступний або мережа до БД | Логи додатку, `DB_*` у `.env`, `mysqladmin ping` / підключення з контейнера. |
 | 503 / «maintenance» на всіх шляхах | Режим обслуговування Laravel | `php artisan up`; перевірити `storage/framework/down`. |
+| Браузер: **`net::ERR_CONNECTION_RESET`** на `wss://…/app/…`, **`error.log` порожній**, Reverb **без** рядків про з’єднання | Запит **не логують** як помилку або **обривають до upstream**; часто **перевищення ліміту заголовків** (довгі cookie сесії) або RST на TCP | У `server` для сайту: **`large_client_header_buffers 4 32k;`**, перезавантажити nginx. Увімкнути **`access_log`** для цього `server` (окремий файл) і перевірити, чи з’являються рядки **`GET /app/`** при відкритті чату. З **ноутбука** (не з VPS): `curl --http1.1 -vk` з Upgrade на `https://домен/app/…` — чи є **101**. На VPS: **`tcpdump -i lo port 6001`** під час кліку в чаті — чи доходить трафік до Docker. Тимчасово **`php artisan reverb:start --debug`** у контейнері — чи з’являються події. |
 
 ## Процеси
 
