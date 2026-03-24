@@ -1,6 +1,7 @@
 # Redpanda: MySQL 8 + Redis 7; профіль `app` — PHP-FPM, Nginx, Reverb, queue.
 #
-# Локально: без секретів — дефолтні паролі в шаблоні (${VAR:-default}).
+# Локально: дефолти ${VAR:-root|redpanda} і Redis без пароля — лише для dev; у проді не покладайтеся на них.
+# Продакшен: сильні MYSQL_* / REDIS_PASSWORD у `docker/production.env` (див. production.env.example, docker/README.md).
 # Продакшен: один файл `docker/production.env` (gitignored) і той самий маніфест:
 #   docker compose --env-file docker/production.env -f docker/compose.yaml --profile app up -d
 # deploy.sh / backup-mysql.sh додають --env-file автоматично, коли файл існує.

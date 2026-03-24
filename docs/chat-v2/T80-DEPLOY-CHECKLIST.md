@@ -18,6 +18,8 @@
 - [ ] Оновлений `.env` / secret store для середовища; перевірка [таблиці змінних](#таблиця-змінних-staging--production) нижче.
 - [ ] Для фронту: збірка Vite у каталозі `backend/` з **продакшн-значеннями** `VITE_*` (див. [Vite env](https://vite.dev/guide/env-and-mode.html)); інакше клієнт піде не на той Reverb-хост.
 - [ ] За балансувальником: `TRUSTED_PROXIES` і коректні `X-Forwarded-*` (див. коментар у `backend/.env.example`).
+- [ ] **Безпека Docker-прод:** сильні `MYSQL_*` і **`REDIS_PASSWORD`** у `docker/production.env` (не дефолти `root`/`redpanda`); ротація паролів при старому томі — `docker/rotate-mysql-passwords.sh` після бекапу (див. `docker/README.md` → «Безпека продакшену»).
+- [ ] **`APP_DEBUG=false`**, за потреби **`SESSION_ENCRYPT=true`**, помірний **`LOG_LEVEL`** (напр. `warning`) на проді.
 
 ## Кроки деплою (порядок типовий)
 

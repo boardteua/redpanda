@@ -4,6 +4,8 @@
 
 Один маніфест для **dev і prod**: паролі та імена БД задаються через змінні з дефолтами для локальної розробки (`${VAR:-default}`). У продакшені ті самі ключі передають через **`docker/production.env`** і `--env-file` (робить `deploy.sh` / `backup-mysql.sh`).
 
+**Увага:** значення за замовчуванням у `compose.yaml` (`root` / `redpanda`, Redis без пароля) придатні **лише для dev**. На VPS завжди задавайте власні секрети в `docker/production.env` (див. [Безпека продакшену](#безпека-продакшену)).
+
 ```bash
 docker compose -f docker/compose.yaml up -d
 ```
@@ -32,13 +34,24 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 1. `cp docker/production.env.example docker/production.env` — заповніть секрети (`openssl rand -base64 32` тощо).
 2. Рекомендовано **`ln -sf ../docker/production.env backend/.env`** (з `backend/`), щоб `npm run build` у `deploy.sh` бачив `VITE_*`.
 3. **`docker/compose.override.yml` для прод не потрібен** — паролі MySQL/Redis і healthcheck’и вже в `compose.yaml`. Якщо на сервері лишився старий override лише заради prod-секретів — після оновлення репозиторію його можна **видалити**, щоб не дублювати й не роз’їжджатися з каноном.
-4. `deploy.sh` додає `--env-file docker/production.env`, якщо файл є; інакше — legacy `docker/compose.deploy.env`.
+4. `deploy.sh` додає `--env-file docker/production.env`, якщо файл існує; інакше — legacy `docker/compose.deploy.env`.
 
 Файли `docker/production.env`, `docker/compose.deploy.env`, `docker/compose.override.yml` у `.gitignore`.
 
-**Пароль MySQL змінили, а том `mysql_data` уже ініціалізований?** Змінні при старті контейнера **не** оновлюють пароль у БД — `ALTER USER` або новий том. Інакше буде **1045**.
+**Пароль MySQL змінили лише в `production.env`, а том `mysql_data` уже ініціалізований?** Змінні при старті контейнера **не** оновлюють пароль у БД — спочатку **`./docker/rotate-mysql-passwords.sh`** (з бекапом), потім оновіть `production.env` і `compose up`. Інакше буде **1045**.
 
 `deploy.sh` перед `composer install` очищає `bootstrap/cache/*`, щоб не тягнути старий кешований `DB_PASSWORD`.
+
+## Безпека продакшену
+
+| Область | Що зробити |
+|--------|------------|
+| **MySQL** | Унікальні довгі `MYSQL_ROOT_PASSWORD` і `MYSQL_PASSWORD` (див. коментарі у `production.env.example`). Не залишайте `root` / `redpanda` на публічному VPS. |
+| **Redis** | Непорожній `REDIS_PASSWORD` — контейнер увімкне `requirepass`; у Laravel той самий пароль у `REDIS_PASSWORD`. |
+| **Laravel** | `APP_DEBUG=false`, `APP_ENV=production`, стабільний `APP_KEY`. Розгляньте `SESSION_ENCRYPT=true` (у шаблоні `production.env.example` вже увімкнено для проду). |
+| **Проксі** | `TRUSTED_PROXIES` — IP хостового nginx (часто `127.0.0.1`; якщо трафік іде з docker bridge — додайте відповідну адресу). Уникайте `*` без явної причини. |
+| **Логи** | У шаблоні прод: `LOG_LEVEL=warning` (зменшує витік деталей у логах). |
+| **Ротація MySQL** | Після бекапу: `OLD_MYSQL_ROOT_PASSWORD`, `NEW_MYSQL_ROOT_PASSWORD`, `NEW_MYSQL_PASSWORD` → [`rotate-mysql-passwords.sh`](./rotate-mysql-passwords.sh), потім оновіть `production.env` і перезапустіть стек. |
 
 ## Бекап MySQL
 
