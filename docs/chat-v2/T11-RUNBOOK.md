@@ -7,6 +7,8 @@
 | Симптом | Ймовірна причина | Дія |
 |--------|-------------------|-----|
 | У чаті немає live-оновлень, банер «poll» або помилка Echo | **Reverb** не запущений або `VITE_REVERB_*` / `REVERB_*` не збігаються з клієнтом | Запустити `php artisan reverb:start`; перевірити `.env` (host, port, scheme, app key). HTTP і WS працюють окремо: `GET /health/ready` **не** перевіряє Reverb. |
+| У логах Reverb: `Starting server on 0.0.0.0:8080`, Docker проброс **6001:6001**, WS не конектиться | Після `php artisan optimize` у **контейнері php** у кеш потрапив дефолтний порт **8080** (`config/reverb.php`), а не **6001** | У `docker/compose.yaml` для **php** (і queue) задано `REVERB_SERVER_PORT: "6001"`; на сервері: `docker compose ... exec php php artisan config:clear && php artisan optimize`, потім `restart reverb`. Або повторний deploy. |
+| Reverb: `SQLSTATE[1045]` при зверненні до таблиці **`cache`** | `DB_*` у контейнера не збігаються з паролем користувача в MySQL (volume створено з іншим `MYSQL_PASSWORD`) або тимчасовий збій до готовності БД | Вирівняти `DB_PASSWORD` / `MYSQL_PASSWORD` у `production.env` з фактичним користувачем у MySQL; перезапустити mysql/app після зміни пароля. |
 | Повільний чат, черга не рухається, jobs зависли | **Redis** потрібен для cache/queue, але недоступний | Перевірити `redis-cli ping`; у `.env` `REDIS_*`. Увімкнути `HEALTH_CHECK_REDIS=true` або перевести cache/queue на redis — тоді `GET /health/ready` покаже `checks.redis`. |
 | 503 на `GET /health/ready` | **MySQL** недоступний або мережа до БД | Логи додатку, `DB_*` у `.env`, `mysqladmin ping` / підключення з контейнера. |
 | 503 / «maintenance» на всіх шляхах | Режим обслуговування Laravel | `php artisan up`; перевірити `storage/framework/down`. |
