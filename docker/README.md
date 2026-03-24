@@ -4,7 +4,7 @@
 
 Один маніфест для **dev і prod**: паролі та імена БД задаються через змінні з дефолтами для локальної розробки (`${VAR:-default}`). У продакшені ті самі ключі передають через **`docker/production.env`** і `--env-file` (робить `deploy.sh` / `backup-mysql.sh`).
 
-**Увага:** значення за замовчуванням у `compose.yaml` (`root` / `redpanda`, Redis без пароля) придатні **лише для dev**. На VPS завжди задавайте власні секрети в `docker/production.env` (див. [Безпека продакшену](#безпека-продакшену)).
+**Увага:** значення за замовчуванням у `compose.yaml` (`root` / `redpanda`, Redis без пароля) придатні **лише для dev**. На VPS секрети — у `docker/production.env`. **Канон для доступу додатку до MySQL:** `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`; compose сам підставляє їх у змінні образу `mysql` (`MYSQL_*`). Окремо лише **`MYSQL_ROOT_PASSWORD`** (root для бекапів, це не пароль користувача `redpanda`).
 
 ```bash
 docker compose -f docker/compose.yaml up -d
@@ -46,7 +46,7 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 
 | Область | Що зробити |
 |--------|------------|
-| **MySQL** | Унікальні довгі `MYSQL_ROOT_PASSWORD` і `MYSQL_PASSWORD` (див. коментарі у `production.env.example`). Не залишайте `root` / `redpanda` на публічному VPS. |
+| **MySQL** | У файлі одна логіка пароля додатку: **`DB_PASSWORD`** (разом з `DB_USERNAME` / `DB_DATABASE`). Окремо **`MYSQL_ROOT_PASSWORD`** для root. Не дублюйте другий рядок `DB_PASSWORD`. |
 | **Redis** | Непорожній `REDIS_PASSWORD` — контейнер увімкне `requirepass`; у Laravel той самий пароль у `REDIS_PASSWORD`. |
 | **Laravel** | `APP_DEBUG=false`, `APP_ENV=production`, стабільний `APP_KEY`. Розгляньте `SESSION_ENCRYPT=true` (у шаблоні `production.env.example` вже увімкнено для проду). |
 | **Проксі** | `TRUSTED_PROXIES` — IP хостового nginx (часто `127.0.0.1`; якщо трафік іде з docker bridge — додайте відповідну адресу). Уникайте `*` без явної причини. |

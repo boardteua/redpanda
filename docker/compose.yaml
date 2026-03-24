@@ -1,7 +1,9 @@
 # Redpanda: MySQL 8 + Redis 7; профіль `app` — PHP-FPM, Nginx, Reverb, queue.
 #
 # Локально: дефолти ${VAR:-root|redpanda} і Redis без пароля — лише для dev; у проді не покладайтеся на них.
-# Продакшен: сильні MYSQL_* / REDIS_PASSWORD у `docker/production.env` (див. production.env.example, docker/README.md).
+# Продакшен: у production.env канон для юзера БД додатку — DB_DATABASE / DB_USERNAME / DB_PASSWORD (Laravel).
+# Compose підставляє їх у змінні образу mysql (MYSQL_*). Окремо лише MYSQL_ROOT_PASSWORD (root для бекапів ≠ app user).
+# Зворотна сумісність: якщо задано лише MYSQL_PASSWORD (legacy) — він використовується, коли DB_PASSWORD порожній.
 # Продакшен: один файл `docker/production.env` (gitignored) і той самий маніфест:
 #   docker compose --env-file docker/production.env -f docker/compose.yaml --profile app up -d
 # deploy.sh / backup-mysql.sh додають --env-file автоматично, коли файл існує.
@@ -18,9 +20,9 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-redpanda}
-      MYSQL_USER: ${MYSQL_USER:-redpanda}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-redpanda}
+      MYSQL_DATABASE: ${DB_DATABASE:-${MYSQL_DATABASE:-redpanda}}
+      MYSQL_USER: ${DB_USERNAME:-${MYSQL_USER:-redpanda}}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-${MYSQL_PASSWORD:-redpanda}}
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
       interval: 5s
@@ -65,9 +67,9 @@ services:
     environment:
       DB_HOST: mysql
       REDIS_HOST: redis
-      DB_DATABASE: ${MYSQL_DATABASE:-redpanda}
-      DB_USERNAME: ${MYSQL_USER:-redpanda}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-redpanda}
+      DB_DATABASE: ${DB_DATABASE:-${MYSQL_DATABASE:-redpanda}}
+      DB_USERNAME: ${DB_USERNAME:-${MYSQL_USER:-redpanda}}
+      DB_PASSWORD: ${DB_PASSWORD:-${MYSQL_PASSWORD:-redpanda}}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     depends_on:
       mysql:
@@ -99,9 +101,9 @@ services:
     environment:
       DB_HOST: mysql
       REDIS_HOST: redis
-      DB_DATABASE: ${MYSQL_DATABASE:-redpanda}
-      DB_USERNAME: ${MYSQL_USER:-redpanda}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-redpanda}
+      DB_DATABASE: ${DB_DATABASE:-${MYSQL_DATABASE:-redpanda}}
+      DB_USERNAME: ${DB_USERNAME:-${MYSQL_USER:-redpanda}}
+      DB_PASSWORD: ${DB_PASSWORD:-${MYSQL_PASSWORD:-redpanda}}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REVERB_SERVER_PORT: "6001"
     volumes:
@@ -128,9 +130,9 @@ services:
     environment:
       DB_HOST: mysql
       REDIS_HOST: redis
-      DB_DATABASE: ${MYSQL_DATABASE:-redpanda}
-      DB_USERNAME: ${MYSQL_USER:-redpanda}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-redpanda}
+      DB_DATABASE: ${DB_DATABASE:-${MYSQL_DATABASE:-redpanda}}
+      DB_USERNAME: ${DB_USERNAME:-${MYSQL_USER:-redpanda}}
+      DB_PASSWORD: ${DB_PASSWORD:-${MYSQL_PASSWORD:-redpanda}}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
       - ../backend:/var/www/html

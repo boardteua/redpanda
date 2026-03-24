@@ -10,11 +10,11 @@
 # Варіант B — явно:
 #   export OLD_MYSQL_ROOT_PASSWORD='...'
 #   export NEW_MYSQL_ROOT_PASSWORD='...'
-#   export NEW_MYSQL_PASSWORD='...'
+#   export NEW_DB_PASSWORD='...'   # або NEW_MYSQL_PASSWORD (те саме)
 #   ./docker/rotate-mysql-passwords.sh
 #
 # 1) Бекап: ./docker/backup-mysql.sh
-# 2) Оновіть docker/production.env (MYSQL_ROOT_PASSWORD, MYSQL_PASSWORD, DB_PASSWORD) і
+# 2) Оновіть docker/production.env: MYSQL_ROOT_PASSWORD, DB_PASSWORD (один рядок для app user)
 #    docker compose --env-file docker/production.env -f docker/compose.yaml --profile app up -d
 #
 set -euo pipefail
@@ -25,11 +25,10 @@ usage() {
 
   export OLD_MYSQL_ROOT_PASSWORD='поточний root (як у БД)'
   export NEW_MYSQL_ROOT_PASSWORD='...'
-  export NEW_MYSQL_PASSWORD='...'
+  export NEW_DB_PASSWORD='...'
   ./docker/rotate-mysql-passwords.sh
 
-Без змінних: поточний root читається з контейнера (printenv MYSQL_ROOT_PASSWORD),
-нові два паролі генеруються автоматично — збережіть їх з виводу в docker/production.env.
+Без змінних: поточний root з контейнера; нові паролі згенеруються — скопіюйте вивід у production.env.
 EOF
 }
 
@@ -50,8 +49,14 @@ else
   COMPOSE_ENV=()
 fi
 
-MYSQL_USER="${MYSQL_USER:-redpanda}"
 cd "$REPO_DIR"
+
+APP_DB_USER="${DB_USERNAME:-}"
+if [[ -z "$APP_DB_USER" && -f docker/production.env ]]; then
+  APP_DB_USER=$(grep -E '^DB_USERNAME=' docker/production.env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r\n' || true)
+  APP_DB_USER="${APP_DB_USER//\"/}"
+fi
+APP_DB_USER="${APP_DB_USER:-${MYSQL_USER:-redpanda}}"
 
 if [[ -z "${OLD_MYSQL_ROOT_PASSWORD:-}" ]]; then
   if ! OLD_MYSQL_ROOT_PASSWORD=$(docker compose "${COMPOSE_ENV[@]}" "${COMPOSE_FILES[@]}" exec -T mysql printenv MYSQL_ROOT_PASSWORD 2>/dev/null | tr -d '\r\n'); then
@@ -70,12 +75,13 @@ if [[ -z "${NEW_MYSQL_ROOT_PASSWORD:-}" ]]; then
   NEW_MYSQL_ROOT_PASSWORD=$(genpw)
   echo "Згенеровано NEW_MYSQL_ROOT_PASSWORD (збережіть у production.env)." >&2
 fi
-if [[ -z "${NEW_MYSQL_PASSWORD:-}" ]]; then
-  NEW_MYSQL_PASSWORD=$(genpw)
-  echo "Згенеровано NEW_MYSQL_PASSWORD для користувача ${MYSQL_USER} (збережіть у production.env)." >&2
+NEW_APP_PW="${NEW_DB_PASSWORD:-${NEW_MYSQL_PASSWORD:-}}"
+if [[ -z "$NEW_APP_PW" ]]; then
+  NEW_APP_PW=$(genpw)
+  echo "Згенеровано новий пароль для користувача БД ${APP_DB_USER} (збережіть як DB_PASSWORD у production.env)." >&2
 fi
 
-if [[ "$NEW_MYSQL_ROOT_PASSWORD" == *"'"* || "$NEW_MYSQL_PASSWORD" == *"'"* ]]; then
+if [[ "$NEW_MYSQL_ROOT_PASSWORD" == *"'"* || "$NEW_APP_PW" == *"'"* ]]; then
   echo "rotate-mysql-passwords: паролі не повинні містити одинарну лапку (')." >&2
   exit 1
 fi
@@ -83,7 +89,7 @@ fi
 docker compose "${COMPOSE_ENV[@]}" "${COMPOSE_FILES[@]}" exec -T mysql \
   mysql -uroot -p"${OLD_MYSQL_ROOT_PASSWORD}" -e "
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${NEW_MYSQL_ROOT_PASSWORD}';
-ALTER USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${NEW_MYSQL_PASSWORD}';
+ALTER USER '${APP_DB_USER}'@'%' IDENTIFIED BY '${NEW_APP_PW}';
 FLUSH PRIVILEGES;
 "
 
@@ -91,7 +97,6 @@ echo "OK: паролі в БД оновлено."
 echo ""
 echo "Додайте в docker/production.env (або замініть рядки):"
 echo "MYSQL_ROOT_PASSWORD=${NEW_MYSQL_ROOT_PASSWORD}"
-echo "MYSQL_PASSWORD=${NEW_MYSQL_PASSWORD}"
-echo "DB_PASSWORD=${NEW_MYSQL_PASSWORD}"
+echo "DB_PASSWORD=${NEW_APP_PW}"
 echo ""
 echo "Потім: docker compose --env-file docker/production.env -f docker/compose.yaml --profile app up -d"
