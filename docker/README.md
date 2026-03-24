@@ -42,6 +42,8 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 
 `deploy.sh` перед `composer install` очищає `bootstrap/cache/*`, щоб не тягнути старий кешований `DB_PASSWORD`.
 
+**Не дублюйте один ключ кілька разів** у `docker/production.env` (наприклад, два `DB_PASSWORD=`): у Compose/`--env-file` зазвичай **перемагає останній** рядок — легко отримати 1045 у PHP, бо пароль у файлі й у MySQL роз’їдуться.
+
 ## Безпека продакшену
 
 | Область | Що зробити |

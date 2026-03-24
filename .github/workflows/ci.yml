@@ -1,5 +1,6 @@
 # T83: на кожен PR і push у main — тести; деплой лише після зеленого test job, лише push у main (vars/secrets).
 # Гейт: job deploy має needs: test — поки PHPUnit / Node-тести не пройшли, SSH-деплой не стартує.
+# Compose: `docker compose -f docker/compose.yaml config` (без production.env — лише валідація маніфесту).
 name: CI
 
 on:

@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite';
 /**
  * PHP dotenv розгортає ${REVERB_PORT} у .env; Vite loadEnv — ні. Тоді в клієнт потрапляє
  * буквальний рядок або порожнє значення, Echo падає на порт сторінки (напр. 8080), а не Reverb.
+ * На проді `npm run build` має бачити вже розгорнуті `VITE_REVERB_*` (symlink `backend/.env` → `docker/production.env`).
  */
 function resolveReverbClientPort(env) {
     const vite = env.VITE_REVERB_PORT;
