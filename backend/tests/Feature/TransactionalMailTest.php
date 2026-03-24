@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\AccountSecurityNoticeMail;
 use App\Mail\WelcomeRegisteredUserMail;
+use App\Models\ChatSetting;
 use App\Models\User;
 use App\Services\Mail\TransactionalMailService;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -48,6 +49,32 @@ class TransactionalMailTest extends TestCase
         $this->assertStringContainsString('/reset-password?token=', (string) $message->viewData['resetUrl']);
         $this->assertStringContainsString('email=', (string) $message->viewData['resetUrl']);
         $this->assertStringContainsString(urlencode('plain-token'), (string) $message->viewData['resetUrl']);
+    }
+
+    public function test_password_reset_respects_chat_setting_html_override(): void
+    {
+        ChatSetting::current()->update([
+            'mail_template_overrides' => [
+                'password_reset' => [
+                    'subject' => 'OVERRIDE_SUBJ',
+                    'html_body' => '<p>Hello {{ app_name }} <a href="{{ reset_url }}">link</a></p>',
+                    'text_body' => '',
+                ],
+            ],
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'o@example.com',
+            'guest' => false,
+        ]);
+
+        $message = app(TransactionalMailService::class)->buildPasswordResetMailMessage($user, 'tok');
+
+        $this->assertSame('OVERRIDE_SUBJ', $message->subject);
+        $this->assertSame('mail.admin-html-override', $message->view['html']);
+        $payload = $message->data();
+        $this->assertStringContainsString('Hello', (string) ($payload['bodyHtml'] ?? ''));
+        $this->assertStringContainsString('/reset-password?token=', (string) ($payload['bodyHtml'] ?? ''));
     }
 
     public function test_register_queues_welcome_mailable(): void

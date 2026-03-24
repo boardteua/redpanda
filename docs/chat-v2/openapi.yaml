@@ -1774,6 +1774,7 @@ paths:
         Поріг **N** і область лічби публічних повідомлень для права створення кімнат (**T51** / **T44**).
         Ліміт **slash-команд** на користувача: `slash_command_max_per_window` / `slash_command_window_seconds` (див. схему `ChatSettingsData`).
         Доступно будь-якому авторизованому користувачу (у т.ч. гостю); без PII.
+        **Адміністратор чату** додатково отримує `transactional_mail_from_name` та `mail_template_overrides` (**T110**); іншим ці поля **не** повертаються.
       operationId: getChatSettings
       security:
         - sanctumSession: []
@@ -1791,7 +1792,9 @@ paths:
     patch:
       tags: [Chat]
       summary: Оновити глобальні опції чату
-      description: Лише **адміністратор чату** (`chat-admin`).
+      description: |
+        Лише **адміністратор чату** (`chat-admin`).
+        Опційно — **транзакційні листи** (`transactional_mail_from_name`, `mail_template_overrides`, **T110**); плейсхолдери — `docs/chat-v2/T110-MAIL-PLACEHOLDERS.md`.
       operationId: patchChatSettings
       security:
         - sanctumSession: []
@@ -3566,6 +3569,20 @@ components:
         data:
           $ref: "#/components/schemas/LandingPublicData"
 
+    MailTemplateOverrideBlock:
+      type: object
+      description: Перевизначення одного типу листа; порожній `html_body` — використовується шаблон за замовчуванням у коді.
+      properties:
+        subject:
+          type: string
+          maxLength: 200
+        html_body:
+          type: string
+          maxLength: 32000
+        text_body:
+          type: string
+          maxLength: 32000
+
     ChatSettingsData:
       type: object
       required:
@@ -3632,6 +3649,21 @@ components:
           $ref: "#/components/schemas/LandingSettingsPayload"
         registration_flags:
           $ref: "#/components/schemas/RegistrationFlagsPayload"
+        transactional_mail_from_name:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Лише якщо запит від **адміна**; ім’я відправника (адреса лишається з `MAIL_FROM_ADDRESS`).
+        mail_template_overrides:
+          type: object
+          description: Лише якщо запит від **адміна**; усі три ключа завжди присутні у відповіді адміна.
+          properties:
+            password_reset:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+            welcome_registered:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+            account_security_notice:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
 
     ChatSettingsResponse:
       type: object
@@ -3839,6 +3871,19 @@ components:
               nullable: true
               minimum: 0
               maximum: 120
+        transactional_mail_from_name:
+          type: string
+          nullable: true
+          maxLength: 120
+        mail_template_overrides:
+          type: object
+          properties:
+            password_reset:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+            welcome_registered:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+            account_security_notice:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
 
     PatchChatMessageRequest:
       type: object

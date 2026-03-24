@@ -38,6 +38,11 @@ class ChatSettingsController extends Controller
             $registrationNormalized = ChatSetting::normalizeRegistrationFlags($validated['registration_flags']);
             unset($validated['registration_flags']);
         }
+        $mailTemplatesNormalized = null;
+        if (array_key_exists('mail_template_overrides', $validated)) {
+            $mailTemplatesNormalized = ChatSetting::normalizeMailTemplateOverrides($validated['mail_template_overrides']);
+            unset($validated['mail_template_overrides']);
+        }
 
         if (
             isset($validated['public_message_count_scope'])
@@ -52,6 +57,9 @@ class ChatSettingsController extends Controller
         }
         if ($registrationNormalized !== null) {
             $row->registration_flags = $registrationNormalized;
+        }
+        if ($mailTemplatesNormalized !== null) {
+            $row->mail_template_overrides = $mailTemplatesNormalized;
         }
         $row->save();
 

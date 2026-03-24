@@ -23,6 +23,12 @@ class ChatSetting extends Model
     /** Верхня межа значення в адмінці (байти); фактичне завантаження обмежує ще й PHP `upload_max_filesize`. */
     public const ADMIN_MAX_ATTACHMENT_BYTES_CAP = 100 * 1024 * 1024;
 
+    public const MAIL_OVERRIDE_PASSWORD_RESET = 'password_reset';
+
+    public const MAIL_OVERRIDE_WELCOME_REGISTERED = 'welcome_registered';
+
+    public const MAIL_OVERRIDE_ACCOUNT_SECURITY_NOTICE = 'account_security_notice';
+
     protected $table = 'chat_settings';
 
     protected $fillable = [
@@ -38,6 +44,8 @@ class ChatSetting extends Model
         'registration_flags',
         'sound_on_every_post',
         'max_attachment_bytes',
+        'transactional_mail_from_name',
+        'mail_template_overrides',
     ];
 
     /**
@@ -57,7 +65,83 @@ class ChatSetting extends Model
             'registration_flags' => 'array',
             'sound_on_every_post' => 'boolean',
             'max_attachment_bytes' => 'integer',
+            'mail_template_overrides' => 'array',
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function mailTemplateOverrideKeys(): array
+    {
+        return [
+            self::MAIL_OVERRIDE_PASSWORD_RESET,
+            self::MAIL_OVERRIDE_WELCOME_REGISTERED,
+            self::MAIL_OVERRIDE_ACCOUNT_SECURITY_NOTICE,
+        ];
+    }
+
+    public function effectiveTransactionalMailFromName(): ?string
+    {
+        $n = $this->transactional_mail_from_name;
+        if (! is_string($n)) {
+            return null;
+        }
+        $t = trim($n);
+
+        return $t === '' ? null : $t;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $raw
+     * @return array<string, array{subject: string, html_body: string, text_body: string}>
+     */
+    public static function normalizeMailTemplateOverrides(?array $raw): array
+    {
+        $out = [];
+        foreach (self::mailTemplateOverrideKeys() as $k) {
+            $out[$k] = ['subject' => '', 'html_body' => '', 'text_body' => ''];
+        }
+        if (! is_array($raw)) {
+            return $out;
+        }
+        foreach (self::mailTemplateOverrideKeys() as $k) {
+            if (! isset($raw[$k]) || ! is_array($raw[$k])) {
+                continue;
+            }
+            $block = $raw[$k];
+            $subject = isset($block['subject']) && is_string($block['subject'])
+                ? mb_substr(trim($block['subject']), 0, 200)
+                : '';
+            $html = isset($block['html_body']) && is_string($block['html_body'])
+                ? mb_substr($block['html_body'], 0, 32000)
+                : '';
+            $text = isset($block['text_body']) && is_string($block['text_body'])
+                ? mb_substr($block['text_body'], 0, 32000)
+                : '';
+            if ($html !== '') {
+                $html = preg_replace('#<(script|iframe|object|embed|form)[^>]*>.*?</\1>#is', '', $html) ?? '';
+                $html = preg_replace('#<(script|iframe|object|embed|form)[^>]*/>#is', '', $html) ?? '';
+                $html = preg_replace('/\s?on\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? '';
+            }
+            $out[$k] = [
+                'subject' => $subject,
+                'html_body' => $html,
+                'text_body' => $text,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, array{subject: string, html_body: string, text_body: string}>
+     */
+    public function resolvedMailTemplateOverrides(): array
+    {
+        return self::normalizeMailTemplateOverrides(
+            is_array($this->mail_template_overrides) ? $this->mail_template_overrides : null
+        );
     }
 
     /**

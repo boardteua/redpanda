@@ -2,10 +2,13 @@
 
 namespace App\Mail;
 
+use App\Models\ChatSetting;
 use App\Models\User;
+use App\Services\Mail\TransactionalMailTemplateResolver;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -14,27 +17,43 @@ class WelcomeRegisteredUserMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public User $user) {}
+    public string $resolvedSubject;
+
+    /** @var array<string, mixed> */
+    public array $resolvedWith;
+
+    public string $resolvedHtmlView;
+
+    public string $resolvedTextView;
+
+    public function __construct(public User $user)
+    {
+        $payload = app(TransactionalMailTemplateResolver::class)->welcomeMailViews($user);
+        $this->resolvedSubject = $payload['subject'];
+        $this->resolvedHtmlView = $payload['htmlView'];
+        $this->resolvedTextView = $payload['textView'];
+        $this->resolvedWith = $payload['with'];
+    }
 
     public function envelope(): Envelope
     {
+        $fromAddr = (string) config('mail.from.address');
+        $defaultName = (string) config('mail.from.name');
+        $custom = ChatSetting::current()->effectiveTransactionalMailFromName();
+        $from = new Address($fromAddr, $custom ?? $defaultName);
+
         return new Envelope(
-            subject: 'Ласкаво просимо — '.(string) config('app.name'),
+            from: [$from],
+            subject: $this->resolvedSubject,
         );
     }
 
     public function content(): Content
     {
-        $base = rtrim((string) config('app.url'), '/');
-
         return new Content(
-            view: 'mail.welcome-registered',
-            text: 'mail.welcome-registered-text',
-            with: [
-                'userName' => $this->user->user_name,
-                'appName' => config('app.name'),
-                'chatUrl' => $base.'/chat',
-            ],
+            view: $this->resolvedHtmlView,
+            text: $this->resolvedTextView,
+            with: $this->resolvedWith,
         );
     }
 }

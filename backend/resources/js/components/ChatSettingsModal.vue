@@ -365,6 +365,79 @@
                     </div>
                 </div>
 
+                <div
+                    v-show="activeSettingsTab === 'mail'"
+                    :id="tabPanelId('mail')"
+                    role="tabpanel"
+                    :aria-labelledby="tabElementId('mail')"
+                    :aria-hidden="activeSettingsTab === 'mail' ? 'false' : 'true'"
+                    class="space-y-6"
+                >
+                    <div>
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Транзакційні листи (T110)</h3>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            SMTP, пароль і <span class="font-mono">MAIL_FROM_ADDRESS</span> лишаються в середовищі сервера
+                            (див. <span class="font-mono">docs/chat-v2/MAIL-SMTP.md</span>).
+                        </p>
+                    </div>
+                    <div>
+                        <label class="rp-label" for="cs-mail-from-name">Відображуване ім’я відправника</label>
+                        <input
+                            id="cs-mail-from-name"
+                            v-model.trim="form.transactional_mail_from_name"
+                            type="text"
+                            maxlength="120"
+                            class="rp-input rp-focusable mt-1 w-full max-w-xl"
+                            placeholder="За замовчуванням — з config/mail"
+                        />
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Лише ім’я; адреса листа залишається з <span class="font-mono">MAIL_FROM_*</span> у
+                            <span class="font-mono">.env</span>.
+                        </p>
+                    </div>
+                    <div
+                        v-for="sec in mailTemplateSections"
+                        :key="'mail-sec-' + sec.id"
+                        class="rounded-md border border-[var(--rp-border-subtle)] p-3"
+                    >
+                        <h4 class="text-sm font-medium text-[var(--rp-text)]">{{ sec.title }}</h4>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Плейсхолдери: <span class="font-mono">{{ sec.placeholders }}</span
+                            >. Порожнє HTML-тіло — шаблон за замовчуванням з коду.
+                        </p>
+                        <div class="mt-2 space-y-2">
+                            <label class="rp-label" :for="'cs-mail-subj-' + sec.id">Тема листа</label>
+                            <input
+                                :id="'cs-mail-subj-' + sec.id"
+                                v-model.trim="form.mail_template_overrides[sec.id].subject"
+                                type="text"
+                                maxlength="200"
+                                class="rp-input rp-focusable w-full text-sm"
+                            />
+                            <label class="rp-label" :for="'cs-mail-html-' + sec.id">HTML-тіло (фрагмент)</label>
+                            <textarea
+                                :id="'cs-mail-html-' + sec.id"
+                                v-model="form.mail_template_overrides[sec.id].html_body"
+                                rows="6"
+                                class="rp-input rp-focusable w-full font-mono text-xs"
+                            />
+                            <label class="rp-label" :for="'cs-mail-text-' + sec.id">Текстова версія (необов’язково)</label>
+                            <textarea
+                                :id="'cs-mail-text-' + sec.id"
+                                v-model="form.mail_template_overrides[sec.id].text_body"
+                                rows="4"
+                                class="rp-input rp-focusable w-full font-mono text-xs"
+                            />
+                            <details class="text-xs text-[var(--rp-text-muted)]">
+                                <summary class="cursor-pointer text-[var(--rp-text)]">Прев’ю HTML (тестові дані)</summary>
+                                <pre
+                                    class="mt-2 max-h-40 overflow-auto rounded border border-[var(--rp-border-subtle)] bg-[var(--rp-bg-subtle)] p-2 font-mono text-[10px] leading-snug text-[var(--rp-text)]"
+                                >{{ mailPreviewHtml(sec.id) }}</pre>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+
             </fieldset>
 
             <div class="border-t border-[var(--rp-border-subtle)] pt-4">
@@ -585,8 +658,31 @@ export default {
                     min_age: null,
                     show_social_login_buttons: false,
                 },
+                transactional_mail_from_name: '',
+                mail_template_overrides: {
+                    password_reset: { subject: '', html_body: '', text_body: '' },
+                    welcome_registered: { subject: '', html_body: '', text_body: '' },
+                    account_security_notice: { subject: '', html_body: '', text_body: '' },
+                },
                 max_attachment_mb: 4,
             },
+            mailTemplateSections: [
+                {
+                    id: 'password_reset',
+                    title: 'Скидання пароля',
+                    placeholders: '{{ app_name }}, {{ reset_url }}, {{ expire_minutes }}',
+                },
+                {
+                    id: 'welcome_registered',
+                    title: 'Ласкаво просимо (після реєстрації)',
+                    placeholders: '{{ app_name }}, {{ user_name }}, {{ chat_url }}',
+                },
+                {
+                    id: 'account_security_notice',
+                    title: 'Сповіщення безпеки (шаблон)',
+                    placeholders: '{{ app_name }}, {{ user_name }}, {{ headline }}, {{ body_line }}',
+                },
+            ],
             attachmentEffectiveBytesHint: null,
             emoticonList: [],
             emoticonLoading: false,
@@ -609,6 +705,7 @@ export default {
                 { id: 'media', label: 'Звуки та файли' },
                 { id: 'landing', label: 'Вітальня' },
                 { id: 'registration', label: 'Реєстрація' },
+                { id: 'mail', label: 'Листи' },
                 { id: 'emoticons', label: 'Смайли' },
             ];
         },
@@ -703,6 +800,9 @@ export default {
             if (key.startsWith('registration_flags')) {
                 return 'registration';
             }
+            if (key === 'transactional_mail_from_name' || key.startsWith('mail_template_overrides')) {
+                return 'mail';
+            }
             if (key.startsWith('slash_command') || key.startsWith('mod_slash')) {
                 return 'slash';
             }
@@ -762,6 +862,24 @@ export default {
             if (panel && typeof panel.scrollIntoView === 'function') {
                 panel.scrollIntoView({ block: 'nearest' });
             }
+        },
+        mailPreviewHtml(sectionId) {
+            const raw = (this.form.mail_template_overrides[sectionId] || {}).html_body || '';
+            const samples = {
+                app_name: 'Чат Рудої Панди',
+                reset_url: 'https://example.test/reset-password?token=demo&email=u%40example.com',
+                expire_minutes: '60',
+                user_name: 'DemoUser',
+                chat_url: 'https://example.test/chat',
+                headline: 'Перевірка безпеки',
+                body_line: 'Тестовий рядок повідомлення.',
+            };
+            return this.replaceMailPlaceholders(String(raw), samples);
+        },
+        replaceMailPlaceholders(str, map) {
+            return str.replace(/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/g, (full, k) =>
+                map[k] != null ? String(map[k]) : full,
+            );
         },
         close() {
             this.$emit('close');
@@ -825,6 +943,20 @@ export default {
                     min_age: minA === null || minA === undefined || minA === '' ? null : Number(minA),
                     show_social_login_buttons: Boolean(rf.show_social_login_buttons),
                 };
+                this.form.transactional_mail_from_name =
+                    d.transactional_mail_from_name != null ? String(d.transactional_mail_from_name) : '';
+                const mo = d.mail_template_overrides && typeof d.mail_template_overrides === 'object' ? d.mail_template_overrides : {};
+                const mergeBlock = (id) => ({
+                    subject: '',
+                    html_body: '',
+                    text_body: '',
+                    ...(mo[id] && typeof mo[id] === 'object' ? mo[id] : {}),
+                });
+                this.form.mail_template_overrides = {
+                    password_reset: mergeBlock('password_reset'),
+                    welcome_registered: mergeBlock('welcome_registered'),
+                    account_security_notice: mergeBlock('account_security_notice'),
+                };
                 const attBytes = Number(d.max_attachment_bytes);
                 if (Number.isFinite(attBytes) && attBytes >= 1024) {
                     const mbRaw = attBytes / (1024 * 1024);
@@ -877,6 +1009,8 @@ export default {
                                 ? null
                                 : Number(this.form.registration_flags.min_age),
                     },
+                    transactional_mail_from_name: (this.form.transactional_mail_from_name || '').trim() || null,
+                    mail_template_overrides: this.form.mail_template_overrides,
                 };
                 if (this.form.public_message_count_scope === 'default_room_only') {
                     body.message_count_room_id = this.form.message_count_room_id;

@@ -55,6 +55,20 @@ class UpdateChatSettingsRequest extends FormRequest
             'registration_flags.registration_open' => ['sometimes', 'boolean'],
             'registration_flags.show_social_login_buttons' => ['sometimes', 'boolean'],
             'registration_flags.min_age' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:120'],
+            'transactional_mail_from_name' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'mail_template_overrides' => ['sometimes', 'array'],
+            'mail_template_overrides.password_reset' => ['sometimes', 'array'],
+            'mail_template_overrides.password_reset.subject' => ['nullable', 'string', 'max:200'],
+            'mail_template_overrides.password_reset.html_body' => ['nullable', 'string', 'max:32000'],
+            'mail_template_overrides.password_reset.text_body' => ['nullable', 'string', 'max:32000'],
+            'mail_template_overrides.welcome_registered' => ['sometimes', 'array'],
+            'mail_template_overrides.welcome_registered.subject' => ['nullable', 'string', 'max:200'],
+            'mail_template_overrides.welcome_registered.html_body' => ['nullable', 'string', 'max:32000'],
+            'mail_template_overrides.welcome_registered.text_body' => ['nullable', 'string', 'max:32000'],
+            'mail_template_overrides.account_security_notice' => ['sometimes', 'array'],
+            'mail_template_overrides.account_security_notice.subject' => ['nullable', 'string', 'max:200'],
+            'mail_template_overrides.account_security_notice.html_body' => ['nullable', 'string', 'max:32000'],
+            'mail_template_overrides.account_security_notice.text_body' => ['nullable', 'string', 'max:32000'],
         ];
     }
 

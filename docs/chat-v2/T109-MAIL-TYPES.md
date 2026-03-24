@@ -11,4 +11,6 @@
 
 Скидання пароля лишається через **`Illuminate\Auth\Notifications\ResetPassword`** і **`MailMessage::view()`** — URL SPA не змінювати без узгодження з **T94**.
 
+Перевизначення текстів з адмінки (**T110**) — `chat_settings.mail_template_overrides`; плейсхолдери — [T110-MAIL-PLACEHOLDERS.md](T110-MAIL-PLACEHOLDERS.md).
+
 Див. також [MAIL-SMTP.md](MAIL-SMTP.md) (**T108**).

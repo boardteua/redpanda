@@ -19,7 +19,7 @@ class ChatSettingsResource extends JsonResource
 
         $configuredMax = max(1024, (int) ($m->max_attachment_bytes ?: ChatSetting::DEFAULT_MAX_ATTACHMENT_BYTES));
 
-        return [
+        $base = [
             'room_create_min_public_messages' => (int) $this->room_create_min_public_messages,
             'public_message_count_scope' => (string) $this->public_message_count_scope,
             'message_count_room_id' => $this->message_count_room_id,
@@ -34,5 +34,12 @@ class ChatSettingsResource extends JsonResource
             'landing_settings' => $m->resolvedLandingSettings(),
             'registration_flags' => $m->resolvedRegistrationFlags(),
         ];
+
+        if ($request->user()?->isChatAdmin()) {
+            $base['transactional_mail_from_name'] = $m->transactional_mail_from_name;
+            $base['mail_template_overrides'] = $m->resolvedMailTemplateOverrides();
+        }
+
+        return $base;
     }
 }

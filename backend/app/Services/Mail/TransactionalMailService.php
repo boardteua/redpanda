@@ -11,25 +11,16 @@ use Illuminate\Support\Facades\Mail;
 
 class TransactionalMailService
 {
+    public function __construct(
+        private readonly TransactionalMailTemplateResolver $mailTemplates,
+    ) {}
+
     /**
      * Лист скидання пароля: той самий SPA-URL, що раніше в AppServiceProvider.
      */
     public function buildPasswordResetMailMessage(object $notifiable, #[\SensitiveParameter] string $token): MailMessage
     {
-        $email = urlencode((string) $notifiable->getEmailForPasswordReset());
-        $url = rtrim((string) config('app.url'), '/').'/reset-password?token='.urlencode($token).'&email='.$email;
-        $expire = (int) config('auth.passwords.'.config('auth.defaults.passwords').'.expire');
-
-        $data = [
-            'appName' => config('app.name'),
-            'resetUrl' => $url,
-            'expireMinutes' => $expire,
-        ];
-
-        return (new MailMessage)
-            ->subject('Скидання пароля')
-            ->view('mail.password-reset', $data)
-            ->text('mail.password-reset-text', $data);
+        return $this->mailTemplates->buildPasswordResetMailMessage($notifiable, $token);
     }
 
     /**

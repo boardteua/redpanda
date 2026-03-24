@@ -53,6 +53,11 @@ class ChatSettingsApiTest extends TestCase
         $cfg = (int) $response->json('data.max_attachment_bytes');
         $this->assertGreaterThan(0, $eff);
         $this->assertLessThanOrEqual($cfg, $eff);
+
+        $data = $response->json('data');
+        $this->assertIsArray($data);
+        $this->assertArrayNotHasKey('transactional_mail_from_name', $data);
+        $this->assertArrayNotHasKey('mail_template_overrides', $data);
     }
 
     public function test_non_admin_patch_returns_403(): void
@@ -189,6 +194,53 @@ class ChatSettingsApiTest extends TestCase
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['max_attachment_bytes']);
+    }
+
+    public function test_admin_get_includes_mail_template_fields(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/chat/settings')
+            ->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    'transactional_mail_from_name',
+                    'mail_template_overrides' => [
+                        'password_reset',
+                        'welcome_registered',
+                        'account_security_notice',
+                    ],
+                ],
+            ]);
+    }
+
+    public function test_admin_can_patch_transactional_mail_from_name_and_templates(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'transactional_mail_from_name' => 'Панда з чату',
+                'mail_template_overrides' => [
+                    'password_reset' => [
+                        'subject' => 'Кастомний сабджект',
+                        'html_body' => '<p>{{ app_name }} — <a href="{{ reset_url }}">скинути</a></p>',
+                        'text_body' => '{{ app_name }}: {{ reset_url }}',
+                    ],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.transactional_mail_from_name', 'Панда з чату')
+            ->assertJsonPath('data.mail_template_overrides.password_reset.subject', 'Кастомний сабджект');
+
+        $row = ChatSetting::current();
+        $this->assertSame('Панда з чату', $row->transactional_mail_from_name);
+        $this->assertStringContainsString('скинути', (string) ($row->resolvedMailTemplateOverrides()['password_reset']['html_body'] ?? ''));
     }
 
     public function test_admin_cannot_set_message_count_room_to_non_public_room(): void
