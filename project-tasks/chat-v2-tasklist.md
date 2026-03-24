@@ -1236,8 +1236,9 @@
 
 ---
 
-### [ ] T101 — **T99 P1:** `openapi.yaml` — повні `paths` для привату, друзів, ігнорів і `users/lookup`
+### [x] T101 — **T99 P1:** `openapi.yaml` — повні `paths` для привату, друзів, ігнорів і `users/lookup`
 
+- **Статус:** **PASS** (2026-03-24). Додано **`paths`** і **`components`** для привату, друзів, ігнору, **`GET /api/v1/users/lookup`**; тег **`Private`**; версія API-доку **`0.18.0`**. Схеми узгоджено з **`PrivateMessageController`**, **`FriendController`**, **`IgnoreController`**, **`UserLookupController`**, **`PrivateMessageResource`**, **`StorePrivateMessageRequest`**. Звірка з **`backend/routes/api.php`** (див. коміт **T101**). **QA:** `npx @apidevtools/swagger-cli validate docs/chat-v2/openapi.yaml` — valid; `php artisan test --filter=PrivateMessageApiTest` — 10 passed; виправлено фрагменти YAML, де **`can:`** / **`type:`** у нецитованих рядках ламали парсер (модерація, параметри `ModUserId`/`ChatPostId`, `SlashMeta`, тощо).
 - **Контекст клієнта:** T99 зафіксував **дрейф контракту**: у вступі **`docs/chat-v2/openapi.yaml`** згадані **`/api/v1/private/*`**, **`friends*`**, **`ignores*`**, **`users/lookup`**, але відповідні операції в **`paths:`** відсутні або неповні порівняно з **`backend/routes/api.php`**. Потрібна **1:1 звірка** маршрутів і фактичних JSON-відповідей (у т.ч. `meta` для conversations).
 - **Delegate:** Backend Architect + Technical Writer (за потреби узгодження формулювань)
 - **Залежність:** **T99**; логічно після **T08**/**T50**/**T85** (функціонал уже є)

@@ -49,7 +49,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.17.3"
+  version: "0.18.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -67,6 +67,8 @@ tags:
     description: Liveness / readiness (T11)
   - name: Moderation
     description: Mute/kick — модератор (`user_rank ≥ 1`); бан IP і фільтр слів — адмін (`user_rank ≥ 2`), T12+T21
+  - name: Private
+    description: Приватні повідомлення, друзі, ігнор (T08, T50, T56, T68, T85)
 
 paths:
   /up:
@@ -227,7 +229,7 @@ paths:
     patch:
       tags: [Moderation]
       summary: Зняти прапорець модерації з повідомлення (T60)
-      description: `can:moderate`, throttle `mod-actions`. Встановлює `moderation_flag_at` у `null`.
+      description: "`can:moderate`, throttle `mod-actions`. Встановлює `moderation_flag_at` у `null`."
       operationId: modClearMessageModerationFlag
       security:
         - sanctumSession: []
@@ -239,7 +241,7 @@ paths:
           schema:
             type: integer
             minimum: 1
-          description: `chat.post_id`
+          description: "`chat.post_id`"
       responses:
         "200":
           description: Оновлено
@@ -262,7 +264,7 @@ paths:
     get:
       tags: [Moderation]
       summary: Список слів фільтра / стоп-слів (T53)
-      description: `can:moderate` (модератор або адміністратор).
+      description: "`can:moderate` (модератор або адміністратор)."
       operationId: modListFilterWords
       security:
         - sanctumSession: []
@@ -282,7 +284,7 @@ paths:
     post:
       tags: [Moderation]
       summary: Додати слово / правило (T53)
-      description: `can:moderate`. Поля `match_mode`, `action`, `mute_minutes` — див. схему запиту.
+      description: "`can:moderate`. Поля `match_mode`, `action`, `mute_minutes` — див. схему запиту."
       operationId: modStoreFilterWord
       security:
         - sanctumSession: []
@@ -313,7 +315,7 @@ paths:
     patch:
       tags: [Moderation]
       summary: Оновити правило стоп-слова / фільтра (T53)
-      description: `can:moderate`. Хоча б одне поле в тілі.
+      description: "`can:moderate`. Хоча б одне поле в тілі."
       operationId: modPatchFilterWord
       security:
         - sanctumSession: []
@@ -346,7 +348,7 @@ paths:
     delete:
       tags: [Moderation]
       summary: Прибрати слово з фільтра
-      description: `can:moderate`.
+      description: "`can:moderate`."
       operationId: modDestroyFilterWord
       security:
         - sanctumSession: []
@@ -524,7 +526,7 @@ paths:
     get:
       tags: [Moderation]
       summary: Один користувач для адміна (T57)
-      description: `can:chat-admin`.
+      description: "`can:chat-admin`."
       operationId: modStaffUserShow
       security:
         - sanctumSession: []
@@ -1004,6 +1006,202 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/private/conversations:
+    get:
+      tags: [Private]
+      summary: Список розмов (останнє повідомлення на peer)
+      description: |
+        Для кожного peer — останнє повідомлення в парі, `unread_count` (вхідні від peer після `last_read_incoming_message_id`),
+        у `meta.total_private_unread` — сума `unread_count` по всіх рядках.
+        Throttle: `private-read`.
+      operationId: listPrivateConversations
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateConversationsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/private/peers/{peer}/messages:
+    get:
+      tags: [Private]
+      summary: Історія привату з peer (курсор)
+      description: |
+        Повідомлення в хронологічному порядку (зростання `id`) на сторінці; новіші зазвичай в кінці списку.
+        Параметри: `before` (опційно, `id` верхньої межі для наступної сторінки), `limit` (1–100, типово 50).
+        Після відповіді сервер позначає вхідні від peer як прочитані до поточного max(id) (**T56**).
+        Throttle: `private-read`. **403** якщо пара в ігнорі. **422** якщо `peer` — поточний користувач.
+      operationId: listPrivatePeerMessages
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/PeerUserId"
+        - name: before
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: Повернути повідомлення з `id` строго меншим за `before` (пагінація назад у часі).
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateMessagesPageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Взаємний ігнор або недоступність переписки
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Некоректний peer або валідація query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Private]
+      summary: Надіслати приватне повідомлення peer
+      description: |
+        Тіло: `message` (plain text, до 4000 символів), `client_message_id` (UUID) для ідемпотентності.
+        **201** — нове повідомлення; **200** з `meta.duplicate: true` — той самий `client_message_id` уже збережений для цього peer.
+        **403** — ігнор або мут/кік (**UserPostingGate**). **422** — не себе, або `client_message_id` вже використано для іншого peer.
+        Broadcast: `.PrivateMessagePosted` на `private-user.{recipientId}`.
+        Throttle: `private-post`.
+      operationId: storePrivateMessage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/PeerUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StorePrivateMessageRequest"
+      responses:
+        "200":
+          description: Дубль за `client_message_id` (тіло як у створеного)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateMessageStoredResponse"
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateMessageStoredResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Ігнор, мут або кік
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/private/peers/{peer}/read:
+    post:
+      tags: [Private]
+      summary: Позначити вхідні від peer прочитаними
+      description: |
+        Ідемпотентно оновлює `last_read_incoming_message_id` до поточного максимуму вхідних від peer.
+        Throttle: `private-read`.
+      operationId: markPrivatePeerRead
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/PeerUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaOkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Ігнор
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Не себе
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/private/peers/{peer}/thread:
+    delete:
+      tags: [Private]
+      summary: Очистити всю переписку з peer (**T68**)
+      description: |
+        Видаляє всі повідомлення між поточним користувачем і peer та read-state; broadcast `.PrivateThreadCleared` на `private-user.{userId}` для обох.
+        **403** при взаємному ігнорі. Throttle: `private-post`.
+      operationId: destroyPrivateThread
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/PeerUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateThreadClearedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Ігнор
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Не себе
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/users/autocomplete:
     get:
       tags: [Auth]
@@ -1046,6 +1244,50 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/users/lookup:
+    get:
+      tags: [Private]
+      summary: Точний пошук користувача за ніком (приват / slash)
+      description: |
+        Query **`name`** — точний `user_name` (до 191 символів). Повертає той самий набір полів, що й елементи `users/autocomplete` (`UserLookupPeer` у `data`).
+        **404** — не знайдено. **422** — спроба вибрати себе.
+      operationId: usersLookupByName
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 191
+          description: Точний нік (`users.user_name`).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/UserLookupPeer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Користувача не знайдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Некоректний запит (наприклад, себе)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
 
   /api/v1/oembed:
     get:
@@ -1109,9 +1351,151 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/friends:
+    get:
+      tags: [Private]
+      summary: Список прийнятих друзів (T50)
+      description: Усі зв’язки зі статусом accepted; для кожного рядка — peer (`user`) і `since` (ISO 8601, `updated_at` дружби).
+      operationId: listFriends
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendsAcceptedListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friends/requests/incoming:
+    get:
+      tags: [Private]
+      summary: Вхідні запити в друзі (pending)
+      description: Запити, де поточний користувач — addressee.
+      operationId: listFriendRequestsIncoming
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRequestsListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friends/requests/outgoing:
+    get:
+      tags: [Private]
+      summary: Вихідні запити в друзі (pending)
+      description: Запити, де поточний користувач — requester.
+      operationId: listFriendRequestsOutgoing
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRequestsListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friends/{userId}/accept:
+    post:
+      tags: [Private]
+      summary: Прийняти вхідний запит у друзі
+      description: Поточний користувач має бути addressee для pending-запиту від `userId`. **404** — немає такого запиту.
+      operationId: acceptFriendRequest
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Немає pending-запиту від цього користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+
+  /api/v1/friends/{userId}/reject:
+    post:
+      tags: [Private]
+      summary: Відхилити вхідний запит у друзі
+      description: Статус запиту стає rejected. **404** — немає такого запиту.
+      operationId: rejectFriendRequest
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Немає pending-запиту від цього користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+
   /api/v1/friends/{userId}:
+    post:
+      tags: [Private]
+      summary: Надіслати запит у друзі або повторити після відхилення (T50)
+      description: |
+        **422** — себе, гість як ціль, дубль pending/accepted, тощо.
+        **409** — інший користувач уже надіслав вам запит (потрібно прийняти зі своєї сторони).
+        **201** — створено або «Запит надіслано повторно.» (оновлення з rejected).
+      operationId: storeFriendRequest
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "201":
+          description: Запит створено або повторно надіслано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Вхідний pending-запит від цілі — прийміть його
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Некоректний запит
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
     delete:
-      tags: [Auth]
+      tags: [Private]
       summary: Прибрати з друзів або скасувати запит у друзі (T50)
       description: |
         Видаляє рядок `friendships` між поточним користувачем і `userId`:
@@ -1147,6 +1531,76 @@ paths:
                 $ref: "#/components/schemas/ApiPlainMessageResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/ignores:
+    get:
+      tags: [Private]
+      summary: Список ігнорованих користувачів
+      description: Кожен елемент — `user` з `id` та `user_name` (ціль не гість у моделі, але поля мінімальні).
+      operationId: listIgnores
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IgnoreListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/ignores/{userId}:
+    post:
+      tags: [Private]
+      summary: Додати користувача в ігнор
+      description: Ідемпотентне `firstOrCreate`. **422** — спроба ігнорувати себе.
+      operationId: storeIgnore
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "201":
+          description: Додано (або вже був у списку)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Некоректна ціль
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+    delete:
+      tags: [Private]
+      summary: Прибрати користувача з ігнору
+      description: "**404** — запису не було."
+      operationId: destroyIgnore
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Запису в ігнорі немає
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
 
   /api/v1/rooms:
     get:
@@ -2029,7 +2483,16 @@ components:
       schema:
         type: integer
         minimum: 1
-      description: `users.id` цілі
+      description: "`users.id` цілі"
+
+    PeerUserId:
+      name: peer
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: "`users.id` співрозмовника (peer) у приваті"
 
     ChatPostId:
       name: postId
@@ -2038,7 +2501,7 @@ components:
       schema:
         type: integer
         minimum: 1
-      description: `chat.post_id`
+      description: "`chat.post_id`"
 
     RoomId:
       name: roomId
@@ -2274,6 +2737,190 @@ components:
           type: string
         badge_color:
           type: string
+
+    PrivatePeerStub:
+      type: object
+      required: [id, user_name]
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+
+    PrivateMessage:
+      type: object
+      required:
+        [id, sender_id, recipient_id, body, sent_at, sent_time, client_message_id]
+      properties:
+        id:
+          type: integer
+        sender_id:
+          type: integer
+        recipient_id:
+          type: integer
+        body:
+          type: string
+          description: Plain text (після word-filter на бекенді)
+        sent_at:
+          type: integer
+          description: Unix timestamp
+        sent_time:
+          type: string
+          description: Локальний час відправки `H:i` (як у БД)
+        client_message_id:
+          type: string
+          format: uuid
+
+    PrivateConversationItem:
+      type: object
+      required: [peer, last_message, unread_count]
+      properties:
+        peer:
+          $ref: "#/components/schemas/PrivatePeerStub"
+        last_message:
+          $ref: "#/components/schemas/PrivateMessage"
+        unread_count:
+          type: integer
+          minimum: 0
+
+    PrivateConversationsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrivateConversationItem"
+        meta:
+          type: object
+          required: [total_private_unread]
+          properties:
+            total_private_unread:
+              type: integer
+              minimum: 0
+
+    PrivateMessagesPageResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrivateMessage"
+        meta:
+          type: object
+          required: [next_cursor]
+          properties:
+            next_cursor:
+              type: integer
+              nullable: true
+              description: Мінімальний `id` на сторінці для наступного запиту з `before`; `null` якщо порожньо
+
+    StorePrivateMessageRequest:
+      type: object
+      required: [message, client_message_id]
+      properties:
+        message:
+          type: string
+          maxLength: 4000
+        client_message_id:
+          type: string
+          format: uuid
+
+    PrivateMessageStoredResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/PrivateMessage"
+        meta:
+          type: object
+          required: [duplicate]
+          properties:
+            duplicate:
+              type: boolean
+
+    MetaOkResponse:
+      type: object
+      required: [meta]
+      properties:
+        meta:
+          type: object
+          required: [ok]
+          properties:
+            ok:
+              type: boolean
+              enum: [true]
+
+    PrivateThreadClearedResponse:
+      type: object
+      required: [meta]
+      properties:
+        meta:
+          type: object
+          required: [ok, cleared_peer_id]
+          properties:
+            ok:
+              type: boolean
+              enum: [true]
+            cleared_peer_id:
+              type: integer
+
+    FriendAcceptedRow:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/PrivatePeerStub"
+        since:
+          type: string
+          format: date-time
+          nullable: true
+
+    FriendsAcceptedListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendAcceptedRow"
+
+    FriendRequestRow:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/PrivatePeerStub"
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    FriendRequestsListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendRequestRow"
+
+    IgnoreListRow:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/PrivatePeerStub"
+
+    IgnoreListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/IgnoreListRow"
 
     UserResponse:
       type: object
@@ -3307,7 +3954,7 @@ components:
           type: boolean
         client_only:
           type: boolean
-          description: true — відповідь лише ініціатору (`type: client_only` у `data`)
+          description: "true — відповідь лише ініціатору (`type: client_only` у `data`)"
 
     ChatMessageBodyStyle:
       type: object
