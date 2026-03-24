@@ -25,9 +25,14 @@ if [[ "${BACKUP_BEFORE_DEPLOY:-}" == "1" ]]; then
 fi
 
 cd "$REPO_DIR"
-git fetch origin
+git fetch origin "$DEPLOY_GIT_REF"
 git checkout "$DEPLOY_GIT_REF"
-git pull --ff-only origin "$DEPLOY_GIT_REF"
+# Після минулого deploy локально видалені tracked-файли (cleanup) ламають pull — вирівнюємо до remote.
+if git rev-parse --verify "origin/$DEPLOY_GIT_REF" >/dev/null 2>&1; then
+  git reset --hard "origin/$DEPLOY_GIT_REF"
+else
+  git pull --ff-only origin "$DEPLOY_GIT_REF"
+fi
 
 # На проді не потрібні Cursor, внутрішні спеки та дока в репо (не чіпаємо backend/resources/markdown — там контент для Vite).
 if [[ "${DEPLOY_SKIP_REPO_CLEANUP:-}" != "1" ]]; then
