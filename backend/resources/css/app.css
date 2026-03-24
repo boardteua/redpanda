@@ -224,7 +224,7 @@
     --rp-chat-fmt-fg-amber: #fcd34d;
     --rp-chat-fmt-fg-slate: #cbd5e1;
     --rp-burger-bg: #261f1a;
-    --rp-burger-self-bar-bg: #3f352c;
+    --rp-burger-self-bar-bg: var(--rp-surface-elevated);
     --rp-burger-accent-bg: #f7e008;
     --rp-burger-accent-fg: #1c130a;
     --rp-burger-accent-hover: #e6d000;
@@ -309,7 +309,7 @@
         --rp-chat-fmt-fg-amber: #fcd34d;
         --rp-chat-fmt-fg-slate: #cbd5e1;
         --rp-burger-bg: #261f1a;
-        --rp-burger-self-bar-bg: #3f352c;
+        --rp-burger-self-bar-bg: var(--rp-surface-elevated);
         --rp-burger-accent-bg: #f7e008;
         --rp-burger-accent-fg: #1c130a;
         --rp-burger-accent-hover: #e6d000;
@@ -1463,7 +1463,8 @@
         width: 100%;
         max-width: 100vw;
         border-left-width: 0;
-        background: var(--rp-burger-bg) !important;
+        /* T116: той самий токен, що й десктопний сайдбар (темна тема — без окремого «коричневого» шару) */
+        background: var(--rp-chat-sidebar-bg) !important;
         color: var(--rp-chat-sidebar-fg);
     }
 
@@ -1475,13 +1476,13 @@
     }
 
     .rp-chat-burger-drawer .rp-chat-side-card {
-        border-color: rgb(255 255 255 / 0.1);
-        background: rgb(255 255 255 / 0.06);
+        border-color: color-mix(in srgb, var(--rp-chat-sidebar-fg) 14%, transparent);
+        background: color-mix(in srgb, var(--rp-chat-sidebar-fg) 7%, transparent);
     }
 
     .rp-chat-burger-drawer .rp-chat-side-room-btn {
-        border-color: rgb(255 255 255 / 0.12);
-        background: rgb(255 255 255 / 0.05);
+        border-color: color-mix(in srgb, var(--rp-chat-sidebar-fg) 16%, transparent);
+        background: color-mix(in srgb, var(--rp-chat-sidebar-fg) 6%, transparent);
     }
 }
 

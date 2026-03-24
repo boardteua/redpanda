@@ -2,7 +2,7 @@
     <div>
         <!-- Мобільне бургер-меню: X зліва, вкладки іконками справа (референс) -->
         <div
-            class="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-2 py-3 md:hidden"
+            class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-chat-sidebar-border)] px-2 py-3 md:hidden"
         >
             <RpCloseButton
                 ref="panelCloseBtnMobile"
@@ -22,11 +22,11 @@
                     :id="'chat-tab-m-' + tab.id"
                     type="button"
                     role="tab"
-                    class="rp-focusable relative flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white/95"
+                    class="rp-focusable relative flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--rp-chat-sidebar-fg)]"
                     :class="
                         sidebarTab === tab.id
-                            ? 'bg-white/20 ring-1 ring-white/35'
-                            : 'bg-white/5 hover:bg-white/12'
+                            ? 'bg-[var(--rp-chat-sidebar-tab-active-bg)] ring-1 ring-[color-mix(in_srgb,var(--rp-chat-sidebar-fg)_22%,transparent)]'
+                            : 'bg-transparent hover:bg-[var(--rp-chat-sidebar-tab-active-bg)]'
                     "
                     :aria-selected="sidebarTab === tab.id ? 'true' : 'false'"
                     :aria-controls="'chat-panel-' + tab.id"
