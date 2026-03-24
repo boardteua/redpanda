@@ -65,8 +65,11 @@ COMPOSE=(docker compose "${COMPOSE_ENV[@]}" "${COMPOSE_FILES[@]}")
    echo "[deploy] php artisan migrate --force" && php artisan migrate --force && \
    php artisan optimize && (php artisan queue:restart || true)'
 
+# Vite читає backend/.env; на проді це часто symlink на ../docker/production.env.
+# У контейнері Node змонтовано лише backend/ — без docker/ symlink зламаний і REVERB_APP_KEY не потрапляє в бандл.
 docker run --rm \
   -v "$BACKEND_DIR:/var/www/html" \
+  -v "$REPO_DIR/docker:/var/www/docker:ro" \
   -w /var/www/html \
   node:22-bookworm \
   sh -lc 'npm ci && npm run build'
