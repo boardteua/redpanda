@@ -5,6 +5,7 @@ namespace App\Services\LegacyBoardImport;
 use App\Models\Room;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 use Throwable;
@@ -36,6 +37,7 @@ final class LegacyBoardImportService
      *     counts: array<string, int>,
      *     orphan_chat_without_user: int,
      *     orphan_chat_without_room: int,
+     *     legacy_users_without_public_chat: int,
      * }
      */
     public function inspect(): array
@@ -59,10 +61,15 @@ final class LegacyBoardImportService
             'SELECT COUNT(*) AS c FROM chat c LEFT JOIN rooms r ON c.post_roomid = r.room_id WHERE r.room_id IS NULL'
         )->c;
 
+        $usersWithoutPublicChat = (int) $legacy->selectOne(
+            'SELECT COUNT(*) AS c FROM users u WHERE NOT EXISTS (SELECT 1 FROM chat c WHERE c.user_id = u.user_id)'
+        )->c;
+
         return [
             'counts' => $counts,
             'orphan_chat_without_user' => $orphanUser,
             'orphan_chat_without_room' => $orphanRoom,
+            'legacy_users_without_public_chat' => $usersWithoutPublicChat,
         ];
     }
 
@@ -71,6 +78,8 @@ final class LegacyBoardImportService
      *     dry_run: bool,
      *     rooms: int,
      *     users: int,
+     *     users_legacy_total: int,
+     *     users_skipped_no_posts: int,
      *     stubs: int,
      *     chat_rows: int,
      *     chat_skipped: int,
@@ -87,11 +96,16 @@ final class LegacyBoardImportService
         $now = Carbon::now();
 
         $roomRows = $legacy->table('rooms')->orderBy('room_id')->get();
-        $userRows = $legacy->table('users')->orderBy('user_id')->get();
+        $allLegacyUsers = $legacy->table('users')->orderBy('user_id')->get();
+        $usersLegacyTotal = $allLegacyUsers->count();
 
         $chatTotal = (int) $legacy->table('chat')->count();
         $distinctChatUsers = $legacy->table('chat')->select('user_id')->distinct()->pluck('user_id')->all();
-        $legacyUserIdSet = $userRows->keyBy('user_id');
+        [$userRows, $usersSkippedNoPosts] = LegacyImportUserSelection::usersHavingPublicChatPosts(
+            $allLegacyUsers,
+            $distinctChatUsers
+        );
+        $legacyUserIdSet = $allLegacyUsers->keyBy('user_id');
         $missingForChat = [];
         foreach ($distinctChatUsers as $uid) {
             $uid = (int) $uid;
@@ -106,6 +120,8 @@ final class LegacyBoardImportService
                 'dry_run' => true,
                 'rooms' => $roomRows->count(),
                 'users' => $userRows->count(),
+                'users_legacy_total' => $usersLegacyTotal,
+                'users_skipped_no_posts' => $usersSkippedNoPosts,
                 'stubs' => $stubCount,
                 'chat_rows' => $chatTotal,
                 'chat_skipped' => 0,
@@ -124,6 +140,8 @@ final class LegacyBoardImportService
             'dry_run' => false,
             'rooms' => 0,
             'users' => 0,
+            'users_legacy_total' => $usersLegacyTotal,
+            'users_skipped_no_posts' => $usersSkippedNoPosts,
             'stubs' => 0,
             'chat_rows' => 0,
             'chat_skipped' => 0,
@@ -369,7 +387,7 @@ final class LegacyBoardImportService
         }
     }
 
-    private function safeCount(\Illuminate\Database\Connection $legacy, string $table): int
+    private function safeCount(Connection $legacy, string $table): int
     {
         try {
             return (int) $legacy->table($table)->count();

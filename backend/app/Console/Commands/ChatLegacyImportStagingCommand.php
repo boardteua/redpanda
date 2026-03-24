@@ -47,7 +47,9 @@ class ChatLegacyImportStagingCommand extends Command
 
             $this->info('Dry-run (запису не було):');
             $this->line('  rooms: '.$report['rooms']);
-            $this->line('  users: '.$report['users']);
+            $this->line('  users (усього у legacy.users): '.$report['users_legacy_total']);
+            $this->line('  users (буде імпортовано, є ≥1 рядок у chat): '.$report['users']);
+            $this->line('  users пропущено (немає публічних постів у chat): '.$report['users_skipped_no_posts']);
             $this->line('  stub-користувачів (немає в legacy.users, але є в chat): '.$report['stubs']);
             $this->line('  рядків chat для імпорту: '.$report['chat_rows']);
 
@@ -70,11 +72,13 @@ class ChatLegacyImportStagingCommand extends Command
 
         $this->info('Імпорт завершено:');
         $this->line('  rooms: '.$report['rooms']);
-        $this->line('  users: '.$report['users']);
+        $this->line('  users (імпортовано, з публічними постами): '.$report['users']);
+        $this->line('  users (усього було у legacy.users): '.$report['users_legacy_total']);
+        $this->line('  users пропущено (без публічних постів у chat): '.$report['users_skipped_no_posts']);
         $this->line('  stub-користувачів: '.$report['stubs']);
         $this->line('  chat (вставлено): '.$report['chat_rows']);
         $this->line('  chat (пропущено): '.$report['chat_skipped']);
-        $this->comment('Поле file у chat обнулено; паролі лише для валідних bcrypt; див. T13-ETL-STAGING.md');
+        $this->comment('Поле file у chat обнулено; паролі лише для валідних bcrypt; без публічних постів у chat — user не імпортується (T113); див. T13-ETL-STAGING.md');
 
         return self::SUCCESS;
     }

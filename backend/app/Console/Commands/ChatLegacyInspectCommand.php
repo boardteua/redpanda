@@ -38,6 +38,9 @@ class ChatLegacyInspectCommand extends Command
         $this->info('Сироти (очікувано 0 після коректного дампу):');
         $this->line('  chat без відповідного user_id у legacy.users: '.$report['orphan_chat_without_user']);
         $this->line('  chat без відповідного room_id у legacy.rooms: '.$report['orphan_chat_without_room']);
+        $this->newLine();
+        $this->info('T113 — користувачі без публічних постів у legacy.chat (не імпортуються):');
+        $this->line('  legacy.users без жодного рядка в chat: '.$report['legacy_users_without_public_chat']);
 
         return self::SUCCESS;
     }

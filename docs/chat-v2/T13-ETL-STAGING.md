@@ -67,6 +67,7 @@ php artisan chat:legacy-import-staging
 - **Ролі:** грубе мапування legacy `user_rank` → `user_rank` redpanda (див. код `LegacyBoardImportService::mapLegacyRank`).
 - **Приват, друзі, зображення** — **не** імпортуються в цій версії T13.
 - Користувачі з `chat.user_id`, яких немає в legacy `users`, отримують stub `legacy_uid_{id}` (гість).
+- **T113:** у цільову БД **не** імпортуються облікові записи з legacy `users`, у яких **немає жодного** рядка в **`chat`** (0 публічних постів); деталі та rsync аватарок — [docs/chat-v2/T113-LEGACY-AVATARS.md](T113-LEGACY-AVATARS.md).
 
 ## 5. Команди
 
@@ -75,5 +76,6 @@ php artisan chat:legacy-import-staging
 | `php artisan chat:legacy-inspect` | Звіт по legacy + сироти |
 | `php artisan chat:legacy-import-staging --dry-run` | Оцінка обсягу |
 | `php artisan chat:legacy-import-staging` | Імпорт у порожні `rooms` / `users` / `chat` |
+| `php artisan chat:legacy-sync-avatars` | Опційно (T113): rsync аватарок з legacy — `LEGACY_AVATAR_RSYNC_*` у `.env` |
 
-Конфіг з’єднання: `config/database.php` → `legacy`.
+Конфіг з’єднання: `config/database.php` → `legacy`. Параметри rsync: `config/legacy.php`.

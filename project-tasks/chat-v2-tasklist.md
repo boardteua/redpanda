@@ -1374,8 +1374,9 @@
 
 ---
 
-### [ ] T113 — Legacy ETL: **без юзерів з 0 публічних постів** + **аватарки з board.te.ua** (`scp`/`rsync` по SSH)
+### [x] T113 — Legacy ETL: **без юзерів з 0 публічних постів** + **аватарки з board.te.ua** (`scp`/`rsync` по SSH)
 
+- **Статус:** **PASS** (2026-03-24). Фільтр користувачів у **`LegacyBoardImportService`** + **`LegacyImportUserSelection`**; звіти **`chat:legacy-inspect`** / **`--dry-run`**; **`chat:legacy-sync-avatars`** + **`config/legacy.php`** / **`.env.example`**; документація **[docs/chat-v2/T113-LEGACY-AVATARS.md](../docs/chat-v2/T113-LEGACY-AVATARS.md)**, оновлення **T13**; QA: **[docs/chat-v2/T113-QA.md](../docs/chat-v2/T113-QA.md)**.
 - **Контекст клієнта:** уточнення до **T13** / `chat:legacy-import-staging`: (1) не переносити облікові записи з legacy **`users`**, якщо у таблиці **`chat`** немає жодного рядка з `user_id` = цей користувач (**0 публічних повідомлень**); (2) підтягнути файли аватарок з продакшен-файлової структури legacy: **`/var/www/board.te.ua/html/avatar`** на хості **board.te.ua**, ім’я файлу відповідає **нікнейму** (`user_name`).
 - **Примітка / відкрите питання в PR:** чи враховувати лише **`chat`**, чи також наявність рядків у **`private`** (якщо клієнт має на увазі «будь-яке повідомлення» — розширити критерій одним SQL/підзапитом і зафіксувати в **`T13-ETL-STAGING.md`**).
 - **Delegate:** Backend Architect (+ за потреби DevOps для SSH-ключів і прав на читання каталогу на legacy-хості)
