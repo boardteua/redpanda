@@ -1,6 +1,8 @@
 <template>
     <div
-        class="flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--rp-bg)] md:flex-row md:p-0"
+        class="flex min-h-0 flex-col overflow-hidden bg-[var(--rp-bg)] md:h-[100dvh] md:max-h-[100dvh] md:flex-row md:p-0"
+        :class="chatRootMobileHeightClass"
+        :style="chatRootMobileFrameStyle"
     >
         <button
             v-if="panelOpen && isNarrowViewport"
@@ -293,9 +295,49 @@ export default {
             newMsgDividerDismissed: false,
             roomReadSuppressBottomUntil: 0,
             markReadDebounceTimer: null,
+            /** iOS Safari: клавіатура зменшує visualViewport — підганяємо оболонку (T119). */
+            narrowVisualViewportTop: 0,
+            narrowVisualViewportHeight: null,
+            chatVvBound: false,
+            chatVvOnChange: null,
         };
     },
     computed: {
+        /** Вузький екран + перший кадр після sync — fallback до dvh. */
+        chatRootMobileHeightClass() {
+            if (!this.isNarrowViewport) {
+                return '';
+            }
+            if (this.chatRootUsesVisualViewportFrame) {
+                return '';
+            }
+
+            return 'h-[100dvh] max-h-[100dvh]';
+        },
+        chatRootUsesVisualViewportFrame() {
+            return (
+                this.isNarrowViewport
+                && typeof window !== 'undefined'
+                && Boolean(window.visualViewport)
+                && this.narrowVisualViewportHeight != null
+            );
+        },
+        chatRootMobileFrameStyle() {
+            if (!this.chatRootUsesVisualViewportFrame) {
+                return {};
+            }
+
+            return {
+                position: 'fixed',
+                boxSizing: 'border-box',
+                top: `${this.narrowVisualViewportTop}px`,
+                left: '0',
+                right: '0',
+                width: '100%',
+                height: `${this.narrowVisualViewportHeight}px`,
+                maxHeight: `${this.narrowVisualViewportHeight}px`,
+            };
+        },
         feedSyncKey() {
             const n = this.messages.length;
             const last = n ? this.messages[n - 1].post_id : 0;
@@ -571,6 +613,7 @@ export default {
             this.peerLookupDebounceTimer = null;
         }
         this.detachChatSoundActivation();
+        this.unbindChatVisualViewportListeners();
         resetFaviconPrivateUnreadBadge();
     },
     methods: {
@@ -647,10 +690,12 @@ export default {
                 }
                 this.$nextTick(() => {
                     this.syncBodyScrollLock(this.panelOpen && this.isNarrowViewport);
+                    this.reconcileChatVisualViewportListeners();
                 });
             };
             mq.addEventListener('change', this.mqHandler);
             this.syncBodyScrollLock(this.panelOpen && this.isNarrowViewport);
+            this.reconcileChatVisualViewportListeners();
         },
         teardownMediaQuery() {
             if (typeof window === 'undefined' || !window.matchMedia || !this.mqHandler) {
@@ -659,6 +704,76 @@ export default {
             const mq = window.matchMedia('(max-width: 767px)');
             mq.removeEventListener('change', this.mqHandler);
             this.mqHandler = null;
+            this.unbindChatVisualViewportListeners();
+        },
+        syncChatVisualViewportFrame() {
+            if (!this.isNarrowViewport) {
+                this.narrowVisualViewportTop = 0;
+                this.narrowVisualViewportHeight = null;
+
+                return;
+            }
+            const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+            if (!vv) {
+                this.narrowVisualViewportTop = 0;
+                this.narrowVisualViewportHeight = null;
+
+                return;
+            }
+            this.narrowVisualViewportTop = Math.round(vv.offsetTop);
+            this.narrowVisualViewportHeight = Math.round(vv.height);
+        },
+        bindChatVisualViewportListeners() {
+            if (typeof window === 'undefined' || !window.visualViewport || this.chatVvBound) {
+                return;
+            }
+            this.chatVvBound = true;
+            const vv = window.visualViewport;
+            const handler = () => {
+                this.syncChatVisualViewportFrame();
+            };
+            this.chatVvOnChange = handler;
+            vv.addEventListener('resize', handler);
+            vv.addEventListener('scroll', handler);
+            window.addEventListener('resize', handler);
+            this.syncChatVisualViewportFrame();
+        },
+        unbindChatVisualViewportListeners() {
+            if (!this.chatVvBound || typeof window === 'undefined') {
+                this.narrowVisualViewportTop = 0;
+                this.narrowVisualViewportHeight = null;
+                this.chatVvBound = false;
+                this.chatVvOnChange = null;
+
+                return;
+            }
+            const vv = window.visualViewport;
+            const handler = this.chatVvOnChange;
+            if (vv && handler) {
+                vv.removeEventListener('resize', handler);
+                vv.removeEventListener('scroll', handler);
+            }
+            if (handler) {
+                window.removeEventListener('resize', handler);
+            }
+            this.chatVvBound = false;
+            this.chatVvOnChange = null;
+            this.narrowVisualViewportTop = 0;
+            this.narrowVisualViewportHeight = null;
+        },
+        reconcileChatVisualViewportListeners() {
+            if (typeof window === 'undefined') {
+                return;
+            }
+            if (this.isNarrowViewport && window.visualViewport) {
+                if (!this.chatVvBound) {
+                    this.bindChatVisualViewportListeners();
+                } else {
+                    this.syncChatVisualViewportFrame();
+                }
+            } else {
+                this.unbindChatVisualViewportListeners();
+            }
         },
         syncBodyScrollLock(lock) {
             document.body.style.overflow = lock ? 'hidden' : '';

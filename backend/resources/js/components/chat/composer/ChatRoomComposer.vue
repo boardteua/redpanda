@@ -1,6 +1,6 @@
 <template>
     <form
-        class="flex shrink-0 flex-col border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-composer-bg)] max-md:pb-[max(0.375rem,env(safe-area-inset-bottom,0px))]"
+        class="flex shrink-0 flex-col border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-composer-bg)]"
         @submit.prevent="emitSubmit"
     >
         <ChatRoomComposerToolbar
