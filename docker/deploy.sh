@@ -55,6 +55,13 @@ COMPOSE_FILES=(-f "$REPO_DIR/docker/compose.yaml")
 [[ -f "$REPO_DIR/docker/compose.override.yml" ]] && COMPOSE_FILES+=(-f "$REPO_DIR/docker/compose.override.yml")
 COMPOSE=(docker compose "${COMPOSE_ENV[@]}" "${COMPOSE_FILES[@]}")
 
+# Файл env для кроку Vite (той самий, що й для compose).
+VITE_ENV_SRC=""
+if [[ -f "$REPO_DIR/docker/production.env" ]]; then
+  VITE_ENV_SRC="$REPO_DIR/docker/production.env"
+elif [[ -f "$REPO_DIR/docker/compose.deploy.env" ]]; then
+  VITE_ENV_SRC="$REPO_DIR/docker/compose.deploy.env"
+fi
 
 "${COMPOSE[@]}" up -d mysql redis
 "${COMPOSE[@]}" --profile app build php
@@ -66,14 +73,21 @@ COMPOSE=(docker compose "${COMPOSE_ENV[@]}" "${COMPOSE_FILES[@]}")
    echo "[deploy] php artisan migrate --force" && php artisan migrate --force && \
    php artisan optimize && (php artisan queue:restart || true)'
 
-# Vite читає backend/.env; на проді це часто symlink на ../docker/production.env.
-# У контейнері Node змонтовано лише backend/ — без docker/ symlink зламаний і REVERB_APP_KEY не потрапляє в бандл.
+# Vite (mode production) зчитує .env.production у backend/. Копія з канонічного env гарантує
+# REVERB_APP_KEY / APP_URL у бандлі навіть якщо backend/.env — зламаний symlink або volume docker/ не змонтувався.
+# Додатково монтуємо docker/ — тоді працює symlink backend/.env → ../docker/production.env.
+if [[ -n "$VITE_ENV_SRC" ]]; then
+  cp -f "$VITE_ENV_SRC" "$BACKEND_DIR/.env.production"
+  chmod 600 "$BACKEND_DIR/.env.production"
+fi
 docker run --rm \
   -v "$BACKEND_DIR:/var/www/html" \
   -v "$REPO_DIR/docker:/var/www/docker:ro" \
   -w /var/www/html \
   node:22-bookworm \
-  sh -lc 'npm ci && npm run build'
+  sh -lc 'npm ci && npm run build' \
+  || { rm -f "$BACKEND_DIR/.env.production"; exit 1; }
+rm -f "$BACKEND_DIR/.env.production"
 
 "${COMPOSE[@]}" --profile app up -d --build
 "${COMPOSE[@]}" --profile app restart php nginx queue reverb
