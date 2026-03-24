@@ -12,6 +12,11 @@ class OEmbedProviderRegistry
      */
     public function findEndpointForResourceUrl(string $resourceUrl): ?array
     {
+        $tiktok = $this->findTikTokEndpointForAlternateHost($resourceUrl);
+        if ($tiktok !== null) {
+            return $tiktok;
+        }
+
         $normalized = $this->normalizeForSchemeMatch($resourceUrl);
         $providers = $this->loadProviders();
 
@@ -42,6 +47,34 @@ class OEmbedProviderRegistry
         }
 
         return null;
+    }
+
+    /**
+     * iamcal/oembed TikTok entry lists only https://www.tiktok.com/*; short links (vm.tiktok.com, …)
+     * must still map to the same official endpoint (T118).
+     *
+     * @return array{endpoint_url: string, provider_name: string}|null
+     */
+    private function findTikTokEndpointForAlternateHost(string $resourceUrl): ?array
+    {
+        $p = parse_url($resourceUrl);
+        if ($p === false || ! isset($p['host']) || ! is_string($p['host'])) {
+            return null;
+        }
+
+        $host = strtolower($p['host']);
+        if ($host === 'www.tiktok.com' || $host === 'tiktok.com') {
+            return null;
+        }
+
+        if (! preg_match('/(^|\\.)tiktok\\.com$/', $host)) {
+            return null;
+        }
+
+        return [
+            'endpoint_url' => 'https://www.tiktok.com/oembed',
+            'provider_name' => 'TikTok',
+        ];
     }
 
     /**

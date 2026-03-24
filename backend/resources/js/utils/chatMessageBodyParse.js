@@ -50,7 +50,8 @@ const URL_TRAILING_JUNK = new Set([')', '.', ',', ';', '!', '?', ']', '"', "'", 
 
 /**
  * @typedef {{ kind: 'embed', iframeSrc: string, provider: string }} EmbedClassification
- * @typedef {{ kind: 'image' } | { kind: 'link' } | { kind: 'inlineVideo' } | EmbedClassification} UrlClassification
+ * @typedef {{ kind: 'threadsCard', href: string, label: string }} ThreadsCardClassification
+ * @typedef {{ kind: 'image' } | { kind: 'link' } | { kind: 'inlineVideo' } | EmbedClassification | ThreadsCardClassification} UrlClassification
  */
 
 /**
@@ -278,11 +279,12 @@ export function tryTwitterStatusEmbed(trimmed) {
 }
 
 /**
- * Meta Threads: /(@user/)post/{postId}
+ * Meta Threads: /(@user/)post/{postId} — без iframe (X-Frame-Options / framing denied у браузері).
+ * Показуємо картку-посилання в стрічці (T118).
  * @param {string} trimmed
- * @returns {EmbedClassification|null}
+ * @returns {ThreadsCardClassification|null}
  */
-export function tryThreadsPostEmbed(trimmed) {
+export function tryThreadsPostCard(trimmed) {
     try {
         const u = new URL(trimmed);
         const host = u.hostname.replace(/^www\./, '').toLowerCase();
@@ -298,9 +300,9 @@ export function tryThreadsPostEmbed(trimmed) {
             return null;
         }
         return {
-            kind: 'embed',
-            iframeSrc: `https://www.threads.net/embed/post/${encodeURIComponent(postId)}/`,
-            provider: 'threads',
+            kind: 'threadsCard',
+            href: trimmed.split('#')[0],
+            label: trimmed,
         };
     } catch {
         return null;
@@ -426,10 +428,6 @@ export const EMBED_RESOLVERS = Object.freeze([
         resolve: tryTwitterStatusEmbed,
     },
     {
-        id: 'threads',
-        resolve: tryThreadsPostEmbed,
-    },
-    {
         id: 'telegram',
         resolve: tryTelegramPostEmbed,
     },
@@ -444,6 +442,10 @@ export const EMBED_RESOLVERS = Object.freeze([
  * @returns {UrlClassification}
  */
 export function classifyUrl(trimmed) {
+    const threadsCard = tryThreadsPostCard(trimmed);
+    if (threadsCard) {
+        return threadsCard;
+    }
     for (let i = 0; i < EMBED_RESOLVERS.length; i += 1) {
         const hit = EMBED_RESOLVERS[i].resolve(trimmed);
         if (hit) {
@@ -463,7 +465,7 @@ export function classifyUrl(trimmed) {
  * Лише URL / ембеди / зображення (без `:code:` смайлів).
  *
  * @param {string} str
- * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'inlineVideo', src: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string }>}
+ * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'inlineVideo', src: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string } | { type: 'threadsCard', href: string, label: string }>}
  */
 function parseChatMessageBodyUrlsOnly(str) {
     const segments = [];
@@ -488,6 +490,12 @@ function parseChatMessageBodyUrlsOnly(str) {
                 type: 'embed',
                 src: classified.iframeSrc,
                 provider: classified.provider,
+            });
+        } else if (classified.kind === 'threadsCard') {
+            segments.push({
+                type: 'threadsCard',
+                href: classified.href,
+                label: classified.label,
             });
         } else if (classified.kind === 'link' && shouldTryBackendOembedUrl(trimmed)) {
             segments.push({
@@ -577,7 +585,7 @@ function splitEmoticonPieces(str, index) {
 /**
  * @param {string|null|undefined} text
  * @param {{ emoticonIndex?: Record<string, string>|null }|undefined} options
- * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'inlineVideo', src: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string } | { type: 'emoticon', code: string, src: string }>}
+ * @returns {Array<{ type: 'text', value: string } | { type: 'link', href: string, label: string } | { type: 'image', src: string, alt: string } | { type: 'inlineVideo', src: string } | { type: 'embed', src: string, provider: string } | { type: 'oembedPending', href: string, label: string } | { type: 'threadsCard', href: string, label: string } | { type: 'emoticon', code: string, src: string }>}
  */
 export function parseChatMessageBody(text, options) {
     if (text == null || text === '') {
@@ -616,6 +624,7 @@ export function messageHasBlockMedia(text) {
         (s) =>
             s.type === 'embed' ||
             s.type === 'oembedPending' ||
+            s.type === 'threadsCard' ||
             s.type === 'image' ||
             s.type === 'inlineVideo',
     );

@@ -95,6 +95,33 @@ class OEmbedApiTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_tiktok_vm_host_uses_official_oembed_endpoint(): void
+    {
+        Http::fake([
+            'https://www.tiktok.com/oembed*' => Http::response([
+                'type' => 'video',
+                'version' => '1.0',
+                'title' => 'TikTok clip',
+                'html' => '<iframe src="https://www.tiktok.com/player/v1/123" width="200" height="200"></iframe>',
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $resource = 'https://vm.tiktok.com/ZMfixture123/';
+        $this->getJson('/api/v1/oembed?url='.rawurlencode($resource))
+            ->assertOk()
+            ->assertJsonPath('title', 'TikTok clip');
+
+        Http::assertSent(function ($request) use ($resource): bool {
+            $u = $request->url();
+
+            return str_starts_with($u, 'https://www.tiktok.com/oembed')
+                && str_contains($u, 'url='.rawurlencode($resource));
+        });
+    }
+
     public function test_loopback_url_returns_422_without_upstream_call(): void
     {
         Http::fake();

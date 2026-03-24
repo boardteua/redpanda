@@ -12,6 +12,24 @@
                 decoding="async"
                 referrerpolicy="no-referrer"
             />
+            <div
+                v-else-if="seg.type === 'threadsCard'"
+                :key="'th-' + i"
+                class="my-2 block max-w-lg rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-surface-elevated)] p-3"
+            >
+                <div class="text-xs font-medium text-[var(--rp-text-muted)]">Threads</div>
+                <a
+                    class="mt-1 block break-all text-sm text-[var(--rp-link)] underline decoration-[var(--rp-link)]/40 underline-offset-2 hover:decoration-[var(--rp-link)]"
+                    :href="seg.href"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    {{ seg.label }}
+                </a>
+                <p class="mt-2 text-xs leading-snug text-[var(--rp-text-muted)]">
+                    Вбудований перегляд недоступний (обмеження Threads). Відкрийте посилання в новій вкладці.
+                </p>
+            </div>
             <ChatOembedBlock
                 v-else-if="seg.type === 'oembedPending'"
                 :key="'oe-' + i"
@@ -147,7 +165,6 @@ import ChatOembedBlock from './ChatOembedBlock.vue';
 /** Провайдери з окремим layout уже в шаблоні вище. */
 const SOCIAL_EMBED_HEIGHT = {
     twitter: 'h-[500px] sm:h-[540px]',
-    threads: 'h-[580px] sm:h-[640px]',
     telegram: 'h-[400px]',
     facebook: 'h-[520px] sm:h-[580px]',
 };
@@ -184,6 +201,9 @@ export default {
         displaySegments() {
             if (this.variant === 'archive') {
                 return this.segments.map((s) => {
+                    if (s.type === 'threadsCard') {
+                        return { type: 'link', href: s.href, label: s.label };
+                    }
                     if (s.type === 'oembedPending') {
                         return { type: 'link', href: s.href, label: s.label };
                     }
@@ -238,7 +258,6 @@ export default {
                 spotify: 'Вбудований плеєр Spotify',
                 apple: 'Вбудований плеєр Apple Music',
                 twitter: 'Допис у X (Twitter)',
-                threads: 'Допис у Threads',
                 telegram: 'Пост у Telegram',
                 facebook: 'Допис у Facebook',
             };
@@ -250,7 +269,6 @@ export default {
                 spotify: 'Spotify (відкрити)',
                 apple: 'Apple Music (відкрити)',
                 twitter: 'X / Twitter (відкрити)',
-                threads: 'Threads (відкрити)',
                 telegram: 'Telegram (відкрити)',
                 facebook: 'Facebook (відкрити)',
             };
