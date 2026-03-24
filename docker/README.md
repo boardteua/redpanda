@@ -44,6 +44,8 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 
 **Не дублюйте один ключ кілька разів** у `docker/production.env` (наприклад, два `DB_PASSWORD=`): у Compose/`--env-file` зазвичай **перемагає останній** рядок — легко отримати 1045 у PHP, бо пароль у файлі й у MySQL роз’їдуться.
 
+**Два паролі `MYSQL_PASSWORD` і `DB_PASSWORD` (різні значення):** для образу mysql compose бере **`DB_PASSWORD`**, рядок **`MYSQL_PASSWORD` не змінює** підключення Laravel і часто відповідає **фактичному** паролю в БД (після ротації тощо), тоді як `DB_PASSWORD` лишається старим — **1045**. У репо: `docker/scripts/canonicalize-mysql-app-password-in-env.py` (лише прибрати `MYSQL_PASSWORD=`), `docker/scripts/promote-mysql-password-to-db-password.py` (перенести пароль з `MYSQL_PASSWORD` у `DB_PASSWORD`, наприклад з бекапу другим аргументом). Після зміни пароля в файлі: **`php artisan config:clear && php artisan optimize`** у контейнері **php**, потім **restart** php / queue / reverb.
+
 ## Безпека продакшену
 
 | Область | Що зробити |

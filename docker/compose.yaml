@@ -59,6 +59,7 @@ services:
     build:
       context: php
       dockerfile: Dockerfile
+    working_dir: /var/www/html
     volumes:
       - ../backend:/var/www/html
     env_file:
