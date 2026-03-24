@@ -360,15 +360,19 @@ html[data-theme='dark'] {
 /* База сторінки                                                              */
 /* -------------------------------------------------------------------------- */
 
-/* Ланцюг висоти SPA: flex + min-height 0 — паритет flow-лейауту legacy (#show_chat ul scroll), без жорсткого h-dvh на корені чату */
+/*
+ * Ланцюг висоти SPA (стрічка скролиться всередині, композер лишається в кадрі):
+ * flex-basis 0% + min-height 0 — інакше flex: 1 1 auto дає «висоту за контентом» і батько
+ * з overflow-hidden обрізає композер унизу (десктоп і мобільний).
+ */
 html {
-    min-height: 100%;
+    height: 100%;
     min-height: 100dvh;
 }
 
 .rp-body {
     margin: 0;
-    min-height: 100%;
+    height: 100%;
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
@@ -378,8 +382,12 @@ html {
     line-height: 1.5;
 }
 
+.rp-body > .rp-skip-link {
+    flex-shrink: 0;
+}
+
 .rp-body > #app {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -571,7 +579,7 @@ html {
 }
 
 .rp-app {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
