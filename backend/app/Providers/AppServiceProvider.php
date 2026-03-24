@@ -100,6 +100,10 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        // Sanctum SPA: без збігу Referer/Origin з `sanctum.stateful` API не отримує session middleware →
+        // логін не зберігає cookie, `GET /api/v1/auth/user` → 401 Unauthenticated.
+        $this->mergeAppUrlHostIntoSanctumStateful();
+
         ResetPasswordNotification::toMailUsing(function (object $notifiable, #[\SensitiveParameter] string $token): MailMessage {
             $email = urlencode((string) $notifiable->getEmailForPasswordReset());
             $url = rtrim((string) config('app.url'), '/').'/reset-password?token='.urlencode($token).'&email='.$email;
@@ -281,5 +285,33 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(45)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
         });
+    }
+
+    /**
+     * Доповнює config('sanctum.stateful') хостом (і host:port) з APP_URL, щоб cookie-сесія на /api/* працювала
+     * навіть якщо SANCTUM_STATEFUL_DOMAINS скопійовано з прикладу (example.com) і не оновлено під прод.
+     */
+    private function mergeAppUrlHostIntoSanctumStateful(): void
+    {
+        $parts = parse_url((string) config('app.url'));
+        if (empty($parts['scheme']) || empty($parts['host'])) {
+            return;
+        }
+
+        $hostOnly = $parts['host'];
+        $withPort = isset($parts['port']) ? "{$hostOnly}:{$parts['port']}" : $hostOnly;
+
+        $stateful = config('sanctum.stateful', []);
+        if (! is_array($stateful)) {
+            $stateful = [];
+        }
+
+        foreach (array_unique([$withPort, $hostOnly]) as $h) {
+            if ($h !== '' && ! in_array($h, $stateful, true)) {
+                $stateful[] = $h;
+            }
+        }
+
+        config(['sanctum.stateful' => $stateful]);
     }
 }
