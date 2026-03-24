@@ -97,14 +97,52 @@
                     </p>
                 </template>
                 <div
-                    v-if="viewerStaff && target.guest"
-                    class="rounded-md border border-dashed border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] p-3 text-xs text-[var(--rp-text-muted)]"
+                    v-if="viewerStaff && target"
+                    class="space-y-2 rounded-md border border-dashed border-[var(--rp-border-subtle)] bg-[var(--rp-surface-elevated)] p-3 text-xs text-[var(--rp-text-muted)]"
                 >
-                    <p class="font-semibold text-[var(--rp-text)]">Перевірка IP (T23)</p>
-                    <p class="mt-1">
-                        Тут з’явиться розширена картка та IP-дані після окремого ендпоінта для персоналу. Зараз лише
-                        заглушка.
+                    <p class="font-semibold text-[var(--rp-text)]">Мережеві дані (персонал)</p>
+                    <p v-if="networkInsightLoading" class="mt-1">Завантаження…</p>
+                    <p v-else-if="networkInsightError" class="mt-1 text-amber-700 dark:text-amber-400" role="alert">
+                        {{ networkInsightError }}
                     </p>
+                    <template v-else-if="networkInsight">
+                        <p v-if="!networkInsight.latest_session && networkInsight.sessions_sampled === 0" class="mt-1">
+                            Немає збережених сесій з IP (таблиця <code class="rounded bg-[var(--rp-surface)] px-1">sessions</code>
+                            порожня або інший драйвер сесій).
+                        </p>
+                        <template v-else>
+                            <p v-if="networkInsight.latest_session" class="mt-1 space-y-1 text-[var(--rp-text)]">
+                                <span class="block">
+                                    <span class="font-medium">Остання IP:</span>
+                                    {{ networkInsight.latest_session.ip_address }}
+                                </span>
+                                <span class="block text-[var(--rp-text-muted)]">
+                                    {{ formatNetworkTime(networkInsight.latest_session.last_activity_at) }}
+                                </span>
+                                <span
+                                    v-if="networkInsight.latest_session.user_agent"
+                                    class="block break-all text-[var(--rp-text-muted)]"
+                                >
+                                    <span class="font-medium text-[var(--rp-text)]">User-Agent:</span>
+                                    {{ networkInsight.latest_session.user_agent }}
+                                </span>
+                            </p>
+                            <div v-if="networkInsight.recent_ips && networkInsight.recent_ips.length" class="mt-2">
+                                <p class="font-medium text-[var(--rp-text)]">IP у вибірці сесій</p>
+                                <ul class="mt-1 list-inside list-disc space-y-1">
+                                    <li v-for="row in networkInsight.recent_ips" :key="row.ip">
+                                        <span class="font-mono text-[var(--rp-text)]">{{ row.ip }}</span>
+                                        <span v-if="row.banned" class="ml-1 rounded bg-red-600/15 px-1 text-red-700 dark:text-red-400">
+                                            у бані
+                                        </span>
+                                        <span class="block text-[var(--rp-text-muted)]">
+                                            {{ formatNetworkTime(row.last_seen_at) }}
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </template>
+                    </template>
                 </div>
                 </template>
             </template>
@@ -144,6 +182,13 @@ export default {
             default: '',
         },
     },
+    data() {
+        return {
+            networkInsight: null,
+            networkInsightError: null,
+            networkInsightLoading: false,
+        };
+    },
     computed: {
         title() {
             return this.mode === 'self' ? 'Ваш профіль у чаті' : 'Інформація про користувача';
@@ -160,8 +205,81 @@ export default {
 
             return !this.viewerStaff;
         },
+        shouldFetchNetworkInsight() {
+            return (
+                this.open &&
+                this.mode === 'other' &&
+                this.viewerStaff &&
+                this.target &&
+                this.target.id != null
+            );
+        },
+    },
+    watch: {
+        open(val) {
+            if (!val) {
+                this.networkInsight = null;
+                this.networkInsightError = null;
+                this.networkInsightLoading = false;
+
+                return;
+            }
+            if (this.shouldFetchNetworkInsight) {
+                this.loadNetworkInsight();
+            }
+        },
+        target: {
+            deep: true,
+            handler() {
+                if (this.open && this.shouldFetchNetworkInsight) {
+                    this.loadNetworkInsight();
+                }
+            },
+        },
+        viewer: {
+            deep: true,
+            handler() {
+                if (this.open && this.shouldFetchNetworkInsight) {
+                    this.loadNetworkInsight();
+                }
+            },
+        },
     },
     methods: {
+        async loadNetworkInsight() {
+            if (!this.shouldFetchNetworkInsight || typeof window === 'undefined' || !window.axios) {
+                return;
+            }
+            const id = this.target.id;
+            this.networkInsightLoading = true;
+            this.networkInsightError = null;
+            this.networkInsight = null;
+            try {
+                const { data } = await window.axios.get(`/api/v1/mod/users/${id}/network-insight`);
+                this.networkInsight = data.data || null;
+            } catch (e) {
+                const msg =
+                    (e.response && e.response.data && e.response.data.message) ||
+                    (e.response && e.response.status === 403
+                        ? 'Недостатньо прав для перегляду мережевих даних.'
+                        : 'Не вдалося завантажити мережеві дані.');
+                this.networkInsightError = typeof msg === 'string' ? msg : 'Не вдалося завантажити мережеві дані.';
+            } finally {
+                this.networkInsightLoading = false;
+            }
+        },
+        formatNetworkTime(iso) {
+            if (!iso) {
+                return '';
+            }
+            try {
+                const d = new Date(iso);
+
+                return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('uk-UA');
+            } catch {
+                return iso;
+            }
+        },
         close() {
             this.$emit('close');
         },

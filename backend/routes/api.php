@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\LandingController;
 use App\Http\Controllers\Api\V1\MeAccountController;
 use App\Http\Controllers\Api\V1\MeProfileController;
 use App\Http\Controllers\Api\V1\Mod\ChatEmoticonAdminController;
+use App\Http\Controllers\Api\V1\Mod\ModUserNetworkInsightController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\OEmbedController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
@@ -142,6 +143,11 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::middleware(['can:moderate', 'throttle:mod-flagged-read'])->prefix('mod')->group(function (): void {
             Route::get('flagged-messages', [ModerationController::class, 'indexFlaggedMessages']);
         });
+
+        Route::middleware(['can:moderate', 'throttle:mod-network-insight'])->get(
+            'mod/users/{user}/network-insight',
+            [ModUserNetworkInsightController::class, 'show'],
+        );
 
         Route::middleware(['can:moderate', 'throttle:mod-actions'])->prefix('mod')->group(function (): void {
             Route::patch('flagged-messages/{message}', [ModerationController::class, 'clearModerationFlag']);

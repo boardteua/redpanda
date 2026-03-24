@@ -679,6 +679,33 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/mod/users/{userId}/network-insight:
+    get:
+      tags: [Moderation]
+      summary: Мережевий огляд користувача для персоналу (T23)
+      description: |
+        Джерело: останні записи таблиці `sessions` при `SESSION_DRIVER=database` (IP, user-agent останньої сесії, унікальні IP у вибірці, прапорець бану по `banned_ips`).
+        Доступ лише за `can:moderate` (модератор/адмін, не гість). Ліміт `mod-network-insight`.
+      operationId: modUserNetworkInsight
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: Агреговані дані без дублювання PII у логах клієнта
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModUserNetworkInsightResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /sanctum/csrf-cookie:
     get:
       tags: [Auth]
@@ -3184,6 +3211,51 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/ModUserRestrictionData"
+
+    ModUserNetworkInsightResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ModUserNetworkInsightData"
+
+    ModUserNetworkInsightData:
+      type: object
+      required: [user_id, latest_session, recent_ips, sessions_sampled]
+      properties:
+        user_id:
+          type: integer
+        latest_session:
+          type: object
+          nullable: true
+          properties:
+            ip_address:
+              type: string
+            last_activity_at:
+              type: string
+              format: date-time
+            user_agent:
+              type: string
+              nullable: true
+        recent_ips:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModUserNetworkIpRow"
+        sessions_sampled:
+          type: integer
+          minimum: 0
+
+    ModUserNetworkIpRow:
+      type: object
+      required: [ip, last_seen_at, banned]
+      properties:
+        ip:
+          type: string
+        last_seen_at:
+          type: string
+          format: date-time
+        banned:
+          type: boolean
 
     StaffUserProfileSummary:
       type: object

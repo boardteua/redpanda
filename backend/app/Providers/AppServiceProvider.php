@@ -271,6 +271,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(90)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
         });
 
+        RateLimiter::for('mod-network-insight', function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(30)->by($user ? 'u:'.$user->id : 'ip:'.$request->ip());
+        });
+
         RateLimiter::for('me-profile', function (Request $request) {
             $user = $request->user();
 
