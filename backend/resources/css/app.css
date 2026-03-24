@@ -375,19 +375,21 @@
 .rp-auth-landing-brand {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    justify-content: space-between;
+    gap: 0.75rem 1.25rem;
     flex-wrap: wrap;
     padding: 1.25rem 1.5rem;
     border-bottom: 1px solid var(--rp-border-subtle);
     background: linear-gradient(180deg, var(--rp-surface-elevated) 0%, var(--rp-surface) 100%);
 }
 
-/* T112 — лічильник онлайн одразу праворуч від логотипа (без дубля внизу картки) */
-.rp-auth-landing-brand-leading {
+/* T112 — зліва: лого + заголовки; справа: лічильник онлайн */
+.rp-auth-landing-brand-left {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 0.75rem 1rem;
+    gap: 1rem;
+    min-width: 0;
+    flex: 1 1 12rem;
 }
 
 .rp-auth-landing-logo-link {
@@ -464,6 +466,12 @@
     margin-left: 0.35em;
     font-weight: 800;
     color: var(--rp-primary);
+}
+
+.rp-auth-landing-online-header--trailing {
+    flex-shrink: 0;
+    text-align: right;
+    margin-left: auto;
 }
 
 .rp-auth-landing-forgot {

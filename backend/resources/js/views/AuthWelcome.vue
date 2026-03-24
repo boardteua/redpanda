@@ -18,7 +18,7 @@
         >
             <div class="rp-auth-landing-card">
                 <div class="rp-auth-landing-brand">
-                    <div class="rp-auth-landing-brand-leading">
+                    <div class="rp-auth-landing-brand-left">
                         <a
                             href="/"
                             class="rp-auth-landing-logo-link rp-focusable"
@@ -32,23 +32,23 @@
                                 alt="Логотип чату — руда панда"
                             />
                         </a>
-                        <p
-                            v-if="!user"
-                            class="rp-auth-landing-online-header"
-                            role="status"
-                            aria-live="polite"
-                            aria-atomic="true"
-                        >
-                            Користувачі онлайн
-                            <strong>{{ usersOnline }}</strong>
-                        </p>
+                        <div class="rp-auth-landing-brand-titles">
+                            <h1>{{ displayTitle }}</h1>
+                            <h2 class="rp-auth-landing-tagline">
+                                {{ displayTagline }}
+                            </h2>
+                        </div>
                     </div>
-                    <div class="rp-auth-landing-brand-titles">
-                        <h1>{{ displayTitle }}</h1>
-                        <h2 class="rp-auth-landing-tagline">
-                            {{ displayTagline }}
-                        </h2>
-                    </div>
+                    <p
+                        v-if="!user"
+                        class="rp-auth-landing-online-header rp-auth-landing-online-header--trailing"
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                    >
+                        Користувачі онлайн
+                        <strong>{{ usersOnline }}</strong>
+                    </p>
                 </div>
 
                 <div
