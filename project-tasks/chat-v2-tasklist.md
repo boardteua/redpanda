@@ -1307,7 +1307,7 @@
 
 ---
 
-### [ ] T106 — (Опційно) **T99 P2:** винесення логіки з **`ChatMessageController`** у сервіс(и) (без зміни HTTP-контракту)
+### [x] T106 — (Опційно) **T99 P2:** винесення логіки з **`ChatMessageController`** у сервіс(и) (без зміни HTTP-контракту)
 
 - **Контекст клієнта:** T99: **~470** рядків у **`ChatMessageController`** (CRUD + slash + інлайн-приват + автомод) — кандидат на **`ChatMessageService`** / **`RoomMessageFlow`** для ізольованих змін і тестів.
 - **Delegate:** Backend Architect
@@ -1316,7 +1316,7 @@
   - Винести **один** зв’язний блок (наприклад, `store` + slash pipeline **або** update/delete) у сервіс з ін’єкцією залежностей; контролер лишається тонким.
   - **Публічні** URL, коди відповідей, JSON-форма — **ідентичні**; зміни лише внутрішня структура.
   - PHPUnit: існуючі тести зелені; за можливості 1 тест на сервіс із моками залежностей.
-- **QA evidence:** **`php artisan test`** PASS; за змін у broadcast — перевірка події (**T05**).
+- **QA evidence:** **PASS (2026-03-24):** блок **`update` + `destroy`** винесено в **`App\Services\Chat\ChatMessageMutationService`** (автомод, word filter, posting gate, broadcast **MessageUpdated** / **MessageDeleted**); `store` / slash / `/msg` без змін. **`composer test`** — 309 тестів зелені (регресія T36/T37/T05).
 - **Трасування:** T99 § розмір контролера, план P2 п.2; не змішувати з продуктовими змінами slash без нового **Txx**.
 
 ---

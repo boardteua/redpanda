@@ -7,9 +7,7 @@ use App\Chat\SlashCommands\SlashCommandContext;
 use App\Chat\SlashCommands\SlashCommandOutcome;
 use App\Chat\SlashCommands\SlashCommandParser;
 use App\Chat\SlashCommands\SlashCommandProcessor;
-use App\Events\MessageDeleted;
 use App\Events\MessagePosted;
-use App\Events\MessageUpdated;
 use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
 use App\Events\RoomTopicUpdated;
@@ -22,6 +20,7 @@ use App\Models\PrivateMessage;
 use App\Models\Room;
 use App\Models\RoomReadState;
 use App\Models\User;
+use App\Services\Chat\ChatMessageMutationService;
 use App\Services\Moderation\ChatAutomoderationService;
 use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\UserPostingGate;
@@ -42,6 +41,7 @@ class ChatMessageController extends Controller
         private readonly ContentWordFilter $wordFilter,
         private readonly UserPostingGate $postingGate,
         private readonly ChatAutomoderationService $automod,
+        private readonly ChatMessageMutationService $messageMutation,
     ) {}
 
     public function index(Request $request, Room $room): AnonymousResourceCollection|JsonResponse
@@ -110,34 +110,7 @@ class ChatMessageController extends Controller
 
         $this->authorize('update', $message);
 
-        $user = $request->user();
-        $this->postingGate->ensureCanPost($user);
-
-        $validated = $request->validated();
-        $rawMsg = trim((string) ($validated['message'] ?? ''));
-        if ($message->type === 'public') {
-            $mod = $this->automod->applyToPublicMessage($rawMsg, $user);
-            if (! $mod['ok']) {
-                return response()->json(['message' => $mod['message']], 422);
-            }
-            $filtered = $mod['text'];
-            $message->moderation_flag_at = $mod['flag'] ? time() : null;
-        } else {
-            $filtered = $this->wordFilter->filter($rawMsg);
-        }
-
-        if ($request->has('style')) {
-            $sp = $validated['style'] ?? null;
-            $message->post_style = ChatMessageBodyStyle::fromValidated(is_array($sp) ? $sp : null);
-        }
-
-        $message->post_message = $filtered;
-        $message->post_edited_at = time();
-        $message->save();
-
-        broadcast(new MessageUpdated($message))->toOthers();
-
-        return ChatMessageResource::make($message->fresh())->response();
+        return $this->messageMutation->update($request->user(), $message, $request);
     }
 
     public function destroy(Request $request, Room $room, ChatMessage $message): JsonResponse
@@ -150,20 +123,7 @@ class ChatMessageController extends Controller
 
         $this->authorize('delete', $message);
 
-        $user = $request->user();
-        $this->postingGate->ensureCanPost($user);
-
-        $now = time();
-        if ($message->post_deleted_at === null) {
-            $message->post_deleted_at = $now;
-            $message->post_message = '';
-            $message->file = 0;
-            $message->post_style = null;
-            $message->save();
-            broadcast(new MessageDeleted($message->fresh()))->toOthers();
-        }
-
-        return ChatMessageResource::make($message->fresh())->response();
+        return $this->messageMutation->softDelete($request->user(), $message);
     }
 
     public function store(StoreChatMessageRequest $request, Room $room): JsonResponse
