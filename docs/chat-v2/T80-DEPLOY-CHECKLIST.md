@@ -83,6 +83,8 @@
 
 Детальніше: [AGENT-ORCHESTRATION.md](AGENT-ORCHESTRATION.md) → «Локальне середовище real-time при завершенні задачі».
 
+Приймальні критерії real-time на prod (банер poll, WS **101**, `location /apps`) — **[T96-QA.md](T96-QA.md)**.
+
 ---
 
 ## Таблиця змінних (staging / production)
