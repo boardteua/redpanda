@@ -101,10 +101,10 @@
 
 ---
 
-### [ ] T13 — (Опційно) ETL legacy: імпорт з org100h.sql у staging, без секретів у репо
+### [x] T13 — (Опційно) ETL legacy: імпорт з org100h.sql у staging, без секретів у репо
 
 - **Delegate:** Backend Architect
-- **QA evidence:** звіт про кількість імпортованих рядків + перевірка сиріт
+- **QA evidence:** [docs/chat-v2/T13-ETL-STAGING.md](../docs/chat-v2/T13-ETL-STAGING.md) — процедура імпорту дампу в окрему БД, `LEGACY_DB_*` у `.env`; **`php artisan chat:legacy-inspect`** (звіт по таблицях + сироти chat→user / chat→room); **`php artisan chat:legacy-import-staging --dry-run`** та повний імпорт у **порожню** схему (rooms/users/chat, обмеження в документації). Автотести: `ChatLegacyCommandsTest`. Секрети та шлях до дампу не в репозиторії.
 
 ---
 
