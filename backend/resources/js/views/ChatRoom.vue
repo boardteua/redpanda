@@ -191,174 +191,24 @@ import {
     maybePlayNewPostSound,
     maybePlayPrivateMessageSound,
 } from '../utils/chatNotificationSounds';
-import { normalizePostStyleFromApi } from '../utils/chatMessageStyle';
 import { resetFaviconPrivateUnreadBadge, setFaviconPrivateUnreadBadge } from '../utils/faviconUnreadBadge';
 import { buildChatRoomBrowserTitle } from '../utils/chatDocumentTitle';
-
-const THEME_KEY = 'redpanda-theme';
-/** Збереження останньої вкладки сайдбару; відсутній/невалідний ключ → «Люди». */
-const SIDEBAR_TAB_STORAGE_KEY = 'redpanda-chat-sidebar-tab';
-const SIDEBAR_TAB_IDS = ['users', 'friends', 'private', 'rooms', 'ignore'];
-
-/** Пороги idle (сек) — узгоджено з `config/chat.php` (T48). */
-const PRESENCE_AWAY_IDLE_SEC = 180;
-const PRESENCE_INACTIVE_IDLE_SEC = 600;
-
-function readStoredSidebarTab() {
-    if (typeof localStorage === 'undefined') {
-        return 'users';
-    }
-    try {
-        const raw = localStorage.getItem(SIDEBAR_TAB_STORAGE_KEY);
-        if (raw && SIDEBAR_TAB_IDS.includes(raw)) {
-            return raw;
-        }
-    } catch {
-        /* */
-    }
-
-    return 'users';
-}
-
-const SIDEBAR_TAB_ICONS = {
-    users:
-        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
-    friends:
-        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg>',
-    private:
-        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>',
-    rooms:
-        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
-    ignore:
-        '<svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M4.75 5.25 L19.25 18.75"/></svg>',
-};
-
-function peerTargetFromConversationPeerPayload(p) {
-    if (!p) {
-        return null;
-    }
-
-    return {
-        id: p.id != null ? Number(p.id) : null,
-        user_name: p.user_name != null ? String(p.user_name) : '',
-        guest: Boolean(p.guest),
-        chat_role: p.chat_role != null ? String(p.chat_role) : 'user',
-    };
-}
-
-function peerTargetFromFriendUserPayload(u) {
-    if (!u) {
-        return null;
-    }
-
-    return {
-        id: Number(u.id),
-        user_name: u.user_name,
-        guest: false,
-        chat_role: 'user',
-    };
-}
-
-/**
- * Початковий стан бічної панелі (друзі, приват, ігнор).
- * Поля мають збігатися з використанням у шаблоні — не прибирати точково при merge.
- * Прапор echoUserListenerReady додатково скидається в setupEcho при створенні нового Echo (HMR тощо).
- */
-function createChatRoomSidebarState() {
-    return {
-        peerLookupName: '',
-        /** T85: автокомпліт ніків для привату */
-        peerAutocompleteSuggestions: [],
-        peerAutocompleteHighlightIndex: -1,
-        peerAutocompleteLoading: false,
-        peerLookupDebounceTimer: null,
-        peerAutocompleteRequestSeq: 0,
-        conversations: [],
-        friendsAccepted: [],
-        friendsIncoming: [],
-        friendsOutgoing: [],
-        ignores: [],
-        privatePeer: null,
-        privateMessages: [],
-        privateMessageIds: new Set(),
-        privateComposerText: '',
-        loadingPrivateMessages: false,
-        sendingPrivate: false,
-        privateLoadError: '',
-        echoUserListenerReady: false,
-        privateListLoadError: '',
-        friendsIgnoresLoadError: '',
-        /** T56: сума непрочитаних вхідних приватних (з meta GET /private/conversations). */
-        totalPrivateUnread: 0,
-        /** T65: зняти listeners активації звуку в beforeDestroy. */
-        chatSoundActivateHandler: null,
-    };
-}
-
-function normalizePresencePeer(raw) {
-    if (!raw || raw.id === undefined || raw.id === null) {
-        return null;
-    }
-
-    return {
-        id: Number(raw.id),
-        user_name: raw.user_name != null ? String(raw.user_name) : '',
-        guest: Boolean(raw.guest),
-        avatar_url: raw.avatar_url != null ? String(raw.avatar_url) : '',
-        chat_role: raw.chat_role != null ? String(raw.chat_role) : 'user',
-        badge_color: raw.badge_color != null ? String(raw.badge_color) : '',
-        presence_invisible: Boolean(raw.presence_invisible),
-    };
-}
-
-function normalizeMessage(raw) {
-    if (!raw || typeof raw.post_id === 'undefined') {
-        return null;
-    }
-
-    const file = raw.file != null ? Number(raw.file) : 0;
-    const image =
-        raw.image && raw.image.url
-            ? { id: Number(raw.image.id), url: raw.image.url }
-            : null;
-
-    const base = {
-        post_id: raw.post_id,
-        post_roomid: raw.post_roomid,
-        user_id: raw.user_id,
-        post_date: raw.post_date,
-        post_edited_at:
-            raw.post_edited_at != null && raw.post_edited_at !== ''
-                ? Number(raw.post_edited_at)
-                : null,
-        post_deleted_at:
-            raw.post_deleted_at != null && raw.post_deleted_at !== ''
-                ? Number(raw.post_deleted_at)
-                : null,
-        post_time: raw.post_time,
-        post_user: raw.post_user,
-        post_message: raw.post_message,
-        post_style: normalizePostStyleFromApi(raw.post_style),
-        post_color: raw.post_color,
-        type: raw.type,
-        recipient_user_id:
-            raw.recipient_user_id != null && raw.recipient_user_id !== ''
-                ? Number(raw.recipient_user_id)
-                : null,
-        client_message_id: raw.client_message_id,
-        avatar: raw.avatar ? String(raw.avatar) : '',
-        file,
-        image,
-    };
-    if (Object.prototype.hasOwnProperty.call(raw || {}, 'can_edit')) {
-        base.can_edit = Boolean(raw.can_edit);
-    }
-    if (Object.prototype.hasOwnProperty.call(raw || {}, 'can_delete')) {
-        base.can_delete = Boolean(raw.can_delete);
-    }
-
-    return base;
-}
+import {
+    PRESENCE_AWAY_IDLE_SEC,
+    PRESENCE_INACTIVE_IDLE_SEC,
+    readStoredSidebarTab,
+    SIDEBAR_TAB_ICONS,
+    SIDEBAR_TAB_IDS,
+    SIDEBAR_TAB_STORAGE_KEY,
+    THEME_KEY,
+} from '../chat/chatRoomConstants';
+import {
+    normalizeMessage,
+    normalizePresencePeer,
+    peerTargetFromConversationPeerPayload,
+    peerTargetFromFriendUserPayload,
+} from '../chat/chatRoomNormalizers';
+import { createChatRoomSidebarState } from '../chat/chatRoomSidebarState';
 
 export default {
     name: 'ChatRoom',
