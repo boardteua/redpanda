@@ -37,12 +37,12 @@
         </div>
         <div
             v-else-if="phase === 'threadsRich'"
-            class="threads-rich-oembed rp-chat-threads-oembed my-2 w-full max-w-[658px] overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-surface-elevated)] min-h-[200px]"
+            class="threads-rich-oembed rp-chat-threads-oembed my-2 w-full max-w-[658px] overflow-hidden min-h-[200px]"
             v-html="threadsRichHtml"
         />
         <div
             v-else
-            class="relative w-full max-w-lg overflow-hidden rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-surface-elevated)] min-h-[200px] sm:min-h-[280px]"
+            class="relative w-full max-w-lg overflow-hidden min-h-[200px] sm:min-h-[280px]"
         >
             <iframe
                 v-if="iframeSrc"
