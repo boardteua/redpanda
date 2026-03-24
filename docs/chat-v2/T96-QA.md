@@ -51,6 +51,7 @@ docker compose --env-file docker/production.env -f docker/compose.yaml --profile
 
 | Дата (UTC) | Хост | Результат | Примітки |
 |------------|------|-----------|----------|
-| 2026-03-24 | new.board.te.ua | **FAIL** | MCP snapshot: банер poll **присутній**; `curl -sI https://new.board.te.ua/apps` → **404**; у списку мережевих запитів сторінки не зафіксовано успішного WS (потрібні правки хостового nginx / upstream). |
+| 2026-03-24 | new.board.te.ua | **FAIL** | MCP snapshot: банер poll **присутній**; `curl -sI https://new.board.te.ua/apps` → **404** nginx; symlink `.env` у Node build без `docker/` → ключ не в бандлі. |
+| 2026-03-24 | new.board.te.ua | **PASS** | Оператор: real-time ок; nginx **`/apps`** + **`/app/`**; Vite rebuild з volume **`docker/`**; `docker/deploy.sh` оновлено в репо (`dc69fca`). |
 
 Після досягнення PASS — оновити рядок таблиці та позначити **T96** виконаною в чеклісті з посиланням на цей файл.
