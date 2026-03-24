@@ -39,6 +39,7 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
+            // Symfony Mailer: unset MAIL_SCHEME + port 587 → STARTTLS when the server offers it; MAIL_SCHEME=smtps + 465 for implicit TLS. See docs/chat-v2/MAIL-SMTP.md.
             'scheme' => env('MAIL_SCHEME'),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),

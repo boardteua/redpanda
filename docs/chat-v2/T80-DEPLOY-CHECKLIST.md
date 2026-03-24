@@ -110,8 +110,14 @@
 | `HEALTH_CHECK_REDIS` | Примусова перевірка Redis у readiness |
 | `TRUSTED_PROXIES` | За reverse proxy — для коректного IP і схеми |
 | `LOG_*` | Рівень логів і канали для prod |
+| `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_*` | Транзакційна пошта (скидання пароля, welcome тощо); Gmail / SMTP — див. [MAIL-SMTP.md](MAIL-SMTP.md) (**T108**) |
 
 **Без секретів у Git:** реальні значення лише в secret manager / `.env` на сервері.
+
+### Пошта (SMTP)
+
+- Повний гайд (Gmail App Password, порти 587/465, troubleshooting): **[MAIL-SMTP.md](MAIL-SMTP.md)**.
+- Локально: **`MAIL_MAILER=log`** або Mailpit за **`backend/docker-compose.mailpit.yml`**.
 
 ---
 
