@@ -9,6 +9,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\ChatSetting;
 use App\Models\User;
+use App\Services\Mail\TransactionalMailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly TransactionalMailService $transactionalMail,
+    ) {}
+
     /**
      * Bcrypt з відомим відкритим текстом (Laravel testing stub) — для вирівнювання часу відповіді,
      * коли облікового запису немає / гість / без пароля (зменшує простий таймінг-канал).
@@ -43,6 +48,8 @@ class AuthController extends Controller
 
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
+
+        $this->transactionalMail->sendWelcomeRegisteredUser($user);
 
         return UserResource::make($user)->response()->setStatusCode(201);
     }

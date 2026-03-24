@@ -1347,7 +1347,7 @@
 
 ---
 
-### [ ] T109 — **Менеджер відправки** листів + **шаблони** (скидання пароля, welcome, інші транзакційні)
+### [x] T109 — **Менеджер відправки** листів + **шаблони** (скидання пароля, welcome, інші транзакційні)
 
 - **Контекст клієнта:** єдиний кодовий шар для продуктових листів і **Blade-шаблони** (спільний layout): **скидання пароля**, **welcome** після реєстрації, розширювані **інші** транзакційні типи.
 - **Delegate:** Backend Architect
@@ -1355,7 +1355,7 @@
 - **Deliverables:**
   - **Менеджер:** сервіс або фасад у **`App\Services\Mail\`** (назва на узгодження) — вхідні точки для типів листів; узгодження з **чергою** (`ShouldQueue` за політикою), обробка/логування помилок без PII у проді.
   - **Шаблони:** Blade + спільний layout (бренд / `APP_NAME`): **(1)** скидання пароля — перевести **`ResetPasswordNotification::toMailUsing`** у **`AppServiceProvider`** на view (або Mailable), посилання на SPA як зараз; **(2)** **welcome** після реєстрації зареєстрованого користувача; **(3)** мінімум один **«інший»** тип (enum / метод розширення) з короткою нотою в коді або `docs/chat-v2/` як додавати наступні.
-- **QA evidence:** PHPUnit: **`Mail::fake()`** / **`Notification::fake()`** — welcome після реєстрації; **`PasswordResetApiTest`** зелений; тест, що менеджер відправляє очікуваний Mailable/notification для кожного з оголошених типів. Ручний smoke (опційно): прев’ю в Mailpit після **T108** на staging.
+- **QA evidence:** **PASS (2026-03-24):** `cd backend && php artisan test` — **317 passed**; **`PasswordResetApiTest`** зелений; **`TransactionalMailTest`** (Blade + SPA URL для reset, `assertQueued` для **Welcome** та **AccountSecurityNotice**); **`AuthApiTest`** — `Mail::assertQueued(WelcomeRegisteredUserMail)` після реєстрації. Артефакти: **`App\Services\Mail\TransactionalMailService`**, **`TransactionalMailKind`**, **`App\Mail\*`**, **`resources/views/mail/`**, [T109-MAIL-TYPES.md](../docs/chat-v2/T109-MAIL-TYPES.md).
 - **Трасування:** презентація та маршрутизація листів після **T94**; HTTP-контракт forgot/reset не змінювати.
 
 ---

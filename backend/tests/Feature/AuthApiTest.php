@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Mail\WelcomeRegisteredUserMail;
 use App\Models\ChatSetting;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class AuthApiTest extends TestCase
@@ -30,6 +32,8 @@ class AuthApiTest extends TestCase
 
     public function test_register_login_user_and_logout_flow(): void
     {
+        Mail::fake();
+
         $register = $this->from(config('app.url'))
             ->withHeaders($this->statefulHeaders())
             ->postJson('/api/v1/auth/register', [
@@ -42,6 +46,8 @@ class AuthApiTest extends TestCase
         $register->assertCreated()
             ->assertJsonPath('data.user_name', 'TestUser')
             ->assertJsonPath('data.guest', false);
+
+        Mail::assertQueued(WelcomeRegisteredUserMail::class);
 
         $this->assertAuthenticatedAs(User::query()->where('user_name', 'TestUser')->first(), 'web');
 

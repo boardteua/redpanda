@@ -31,6 +31,7 @@ use App\Policies\ChatMessagePolicy;
 use App\Policies\ImagePolicy;
 use App\Policies\RoomPolicy;
 use App\Policies\UserPolicy;
+use App\Services\Mail\TransactionalMailService;
 use App\Support\ChatThrottleRules;
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
@@ -112,16 +113,7 @@ class AppServiceProvider extends ServiceProvider
         $this->mergeAppUrlHostIntoSanctumStateful();
 
         ResetPasswordNotification::toMailUsing(function (object $notifiable, #[\SensitiveParameter] string $token): MailMessage {
-            $email = urlencode((string) $notifiable->getEmailForPasswordReset());
-            $url = rtrim((string) config('app.url'), '/').'/reset-password?token='.urlencode($token).'&email='.$email;
-            $expire = (int) config('auth.passwords.'.config('auth.defaults.passwords').'.expire');
-
-            return (new MailMessage)
-                ->subject('Скидання пароля')
-                ->line('Ви отримали цей лист, бо для вашого облікового запису запитали скидання пароля.')
-                ->action('Скинути пароль', $url)
-                ->line("Посилання діє {$expire} хвилин.")
-                ->line('Якщо ви цього не робили — проігноруйте лист; пароль не зміниться.');
+            return $this->app->make(TransactionalMailService::class)->buildPasswordResetMailMessage($notifiable, $token);
         });
 
         Event::listen(Authenticated::class, function (Authenticated $event): void {
