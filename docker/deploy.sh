@@ -62,7 +62,8 @@ COMPOSE=(docker compose "${COMPOSE_ENV[@]}" "${COMPOSE_FILES[@]}")
   php sh -lc \
   'rm -f bootstrap/cache/config.php bootstrap/cache/routes-*.php bootstrap/cache/services.php 2>/dev/null || true; \
    composer install --no-dev --optimize-autoloader --no-interaction && \
-   php artisan migrate --force && php artisan optimize && (php artisan queue:restart || true)'
+   echo "[deploy] php artisan migrate --force" && php artisan migrate --force && \
+   php artisan optimize && (php artisan queue:restart || true)'
 
 docker run --rm \
   -v "$BACKEND_DIR:/var/www/html" \
