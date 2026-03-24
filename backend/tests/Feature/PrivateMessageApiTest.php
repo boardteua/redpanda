@@ -149,6 +149,97 @@ class PrivateMessageApiTest extends TestCase
             ->assertJsonPath('meta.total_private_unread', 2);
     }
 
+    public function test_conversations_unread_per_peer_and_total_with_multiple_peers(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        $c = User::factory()->create();
+        $d = User::factory()->create();
+
+        PrivateMessage::query()->create([
+            'sender_id' => $a->id,
+            'recipient_id' => $b->id,
+            'body' => 'a-to-b',
+            'sent_at' => time(),
+            'sent_time' => '10:00',
+            'client_message_id' => '10000000-0000-4000-8000-000000000001',
+        ]);
+        $bFirst = PrivateMessage::query()->create([
+            'sender_id' => $b->id,
+            'recipient_id' => $a->id,
+            'body' => 'b-first',
+            'sent_at' => time() + 1,
+            'sent_time' => '10:01',
+            'client_message_id' => '10000000-0000-4000-8000-000000000002',
+        ]);
+        PrivateMessage::query()->create([
+            'sender_id' => $b->id,
+            'recipient_id' => $a->id,
+            'body' => 'b-second',
+            'sent_at' => time() + 2,
+            'sent_time' => '10:02',
+            'client_message_id' => '10000000-0000-4000-8000-000000000003',
+        ]);
+        PrivateMessageReadState::query()->create([
+            'user_id' => $a->id,
+            'peer_id' => $b->id,
+            'last_read_incoming_message_id' => $bFirst->id,
+        ]);
+
+        PrivateMessage::query()->create([
+            'sender_id' => $c->id,
+            'recipient_id' => $a->id,
+            'body' => 'c-only',
+            'sent_at' => time() + 3,
+            'sent_time' => '10:03',
+            'client_message_id' => '10000000-0000-4000-8000-000000000004',
+        ]);
+
+        PrivateMessage::query()->create([
+            'sender_id' => $a->id,
+            'recipient_id' => $d->id,
+            'body' => 'a-to-d',
+            'sent_at' => time() + 4,
+            'sent_time' => '10:04',
+            'client_message_id' => '10000000-0000-4000-8000-000000000005',
+        ]);
+        $dFirst = PrivateMessage::query()->create([
+            'sender_id' => $d->id,
+            'recipient_id' => $a->id,
+            'body' => 'd-first',
+            'sent_at' => time() + 5,
+            'sent_time' => '10:05',
+            'client_message_id' => '10000000-0000-4000-8000-000000000006',
+        ]);
+        PrivateMessage::query()->create([
+            'sender_id' => $d->id,
+            'recipient_id' => $a->id,
+            'body' => 'd-second',
+            'sent_at' => time() + 6,
+            'sent_time' => '10:06',
+            'client_message_id' => '10000000-0000-4000-8000-000000000007',
+        ]);
+        PrivateMessageReadState::query()->create([
+            'user_id' => $a->id,
+            'peer_id' => $d->id,
+            'last_read_incoming_message_id' => $dFirst->id,
+        ]);
+
+        Sanctum::actingAs($a);
+        $res = $this->getJson('/api/v1/private/conversations')->assertOk();
+
+        $this->assertSame(3, $res->json('meta.total_private_unread'));
+        $rows = $res->json('data');
+        $this->assertCount(3, $rows);
+        $byPeer = [];
+        foreach ($rows as $row) {
+            $byPeer[$row['peer']['id']] = $row['unread_count'];
+        }
+        $this->assertSame(1, $byPeer[$b->id]);
+        $this->assertSame(1, $byPeer[$c->id]);
+        $this->assertSame(1, $byPeer[$d->id]);
+    }
+
     public function test_fetching_private_thread_marks_incoming_read(): void
     {
         $a = User::factory()->create();

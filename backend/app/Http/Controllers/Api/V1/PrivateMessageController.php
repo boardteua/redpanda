@@ -63,18 +63,13 @@ class PrivateMessageController extends Controller
             return (int) $peer->id;
         })->unique()->values()->all();
 
-        $readThrough = $peerIds === [] ? [] : PrivateMessageReadState::query()
-            ->where('user_id', $uid)
-            ->whereIn('peer_id', $peerIds)
-            ->pluck('last_read_incoming_message_id', 'peer_id')
-            ->all();
+        $unreadByPeer = $this->unreadIncomingCountsByPeer($uid, $peerIds);
 
         $totalUnread = 0;
-        $data = $lastMessages->map(function (PrivateMessage $m) use ($uid, $readThrough, &$totalUnread) {
+        $data = $lastMessages->map(function (PrivateMessage $m) use ($uid, $unreadByPeer, &$totalUnread) {
             $peer = (int) $m->sender_id === $uid ? $m->recipient : $m->sender;
             $peerId = (int) $peer->id;
-            $lastRead = (int) ($readThrough[$peerId] ?? 0);
-            $unread = $this->countUnreadIncoming($uid, $peerId, $lastRead);
+            $unread = (int) ($unreadByPeer[$peerId] ?? 0);
             $totalUnread += $unread;
 
             return [
@@ -283,13 +278,36 @@ class PrivateMessageController extends Controller
         ]);
     }
 
-    private function countUnreadIncoming(int $readerId, int $peerId, int $lastReadIncomingMessageId): int
+    /**
+     * Один запит замість N×count() по peer (T102).
+     *
+     * @param  list<int>  $peerIds
+     * @return array<int, int> peer_id => кількість вхідних від peer, ще не «прочитаних»
+     */
+    private function unreadIncomingCountsByPeer(int $readerId, array $peerIds): array
     {
-        return (int) PrivateMessage::query()
-            ->where('recipient_id', $readerId)
-            ->where('sender_id', $peerId)
-            ->where('id', '>', $lastReadIncomingMessageId)
-            ->count();
+        if ($peerIds === []) {
+            return [];
+        }
+
+        $rows = DB::table('private_messages as pm')
+            ->selectRaw('pm.sender_id as peer_id, COUNT(*) as unread_count')
+            ->leftJoin('private_message_read_states as rs', function ($join) use ($readerId) {
+                $join->on('rs.peer_id', '=', 'pm.sender_id')
+                    ->where('rs.user_id', '=', $readerId);
+            })
+            ->where('pm.recipient_id', $readerId)
+            ->whereIn('pm.sender_id', $peerIds)
+            ->whereRaw('pm.id > COALESCE(rs.last_read_incoming_message_id, 0)')
+            ->groupBy('pm.sender_id')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[(int) $row->peer_id] = (int) $row->unread_count;
+        }
+
+        return $map;
     }
 
     /**

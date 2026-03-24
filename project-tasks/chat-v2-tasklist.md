@@ -1251,8 +1251,9 @@
 
 ---
 
-### [ ] T102 — **T99 P1:** оптимізація `PrivateMessageController::conversations` (прибрати N запитів `count` на peer)
+### [x] T102 — **T99 P1:** оптимізація `PrivateMessageController::conversations` (прибрати N запитів `count` на peer)
 
+- **Статус:** **PASS** (2026-03-24). **`unreadIncomingCountsByPeer`:** один `JOIN private_message_read_states` + `GROUP BY sender_id` замість циклу **`count()`**; семантика **`unread_count`** / **`meta.total_private_unread`** без змін. **QA:** `php artisan test` — 303 passed; новий кейс **`test_conversations_unread_per_peer_and_total_with_multiple_peers`** у **`PrivateMessageApiTest`**.
 - **Контекст клієнта:** T99: у **`conversations`** на кожного peer викликається **`countUnreadIncoming`** → **N** запитів до БД при довгому списку розмов.
 - **Delegate:** Backend Architect
 - **Залежність:** **T99**; функціонал **T56** / **T08** має лишитися ідентичним ззовні
