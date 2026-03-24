@@ -1,6 +1,6 @@
 <template>
     <form
-        class="flex shrink-0 flex-col border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-composer-bg)]"
+        class="flex shrink-0 flex-col border-t border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-composer-bg)] max-md:pb-[max(0.375rem,env(safe-area-inset-bottom,0px))]"
         @submit.prevent="emitSubmit"
     >
         <ChatRoomComposerToolbar
@@ -242,11 +242,7 @@ export default {
             return '';
         },
         composerPlaceholder() {
-            if (this.imageUploadBlocked) {
-                return 'Повідомлення — Enter надішле, Shift+Enter — новий рядок';
-            }
-
-            return 'Повідомлення — Enter надішле, Shift+Enter — новий рядок; зображення можна вставити з буфера';
+            return 'Shift+Enter — новий рядок;';
         },
     },
     watch: {
@@ -514,7 +510,12 @@ export default {
                     return;
                 }
                 el.style.height = 'auto';
-                const minPx = 44;
+                const narrow =
+                    typeof window !== 'undefined'
+                    && window.matchMedia
+                    && window.matchMedia('(max-width: 767px)').matches;
+                /* Мобільний: одна лінія без «роздування»; десктоп: узгоджено з 2.75rem тулбар-кнопок */
+                const minPx = narrow ? 36 : 44;
                 const maxPx = 112;
                 el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
             });

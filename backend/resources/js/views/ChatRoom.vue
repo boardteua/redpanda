@@ -1,6 +1,6 @@
 <template>
     <div
-        class="flex min-h-screen flex-col bg-[var(--rp-bg)] md:h-[100dvh] md:max-h-screen md:flex-row md:overflow-hidden md:p-0"
+        class="flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--rp-bg)] md:flex-row md:p-0"
     >
         <button
             v-if="panelOpen && isNarrowViewport"
@@ -11,7 +11,7 @@
         />
 
         <div
-            class="rp-chat-external-wrap min-h-0 min-w-0 max-md:flex max-md:flex-1 max-md:flex-col md:min-h-0 md:flex-1"
+            class="rp-chat-external-wrap min-h-0 min-w-0 max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col max-md:overflow-hidden md:min-h-0 md:flex-1"
         >
             <ChatRoomMainColumn
                 ref="chatMainColumn"

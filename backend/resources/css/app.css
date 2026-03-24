@@ -1077,6 +1077,13 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--rp-focus-ring) 35%, transparent);
 }
 
+/* T119: на мобільному — компактна одна лінія порожнього поля; кнопки рейки лишаються 44px */
+@media (max-width: 767px) {
+    .rp-chat-composer-input {
+        min-height: 2.25rem;
+    }
+}
+
 .rp-chat-toolbar {
     display: flex;
     flex-wrap: wrap;
