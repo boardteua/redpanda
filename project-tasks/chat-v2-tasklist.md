@@ -774,12 +774,12 @@
 
 ---
 
-### [ ] T72 — (Опційно) Slash-команди: **теми чату** — **`/addtheme`**, **`/deltheme`**
+### [x] T72 — (Опційно) Slash-команди: **теми чату** — **`/addtheme`**, **`/deltheme`**
 
 - **Delegate:** Full stack
 - **Ролі:** узгодити (типово **адмін** або **мод** — один варіант у PR)
 - **Залежність:** **T66**; наявність або введення **моделі тем** у БД (якщо моделі немає — задача **відкладена** / лише заглушка **`not implemented`** у реєстрі)
-- **QA evidence:** за наявності схеми — CRUD + **`docs/chat-v2/T72-QA.md`**
+- **QA evidence:** [docs/chat-v2/T72-QA.md](../docs/chat-v2/T72-QA.md) — таблиця **`chat_themes`**, slash лише **`can:chat-admin`**; `php artisan test` PASS
 
 ---
 

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ChatMessage;
 use App\Models\ChatSetting;
+use App\Models\ChatTheme;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -156,5 +157,74 @@ class AdminSlashCommandsApiTest extends TestCase
             ->assertJsonPath('meta.slash.name', 'invisible');
 
         $this->assertTrue((bool) $admin->fresh()->presence_invisible);
+    }
+
+    public function test_slash_addtheme_forbidden_for_regular_user(): void
+    {
+        [$r1] = $this->seedTwoPublicRooms();
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$r1->room_id.'/messages', [
+                'message' => '/addtheme Dark',
+                'client_message_id' => (string) Str::uuid(),
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_slash_addtheme_admin_creates_row_and_public_message(): void
+    {
+        [$r1] = $this->seedTwoPublicRooms();
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$r1->room_id.'/messages', [
+                'message' => '/addtheme Sunset',
+                'client_message_id' => (string) Str::uuid(),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'addtheme')
+            ->assertJsonPath('data.type', 'public');
+
+        $this->assertDatabaseHas('chat_themes', ['name' => 'Sunset']);
+    }
+
+    public function test_slash_addtheme_duplicate_returns_422(): void
+    {
+        [$r1] = $this->seedTwoPublicRooms();
+        $admin = User::factory()->admin()->create();
+        ChatTheme::query()->create(['name' => 'Sunset', 'sort_order' => 1]);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$r1->room_id.'/messages', [
+                'message' => '/addtheme sunset',
+                'client_message_id' => (string) Str::uuid(),
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_slash_deltheme_admin_removes_row(): void
+    {
+        [$r1] = $this->seedTwoPublicRooms();
+        $admin = User::factory()->admin()->create();
+        ChatTheme::query()->create(['name' => 'Orange', 'sort_order' => 1]);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$r1->room_id.'/messages', [
+                'message' => '/deltheme ORANGE',
+                'client_message_id' => (string) Str::uuid(),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('meta.slash.name', 'deltheme');
+
+        $this->assertDatabaseMissing('chat_themes', ['name' => 'Orange']);
     }
 }

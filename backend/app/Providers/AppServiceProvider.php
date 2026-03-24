@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Chat\SlashCommands\Handlers\AddThemeSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\AwaySlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\BanSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\ChatUploadGatingSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\ClearRoomJournalSlashCommandHandler;
+use App\Chat\SlashCommands\Handlers\DelThemeSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\FriendSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\GlobalAnnouncementSlashCommandHandler;
 use App\Chat\SlashCommands\Handlers\GsoundSlashCommandHandler;
@@ -87,6 +89,8 @@ class AppServiceProvider extends ServiceProvider
             $registry->register('silent', $app->make(SilentModeSlashCommandHandler::class));
             $registry->register('gsound', $app->make(GsoundSlashCommandHandler::class));
             $registry->register('global', $app->make(GlobalAnnouncementSlashCommandHandler::class));
+            $registry->register('addtheme', $app->make(AddThemeSlashCommandHandler::class));
+            $registry->register('deltheme', $app->make(DelThemeSlashCommandHandler::class));
 
             return $registry;
         });
