@@ -55,6 +55,7 @@ COMPOSE_FILES=(-f "$REPO_DIR/docker/compose.yaml")
 [[ -f "$REPO_DIR/docker/compose.override.yml" ]] && COMPOSE_FILES+=(-f "$REPO_DIR/docker/compose.override.yml")
 COMPOSE=(docker compose "${COMPOSE_ENV[@]}" "${COMPOSE_FILES[@]}")
 
+
 "${COMPOSE[@]}" up -d mysql redis
 "${COMPOSE[@]}" --profile app build php
 "${COMPOSE[@]}" --profile app run --rm \
