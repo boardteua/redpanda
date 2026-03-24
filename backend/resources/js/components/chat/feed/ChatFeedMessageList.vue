@@ -2,7 +2,7 @@
     <div class="rp-chat-feed-wash flex min-h-0 flex-1 flex-col overflow-hidden">
         <ul
             ref="scrollContainer"
-            class="flex min-h-0 flex-1 flex-col overflow-y-auto py-1"
+            class="flex min-h-0 flex-1 flex-col overflow-y-auto"
             role="log"
             aria-live="polite"
             aria-relevant="additions"
