@@ -117,8 +117,8 @@
     --rp-burger-footer-card-fg: #1a120a;
     --rp-burger-footer-muted: #5c534a;
     /* Стрічка — чергування (T114: напівпрозорі смуги, просвічується фон панди T91) */
-    --rp-chat-row-even: color-mix(in srgb, #ffffff 86%, transparent);
-    --rp-chat-row-odd: color-mix(in srgb, #e3e5d6 82%, transparent);
+    --rp-chat-row-even: color-mix(in srgb, #ffffff 66%, transparent);
+    --rp-chat-row-odd: color-mix(in srgb, #e3e5d6 52%, transparent);
     /* Інлайн-приват у стрічці (T25) — окремий фон + акцент зліва */
     --rp-chat-row-inline-private-bg: color-mix(in srgb, #e8eef6 88%, transparent);
     --rp-chat-row-inline-private-border: #4a6fa5;
