@@ -39,6 +39,7 @@ use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
@@ -98,6 +99,12 @@ class AppServiceProvider extends ServiceProvider
         // За TLS-термінатором (nginx → Docker) без цього @vite() / url() дають http:// → mixed content на https://.
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
+        }
+
+        try {
+            File::ensureDirectoryExists(storage_path('app/chat-images'));
+        } catch (\Throwable) {
+            // Не блокуємо boot; upload-ендпоінти логують і повертають 503 при реальному збої запису.
         }
 
         // Sanctum SPA: без збігу Referer/Origin з `sanctum.stateful` API не отримує session middleware →

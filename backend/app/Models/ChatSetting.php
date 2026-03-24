@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Controllers\Api\V1\ChatImageController;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\UploadedFile;
@@ -16,7 +17,7 @@ class ChatSetting extends Model
     /** Лічба лише в одній кімнаті (публічні повідомлення; приват не враховуються у T44). */
     public const SCOPE_DEFAULT_ROOM_ONLY = 'default_room_only';
 
-    /** Дефолтний ліміт вкладень у чат (байти), узгоджено з колишнім `max:4096` KB у {@see \App\Http\Controllers\Api\V1\ChatImageController}. */
+    /** Дефолтний ліміт вкладень у чат (байти), узгоджено з колишнім `max:4096` KB у {@see ChatImageController}. */
     public const DEFAULT_MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 
     /** Верхня межа значення в адмінці (байти); фактичне завантаження обмежує ще й PHP `upload_max_filesize`. */
@@ -60,7 +61,7 @@ class ChatSetting extends Model
     }
 
     /**
-     * Максимальний розмір файлу для {@see \App\Http\Controllers\Api\V1\ChatImageController}: мінімум з налаштування чату та {@see UploadedFile::getMaxFilesize()}.
+     * Максимальний розмір файлу для {@see ChatImageController}: мінімум з налаштування чату та {@see UploadedFile::getMaxFilesize()}.
      */
     public function effectiveMaxChatImageUploadBytes(): int
     {
@@ -71,6 +72,23 @@ class ChatSetting extends Model
         }
 
         return min($configured, $phpMax);
+    }
+
+    /**
+     * Ліміт для валідації multipart без {@see self::current()} / firstOrFail — уникнення 500, якщо рядок у БД відсутній (prod-аномалії).
+     */
+    public static function effectiveMaxChatImageUploadBytesForValidation(): int
+    {
+        /** @var self|null $row */
+        $row = static::query()->first();
+        if ($row === null) {
+            $configured = max(1024, self::DEFAULT_MAX_ATTACHMENT_BYTES);
+            $phpMax = (int) UploadedFile::getMaxFilesize();
+
+            return $phpMax <= 0 ? $configured : min($configured, $phpMax);
+        }
+
+        return $row->effectiveMaxChatImageUploadBytes();
     }
 
     public static function current(): self

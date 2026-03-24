@@ -12,7 +12,7 @@ final class ChatImageUploadValidation
 {
     public static function validateUploadedImage(Request $request, string $attribute = 'image'): void
     {
-        $effectiveBytes = ChatSetting::current()->effectiveMaxChatImageUploadBytes();
+        $effectiveBytes = ChatSetting::effectiveMaxChatImageUploadBytesForValidation();
         $maxKb = max(1, (int) ceil($effectiveBytes / 1024));
 
         $request->validate([

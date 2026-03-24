@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ChatMessage;
 use App\Models\ChatSetting;
+use App\Models\Image;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -77,6 +78,23 @@ class ChatImageApiTest extends TestCase
             ->withHeaders($this->statefulHeaders())
             ->post('/api/v1/images', ['image' => $file])
             ->assertForbidden();
+    }
+
+    public function test_registered_user_can_upload_when_chat_settings_row_missing(): void
+    {
+        ChatSetting::query()->delete();
+        $this->assertSame(0, ChatSetting::query()->count());
+
+        $user = User::factory()->create();
+        $file = UploadedFile::fake()->image('orphan-settings.jpg', 40, 40);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->post('/api/v1/images', ['image' => $file])
+            ->assertCreated();
+
+        $this->assertSame(1, Image::query()->count());
     }
 
     public function test_registered_user_can_upload_and_post_message_with_image(): void

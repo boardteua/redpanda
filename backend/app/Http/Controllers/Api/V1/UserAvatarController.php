@@ -12,8 +12,10 @@ use App\Support\ChatImageUploadValidation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class UserAvatarController extends Controller
 {
@@ -42,31 +44,51 @@ class UserAvatarController extends Controller
         $now = time();
         $path = $file->store($user->id.'/avatars', 'chat_images');
         if ($path === false) {
-            return response()->json(['message' => 'Не вдалося зберегти файл.'], 500);
+            Log::warning('avatar_image_store_failed', [
+                'user_id' => $user->id,
+                'reason' => 'store_returned_false',
+            ]);
+
+            return response()->json([
+                'message' => 'Не вдалося зберегти файл на сервері. Перевірте права на каталог storage/app/chat-images або зверніться до адміністратора.',
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
         $original = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $displayName = $original !== '' ? mb_substr($original, 0, 200) : 'avatar';
 
-        DB::transaction(function () use ($user, $file, $path, $displayName, $now): void {
-            $previousId = $user->avatar_image_id;
+        try {
+            DB::transaction(function () use ($user, $file, $path, $displayName, $now): void {
+                $previousId = $user->avatar_image_id;
 
-            $image = Image::query()->create([
+                $image = Image::query()->create([
+                    'user_id' => $user->id,
+                    'user_name' => $user->user_name,
+                    'disk_path' => $path,
+                    'file_name' => $displayName,
+                    'mime' => (string) ($file->getMimeType() ?? 'application/octet-stream'),
+                    'size_bytes' => (int) $file->getSize(),
+                    'date_sent' => $now,
+                ]);
+
+                $user->forceFill(['avatar_image_id' => $image->id])->save();
+
+                if ($previousId !== null && (int) $previousId !== (int) $image->id) {
+                    $this->deleteAvatarImageIfOrphaned((int) $previousId);
+                }
+            });
+        } catch (Throwable $e) {
+            Log::error('avatar_image_persist_failed', [
                 'user_id' => $user->id,
-                'user_name' => $user->user_name,
-                'disk_path' => $path,
-                'file_name' => $displayName,
-                'mime' => (string) ($file->getMimeType() ?? 'application/octet-stream'),
-                'size_bytes' => (int) $file->getSize(),
-                'date_sent' => $now,
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
             ]);
+            Storage::disk('chat_images')->delete($path);
 
-            $user->forceFill(['avatar_image_id' => $image->id])->save();
-
-            if ($previousId !== null && (int) $previousId !== (int) $image->id) {
-                $this->deleteAvatarImageIfOrphaned((int) $previousId);
-            }
-        });
+            return response()->json([
+                'message' => 'Не вдалося зберегти аватарку. Спробуйте ще раз або зверніться до адміністратора.',
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
 
         return UserResource::make($user->fresh())
             ->response()

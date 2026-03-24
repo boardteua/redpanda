@@ -72,6 +72,7 @@
 | 503, `checks.redis: fail` | Redis потрібен (кеш/черга або `HEALTH_CHECK_REDIS=true`), але недоступний |
 | Чат без live, polling / помилки Echo | Reverb не запущений або розсинхрон `REVERB_*` / `VITE_REVERB_*` |
 | Повідомлення не розходяться між клієнтами | Не запущений queue worker |
+| **503** на `POST /api/v1/images` (multipart) з повідомленням про storage | Каталог **`storage/app/chat-images`** відсутній або **не записуваний** процесом PHP (`chown`/`chmod` на хості або в томі Docker); перевірте також **`client_max_body_size`** (nginx) і **`upload_max_filesize`** / **`post_max_size`** (PHP) — інакше тіло не доходить до Laravel (**T98**) |
 
 ## Регресія real-time після деплою
 
