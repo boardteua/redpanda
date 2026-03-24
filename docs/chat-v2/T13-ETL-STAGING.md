@@ -63,7 +63,7 @@ php artisan chat:legacy-import-staging
 ### Обмеження імпорту (свідомо)
 
 - **`chat.file`** виставляється в **0** (legacy часто зберігає не `images.id` redpanda).
-- **Пароль:** переносяться лише вже **bcrypt** (`$2y$...`); значення на кшталт `new` або порожнє → `NULL` (вхід по паролю може вимагати скидання / Auth0).
+- **Пароль:** переносяться лише вже **bcrypt** (`$2y$...`); значення на кшталт `new` або порожнє → `NULL` (вхід по паролю може вимагати скидання / Auth0). Дослідження форматів і рішення для prod — [docs/chat-v2/T111-LEGACY-PASSWORDS.md](T111-LEGACY-PASSWORDS.md) (**T111**).
 - **Ролі:** грубе мапування legacy `user_rank` → `user_rank` redpanda (див. код `LegacyBoardImportService::mapLegacyRank`).
 - **Приват, друзі, зображення** — **не** імпортуються в цій версії T13.
 - Користувачі з `chat.user_id`, яких немає в legacy `users`, отримують stub `legacy_uid_{id}` (гість).
