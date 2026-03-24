@@ -360,13 +360,29 @@ html[data-theme='dark'] {
 /* База сторінки                                                              */
 /* -------------------------------------------------------------------------- */
 
+/* Ланцюг висоти SPA: flex + min-height 0 — паритет flow-лейауту legacy (#show_chat ul scroll), без жорсткого h-dvh на корені чату */
+html {
+    min-height: 100%;
+    min-height: 100dvh;
+}
+
 .rp-body {
     margin: 0;
-    min-height: 100vh;
+    min-height: 100%;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
     background: var(--rp-bg);
     color: var(--rp-text);
     font-family: var(--font-sans);
     line-height: 1.5;
+}
+
+.rp-body > #app {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* T77 — вітальня: оранжевий фон + біла картка (паритет board.te.ua) */
@@ -555,7 +571,10 @@ html[data-theme='dark'] {
 }
 
 .rp-app {
-    min-height: 100vh;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Focus-visible: AA-видиме кільце, без «миготіння» для миші */

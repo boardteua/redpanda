@@ -1,6 +1,6 @@
 <template>
     <div
-        class="flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--rp-bg)] md:flex-row md:p-0 md:h-[100dvh] md:max-h-[100dvh]"
+        class="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[var(--rp-bg)] md:flex-row md:p-0"
     >
         <button
             v-if="panelOpen && isNarrowViewport"

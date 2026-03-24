@@ -1,5 +1,5 @@
 <template>
-    <div class="rp-auth-landing flex flex-col px-4 py-10 pb-12 sm:px-6">
+    <div class="rp-auth-landing flex min-h-0 flex-1 flex-col px-4 py-10 pb-12 sm:px-6">
         <div class="rp-auth-landing-theme">
             <RpButton
                 variant="ghost"
