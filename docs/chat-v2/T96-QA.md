@@ -13,10 +13,10 @@
 
 ## Швидкі перевірки ззовні (без секретів у репо)
 
-Замініть `HOST` на публічний домен (наприклад `new.board.te.ua`).
+Замініть `HOST` на публічний домен (канон після **T136:** `board.te.ua`).
 
 ```bash
-HOST=new.board.te.ua
+HOST=board.te.ua
 
 # Очікування: не «голий» 404 від nginx на весь префікс /apps (якщо 404 — часто немає location /apps).
 curl -sI "https://$HOST/apps" | head -n5
@@ -51,7 +51,7 @@ docker compose --env-file docker/production.env -f docker/compose.yaml --profile
 
 | Дата (UTC) | Хост | Результат | Примітки |
 |------------|------|-----------|----------|
-| 2026-03-24 | new.board.te.ua | **FAIL** | MCP snapshot: банер poll **присутній**; `curl -sI https://new.board.te.ua/apps` → **404** nginx; symlink `.env` у Node build без `docker/` → ключ не в бандлі. |
-| 2026-03-24 | new.board.te.ua | **PASS** | Оператор: real-time ок; nginx **`/apps`** + **`/app/`**; Vite rebuild з volume **`docker/`**; `docker/deploy.sh` оновлено в репо (`dc69fca`). |
+| 2026-03-24 | прев’ю-хост (до T136) | **FAIL** | MCP snapshot: банер poll **присутній**; `curl -sI "https://$HOST/apps"` → **404** nginx; symlink `.env` у Node build без `docker/` → ключ не в бандлі. |
+| 2026-03-24 | прев’ю-хост (до T136) | **PASS** | Оператор: real-time ок; nginx **`/apps`** + **`/app/`**; Vite rebuild з volume **`docker/`**; `docker/deploy.sh` оновлено в репо (`dc69fca`). Після cutover — повторити з `HOST=board.te.ua`. |
 
 Після досягнення PASS — оновити рядок таблиці та позначити **T96** виконаною в чеклісті з посиланням на цей файл.

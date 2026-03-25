@@ -11,7 +11,7 @@ class ChatLegacyRemapBoardUrlsCommand extends Command
                             {--dry-run : Лише підрахунок рядків для потенційної заміни}
                             {--force : Дозволити на production (небезпечно)}';
 
-    protected $description = 'Ремап URL board.te.ua у chat/private_messages (T132; після rsync медіа)';
+    protected $description = 'Ремап URL board.te.ua / staging-хоста у chat/private_messages (T132/T136; після rsync медіа)';
 
     public function handle(LegacyBoardTeUaUrlRemapService $remap): int
     {

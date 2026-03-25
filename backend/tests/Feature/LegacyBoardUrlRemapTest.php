@@ -100,4 +100,43 @@ class LegacyBoardUrlRemapTest extends TestCase
         $row = DB::table('chat')->where('user_id', $user->id)->first();
         $this->assertStringContainsString('board.te.ua', (string) $row->post_message);
     }
+
+    public function test_remaps_new_board_staging_host_prefixes(): void
+    {
+        config(['legacy.url_remap_target_origin' => 'https://board.te.ua']);
+
+        $user = User::factory()->create();
+        $room = Room::query()->create([
+            'room_name' => 'R',
+            'topic' => null,
+            'access' => Room::ACCESS_PUBLIC,
+        ]);
+
+        DB::table('chat')->insert([
+            'user_id' => $user->id,
+            'post_date' => 1,
+            'post_time' => '12:00',
+            'post_user' => $user->user_name,
+            'post_message' => 'img https://new.board.te.ua/uploads/x.png',
+            'post_color' => 'user',
+            'post_roomid' => $room->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => '//new.board.te.ua/avatar/a.gif',
+            'file' => 0,
+            'client_message_id' => (string) Str::uuid(),
+        ]);
+
+        $svc = app(LegacyBoardTeUaUrlRemapService::class);
+        $r = $svc->remapAll(false);
+
+        $this->assertSame(1, $r['chat_message_rows']);
+        $this->assertSame(1, $r['chat_avatar_rows']);
+        $this->assertSame(2, $r['chat_fields_changed']);
+
+        $row = DB::table('chat')->where('user_id', $user->id)->first();
+        $this->assertStringContainsString('https://board.te.ua', (string) $row->post_message);
+        $this->assertStringNotContainsString('new.board', (string) $row->post_message);
+        $this->assertStringStartsWith('https://board.te.ua', (string) $row->avatar);
+    }
 }

@@ -131,7 +131,7 @@
 - [ ] **Vite на проді:** скрипт **`docker/deploy.sh`** перед **`npm run build`** копіює **`docker/production.env`** (або **`compose.deploy.env`**) у **`backend/.env.production`** і після збірки видаляє файл — щоб **`REVERB_APP_KEY`** потрапляв у бандл навіть без робочого symlink **`backend/.env`**. Якщо після деплою знову з’являється банер poll — перевірте, що на сервері актуальний **`deploy.sh`** (`git pull`) і що крок збірки не обходиться вручну без цього env.
 - [ ] У репозиторії на сервері: **`docker/production.env`** (або legacy **`compose.deploy.env`**) на місці; **`docker/compose.yaml`** канонічний (prod-секрети через `--env-file`, без обов’язкового prod-override). Якщо є **`docker/compose.override.yml`** — лише для локальних нюансів (порти), не дублювати прод-паролі окремо від `production.env`.
 - [ ] Змінні деплою/бекапу на хості (GitHub SSH, systemd, `profile.d`): **`REPO_DIR`**, **`DEPLOY_GIT_REF`**, опційно **`DEPLOY_HEALTH_URL`**, **`BACKUP_BEFORE_DEPLOY`**, **`BACKUP_DIR`** — за домовленістю; див. коментарі в `docker/deploy.sh`.
-- [ ] Публічний smoke: **`https://new.board.te.ua/health/ready`** (або ваш `DEPLOY_HEALTH_URL`) повертає успішну відповідь після деплою.
+- [ ] Публічний smoke: **`https://board.te.ua/health/ready`** (або ваш `DEPLOY_HEALTH_URL`) повертає успішну відповідь після деплою.
 
 ## Залежності та security advisories (T107)
 

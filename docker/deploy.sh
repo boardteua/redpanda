@@ -92,7 +92,7 @@ rm -f "$BACKEND_DIR/.env.production"
 "${COMPOSE[@]}" --profile app up -d --build
 "${COMPOSE[@]}" --profile app restart php nginx queue reverb
 
-# --- 2) Перевірка готовності (задайте DEPLOY_HEALTH_URL, напр. https://new.board.te.ua/health/ready) ---
+# --- 2) Перевірка готовності (задайте DEPLOY_HEALTH_URL, напр. https://board.te.ua/health/ready) ---
 if [[ -n "${DEPLOY_HEALTH_URL:-}" ]]; then
   curl -fsS "$DEPLOY_HEALTH_URL"
   echo

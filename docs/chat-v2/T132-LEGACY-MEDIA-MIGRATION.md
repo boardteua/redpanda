@@ -52,7 +52,9 @@ php artisan chat:legacy-remap-board-urls --force
 ```
 
 **Що змінюється:** колонки **`chat.post_message`**, **`chat.avatar`**, **`private_messages.body`**.  
-**Whitelist джерел:** префікси `http(s)://board.te.ua`, `http(s)://www.board.te.ua`, `//board.te.ua`, `//www.board.te.ua` → заміна на `LEGACY_URL_REMAP_TARGET_ORIGIN` (ідемпотентно для повторного прогону з тим самим target).
+**Whitelist джерел:** префікси `http(s)://board.te.ua`, `http(s)://www.board.te.ua`, `//board.te.ua`, `//www.board.te.ua`, а також **`http(s)://new.board.te.ua`** та **`//new.board.te.ua`** (**T136** — другий прохід після cutover на канонічний домен) → заміна на `LEGACY_URL_REMAP_TARGET_ORIGIN` (ідемпотентно для повторного прогону з тим самим target).
+
+Після **T136** на production виставте **`LEGACY_URL_REMAP_TARGET_ORIGIN=https://board.te.ua`** (або ваш канон без завершального `/`) і прогоніть **`--dry-run`** → **`--force`** за runbook [T136-DOMAIN-CUTOVER.md](T136-DOMAIN-CUTOVER.md).
 
 **Зображення в `images` / `avatar_image_id`:** не змінюються цією командою; прив’язка файлів — окремі кроки продукту (T10/T18/T113).
 

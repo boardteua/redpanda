@@ -1,7 +1,7 @@
 # T97 — Production manual regression (chat) — report
 
 **Дата звіту:** 2026-03-24  
-**Середовище (URL):** `https://new.board.te.ua/`  
+**Середовище (URL):** `https://board.te.ua/` (канон після **T136**; прогін 2026-03-24 виконано на попередньому прев’ю-DNS — див. [T136-DOMAIN-CUTOVER.md](T136-DOMAIN-CUTOVER.md))  
 **Інструмент верифікації:** MCP **user-chrome-devtools** (Chrome DevTools Protocol) у Cursor.  
 **Версія деплою на VPS:** не знімалась з SSH у цьому прогоні — за потреби доповнити оператором (`git rev-parse HEAD` у `/var/www/redpanda` або артефакт CI).  
 **Локальний SHA репозиторію** на момент складання артефакта в git: `a525fff` (орієнтир для документації, не тотожний prod без підтвердження).
@@ -52,7 +52,7 @@
 
 ## Докази MCP (user-chrome-devtools)
 
-1. **Навігація:** `navigate_page` → `https://new.board.te.ua/` → фактична сторінка `https://new.board.te.ua/chat?room=1`.
+1. **Навігація:** `navigate_page` → `https://board.te.ua/` → фактична сторінка `https://board.te.ua/chat?room=1`.
 2. **Мережа (фрагмент):** після завантаження присутні успішні виклики `GET /api/v1/rooms`, `GET /api/v1/rooms/1/messages`, `POST /broadcasting/auth` (200), `POST .../presence-status` (200) — узгоджується з **T04**/**T05**/**T20**.
 3. **Консоль:** повідомлень не зафіксовано (`list_console_messages` порожньо на момент знімку).
 4. **Скрипт на сторінці:** перевірка відсутності тексту про fallback poll — `pollFallbackMention: false`.

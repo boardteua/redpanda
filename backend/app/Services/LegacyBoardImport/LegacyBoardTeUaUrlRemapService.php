@@ -5,20 +5,35 @@ namespace App\Services\LegacyBoardImport;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Заміна префіксів URL board.te.ua у текстах після копіювання файлів (**T132**).
+ * Заміна префіксів URL board.te.ua (і тимчасового staging-хоста після **T136**) у текстах після копіювання файлів (**T132**).
  */
 final class LegacyBoardTeUaUrlRemapService
 {
-    /** @return list<string> */
-    private function sourcePrefixes(): array
+    /**
+     * Абсолютні префікси (str_replace). Protocol-relative `//host` обробляються окремо — інакше
+     * `//board.te.ua` зачіпає вже нормалізований `https://board.te.ua` і дає `https:https://…`.
+     *
+     * @return list<string>
+     */
+    private function absoluteSourcePrefixes(): array
     {
         return [
+            'https://new.board.te.ua',
+            'http://new.board.te.ua',
             'https://www.board.te.ua',
             'http://www.board.te.ua',
-            '//www.board.te.ua',
             'https://board.te.ua',
             'http://board.te.ua',
-            '//board.te.ua',
+        ];
+    }
+
+    /** Для `//host` після http(s):// не матчимо (див. replacePrefixes). @return list<string> */
+    private function protocolRelativeHosts(): array
+    {
+        return [
+            'new.board.te.ua',
+            'www.board.te.ua',
+            'board.te.ua',
         ];
     }
 
@@ -116,8 +131,16 @@ final class LegacyBoardTeUaUrlRemapService
     private function replacePrefixes(string $value, string $targetOrigin): ?string
     {
         $next = $value;
-        foreach ($this->sourcePrefixes() as $p) {
+        foreach ($this->absoluteSourcePrefixes() as $p) {
             $next = str_replace($p, $targetOrigin, $next);
+        }
+        foreach ($this->protocolRelativeHosts() as $host) {
+            $escaped = preg_quote($host, '#');
+            $next = preg_replace(
+                '#(?<!http:)(?<!https:)//'.$escaped.'#',
+                $targetOrigin,
+                $next
+            );
         }
 
         return $next === $value ? null : $next;
