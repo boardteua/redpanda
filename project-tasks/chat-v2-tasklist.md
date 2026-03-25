@@ -1706,8 +1706,9 @@
 
 ---
 
-### [ ] T132 — **Legacy файли на prod:** копіювання **`avatar`** та **`uploads`** з board.te.ua + **ремап URL** у повідомленнях і аватарках
+### [x] T132 — **Legacy файли на prod:** копіювання **`avatar`** та **`uploads`** з board.te.ua + **ремап URL** у повідомленнях і аватарках
 
+- **Статус:** **PASS** (2026-03-25). `chat:legacy-sync-uploads`, `chat:legacy-remap-board-urls`, `LegacyBoardTeUaUrlRemapService`; конфіг і `.env.example`; [T132-LEGACY-MEDIA-MIGRATION.md](../docs/chat-v2/T132-LEGACY-MEDIA-MIGRATION.md). **QA:** `php artisan test` (LegacyBoardUrlRemapTest, ChatLegacyCommandsTest) + повний suite — PASS.
 - **Контекст клієнта:** на сервері legacy: **`/var/www/board.te.ua/html/avatar`**, **`/var/www/board.te.ua/html/uploads`** — скопіювати у **відповідні** каталоги нового чату (узгодити з **`storage`**, публічним диском, існуючим upload з **T10**/**T18**/**T113**); у **HTML/тексті** повідомлень і в полях аватарів замінити старі базові URL/шляхи на нові публічні URL (**idempotent** скрипт або Artisan-команда з **dry-run** і бекапом таблиці перед UPDATE).
 - **Delegate:** Backend Architect + DevOps Automator
 - **Залежність:** **T113** (`chat:legacy-sync-avatars`, `LEGACY_AVATAR_RSYNC_*` — реюз або розширити на **uploads**); **T130**/**T131** (повідомлення вже в БД); **T10**/**T17**/**T18** (зображення та відображення)

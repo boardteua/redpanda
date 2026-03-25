@@ -55,4 +55,21 @@ class ChatLegacyCommandsTest extends TestCase
         $this->artisan('chat:legacy-sync-avatars')
             ->assertFailed();
     }
+
+    public function test_legacy_sync_uploads_fails_when_not_configured(): void
+    {
+        Config::set('legacy.uploads_rsync_source', '');
+        Config::set('legacy.uploads_rsync_dest', '');
+
+        $this->artisan('chat:legacy-sync-uploads')
+            ->assertFailed();
+    }
+
+    public function test_legacy_remap_urls_fails_when_target_origin_missing(): void
+    {
+        Config::set('legacy.url_remap_target_origin', '');
+
+        $this->artisan('chat:legacy-remap-board-urls', ['--dry-run' => true])
+            ->assertFailed();
+    }
 }
