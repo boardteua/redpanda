@@ -113,6 +113,8 @@ ART='docker exec -it '"$PHP_CTN"' sh -lc '\''cd /var/www/html && php artisan'
 docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-import-production --force --yes'
 docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-import-private --force --yes'
 docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-sync-avatars'
+docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-link-user-avatars --force'
+docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:import-emoticons'
 docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-sync-uploads'
 docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-remap-board-urls --force'
 # Опційно — прибрати порожні legacy span / зламані fancybox у текстах (з хоста зручніше):

@@ -54,7 +54,17 @@ php artisan chat:legacy-sync-avatars
 
 ### Після копіювання
 
-Прив’язка файлу до **`users.avatar_image_id`** / таблиці **`images`** (дух T10/T18/T19) — окремий крок продукту: імпорт метаданих або одноразовий скрипт за `user_name` → шлях файлу. Відсутній файл на дискі **не повинен** ламати імпорт БД: поле залишається `null`.
+Прив’язка файлів до **`users.avatar_image_id`** і таблиці **`images`** (диск **`chat_images`**, як при звичайному завантаженні аватара):
+
+```bash
+# з backend/ або через Docker: ./docker/link-legacy-user-avatars.sh
+php artisan chat:legacy-link-user-avatars --dry-run
+php artisan chat:legacy-link-user-avatars
+# production:
+php artisan chat:legacy-link-user-avatars --force
+```
+
+Команда бере каталог з **`LEGACY_AVATAR_RSYNC_DEST`** (або **`--dir=/шлях/до/каталогу`**), для кожного **не-гостя** з **`legacy_imported_at IS NOT NULL`** і **`avatar_image_id IS NULL`** шукає файл з іменем **`{user_name}.{gif|png|jpg|jpeg|webp}`** (порівняння **без урахування регістру** стема) і копіює зображення в **`storage/app/chat-images/{user_id}/avatars/`**, створює рядок **`images`**, оновлює користувача. Відсутній файл — поле лишається **`null`**.
 
 ## 3. QA
 

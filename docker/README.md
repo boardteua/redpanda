@@ -76,6 +76,19 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 ./docker/sanitize-imported-html.sh --force   # production
 ```
 
+### Прив’язка legacy-аватарок і смайлів
+
+Після **`chat:legacy-sync-avatars`** (файли в `LEGACY_AVATAR_RSYNC_DEST`): [`link-legacy-user-avatars.sh`](./link-legacy-user-avatars.sh) → `chat:legacy-link-user-avatars` (див. [T113](../docs/chat-v2/T113-LEGACY-AVATARS.md)).
+
+Файли GIF/PNG/WebP у **`backend/public/emoticon/`** → [`import-chat-emoticons.sh`](./import-chat-emoticons.sh) → `chat:import-emoticons`.
+
+```bash
+./docker/link-legacy-user-avatars.sh --dry-run
+./docker/link-legacy-user-avatars.sh --force
+./docker/import-chat-emoticons.sh --dry-run
+./docker/import-chat-emoticons.sh
+```
+
 ### Перед міграціями у `deploy.sh`
 
 **`BACKUP_BEFORE_DEPLOY=1`** викликає лише `docker/backup-mysql.sh`. Потрібен уже запущений `mysql` (перший деплой — тимчасово вимкніть або спочатку `up` без бекапу).

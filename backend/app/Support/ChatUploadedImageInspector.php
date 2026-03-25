@@ -25,58 +25,39 @@ final class ChatUploadedImageInspector
     ];
 
     /**
-     * @return array{mime: string, width: positive-int, height: positive-int}
+     * @return array{mime: string, width: positive-int, height: positive-int}|null
      */
-    public static function inspectOrFail(UploadedFile $file, int $maxWidth, int $maxHeight): array
+    public static function tryInspectPath(string $path, int $maxWidth, int $maxHeight): ?array
     {
-        $path = $file->getRealPath();
-        if ($path === false || ! is_readable($path)) {
-            throw ValidationException::withMessages([
-                'image' => 'Файл зображення недоступний для перевірки.',
-            ]);
+        if (! is_readable($path)) {
+            return null;
         }
 
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $detected = $finfo->file($path);
         if ($detected === false) {
-            throw ValidationException::withMessages([
-                'image' => 'Не вдалося визначити тип файлу за вмістом.',
-            ]);
+            return null;
         }
 
         if (! isset(self::ALLOWED_CONTENT_TYPES[$detected])) {
-            throw ValidationException::withMessages([
-                'image' => 'Файл не є дозволеним зображенням (JPEG, PNG, GIF, WebP) за фактичним вмістом.',
-            ]);
+            return null;
         }
 
         $canonicalMime = self::ALLOWED_CONTENT_TYPES[$detected];
 
         $dims = @getimagesize($path);
         if ($dims === false) {
-            throw ValidationException::withMessages([
-                'image' => 'Файл не є коректним зображенням або пошкоджений.',
-            ]);
+            return null;
         }
 
         $width = (int) $dims[0];
         $height = (int) $dims[1];
         if ($width < 1 || $height < 1) {
-            throw ValidationException::withMessages([
-                'image' => 'Некоректний розмір зображення.',
-            ]);
+            return null;
         }
 
         if ($width > $maxWidth || $height > $maxHeight) {
-            throw ValidationException::withMessages([
-                'image' => sprintf(
-                    'Зображення завелике: максимум %d×%d пікселів (у вас %d×%d).',
-                    $maxWidth,
-                    $maxHeight,
-                    $width,
-                    $height
-                ),
-            ]);
+            return null;
         }
 
         $type = (int) ($dims[2] ?? 0);
@@ -88,9 +69,7 @@ final class ChatUploadedImageInspector
         ];
 
         if (! isset($typeMimeMap[$type]) || $typeMimeMap[$type] !== $canonicalMime) {
-            throw ValidationException::withMessages([
-                'image' => 'Тип зображення не збігається з реальним вмістом файлу.',
-            ]);
+            return null;
         }
 
         return [
@@ -98,6 +77,28 @@ final class ChatUploadedImageInspector
             'width' => $width,
             'height' => $height,
         ];
+    }
+
+    /**
+     * @return array{mime: string, width: positive-int, height: positive-int}
+     */
+    public static function inspectOrFail(UploadedFile $file, int $maxWidth, int $maxHeight): array
+    {
+        $path = $file->getRealPath();
+        if ($path === false || ! is_readable($path)) {
+            throw ValidationException::withMessages([
+                'image' => 'Файл зображення недоступний для перевірки.',
+            ]);
+        }
+
+        $r = self::tryInspectPath($path, $maxWidth, $maxHeight);
+        if ($r === null) {
+            throw ValidationException::withMessages([
+                'image' => 'Файл не є коректним зображенням (JPEG, PNG, GIF, WebP), пошкоджений або завеликий.',
+            ]);
+        }
+
+        return $r;
     }
 
     /**
