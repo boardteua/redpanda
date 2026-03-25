@@ -9,12 +9,13 @@
             :src="src"
             :alt="decorative ? '' : altText"
             class="rp-user-avatar__img h-full w-full object-cover"
-            loading="lazy"
+            :loading="variant === 'modal' ? 'eager' : 'lazy'"
             @error="onImgError"
         />
         <span
             v-else
-            class="rp-user-avatar__fallback flex h-full w-full items-center justify-center text-[0.625rem] font-bold leading-none text-white sm:text-xs"
+            class="rp-user-avatar__fallback flex h-full w-full items-center justify-center font-bold leading-none text-white"
+            :class="fallbackTextClass"
             :style="{ backgroundColor: avatarBackgroundFromName(displayName) }"
         >
             {{ initials }}
@@ -42,7 +43,7 @@ export default {
         variant: {
             type: String,
             default: 'feed',
-            validator: (v) => ['feed', 'sidebar', 'table', 'private'].includes(v),
+            validator: (v) => ['feed', 'sidebar', 'table', 'private', 'modal'].includes(v),
         },
         /** Якщо true — приховує зображення від assistive tech (як декоративний плейсхолдер у стрічці). */
         decorative: {
@@ -71,7 +72,17 @@ export default {
         altText() {
             return this.displayName ? `Аватар: ${this.displayName}` : 'Аватар';
         },
+        fallbackTextClass() {
+            if (this.variant === 'modal') {
+                return 'text-3xl sm:text-4xl';
+            }
+
+            return 'text-[0.625rem] sm:text-xs';
+        },
         boxClass() {
+            if (this.variant === 'modal') {
+                return 'rp-user-avatar--modal rounded-md border-2 border-[var(--rp-border-subtle)]';
+            }
             if (this.variant === 'sidebar') {
                 return 'rp-user-avatar--md h-9 w-9 rounded-sm border border-[var(--rp-chat-sidebar-border)]';
             }
@@ -123,5 +134,13 @@ export default {
     min-width: 2.25rem;
     height: 2.25rem;
     min-height: 2.25rem;
+}
+
+.rp-user-avatar.rp-user-avatar--modal,
+.rp-user-avatar.rp-user-avatar--modal .rp-user-avatar__fallback {
+    width: 12rem;
+    min-width: 12rem;
+    height: 12rem;
+    min-height: 12rem;
 }
 </style>

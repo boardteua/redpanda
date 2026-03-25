@@ -10,7 +10,7 @@
         @close="close"
     >
         <template #header>
-            <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] p-4">
+            <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] p-2">
                 <h2 :id="titleId" class="text-base font-semibold text-[var(--rp-text)]">
                     Смайли
                 </h2>
@@ -18,8 +18,7 @@
             </div>
         </template>
         <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <div class="shrink-0 border-b border-[var(--rp-border-subtle)] p-4">
-                <label class="rp-label" :for="searchId">Шукати смайли</label>
+            <div class="shrink-0 border-b border-[var(--rp-border-subtle)] p-2">
                 <input
                     :id="searchId"
                     ref="searchInput"
@@ -34,7 +33,7 @@
                     :aria-describedby="usageHintId"
                 />
             </div>
-            <div class="min-h-0 flex-1 overflow-y-auto p-4">
+            <div class="min-h-0 flex-1 overflow-y-auto p-2">
                 <p v-if="catalogLoading" class="text-sm text-[var(--rp-text-muted)]" role="status">
                     Завантаження каталогу…
                 </p>

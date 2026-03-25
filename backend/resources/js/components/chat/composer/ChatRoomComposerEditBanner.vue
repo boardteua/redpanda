@@ -6,9 +6,6 @@
     >
         <span class="text-[var(--rp-text-muted)]">
             Редагування повідомлення
-            <span v-if="editExistingImageUrl" class="block text-[0.7rem] font-normal text-[var(--rp-text-muted)]">
-                Зображення вкладення залишається; змінюються лише текст і форматування.
-            </span>
         </span>
         <RpButton variant="ghost" class="text-sm" @click="$emit('cancel-edit')">
             Скасувати

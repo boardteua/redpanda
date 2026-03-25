@@ -9,19 +9,27 @@
         @close="close"
     >
         <template #header>
-            <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-4 py-3">
+            <div class="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--rp-border-subtle)] px-2 py-1">
                 <h2 id="user-info-title" class="text-base font-semibold text-[var(--rp-text)]">
                     {{ title }}
                 </h2>
                 <RpCloseButton @click="close" />
             </div>
         </template>
-        <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm text-[var(--rp-text)]">
+        <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-2 text-sm text-[var(--rp-text)]">
             <template v-if="mode === 'self'">
                 <p v-if="!viewer" class="text-[var(--rp-text-muted)]">
                     Завантаження профілю…
                 </p>
                 <template v-else>
+                <div class="flex justify-center pb-2">
+                    <UserAvatar
+                        :src="viewer.avatar_url || ''"
+                        :name="viewer.user_name"
+                        variant="modal"
+                        :decorative="false"
+                    />
+                </div>
                 <p>
                     <span class="font-medium">Нік:</span>
                     {{ viewer.user_name }}
@@ -71,6 +79,14 @@
                     Немає даних про користувача.
                 </p>
                 <template v-else>
+                <div class="flex justify-center pb-2">
+                    <UserAvatar
+                        :src="target.avatar_url || ''"
+                        :name="target.user_name"
+                        variant="modal"
+                        :decorative="false"
+                    />
+                </div>
                 <p>
                     <span class="font-medium">Нік:</span>
                     {{ target.user_name }}
@@ -152,6 +168,7 @@
 
 <script>
 import RpModal from './RpModal.vue';
+import UserAvatar from './UserAvatar.vue';
 
 function isStaffRole(role) {
     return role === 'moderator' || role === 'admin';
@@ -159,7 +176,7 @@ function isStaffRole(role) {
 
 export default {
     name: 'UserInfoModal',
-    components: { RpModal },
+    components: { RpModal, UserAvatar },
     props: {
         open: {
             type: Boolean,
