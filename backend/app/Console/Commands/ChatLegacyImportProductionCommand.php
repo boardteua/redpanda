@@ -54,8 +54,8 @@ class ChatLegacyImportProductionCommand extends Command
             $this->line('  users (усього у legacy.users): '.$report['users_legacy_total']);
             $this->line('  users (буде імпортовано, є ≥1 рядок у chat): '.$report['users']);
             $this->line('  users пропущено (немає публічних постів у chat): '.$report['users_skipped_no_posts']);
-            $this->line('  stub-користувачів (немає в legacy.users, але є в chat): '.$report['stubs']);
-            $this->line('  рядків chat для імпорту: '.$report['chat_rows']);
+            $this->line('  chat пропущено (немає user_id у legacy.users): '.$report['chat_skipped_no_legacy_user']);
+            $this->line('  рядків chat з валідним автором у legacy.users (верхня межа; факт менший через T113): '.$report['chat_rows']);
 
             return self::SUCCESS;
         }
@@ -79,10 +79,10 @@ class ChatLegacyImportProductionCommand extends Command
         $this->line('  users (імпортовано, з публічними постами): '.$report['users']);
         $this->line('  users (усього було у legacy.users): '.$report['users_legacy_total']);
         $this->line('  users пропущено (без публічних постів у chat): '.$report['users_skipped_no_posts']);
-        $this->line('  stub-користувачів: '.$report['stubs']);
+        $this->line('  chat без legacy.users (не імпортуються): '.$report['chat_skipped_no_legacy_user']);
         $this->line('  chat (вставлено): '.$report['chat_rows']);
-        $this->line('  chat (пропущено): '.$report['chat_skipped']);
-        $this->comment('client_message_id стабільний від legacy post_id; file=0; T113/T129/T130 — див. docs/chat-v2/T130-LEGACY-PUBLIC-CHAT-IMPORT.md');
+        $this->line('  chat (пропущено загалом): '.$report['chat_skipped']);
+        $this->comment('client_message_id стабільний від legacy post_id; file=0; chat без legacy.users не імпортуються; T113/T129/T130 — див. docs/chat-v2/T130-LEGACY-PUBLIC-CHAT-IMPORT.md');
 
         return self::SUCCESS;
     }

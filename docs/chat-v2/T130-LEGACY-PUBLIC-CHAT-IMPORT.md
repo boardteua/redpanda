@@ -28,7 +28,7 @@
 | `users` (фільтр T113) | `users` | Імпортуються лише користувачі з ≥1 рядком у legacy `chat`; `legacy_imported_at` для не-гостей (**T129**) |
 | `chat.*` | `chat` | `post_id`, `user_id`, `post_date`, `post_time`, `post_user`, `post_message`, …; **`file` = 0** (**T13**) |
 | — | `chat.client_message_id` | **Стабільний** детермінований UUID-подібний рядок від `md5('redpanda:legacy:chat:'.$post_id)` (формат 8-4-4-4-12) |
-| Відсутній `users.user_id` для автора в `chat` | `users` (stub) | `guest=true`, `legacy_imported_at` = null, нік `legacy_uid_{id}` |
+| Відсутній `users.user_id` для автора в `chat` (сирота в legacy) | — | Рядок **не** імпортується (`chat_skipped`); stub **не** створюються |
 
 Відбір користувачів: `LegacyImportUserSelection::usersHavingPublicChatPosts` (**T113**).
 
@@ -39,5 +39,5 @@
 
 ## Порядок відносно T129 / T131
 
-1. **T129** — користувачі (і стаби) мають існувати до або разом з імпортом `chat` згідно runbook (**T128**). Поточний сервіс імпортує **rooms → users → stubs → chat** в одній транзакції пайплайну.
+1. **T129** — імпортовані користувачі з’являються перед `chat` згідно runbook (**T128**). Поточний сервіс імпортує **rooms → users → chat** (без stub для «сиріт» `chat.user_id`).
 2. **T131** — приватні повідомлення після публічного чату та стабільних `users.id`.

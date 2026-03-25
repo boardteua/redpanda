@@ -53,9 +53,7 @@ final class LegacyBoardImportService
             'images' => $this->safeCount($legacy, 'images'),
         ];
 
-        $orphanUser = (int) $legacy->selectOne(
-            'SELECT COUNT(*) AS c FROM chat c LEFT JOIN users u ON c.user_id = u.user_id WHERE u.user_id IS NULL'
-        )->c;
+        $orphanUser = $this->countLegacyChatRowsWithoutUser($legacy);
 
         $orphanRoom = (int) $legacy->selectOne(
             'SELECT COUNT(*) AS c FROM chat c LEFT JOIN rooms r ON c.post_roomid = r.room_id WHERE r.room_id IS NULL'
@@ -83,6 +81,7 @@ final class LegacyBoardImportService
      *     stubs: int,
      *     chat_rows: int,
      *     chat_skipped: int,
+     *     chat_skipped_no_legacy_user: int,
      * }
      */
     public function importStaging(bool $dryRun): array
@@ -100,20 +99,12 @@ final class LegacyBoardImportService
         $usersLegacyTotal = $allLegacyUsers->count();
 
         $chatTotal = (int) $legacy->table('chat')->count();
+        $chatSkippedNoLegacyUser = $this->countLegacyChatRowsWithoutUser($legacy);
         $distinctChatUsers = $legacy->table('chat')->select('user_id')->distinct()->pluck('user_id')->all();
         [$userRows, $usersSkippedNoPosts] = LegacyImportUserSelection::usersHavingPublicChatPosts(
             $allLegacyUsers,
             $distinctChatUsers
         );
-        $legacyUserIdSet = $allLegacyUsers->keyBy('user_id');
-        $missingForChat = [];
-        foreach ($distinctChatUsers as $uid) {
-            $uid = (int) $uid;
-            if (! $legacyUserIdSet->has($uid)) {
-                $missingForChat[$uid] = true;
-            }
-        }
-        $stubCount = count($missingForChat);
 
         if ($dryRun) {
             return [
@@ -122,9 +113,10 @@ final class LegacyBoardImportService
                 'users' => $userRows->count(),
                 'users_legacy_total' => $usersLegacyTotal,
                 'users_skipped_no_posts' => $usersSkippedNoPosts,
-                'stubs' => $stubCount,
-                'chat_rows' => $chatTotal,
+                'stubs' => 0,
+                'chat_rows' => max(0, $chatTotal - $chatSkippedNoLegacyUser),
                 'chat_skipped' => 0,
+                'chat_skipped_no_legacy_user' => $chatSkippedNoLegacyUser,
             ];
         }
 
@@ -145,6 +137,7 @@ final class LegacyBoardImportService
             'stubs' => 0,
             'chat_rows' => 0,
             'chat_skipped' => 0,
+            'chat_skipped_no_legacy_user' => $chatSkippedNoLegacyUser,
         ];
 
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
@@ -169,10 +162,7 @@ final class LegacyBoardImportService
                 $report['users']++;
             }
 
-            foreach (array_keys($missingForChat) as $missingId) {
-                $this->insertStubUser((int) $missingId, $now);
-                $report['stubs']++;
-            }
+            // Рядки chat без відповідного legacy.users не імпортуються (без stub-гостей).
 
             $legacy->table('chat')->orderBy('post_id')->chunk(500, function ($chunk) use (&$report): void {
                 $batch = [];
@@ -220,6 +210,13 @@ final class LegacyBoardImportService
         }
 
         return $report;
+    }
+
+    private function countLegacyChatRowsWithoutUser(Connection $legacy): int
+    {
+        return (int) $legacy->selectOne(
+            'SELECT COUNT(*) AS c FROM chat c LEFT JOIN users u ON c.user_id = u.user_id WHERE u.user_id IS NULL'
+        )->c;
     }
 
     private function targetAppTablesEmpty(): bool
@@ -272,42 +269,6 @@ final class LegacyBoardImportService
             'profile_sex_hidden' => false,
             'profile_occupation' => $this->nullableProfileString($lu->custom1 ?? ''),
             'profile_about' => $this->nullableProfileString($lu->user_description ?? ''),
-            'social_links' => null,
-            'notification_sound_prefs' => null,
-            'account_disabled_at' => null,
-            'chat_upload_disabled' => false,
-            'presence_invisible' => false,
-            'auth0_subject' => null,
-        ]);
-    }
-
-    private function insertStubUser(int $userId, Carbon $now): void
-    {
-        DB::table('users')->insert([
-            'id' => $userId,
-            'user_name' => 'legacy_uid_'.$userId,
-            'email' => null,
-            'email_verified_at' => null,
-            'password' => null,
-            'guest' => true,
-            'remember_token' => null,
-            'created_at' => $now,
-            'updated_at' => $now,
-            'user_rank' => User::RANK_USER,
-            'mute_until' => null,
-            'kick_until' => null,
-            'avatar_image_id' => null,
-            'vip' => false,
-            'profile_country' => null,
-            'profile_region' => null,
-            'profile_age' => null,
-            'profile_sex' => null,
-            'profile_country_hidden' => false,
-            'profile_region_hidden' => false,
-            'profile_age_hidden' => false,
-            'profile_sex_hidden' => false,
-            'profile_occupation' => null,
-            'profile_about' => null,
             'social_links' => null,
             'notification_sound_prefs' => null,
             'account_disabled_at' => null,

@@ -35,7 +35,7 @@ class ChatLegacyInspectCommand extends Command
             $this->line(sprintf('  %-12s %s', $table, $count >= 0 ? (string) $count : 'n/a'));
         }
         $this->newLine();
-        $this->info('Сироти (очікувано 0 після коректного дампу):');
+        $this->info('Сироти в legacy (імпорт chat без відповідного user_id у legacy.users не виконується, stub не створюються):');
         $this->line('  chat без відповідного user_id у legacy.users: '.$report['orphan_chat_without_user']);
         $this->line('  chat без відповідного room_id у legacy.rooms: '.$report['orphan_chat_without_room']);
         $this->newLine();

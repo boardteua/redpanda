@@ -68,7 +68,7 @@ php artisan chat:legacy-import-staging
 - **Пароль:** переносяться лише вже **bcrypt** (`$2y$...`); значення на кшталт `new` або порожнє → `NULL` (вхід по паролю може вимагати скидання / Auth0). Дослідження форматів і рішення для prod — [docs/chat-v2/T111-LEGACY-PASSWORDS.md](T111-LEGACY-PASSWORDS.md) (**T111**).
 - **Ролі:** грубе мапування legacy `user_rank` → `user_rank` redpanda (див. код `LegacyBoardImportService::mapLegacyRank`).
 - **Приват, друзі, зображення** — **не** імпортуються в цій версії T13.
-- Користувачі з `chat.user_id`, яких немає в legacy `users`, отримують stub `legacy_uid_{id}` (гість).
+- Рядки **`chat`**, у яких **`user_id` не існує в legacy `users`**, **не імпортуються** (stub-користувачі не створюються).
 - **T113:** у цільову БД **не** імпортуються облікові записи з legacy `users`, у яких **немає жодного** рядка в **`chat`** (0 публічних постів); деталі та rsync аватарок — [docs/chat-v2/T113-LEGACY-AVATARS.md](T113-LEGACY-AVATARS.md).
 
 ## 5. Команди
