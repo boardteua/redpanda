@@ -72,7 +72,7 @@
 | 503, `checks.redis: fail` | Redis потрібен (кеш/черга або `HEALTH_CHECK_REDIS=true`), але недоступний |
 | Чат без live, polling / помилки Echo | Reverb не запущений або розсинхрон `REVERB_*` / `VITE_REVERB_*` |
 | Повідомлення не розходяться між клієнтами | Не запущений queue worker |
-| **503** на `POST /api/v1/images` (multipart) з повідомленням про storage | Каталог **`storage/app/chat-images`** відсутній або **не записуваний** процесом PHP (`chown`/`chmod` на хості або в томі Docker); перевірте також **`client_max_body_size`** (nginx) і **`upload_max_filesize`** / **`post_max_size`** (PHP) — інакше тіло не доходить до Laravel (**T98**) |
+| **503** на `POST /api/v1/images` (multipart) з повідомленням про storage | Каталог **`storage/app/chat-images`** відсутній або **не записуваний** процесом PHP (`chown`/`chmod` на хості або в томі Docker); перевірте також **`client_max_body_size`** (nginx) і **`upload_max_filesize`** / **`post_max_size`** (PHP) — інакше тіло не доходить до Laravel (**T98**). Детальний RCA і команди: **[T137-STORAGE-PERMISSIONS.md](T137-STORAGE-PERMISSIONS.md)** |
 
 ## Регресія real-time після деплою
 
@@ -132,6 +132,7 @@
 - [ ] У репозиторії на сервері: **`docker/production.env`** (або legacy **`compose.deploy.env`**) на місці; **`docker/compose.yaml`** канонічний (prod-секрети через `--env-file`, без обов’язкового prod-override). Якщо є **`docker/compose.override.yml`** — лише для локальних нюансів (порти), не дублювати прод-паролі окремо від `production.env`.
 - [ ] Змінні деплою/бекапу на хості (GitHub SSH, systemd, `profile.d`): **`REPO_DIR`**, **`DEPLOY_GIT_REF`**, опційно **`DEPLOY_HEALTH_URL`**, **`BACKUP_BEFORE_DEPLOY`**, **`BACKUP_DIR`** — за домовленістю; див. коментарі в `docker/deploy.sh`.
 - [ ] Публічний smoke: **`https://board.te.ua/health/ready`** (або ваш `DEPLOY_HEALTH_URL`) повертає успішну відповідь після деплою.
+- [ ] Після імпорту файлів або `rsync` на **`storage/app/chat-images`**: власники/групи узгоджені з **PHP-FPM** і **queue worker**; рекурсивно на вкладених каталогах — див. **[T137-STORAGE-PERMISSIONS.md](T137-STORAGE-PERMISSIONS.md)**.
 
 ## Залежності та security advisories (T107)
 
