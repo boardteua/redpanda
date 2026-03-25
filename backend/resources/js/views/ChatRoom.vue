@@ -70,6 +70,7 @@
                 :is-badge-menu-open="sidebarBadgeMenuOpen"
                 :room-presence-peers="roomPresencePeers"
                 :peer-presence-status-by-user-id="peerPresenceStatusByUserId"
+                :peer-presence-status-fetch-loading="peerPresenceStatusFetchLoading"
                 :peer-sex-hints-by-user-id="peerSexHintsByUserId"
                 :viewer-presence-status="viewerPresenceStatus"
                 :ws-degraded="wsDegraded"
@@ -268,6 +269,10 @@ export default {
             roomPresencePeers: [],
             /** userId (string) → online | away | inactive (T48). */
             peerPresenceStatusByUserId: {},
+            /** T126: true між оновленням списку пірів і завершенням fetch presence-statuses. */
+            peerPresenceStatusFetchLoading: false,
+            /** T126: лічильник для ігнорування застарілого finally після debounce/нового піра. */
+            peerPresenceStatusFetchEpoch: 0,
             /** T49: userId → { sex } з peer-hints (для зареєстрованого переглядача). */
             peerSexHintsByUserId: {},
             presenceLastActivityAt: 0,
@@ -1388,17 +1393,24 @@ export default {
             this.presenceLastSentStatus = null;
             this.presenceLastPostedAt = null;
         },
-        scheduleFetchPeerPresenceStatuses() {
+        scheduleFetchPeerPresenceStatuses(presenceFetchEpoch) {
             if (this.presenceFetchDebounceTimer) {
                 clearTimeout(this.presenceFetchDebounceTimer);
             }
             this.presenceFetchDebounceTimer = setTimeout(() => {
                 this.presenceFetchDebounceTimer = null;
-                Promise.all([this.fetchPeerPresenceStatuses(), this.fetchPeerSexHints()]).catch(() => {});
+                Promise.all([
+                    this.fetchPeerPresenceStatuses(presenceFetchEpoch),
+                    this.fetchPeerSexHints(),
+                ]).catch(() => {});
             }, 250);
         },
-        async fetchPeerPresenceStatuses() {
+        async fetchPeerPresenceStatuses(presenceFetchEpoch) {
             if (!this.selectedRoomId || !this.roomPresencePeers.length) {
+                if (presenceFetchEpoch === this.peerPresenceStatusFetchEpoch) {
+                    this.peerPresenceStatusFetchLoading = false;
+                }
+
                 return;
             }
             const ids = this.roomPresencePeers.map((p) => p.id).join(',');
@@ -1412,6 +1424,10 @@ export default {
                 this.peerPresenceStatusByUserId = { ...this.peerPresenceStatusByUserId, ...map };
             } catch {
                 /* ignore */
+            } finally {
+                if (presenceFetchEpoch === this.peerPresenceStatusFetchEpoch) {
+                    this.peerPresenceStatusFetchLoading = false;
+                }
             }
         },
         async fetchPeerSexHints() {
@@ -1463,8 +1479,11 @@ export default {
                 .map((u) => normalizePresencePeer(u))
                 .filter((p) => p && myId !== null && p.id !== myId && !p.presence_invisible);
             list.sort((a, b) => a.user_name.localeCompare(b.user_name, 'uk'));
+            this.peerPresenceStatusFetchEpoch += 1;
+            const presenceFetchEpoch = this.peerPresenceStatusFetchEpoch;
+            this.peerPresenceStatusFetchLoading = true;
             this.roomPresencePeers = list;
-            this.$nextTick(() => this.scheduleFetchPeerPresenceStatuses());
+            this.$nextTick(() => this.scheduleFetchPeerPresenceStatuses(presenceFetchEpoch));
         },
         addPresencePeer(raw) {
             const p = normalizePresencePeer(raw);
@@ -1475,10 +1494,13 @@ export default {
             if (this.roomPresencePeers.some((x) => x.id === p.id)) {
                 return;
             }
+            this.peerPresenceStatusFetchEpoch += 1;
+            const presenceFetchEpoch = this.peerPresenceStatusFetchEpoch;
+            this.peerPresenceStatusFetchLoading = true;
             const next = [...this.roomPresencePeers, p];
             next.sort((a, b) => a.user_name.localeCompare(b.user_name, 'uk'));
             this.roomPresencePeers = next;
-            this.scheduleFetchPeerPresenceStatuses();
+            this.scheduleFetchPeerPresenceStatuses(presenceFetchEpoch);
         },
         removePresencePeer(raw) {
             const id = raw && raw.id != null ? Number(raw.id) : null;
@@ -1502,6 +1524,8 @@ export default {
             this.stopRoomPresenceTracking();
             this.peerPresenceStatusByUserId = {};
             this.peerSexHintsByUserId = {};
+            this.peerPresenceStatusFetchLoading = false;
+            this.peerPresenceStatusFetchEpoch = 0;
             if (this.echo && this.echoSubscribedRoomId !== null) {
                 try {
                     this.echo.leave(`room.${this.echoSubscribedRoomId}`);
@@ -1581,6 +1605,8 @@ export default {
                 this.roomPresencePeers = [];
                 this.peerPresenceStatusByUserId = {};
                 this.peerSexHintsByUserId = {};
+                this.peerPresenceStatusFetchLoading = false;
+                this.peerPresenceStatusFetchEpoch = 0;
                 this.startPollIfDegraded();
             });
 

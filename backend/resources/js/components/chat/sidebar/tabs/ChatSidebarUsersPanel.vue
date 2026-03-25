@@ -248,6 +248,7 @@ import ChatUploadLockBadge from '../ChatUploadLockBadge.vue';
 import { isStaffRole } from '../../../../lib/userBadgeMenuItems';
 import {
     normalizedPresenceStatus,
+    PRESENCE_STATUS_UNKNOWN,
     presenceRowClass,
     presenceDotClass,
     presenceLabelUa,
@@ -272,6 +273,7 @@ export default {
         isBadgeMenuOpen: { type: Function, required: true },
         roomPresencePeers: { type: Array, default: () => [] },
         peerPresenceStatusByUserId: { type: Object, default: () => ({}) },
+        peerPresenceStatusFetchLoading: { type: Boolean, default: false },
         peerSexHintsByUserId: { type: Object, default: () => ({}) },
         viewerPresenceStatus: { type: String, default: 'online' },
         wsDegraded: { type: Boolean, default: false },
@@ -322,8 +324,15 @@ export default {
             if (!p || p.id == null) {
                 return 'online';
             }
+            const raw = this.peerPresenceStatusByUserId[String(p.id)];
+            if (raw !== undefined && raw !== null) {
+                return normalizedPresenceStatus(raw);
+            }
+            if (this.peerPresenceStatusFetchLoading) {
+                return PRESENCE_STATUS_UNKNOWN;
+            }
 
-            return normalizedPresenceStatus(this.peerPresenceStatusByUserId[String(p.id)]);
+            return 'online';
         },
         peerSexMetaRow(p) {
             if (!p || p.id == null || !this.user || this.user.guest) {
@@ -372,7 +381,8 @@ export default {
 
 <style scoped>
 .rp-presence-row--away,
-.rp-presence-row--inactive {
+.rp-presence-row--inactive,
+.rp-presence-row--unknown {
     filter: grayscale(1);
 }
 

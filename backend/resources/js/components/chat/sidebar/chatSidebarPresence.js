@@ -1,7 +1,17 @@
 /** Pure UI helpers for sidebar presence rows (T104, shared by Users / Friends panels). */
 
+/** T126: до підтвердженого мапінгу з REST — нейтральний рядок, без «хибного онлайн». */
+export const PRESENCE_STATUS_UNKNOWN = 'unknown';
+
 export function normalizedPresenceStatus(raw) {
-    return raw === 'away' || raw === 'inactive' ? raw : 'online';
+    if (raw === 'away' || raw === 'inactive') {
+        return raw;
+    }
+    if (raw === PRESENCE_STATUS_UNKNOWN) {
+        return PRESENCE_STATUS_UNKNOWN;
+    }
+
+    return 'online';
 }
 
 export function presenceRowClass(status) {
@@ -11,6 +21,9 @@ export function presenceRowClass(status) {
     }
     if (s === 'away') {
         return 'rp-presence-row--away';
+    }
+    if (s === PRESENCE_STATUS_UNKNOWN) {
+        return 'rp-presence-row--unknown';
     }
 
     return '';
@@ -24,6 +37,9 @@ export function presenceDotClass(status) {
     if (s === 'away') {
         return 'bg-amber-500';
     }
+    if (s === PRESENCE_STATUS_UNKNOWN) {
+        return 'bg-gray-400';
+    }
 
     return 'bg-green-600';
 }
@@ -35,6 +51,9 @@ export function presenceLabelUa(status) {
     }
     if (s === 'inactive') {
         return 'Неактивний';
+    }
+    if (s === PRESENCE_STATUS_UNKNOWN) {
+        return 'Статус уточнюється';
     }
 
     return 'Онлайн';

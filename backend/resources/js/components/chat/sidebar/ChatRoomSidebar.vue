@@ -51,6 +51,7 @@
                 :is-badge-menu-open="isBadgeMenuOpen"
                 :room-presence-peers="roomPresencePeers"
                 :peer-presence-status-by-user-id="peerPresenceStatusByUserId"
+                :peer-presence-status-fetch-loading="peerPresenceStatusFetchLoading"
                 :peer-sex-hints-by-user-id="peerSexHintsByUserId"
                 :viewer-presence-status="viewerPresenceStatus"
                 :ws-degraded="wsDegraded"
@@ -163,6 +164,8 @@ export default {
         isBadgeMenuOpen: { type: Function, required: true },
         roomPresencePeers: { type: Array, default: () => [] },
         peerPresenceStatusByUserId: { type: Object, default: () => ({}) },
+        /** T126: поки йде перший fetch статусів після here()/joining — нейтральний UI для пірів без ключа. */
+        peerPresenceStatusFetchLoading: { type: Boolean, default: false },
         peerSexHintsByUserId: { type: Object, default: () => ({}) },
         viewerPresenceStatus: { type: String, default: 'online' },
         wsDegraded: { type: Boolean, default: false },
