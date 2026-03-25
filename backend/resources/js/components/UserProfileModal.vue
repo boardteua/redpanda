@@ -170,7 +170,7 @@
                             :disabled="saving"
                             @click="savePersonal"
                         >
-                            {{ saving ? 'Збереження…' : 'Зберегти персональні дані' }}
+                            {{ saving ? 'Збереження…' : 'Зберегти' }}
                         </RpButton>
                     </div>
 
@@ -270,7 +270,7 @@
                     <!-- Звуки -->
                     <div v-show="activeTab === 'sounds'" class="space-y-4">
                         <p class="text-sm text-[var(--rp-text-muted)]">
-                            Налаштування збережуються для майбутніх сповіщень у чаті (відтворення підключиться окремим таском).
+                            Налаштування збережуються для майбутніх сповіщень у чаті
                         </p>
                         <label class="flex items-center justify-between gap-3 text-sm text-[var(--rp-text)]">
                             <span>Звичайні повідомлення</span>
