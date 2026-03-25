@@ -34,6 +34,8 @@ LEGACY_AVATAR_RSYNC_SOURCE=/var/www/board.te.ua/html/avatar/
 LEGACY_AVATAR_RSYNC_DEST=/var/www/redpanda/backend/storage/app/legacy-avatars
 ```
 
+**Docker (Artisan у контейнері `php`, робочий каталог `/var/www/html`):** шлях хоста `/var/www/redpanda/backend/...` **недійсний** всередині контейнера. Варіанти: (1) залишити **`LEGACY_AVATAR_RSYNC_DEST` порожнім** — команда **`chat:legacy-link-user-avatars`** використає **`storage/app/legacy-avatars`** відносно проєкту (той самий змонтований том); (2) або явно **`LEGACY_AVATAR_RSYNC_DEST=/var/www/html/storage/app/legacy-avatars`** у `production.env`.
+
 Приклад **з віддаленого хоста**:
 
 ```env

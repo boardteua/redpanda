@@ -25,10 +25,26 @@ class ChatLegacyLinkUserAvatarsCommand extends Command
 
         $dir = trim((string) $this->option('dir'));
         if ($dir === '') {
-            $dir = (string) config('legacy.avatar_rsync_dest', '');
+            $dir = trim((string) config('legacy.avatar_rsync_dest', ''));
         }
+
+        $canonical = storage_path('app/legacy-avatars');
         if ($dir === '') {
-            $this->error('Задайте каталог: --dir=… або LEGACY_AVATAR_RSYNC_DEST у .env (після chat:legacy-sync-avatars). Див. docs/chat-v2/T113-LEGACY-AVATARS.md');
+            $dir = $canonical;
+        } elseif (! is_dir($dir)) {
+            // На хості rsync часто пише в /var/www/redpanda/backend/storage/...; у контейнері PHP проєкт — /var/www/html, той самий шлях хоста не існує.
+            if (is_dir($canonical)) {
+                $this->warn('Каталог з env недоступний у ФС PHP: '.$dir);
+                $this->line('  → використовується '.$canonical.' (змонтований backend у Docker: /var/www/html/storage/app/legacy-avatars).');
+                $dir = $canonical;
+            }
+        }
+
+        if (! is_dir($dir)) {
+            $this->error(
+                'Каталог legacy-аватарок не знайдено: '.($dir !== '' ? $dir : $canonical).'. '.
+                'Після rsync має існувати storage/app/legacy-avatars у backend. У Docker задайте в env порожній LEGACY_AVATAR_RSYNC_DEST або шлях всередині контейнера (/var/www/html/storage/app/legacy-avatars). Див. T113.'
+            );
 
             return self::FAILURE;
         }
