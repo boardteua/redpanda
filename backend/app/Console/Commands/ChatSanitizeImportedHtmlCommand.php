@@ -13,7 +13,7 @@ class ChatSanitizeImportedHtmlCommand extends Command
                             {--force : Дозволити на production}
                             {--chunk=200 : Розмір chunk для обходу таблиць}';
 
-    protected $description = 'Очистка legacy HTML: junk span, зламані fancybox; зняти обгортку fancybox, коли href=src (chat, private_messages)';
+    protected $description = 'Очистка legacy HTML: junk span, fancybox; img src → голий URL; chat і private_messages';
 
     public function handle(LegacyChatHtmlGarbageCleaner $cleaner): int
     {
@@ -73,6 +73,9 @@ class ChatSanitizeImportedHtmlCommand extends Command
                     $q2->where($column, 'like', '%fancybox%')
                         ->where($column, 'like', '%<a%')
                         ->where($column, 'like', '%<img%');
+                })->orWhere(function ($q2) use ($column): void {
+                    $q2->where($column, 'like', '%<img%')
+                        ->where($column, 'like', '%src=%');
                 });
             })
             ->orderBy($pk)

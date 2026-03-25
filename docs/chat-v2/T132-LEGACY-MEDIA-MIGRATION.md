@@ -58,7 +58,7 @@ php artisan chat:legacy-remap-board-urls --force
 
 ## 4. Очищення «сміттєвого» HTML у дописах (після імпорту)
 
-Команда **`chat:sanitize-imported-html`** прибирає порожні legacy-`<span style="color:; background:;">` та зламані блоки fancybox/img без URL; також **знімає** обгортку **`<a class="fancybox" href="URL"><img src="URL"></a>`** → **`<img src="URL">`**, якщо URL у `href` і `src` збігаються (типово після імпорту з board.te.ua). Обробляються рядки з junk-span **або** з `fancybox` + `<a` + `<img`.
+Команда **`chat:sanitize-imported-html`** прибирає порожні legacy-`<span style="color:; background:;">` та зламані блоки fancybox/img без URL; **знімає** обгортку **`<a class="fancybox" href="URL"><img src="URL"></a>`**, потім **будь-який** тег **`<img src="…">`** замінює на **голий текст URL** (екранований для HTML). Обробляються рядки з junk-span, з `fancybox` + `<a` + `<img`, або з **`<img`** + **`src=`**.
 
 **З хоста через Docker** (той самий `--env-file`, що `deploy.sh`; сервіс **`php` у профілі `app` має бути запущений):
 

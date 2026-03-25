@@ -4,7 +4,8 @@ namespace App\Support;
 
 /**
  * Прибирає типове «сміття» HTML у legacy-повідомленнях (порожні color/background у span,
- * зламані fancybox+img без href/src), а також знімає обгортку fancybox, коли href і src однакові.
+ * зламані fancybox+img без href/src), знімає обгортку fancybox, коли href і src однакові,
+ * замінює теги img з атрибутом src на голий URL (екранований для HTML).
  */
 final class LegacyChatHtmlGarbageCleaner
 {
@@ -16,6 +17,7 @@ final class LegacyChatHtmlGarbageCleaner
         for ($i = 0; $i < self::MAX_PASSES; $i++) {
             $next = $this->passStripJunkSpans($out);
             $next = $this->passUnwrapFancyboxSameUrlImage($next);
+            $next = $this->passImgTagsToBareSrcUrl($next);
             if ($next === $out) {
                 break;
             }
@@ -122,6 +124,25 @@ final class LegacyChatHtmlGarbageCleaner
                 $imgInner = ltrim($imgAttrs, " \t\n\r");
 
                 return $imgWsBefore.'<img '.$imgInner.'>'.$imgWsAfter;
+            },
+            $html
+        );
+    }
+
+    /**
+     * &lt;img src="URL" …&gt; → текст URL (htmlspecialchars), без тега img.
+     */
+    private function passImgTagsToBareSrcUrl(string $html): string
+    {
+        return (string) preg_replace_callback(
+            '~<img\b([^>]*)/?>~iu',
+            function (array $m): string {
+                $src = $this->attributeFromAttrString($m[1], 'src');
+                if ($src === null || $src === '') {
+                    return '';
+                }
+
+                return htmlspecialchars($src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
             },
             $html
         );
