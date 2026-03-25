@@ -3,7 +3,7 @@
 **Задача:** [project-tasks/chat-v2-tasklist.md](../../project-tasks/chat-v2-tasklist.md) — **T128**.  
 **Мета:** узгоджений **покроковий** процес для **production** без секретів у git: бекап, окрема legacy-БД, сухі прогони, порядок **T129 → T130 → T131 → T132**, критерії rollback.
 
-**Операційне середовище:** команди виконуються на **цільовому сервері redpanda** (або з адмінської станції з доступом SSH/rsync до **board.te.ua**). Підставляйте реальні хости, користувачів SSH і шляхи **лише в runbook оператора / секретному сховищі**, не в репозиторії.
+**Операційне середовище:** команди виконуються на **цільовому сервері** (часто той самий хост **board.te.ua**, де лежать `/var/www/board.te.ua/html/avatar/` та `uploads/`, і `/var/www/redpanda/`). Тоді **копіювання медіа** — локальні абсолютні шляхи в `.env`; Artisan викликає **`rsync` без SSH** (див. [T113-LEGACY-AVATARS.md](T113-LEGACY-AVATARS.md), [T132-LEGACY-MEDIA-MIGRATION.md](T132-LEGACY-MEDIA-MIGRATION.md)). Якщо джерело на **іншій** машині — формат `user@host:/шлях/` і тоді додається **rsync через SSH**. Підставляйте реальні значення **лише в `.env` оператора**, не в git.
 
 ---
 
@@ -34,20 +34,21 @@ flowchart TD
 
 - Каталоги завантажень / згенеровані файли, які не відновлюються з git (див. **T132** для `storage` і публічних шляхів медіа).
 
-### 3. Передача дампу `org100h.sql`
+### 3. Дамп `org100h.sql` на сервері
 
-- Приклад **без** реальних облікових даних:
+- Якщо файл **вже** на тому ж хості, що й redpanda (після `scp` або копіювання) — перейдіть до кроку 4.
+- Якщо дамп локально у оператора:
 
 ```bash
-# З машини оператора (приклад):
-scp /secure/local/org100h.sql DEPLOY_USER@REDPANDA_HOST:/secure/incoming/org100h.sql
+scp /secure/local/org100h.sql DEPLOY_USER@board.te.ua:/secure/incoming/org100h.sql
 ```
 
-- Дамп містить **PII** — обмежте права на файл (`chmod 600`), не кладіть у world-readable каталоги.
+- Дамп містить **PII** — `chmod 600`, не world-readable каталоги.
 
 ### 4. Окрема база `legacy_*` (не змішувати з `DB_DATABASE`)
 
-- Створіть БД наприклад `legacy_org100h` **лише для читання** ETL.
+- Покроково (створення БД, користувач `GRANT`, імпорт): **[T128-LEGACY-MYSQL-SETUP.md](T128-LEGACY-MYSQL-SETUP.md)**.
+- Коротко:
 
 ```bash
 mysql -h DB_HOST -u DBA_USER -p -e "CREATE DATABASE IF NOT EXISTS legacy_org100h CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
@@ -124,15 +125,16 @@ php artisan chat:legacy-remap-board-urls --dry-run
 
 ## Пов’язані документи
 
+- [T128-LEGACY-MYSQL-SETUP.md](T128-LEGACY-MYSQL-SETUP.md) — створення БД `legacy_*`, користувач, імпорт дампу.
 - [T13-ETL-STAGING.md](T13-ETL-STAGING.md) — staging, обмеження паролів і обсягу T13.
-- [T113-LEGACY-AVATARS.md](T113-LEGACY-AVATARS.md) — фільтр користувачів і rsync аватарок.
+- [T113-LEGACY-AVATARS.md](T113-LEGACY-AVATARS.md) — фільтр користувачів і копіювання аватарок.
 - [T130-LEGACY-PUBLIC-CHAT-IMPORT.md](T130-LEGACY-PUBLIC-CHAT-IMPORT.md), [T131-LEGACY-PRIVATE-IMPORT.md](T131-LEGACY-PRIVATE-IMPORT.md), [T132-LEGACY-MEDIA-MIGRATION.md](T132-LEGACY-MEDIA-MIGRATION.md).
 
 ---
 
 ## Tabletop-чекліст для оператора (без PII у git)
 
-- [ ] Прочитано цей runbook і [T13-ETL-STAGING.md](T13-ETL-STAGING.md).
+- [ ] Прочитано цей runbook, [T13-ETL-STAGING.md](T13-ETL-STAGING.md) і за потреби [T128-LEGACY-MYSQL-SETUP.md](T128-LEGACY-MYSQL-SETUP.md).
 - [ ] Є актуальний бекап цільової БД і знання, як відновити.
 - [ ] `LEGACY_DB_*` виставлені лише на сервері; дамп не у публічних каталогах.
 - [ ] Виконано `chat:legacy-inspect` і всі **dry-run** перед записом.

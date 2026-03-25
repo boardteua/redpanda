@@ -9,9 +9,9 @@
 - **Аватарки:** `/var/www/board.te.ua/html/avatar/` (або еквівалент на хості)
 - **Uploads:** `/var/www/board.te.ua/html/uploads/`
 
-Доступ: **SSH** з ключем (`BatchMode=yes` у командах), без паролів у репозиторії.
+На **одному** сервері: у `.env` — абсолютні шляхи (`/var/www/board.te.ua/...` → `/var/www/redpanda/...`); Artisan використовує **локальний rsync** (без `-e ssh`). Якщо джерело в форматі **`user@host:/path`** — тоді **SSH**.
 
-## 1. rsync аватарок (існуюча команда T113)
+## 1. Копіювання аватарок (команда T113)
 
 ```bash
 cd backend && php artisan chat:legacy-sync-avatars --dry-run
@@ -20,7 +20,7 @@ php artisan chat:legacy-sync-avatars
 
 Змінні: `LEGACY_AVATAR_RSYNC_SOURCE`, `LEGACY_AVATAR_RSYNC_DEST` — див. `.env.example`.
 
-## 2. rsync uploads (T132)
+## 2. Копіювання uploads (T132)
 
 ```bash
 cd backend && php artisan chat:legacy-sync-uploads --dry-run

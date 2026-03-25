@@ -7,9 +7,9 @@ return [
     | Синхронізація аватарок з legacy-хоста (T113)
     |--------------------------------------------------------------------------
     |
-    | Джерело/призначення задаються лише в .env (SSH-ключ у агенті; паролі не в репо).
-    | Приклад джерела: user@board.te.ua:/var/www/board.te.ua/html/avatar/
-    | Призначення: локальний каталог (напр. storage/app/legacy-avatars).
+    | Джерело/призначення задаються лише в .env (паролі не в репо).
+    | Локально на одному сервері: /var/www/board.te.ua/html/avatar/ → storage/app/legacy-avatars (rsync без SSH).
+    | Віддалено: user@host:/var/www/.../avatar/ (rsync -e ssh).
     |
     */
     'avatar_rsync_source' => env('LEGACY_AVATAR_RSYNC_SOURCE', ''),

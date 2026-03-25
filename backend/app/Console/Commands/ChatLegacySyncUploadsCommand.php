@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\LegacyMediaPathSync;
 use Illuminate\Console\Command;
 use Symfony\Component\Process\Process;
 
@@ -13,7 +14,7 @@ class ChatLegacySyncUploadsCommand extends Command
     protected $signature = 'chat:legacy-sync-uploads
                             {--dry-run : Передати rsync -n (лише перелік, без запису)}';
 
-    protected $description = 'rsync uploads з legacy (LEGACY_UPLOADS_RSYNC_* у .env; T132)';
+    protected $description = 'Копіювання uploads legacy→redpanda (rsync; локально або user@host:…; T132)';
 
     public function handle(): int
     {
@@ -26,23 +27,11 @@ class ChatLegacySyncUploadsCommand extends Command
             return self::FAILURE;
         }
 
-        $args = [
-            'rsync',
-            '-a',
-            '-v',
-            '--human-readable',
-            '-e',
-            'ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new',
-        ];
+        $dry = (bool) $this->option('dry-run');
+        $args = LegacyMediaPathSync::rsyncArgv($source, $dest, $dry);
+        $mode = LegacyMediaPathSync::sourceUsesSshTransport($source) ? 'rsync+ssh' : 'rsync (локально на ФС)';
 
-        if ($this->option('dry-run')) {
-            $args[] = '-n';
-        }
-
-        $args[] = $source;
-        $args[] = $dest;
-
-        $this->info('Запуск: rsync '.($this->option('dry-run') ? '(dry-run) ' : '').'…');
+        $this->info('Запуск: '.$mode.' '.($dry ? '(dry-run) ' : '').'…');
 
         $process = new Process($args);
         $process->setTimeout(3600);

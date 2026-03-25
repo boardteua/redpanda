@@ -19,14 +19,22 @@
 
 ### Підготовка
 
-1. SSH-доступ до хоста **без пароля в репозиторії**: ключ у `ssh-agent` або `~/.ssh`, користувач з правом **читання** каталогу аватарок.
-2. Локальний (або staging) каталог призначення, наприклад `storage/app/legacy-avatars/` у проєкті redpanda — **поза git** або в `.gitignore`, якщо туди кладуться копії.
+1. Каталог призначення у redpanda, наприклад `storage/app/legacy-avatars/` — **поза git** / у `.gitignore`.
+2. **Один сервер** (типово board.te.ua: legacy і redpanda на диску поруч): у `.env` задаються **два абсолютні локальні шляхи** — команда викликає **`rsync` без SSH** (копіювання по ФС).
+3. **Інший сервер** як джерело: формат **`user@host:/шлях/`** у `LEGACY_AVATAR_RSYNC_SOURCE` — тоді додається **`rsync -e ssh`** (ключ у `ssh-agent`, `BatchMode=yes`).
 
 ### Змінні `.env`
 
 Див. **`backend/.env.example`**: `LEGACY_AVATAR_RSYNC_SOURCE`, `LEGACY_AVATAR_RSYNC_DEST`.
 
-Приклад (значення не комітити):
+Приклад **локально на одному хості** (значення не комітити):
+
+```env
+LEGACY_AVATAR_RSYNC_SOURCE=/var/www/board.te.ua/html/avatar/
+LEGACY_AVATAR_RSYNC_DEST=/var/www/redpanda/backend/storage/app/legacy-avatars
+```
+
+Приклад **з віддаленого хоста**:
 
 ```env
 LEGACY_AVATAR_RSYNC_SOURCE=user@board.te.ua:/var/www/board.te.ua/html/avatar/
@@ -42,7 +50,7 @@ php artisan chat:legacy-sync-avatars --dry-run
 php artisan chat:legacy-sync-avatars
 ```
 
-`--dry-run` передає **`rsync -n`** (лише список змін). Використовується **`ssh -o BatchMode=yes`** (без інтерактивного пароля в CI/скриптах).
+`--dry-run` передає **`rsync -n`**. Альтернатива без PHP: `cp -a /var/www/board.te.ua/html/avatar/. /var/www/redpanda/backend/storage/app/legacy-avatars/` (переконайтесь, що каталог призначення існує і права коректні).
 
 ### Після копіювання
 
