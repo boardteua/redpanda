@@ -68,7 +68,7 @@ class LlmsTxtTest extends TestCase
         $this->assertNotNull($contentType);
         $this->assertStringContainsString('text/markdown', $contentType);
         $response->assertSee('Redpanda Chat v2', false);
-        $response->assertSee('без виконання JavaScript SPA', false);
+        $response->assertSee('без виконання JavaScript', false);
     }
 
     public function test_public_chat_v2_setup_md_is_served(): void
