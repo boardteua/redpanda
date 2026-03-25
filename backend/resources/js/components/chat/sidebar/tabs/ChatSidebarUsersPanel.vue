@@ -381,8 +381,7 @@ export default {
 
 <style scoped>
 .rp-presence-row--away,
-.rp-presence-row--inactive,
-.rp-presence-row--unknown {
+.rp-presence-row--inactive {
     filter: grayscale(1);
 }
 

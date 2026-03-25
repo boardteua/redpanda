@@ -16,14 +16,12 @@ export function normalizedPresenceStatus(raw) {
 
 export function presenceRowClass(status) {
     const s = normalizedPresenceStatus(status);
-    if (s === 'inactive') {
+    /** Невизначений статус — той самий візуал, що «неактивний»/офлайн (T126 follow-up). */
+    if (s === 'inactive' || s === PRESENCE_STATUS_UNKNOWN) {
         return 'rp-presence-row--inactive';
     }
     if (s === 'away') {
         return 'rp-presence-row--away';
-    }
-    if (s === PRESENCE_STATUS_UNKNOWN) {
-        return 'rp-presence-row--unknown';
     }
 
     return '';
@@ -31,14 +29,11 @@ export function presenceRowClass(status) {
 
 export function presenceDotClass(status) {
     const s = normalizedPresenceStatus(status);
-    if (s === 'inactive') {
+    if (s === 'inactive' || s === PRESENCE_STATUS_UNKNOWN) {
         return 'bg-gray-500';
     }
     if (s === 'away') {
         return 'bg-amber-500';
-    }
-    if (s === PRESENCE_STATUS_UNKNOWN) {
-        return 'bg-gray-400';
     }
 
     return 'bg-green-600';

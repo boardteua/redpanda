@@ -1393,19 +1393,42 @@ export default {
             this.presenceLastSentStatus = null;
             this.presenceLastPostedAt = null;
         },
-        scheduleFetchPeerPresenceStatuses(presenceFetchEpoch) {
+        /**
+         * @param {number} presenceFetchEpoch
+         * @param {boolean} immediate — після here() без debounce; joining — короткий debounce для пакетування.
+         */
+        scheduleFetchPeerPresenceStatuses(presenceFetchEpoch, immediate = false) {
             if (this.presenceFetchDebounceTimer) {
                 clearTimeout(this.presenceFetchDebounceTimer);
+                this.presenceFetchDebounceTimer = null;
+            }
+            const runFetches = async () => {
+                try {
+                    await this.ensureSanctum();
+                } catch {
+                    if (presenceFetchEpoch === this.peerPresenceStatusFetchEpoch) {
+                        this.peerPresenceStatusFetchLoading = false;
+                    }
+
+                    return;
+                }
+                await Promise.all([
+                    this.fetchPeerPresenceStatuses(presenceFetchEpoch, { skipEnsure: true }),
+                    this.fetchPeerSexHints({ skipEnsure: true }),
+                ]).catch(() => {});
+            };
+            if (immediate) {
+                void runFetches();
+
+                return;
             }
             this.presenceFetchDebounceTimer = setTimeout(() => {
                 this.presenceFetchDebounceTimer = null;
-                Promise.all([
-                    this.fetchPeerPresenceStatuses(presenceFetchEpoch),
-                    this.fetchPeerSexHints(),
-                ]).catch(() => {});
-            }, 250);
+                void runFetches();
+            }, 80);
         },
-        async fetchPeerPresenceStatuses(presenceFetchEpoch) {
+        async fetchPeerPresenceStatuses(presenceFetchEpoch, options = {}) {
+            const skipEnsure = Boolean(options.skipEnsure);
             if (!this.selectedRoomId || !this.roomPresencePeers.length) {
                 if (presenceFetchEpoch === this.peerPresenceStatusFetchEpoch) {
                     this.peerPresenceStatusFetchLoading = false;
@@ -1415,7 +1438,9 @@ export default {
             }
             const ids = this.roomPresencePeers.map((p) => p.id).join(',');
             try {
-                await this.ensureSanctum();
+                if (!skipEnsure) {
+                    await this.ensureSanctum();
+                }
                 const { data } = await window.axios.get(
                     `/api/v1/rooms/${this.selectedRoomId}/presence-statuses`,
                     { params: { user_ids: ids } },
@@ -1430,7 +1455,8 @@ export default {
                 }
             }
         },
-        async fetchPeerSexHints() {
+        async fetchPeerSexHints(options = {}) {
+            const skipEnsure = Boolean(options.skipEnsure);
             if (!this.selectedRoomId || !this.roomPresencePeers.length) {
                 return;
             }
@@ -1441,7 +1467,9 @@ export default {
             }
             const ids = this.roomPresencePeers.map((p) => p.id).join(',');
             try {
-                await this.ensureSanctum();
+                if (!skipEnsure) {
+                    await this.ensureSanctum();
+                }
                 const { data } = await window.axios.get(
                     `/api/v1/rooms/${this.selectedRoomId}/peer-hints`,
                     { params: { user_ids: ids } },
@@ -1483,7 +1511,7 @@ export default {
             const presenceFetchEpoch = this.peerPresenceStatusFetchEpoch;
             this.peerPresenceStatusFetchLoading = true;
             this.roomPresencePeers = list;
-            this.$nextTick(() => this.scheduleFetchPeerPresenceStatuses(presenceFetchEpoch));
+            this.$nextTick(() => this.scheduleFetchPeerPresenceStatuses(presenceFetchEpoch, true));
         },
         addPresencePeer(raw) {
             const p = normalizePresencePeer(raw);
