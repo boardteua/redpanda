@@ -4,7 +4,7 @@ namespace App\Support;
 
 /**
  * Прибирає типове «сміття» HTML у legacy-повідомленнях (порожні color/background у span,
- * зламані fancybox+img без href/src).
+ * зламані fancybox+img без href/src), а також знімає обгортку fancybox, коли href і src однакові.
  */
 final class LegacyChatHtmlGarbageCleaner
 {
@@ -15,6 +15,7 @@ final class LegacyChatHtmlGarbageCleaner
         $out = $html;
         for ($i = 0; $i < self::MAX_PASSES; $i++) {
             $next = $this->passStripJunkSpans($out);
+            $next = $this->passUnwrapFancyboxSameUrlImage($next);
             if ($next === $out) {
                 break;
             }
@@ -92,5 +93,66 @@ final class LegacyChatHtmlGarbageCleaner
             '</a>\s*\z~ix',
             $inner
         );
+    }
+
+    /**
+     * <a class="…fancybox…" href="URL"><img … src="URL" …></a> → лише тег img (типово після імпорту з board.te.ua).
+     */
+    private function passUnwrapFancyboxSameUrlImage(string $html): string
+    {
+        return (string) preg_replace_callback(
+            '~<a\b([^>]+)>(\s*)<img\b([^>]+)>(\s*)</a>~iu',
+            function (array $m): string {
+                $aAttrs = $m[1];
+                $imgWsBefore = $m[2];
+                $imgAttrs = $m[3];
+                $imgWsAfter = $m[4];
+                if (! preg_match('/\bclass\s*=\s*["\'][^"\']*fancybox/i', $aAttrs)) {
+                    return $m[0];
+                }
+                $href = $this->attributeFromAttrString($aAttrs, 'href');
+                $src = $this->attributeFromAttrString($imgAttrs, 'src');
+                if ($href === null || $src === null) {
+                    return $m[0];
+                }
+                if (! $this->sameUrl($href, $src)) {
+                    return $m[0];
+                }
+
+                $imgInner = ltrim($imgAttrs, " \t\n\r");
+
+                return $imgWsBefore.'<img '.$imgInner.'>'.$imgWsAfter;
+            },
+            $html
+        );
+    }
+
+    private function attributeFromAttrString(string $attrs, string $name): ?string
+    {
+        $qName = preg_quote($name, '~');
+        if (preg_match('~\b'.$qName.'\s*=\s*"([^"]*)"~iu', $attrs, $m)) {
+            return $this->decodeAttrValue($m[1]);
+        }
+        if (preg_match('~\b'.$qName."\s*=\s*'([^']*)'~iu", $attrs, $m)) {
+            return $this->decodeAttrValue($m[1]);
+        }
+
+        return null;
+    }
+
+    private function decodeAttrValue(string $raw): string
+    {
+        return trim(html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+
+    private function sameUrl(string $a, string $b): bool
+    {
+        $a = trim($a);
+        $b = trim($b);
+        if ($a === $b) {
+            return true;
+        }
+
+        return strcasecmp($a, $b) === 0;
     }
 }

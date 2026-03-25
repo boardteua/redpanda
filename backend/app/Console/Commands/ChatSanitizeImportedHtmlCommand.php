@@ -13,7 +13,7 @@ class ChatSanitizeImportedHtmlCommand extends Command
                             {--force : Дозволити на production}
                             {--chunk=200 : Розмір chunk для обходу таблиць}';
 
-    protected $description = 'Прибрати порожні legacy span (color:; background:;) і зламані fancybox/img без url у chat та private_messages';
+    protected $description = 'Очистка legacy HTML: junk span, зламані fancybox; зняти обгортку fancybox, коли href=src (chat, private_messages)';
 
     public function handle(LegacyChatHtmlGarbageCleaner $cleaner): int
     {
@@ -64,9 +64,17 @@ class ChatSanitizeImportedHtmlCommand extends Command
     ): int {
         $updated = 0;
         DB::table($table)
-            ->where($column, 'like', '%<span%')
-            ->where($column, 'like', '%color:%')
-            ->where($column, 'like', '%background:%')
+            ->where(function ($q) use ($column): void {
+                $q->where(function ($q2) use ($column): void {
+                    $q2->where($column, 'like', '%<span%')
+                        ->where($column, 'like', '%color:%')
+                        ->where($column, 'like', '%background:%');
+                })->orWhere(function ($q2) use ($column): void {
+                    $q2->where($column, 'like', '%fancybox%')
+                        ->where($column, 'like', '%<a%')
+                        ->where($column, 'like', '%<img%');
+                });
+            })
             ->orderBy($pk)
             ->chunkById($chunk, function ($rows) use (&$updated, $cleaner, $table, $pk, $column, $dryRun): void {
                 foreach ($rows as $row) {
