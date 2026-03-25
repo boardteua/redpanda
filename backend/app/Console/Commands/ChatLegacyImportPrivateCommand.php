@@ -11,7 +11,8 @@ class ChatLegacyImportPrivateCommand extends Command
 {
     protected $signature = 'chat:legacy-import-private
                             {--dry-run : Лише підрахунок рядків без запису}
-                            {--force : Дозволити на production (небезпечно)}';
+                            {--force : Дозволити на production (небезпечно)}
+                            {--yes : Підтвердити імпорт без інтерактивного запиту (для скриптів / runbook)}';
 
     protected $description = 'Імпорт legacy private → private_messages (T131; після користувачів T129/T130)';
 
@@ -59,7 +60,7 @@ class ChatLegacyImportPrivateCommand extends Command
             return self::SUCCESS;
         }
 
-        if (! $this->confirm('Підтвердіть імпорт у порожню private_messages. Продовжити?', false)) {
+        if (! $this->option('yes') && ! $this->confirm('Підтвердіть імпорт у порожню private_messages. Продовжити?', false)) {
             $this->warn('Скасовано.');
 
             return self::FAILURE;

@@ -62,13 +62,14 @@ mysql -h DB_HOST -u DBA_USER -p legacy_org100h < /secure/incoming/org100h.sql
 - Приклад (значення **не** комітити):
 
 ```env
-LEGACY_DB_HOST=127.0.0.1
+LEGACY_DB_HOST=mysql
 LEGACY_DB_PORT=3306
 LEGACY_DB_DATABASE=legacy_org100h
 LEGACY_DB_USERNAME=...
 LEGACY_DB_PASSWORD=...
 ```
 
+- Якщо **`php artisan` у контейнері PHP** у тій самій docker-мережі, що й MySQL — **`LEGACY_DB_HOST=mysql`** (сервіс з `compose.yaml`), не `127.0.0.1`.
 - Деталі з’єднання: `backend/config/database.php` → connection `legacy`. Огляд staging-процедури: [T13-ETL-STAGING.md](T13-ETL-STAGING.md).
 
 ### 6. Сухий прогін (обов’язково перед записом у цільову БД)
@@ -95,6 +96,28 @@ php artisan chat:legacy-remap-board-urls --dry-run
 | 8 | **T130** | `php artisan chat:legacy-import-production` з **`--force`** на prod за рішенням; політика: **порожні** `users` / `rooms` / `chat` у цільовій БД (див. [T130-LEGACY-PUBLIC-CHAT-IMPORT.md](T130-LEGACY-PUBLIC-CHAT-IMPORT.md)). |
 | 9 | **T131** | `php artisan chat:legacy-import-private` — мапінг у [T131-LEGACY-PRIVATE-IMPORT.md](T131-LEGACY-PRIVATE-IMPORT.md). |
 | 10 | **T132** | rsync **avatar** і **uploads** з board.te.ua; ремап URL — [T132-LEGACY-MEDIA-MIGRATION.md](T132-LEGACY-MEDIA-MIGRATION.md). |
+
+**Порожня цільова схема перед кроками 8–9:** типово `php artisan migrate:fresh --force` **без** сидів, що додають `users`/`rooms`/`chat`/`private_messages` (перевірте `DatabaseSeeder`). Після цього знову **`php artisan config:cache`** за потреби.
+
+**Artisan у Docker (приклад):** ім’я контейнера подивіться через `docker ps` (часто `redpanda-local-deps-php-1`), робочий каталог у контейнері — `/var/www/html`.
+
+```bash
+PHP_CTN=redpanda-local-deps-php-1
+ART='docker exec -it '"$PHP_CTN"' sh -lc '\''cd /var/www/html && php artisan'
+# Або одна сесія: docker exec -it "$PHP_CTN" sh -lc 'cd /var/www/html && bash'
+```
+
+Повний ланцюжок після go/no-go (інтерактивні підтвердження — відповісти «yes», або додати **`--yes`**):
+
+```bash
+docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-import-production --force --yes'
+docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-import-private --force --yes'
+docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-sync-avatars'
+docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-sync-uploads'
+docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-remap-board-urls --force'
+```
+
+Перед **T132** залиште **`--dry-run`** для `chat:legacy-sync-avatars` / `chat:legacy-sync-uploads` / `chat:legacy-remap-board-urls`; задайте **`LEGACY_*_RSYNC_*`** та **`LEGACY_URL_REMAP_TARGET_ORIGIN`** у `production.env`, потім **`docker compose … up -d --force-recreate php queue reverb`** і `config:cache` (див. [T132-LEGACY-MEDIA-MIGRATION.md](T132-LEGACY-MEDIA-MIGRATION.md)).
 
 - **SSH до legacy-хоста** (приклад узагальнено): `ssh …@board.te.ua` — ключі в агенті, **BatchMode** для скриптів; деталі rsync — [T113-LEGACY-AVATARS.md](T113-LEGACY-AVATARS.md) та **T132**.
 

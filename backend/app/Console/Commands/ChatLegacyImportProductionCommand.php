@@ -14,7 +14,8 @@ class ChatLegacyImportProductionCommand extends Command
 {
     protected $signature = 'chat:legacy-import-production
                             {--dry-run : Лише оцінка обсягу без запису в цільову БД}
-                            {--force : Дозволити на production (небезпечно)}';
+                            {--force : Дозволити на production (небезпечно)}
+                            {--yes : Підтвердити імпорт без інтерактивного запиту (для скриптів / runbook)}';
 
     protected $description = 'Імпорт rooms/users/chat з legacy у порожню схему redpanda (production, T130; runbook T128)';
 
@@ -60,7 +61,7 @@ class ChatLegacyImportProductionCommand extends Command
             return self::SUCCESS;
         }
 
-        if (! $this->confirm('Підтвердіть імпорт у поточну БД (має бути порожня users/chat/rooms). Продовжити?', false)) {
+        if (! $this->option('yes') && ! $this->confirm('Підтвердіть імпорт у поточну БД (має бути порожня users/chat/rooms). Продовжити?', false)) {
             $this->warn('Скасовано.');
 
             return self::FAILURE;
