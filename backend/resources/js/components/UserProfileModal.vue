@@ -73,7 +73,7 @@
                                     {{ avatarUploadError }}
                                 </p>
                                 <p class="text-xs text-[var(--rp-text-muted)]">
-                                    JPEG, PNG, GIF або WebP, до 4 МБ (як у чаті).
+                                    JPEG, PNG, GIF або WebP, до 4 МБ.
                                 </p>
                             </div>
                         </div>
