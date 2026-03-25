@@ -1851,3 +1851,20 @@
 
 ---
 
+### [x] T141 — API: **`GET /api/v1/rooms` без сесії** — не **500**, а узгоджена відмова (**401**)
+
+- **Статус:** **PASS** (2026-03-25). Явний guard у `RoomController::index` проти `$request->user() === null` (уникнення PHP-помилки → **500**); тест `test_get_rooms_without_session_returns_401_not_500`; `php artisan test tests/Feature/ChatApiTest.php` — PASS; smoke **`curl -H 'Accept: application/json' https://board.te.ua/api/v1/rooms`** — **401**.
+- **Контекст клієнта:** зовнішній smoke від **`/llms.txt`** (curl / агенти / моніторинг): **`GET /api/v1/rooms`** **без** cookie сесії повертає **500** (`Server Error`) замість очікуваної відмови авторизації. Це плутає інтеграторів, засмічує логи «хибними 500» і суперечить духу стабільного публічного API (**T04**).
+- **Узгодження зі спекою:** **T04** — список кімнат за автентифікацією; коректні коди та тіла помилок для JSON API (узгоджено з **OpenAPI**).
+- **Delegate:** **Backend Architect**; за потреби **API Tester** ([`.cursor/skills/api-tester/SKILL.md`](.cursor/skills/api-tester/SKILL.md)) на контракт.
+- **Залежність:** **T02**/**T04**/**T21**; **`docs/chat-v2/openapi.yaml`**
+- **Deliverables:**
+  - Локалізувати причину **500** (контролер, middleware `auth:sanctum`, політики, ресурс/репозиторій, неочікуваний `null`) і виправити: для запиту **без** валідної сесії/токена — **401 Unauthorized** (або **403 Forbidden**, якщо політика продукту явно така) з JSON, консистентним із рештою API при `Accept: application/json`.
+  - У **production** при **`APP_DEBUG=false`** — без зайвого stack trace у відповіді; стабільний `message` / код помилки за конвенцією проєкту.
+  - **Feature-тест(и):** неавторизований `GET /api/v1/rooms` → **не 500**, очікуваний **401** (або задокументований **403**); регресія для авторизованого сценарію — без зміни успішної поведінки.
+  - За потреби оновити **`openapi.yaml`** (опис **401** для цього `path`, якщо бракує або розходиться з фактом).
+- **QA evidence:** **`php artisan test`** (релевантний фільтр або suite) — PASS; **`curl -sS -o /dev/null -w '%{http_code}\n' https://board.te.ua/api/v1/rooms`** без cookie на **staging/prod** після релізу — **не 500** (артефакт для PR/оператора); без PII у логах прикладів.
+- **Трасування:** відповідність публічним сценаріям з **llms.txt** / інтеграторських чеклістів; зменшення фальшивих server errors.
+
+---
+

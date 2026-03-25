@@ -18,6 +18,9 @@ class RoomController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $user = $request->user();
+        if ($user === null) {
+            abort(401);
+        }
         $query = Room::query()
             ->withCount('messages')
             ->orderBy('room_id');

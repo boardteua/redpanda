@@ -1670,7 +1670,9 @@ paths:
     get:
       tags: [Chat]
       summary: Список кімнат, доступних користувачу
-      description: Гості — лише `access === 0`; зареєстровані без VIP — `access < 2`; VIP або staff бачать усі кімнати, до яких є `interact`.
+      description: |
+        Гості — лише `access === 0`; зареєстровані без VIP — `access < 2`; VIP або staff бачать усі кімнати, до яких є `interact`.
+        **T141:** без валідної автентифікації (сесія Sanctum для SPA або Bearer-токен за політикою API) — **`401`**, не внутрішня помилка сервера.
       operationId: listRooms
       security:
         - sanctumSession: []

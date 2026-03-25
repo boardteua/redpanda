@@ -95,6 +95,18 @@ class ChatApiTest extends TestCase
             ->assertUnauthorized();
     }
 
+    /** T141: smoke / integrators — без SPA Referer, лише JSON; не 500. */
+    public function test_get_rooms_without_session_returns_401_not_500(): void
+    {
+        $this->seedRooms();
+
+        $response = $this->getJson('/api/v1/rooms');
+
+        $this->assertNotSame(500, $response->getStatusCode());
+        $response->assertUnauthorized();
+        $response->assertJsonStructure(['message']);
+    }
+
     public function test_unknown_room_messages_return_404(): void
     {
         $user = User::factory()->create();
