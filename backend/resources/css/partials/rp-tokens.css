@@ -1,0 +1,292 @@
+/* -------------------------------------------------------------------------- */
+/* Design tokens — світла / темна (data-theme: light | dark | system)         */
+/* -------------------------------------------------------------------------- */
+
+:root,
+:root[data-theme='light'] {
+    --rp-bg: #f1f5f9;
+    --rp-surface: #ffffff;
+    --rp-surface-elevated: #f8fafc;
+    --rp-text: #0f172a;
+    --rp-text-muted: #334155;
+    --rp-border: #94a3b8;
+    --rp-border-subtle: #cbd5e1;
+    --rp-primary: #c2410c;
+    --rp-primary-hover: #9a3412;
+    --rp-on-primary: #ffffff;
+    --rp-focus-ring: #1d4ed8;
+    --rp-error: #b91c1c;
+    --rp-error-bg: #fef2f2;
+    --rp-link: #1d4ed8;
+    --rp-link-hover: #1e3a8a;
+    /* T77 / T89 — вітальня: градієнт як themes/orange/orange.css #wrap_login */
+    --rp-landing-hero-top: #eaa727;
+    --rp-landing-hero-bottom: #e48820;
+    --rp-landing-card-shadow: 0 25px 50px -12px rgb(124 45 18 / 0.32);
+    /* T89 — кремовий зовнішній фон (#external_wrap), стрічка (#background_chat) */
+    --rp-chat-app-bg: #fefff6;
+    --rp-chat-header-bg: #ece9df;
+    --rp-chat-feed-bg: #ebecdb;
+    --rp-chat-feed-wash: color-mix(in srgb, var(--rp-primary) 18%, transparent);
+    /* T91 — watermark з legacy board.te.ua/upload/panda_o.png (копія: public/chat-assets/panda_o.png) */
+    --rp-chat-feed-panda-image: url('/chat-assets/panda_o.png');
+    --rp-chat-feed-panda-opacity: 0.16;
+    --rp-chat-feed-panda-filter: none;
+    --rp-chat-feed-panda-size-w: min(46vw, 18rem);
+    --rp-chat-message-bg: #fffefb;
+    --rp-chat-message-border: #d8d0c4;
+    --rp-chat-composer-bg: #faf7f0;
+    --rp-chat-toolbar-bg: #efebe3;
+    --rp-chat-chrome-border: #c9c0b2;
+    /* T89 — сайдбар як .panels (#362709 / #f7f4f9); лінки як legacy a на панелі */
+    --rp-chat-sidebar-bg: #362709;
+    --rp-chat-sidebar-fg: #f7f4f9;
+    --rp-chat-sidebar-muted: #c4b5a8;
+    --rp-chat-sidebar-border: #312304;
+    --rp-chat-sidebar-tab-active-bg: rgb(255 255 255 / 0.12);
+    --rp-chat-sidebar-icon: #e8dfd4;
+    --rp-chat-sidebar-link: rgb(255 255 255 / 0.92);
+    --rp-chat-sidebar-link-hover: #ffffff;
+    --rp-chat-sidebar-input-bg: rgb(255 255 255 / 0.08);
+    --rp-chat-sidebar-input-border: rgb(255 255 255 / 0.18);
+    /* Заголовок кімнати в основній колонці — «колір сайдбару» (на світлому тлі — фон панелі) */
+    --rp-chat-main-header-title: var(--rp-chat-sidebar-bg);
+    /* T49 / T89 — .sadmin / .modo / .vip (orange.css) */
+    --rp-peer-icon-admin: #dc2626;
+    --rp-peer-icon-mod: #1ab334;
+    --rp-peer-icon-vip: #ff9900;
+    --rp-peer-icon-sex: #e8dfd4;
+    /* T89 — бургер: .user_option_list #FFC600 + текст #333 */
+    --rp-burger-bg: #261f1a;
+    --rp-burger-self-bar-bg: #3f352c;
+    --rp-burger-accent-bg: #ffc600;
+    --rp-burger-accent-fg: #333333;
+    --rp-burger-accent-hover: #e6b800;
+    --rp-burger-accent-divider: rgb(28 19 10 / 0.12);
+    --rp-burger-footer-card-bg: #faf8f4;
+    --rp-burger-footer-card-fg: #1a120a;
+    --rp-burger-footer-muted: #5c534a;
+    /* Стрічка — чергування (T114: напівпрозорі смуги, просвічується фон панди T91) */
+    --rp-chat-row-even: color-mix(in srgb, #ffffff 66%, transparent);
+    --rp-chat-row-odd: color-mix(in srgb, #e3e5d6 52%, transparent);
+    /* Інлайн-приват у стрічці (T25) — окремий фон + акцент зліва */
+    --rp-chat-row-inline-private-bg: color-mix(in srgb, #e8eef6 88%, transparent);
+    --rp-chat-row-inline-private-border: #4a6fa5;
+    /* Надіслати — ті самі акценти, що й --rp-primary (узгоджено з темною темою / WebKit) */
+    --rp-chat-send-bg: var(--rp-primary);
+    --rp-chat-send-bg-hover: var(--rp-primary-hover);
+    --rp-chat-send-fg: var(--rp-on-primary);
+    /* Нік адміна в стрічці (T21) */
+    --rp-chat-role-admin: #1a1a1a;
+    /* Форматування тіла повідомлення (T30) — пресети з контрастом на чіпі */
+    --rp-chat-fmt-bg-amber: #fef08a;
+    --rp-chat-fmt-on-amber: #422006;
+    --rp-chat-fmt-bg-mint: #d9f99d;
+    --rp-chat-fmt-on-mint: #14532d;
+    --rp-chat-fmt-bg-sky: #bae6fd;
+    --rp-chat-fmt-on-sky: #0c4a6e;
+    --rp-chat-fmt-bg-lavender: #e9d5ff;
+    --rp-chat-fmt-on-lavender: #581c87;
+    --rp-chat-fmt-bg-rose: #fecdd3;
+    --rp-chat-fmt-on-rose: #881337;
+    --rp-chat-fmt-bg-sand: #fde68a;
+    --rp-chat-fmt-on-sand: #451a03;
+    --rp-chat-fmt-fg-blue: #1d4ed8;
+    --rp-chat-fmt-fg-emerald: #047857;
+    --rp-chat-fmt-fg-rose: #be123c;
+    --rp-chat-fmt-fg-violet: #6d28d9;
+    --rp-chat-fmt-fg-amber: #b45309;
+    --rp-chat-fmt-fg-slate: #334155;
+}
+
+:root[data-theme='dark'] {
+    --rp-bg: #0f172a;
+    --rp-surface: #1e293b;
+    --rp-surface-elevated: #334155;
+    --rp-text: #f1f5f9;
+    --rp-text-muted: #cbd5e1;
+    --rp-border: #64748b;
+    --rp-border-subtle: #475569;
+    --rp-primary: #ea580c;
+    --rp-primary-hover: #fb923c;
+    --rp-on-primary: #0f172a;
+    --rp-focus-ring: #93c5fd;
+    --rp-error: #fca5a5;
+    --rp-error-bg: #450a0a;
+    --rp-link: #93c5fd;
+    --rp-link-hover: #bfdbfe;
+    --rp-landing-hero-top: #c2410c;
+    --rp-landing-hero-bottom: #9a3412;
+    --rp-landing-card-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.42);
+    /* Чат-вікно (паритет board.te.ua — теплі «панельні» тони) */
+    --rp-chat-app-bg: #111c2e;
+    --rp-chat-header-bg: #17233a;
+    --rp-chat-feed-bg: #152032;
+    --rp-chat-feed-wash: color-mix(in srgb, var(--rp-primary) 14%, transparent);
+    --rp-chat-feed-panda-image: url('/chat-assets/panda_o.png');
+    --rp-chat-feed-panda-opacity: 0.11;
+    --rp-chat-feed-panda-filter: brightness(1.12) saturate(0.88);
+    --rp-chat-feed-panda-size-w: min(46vw, 18rem);
+    --rp-chat-message-bg: #1b2739;
+    --rp-chat-message-border: #334155;
+    --rp-chat-composer-bg: #1a2436;
+    --rp-chat-toolbar-bg: #161f30;
+    --rp-chat-chrome-border: #3d4f66;
+    --rp-chat-sidebar-bg: var(--rp-surface);
+    --rp-chat-sidebar-fg: var(--rp-text);
+    --rp-chat-sidebar-muted: var(--rp-text-muted);
+    --rp-chat-sidebar-border: var(--rp-border-subtle);
+    --rp-chat-sidebar-tab-active-bg: var(--rp-surface-elevated);
+    --rp-chat-sidebar-icon: var(--rp-text-muted);
+    --rp-chat-sidebar-link: var(--rp-link);
+    --rp-chat-sidebar-link-hover: var(--rp-link-hover);
+    --rp-chat-sidebar-input-bg: var(--rp-surface-elevated);
+    --rp-chat-sidebar-input-border: var(--rp-border-subtle);
+    --rp-chat-main-header-title: var(--rp-chat-sidebar-fg);
+    --rp-peer-icon-admin: #fca5a5;
+    --rp-peer-icon-mod: #86efac;
+    --rp-peer-icon-vip: #fdba74;
+    --rp-peer-icon-sex: #cbd5e1;
+    --rp-chat-row-even: color-mix(in srgb, #1b2739 86%, transparent);
+    --rp-chat-row-odd: color-mix(in srgb, #152033 82%, transparent);
+    --rp-chat-row-inline-private-bg: color-mix(in srgb, #243047 88%, transparent);
+    --rp-chat-row-inline-private-border: #7ea3d9;
+    --rp-chat-send-bg: var(--rp-primary);
+    --rp-chat-send-bg-hover: var(--rp-primary-hover);
+    --rp-chat-send-fg: var(--rp-on-primary);
+    --rp-chat-role-admin: #cbd5e1;
+    --rp-chat-fmt-bg-amber: #854d0e;
+    --rp-chat-fmt-on-amber: #fef9c3;
+    --rp-chat-fmt-bg-mint: #365314;
+    --rp-chat-fmt-on-mint: #ecfccb;
+    --rp-chat-fmt-bg-sky: #075985;
+    --rp-chat-fmt-on-sky: #e0f2fe;
+    --rp-chat-fmt-bg-lavender: #5b21b6;
+    --rp-chat-fmt-on-lavender: #f3e8ff;
+    --rp-chat-fmt-bg-rose: #9f1239;
+    --rp-chat-fmt-on-rose: #ffe4e6;
+    --rp-chat-fmt-bg-sand: #713f12;
+    --rp-chat-fmt-on-sand: #fef3c7;
+    --rp-chat-fmt-fg-blue: #93c5fd;
+    --rp-chat-fmt-fg-emerald: #6ee7b7;
+    --rp-chat-fmt-fg-rose: #fda4af;
+    --rp-chat-fmt-fg-violet: #c4b5fd;
+    --rp-chat-fmt-fg-amber: #fcd34d;
+    --rp-chat-fmt-fg-slate: #cbd5e1;
+    --rp-burger-bg: #261f1a;
+    --rp-burger-self-bar-bg: var(--rp-surface-elevated);
+    --rp-burger-accent-bg: #f7e008;
+    --rp-burger-accent-fg: #1c130a;
+    --rp-burger-accent-hover: #e6d000;
+    --rp-burger-accent-divider: rgb(28 19 10 / 0.12);
+    --rp-burger-footer-card-bg: #faf8f4;
+    --rp-burger-footer-card-fg: #1a120a;
+    --rp-burger-footer-muted: #5c534a;
+}
+
+/* Нативні контроли / submit (iOS Safari) узгоджуються з обраною темою */
+html {
+    color-scheme: light;
+}
+
+html[data-theme='dark'] {
+    color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    html[data-theme='system'] {
+        color-scheme: dark;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    html[data-theme='system'] {
+        color-scheme: light;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root[data-theme='system'] {
+        --rp-bg: #0f172a;
+        --rp-surface: #1e293b;
+        --rp-surface-elevated: #334155;
+        --rp-text: #f1f5f9;
+        --rp-text-muted: #cbd5e1;
+        --rp-border: #64748b;
+        --rp-border-subtle: #475569;
+        --rp-primary: #ea580c;
+        --rp-primary-hover: #fb923c;
+        --rp-on-primary: #0f172a;
+        --rp-focus-ring: #93c5fd;
+        --rp-error: #fca5a5;
+        --rp-error-bg: #450a0a;
+        --rp-link: #93c5fd;
+        --rp-link-hover: #bfdbfe;
+        --rp-landing-hero-top: #c2410c;
+        --rp-landing-hero-bottom: #9a3412;
+        --rp-landing-card-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.42);
+        --rp-chat-app-bg: #111c2e;
+        --rp-chat-header-bg: #17233a;
+        --rp-chat-feed-bg: #152032;
+        --rp-chat-feed-wash: color-mix(in srgb, var(--rp-primary) 14%, transparent);
+        --rp-chat-feed-panda-image: url('/chat-assets/panda_o.png');
+        --rp-chat-feed-panda-opacity: 0.11;
+        --rp-chat-feed-panda-filter: brightness(1.12) saturate(0.88);
+        --rp-chat-feed-panda-size-w: min(46vw, 18rem);
+        --rp-chat-message-bg: #1b2739;
+        --rp-chat-message-border: #334155;
+        --rp-chat-composer-bg: #1a2436;
+        --rp-chat-toolbar-bg: #161f30;
+        --rp-chat-chrome-border: #3d4f66;
+        --rp-chat-sidebar-bg: var(--rp-surface);
+        --rp-chat-sidebar-fg: var(--rp-text);
+        --rp-chat-sidebar-muted: var(--rp-text-muted);
+        --rp-chat-sidebar-border: var(--rp-border-subtle);
+        --rp-chat-sidebar-tab-active-bg: var(--rp-surface-elevated);
+        --rp-chat-sidebar-icon: var(--rp-text-muted);
+        --rp-chat-sidebar-link: var(--rp-link);
+        --rp-chat-sidebar-link-hover: var(--rp-link-hover);
+        --rp-chat-sidebar-input-bg: var(--rp-surface-elevated);
+        --rp-chat-sidebar-input-border: var(--rp-border-subtle);
+        --rp-chat-main-header-title: var(--rp-chat-sidebar-fg);
+        --rp-peer-icon-admin: #fca5a5;
+        --rp-peer-icon-mod: #86efac;
+        --rp-peer-icon-vip: #fdba74;
+        --rp-peer-icon-sex: #cbd5e1;
+        --rp-chat-row-even: color-mix(in srgb, #1b2739 86%, transparent);
+        --rp-chat-row-odd: color-mix(in srgb, #152033 82%, transparent);
+        --rp-chat-row-inline-private-bg: color-mix(in srgb, #243047 88%, transparent);
+        --rp-chat-row-inline-private-border: #7ea3d9;
+        --rp-chat-send-bg: var(--rp-primary);
+        --rp-chat-send-bg-hover: var(--rp-primary-hover);
+        --rp-chat-send-fg: var(--rp-on-primary);
+        --rp-chat-role-admin: #cbd5e1;
+        --rp-chat-fmt-bg-amber: #854d0e;
+        --rp-chat-fmt-on-amber: #fef9c3;
+        --rp-chat-fmt-bg-mint: #365314;
+        --rp-chat-fmt-on-mint: #ecfccb;
+        --rp-chat-fmt-bg-sky: #075985;
+        --rp-chat-fmt-on-sky: #e0f2fe;
+        --rp-chat-fmt-bg-lavender: #5b21b6;
+        --rp-chat-fmt-on-lavender: #f3e8ff;
+        --rp-chat-fmt-bg-rose: #9f1239;
+        --rp-chat-fmt-on-rose: #ffe4e6;
+        --rp-chat-fmt-bg-sand: #713f12;
+        --rp-chat-fmt-on-sand: #fef3c7;
+        --rp-chat-fmt-fg-blue: #93c5fd;
+        --rp-chat-fmt-fg-emerald: #6ee7b7;
+        --rp-chat-fmt-fg-rose: #fda4af;
+        --rp-chat-fmt-fg-violet: #c4b5fd;
+        --rp-chat-fmt-fg-amber: #fcd34d;
+        --rp-chat-fmt-fg-slate: #cbd5e1;
+        --rp-burger-bg: #261f1a;
+        --rp-burger-self-bar-bg: var(--rp-surface-elevated);
+        --rp-burger-accent-bg: #f7e008;
+        --rp-burger-accent-fg: #1c130a;
+        --rp-burger-accent-hover: #e6d000;
+        --rp-burger-accent-divider: rgb(28 19 10 / 0.12);
+        --rp-burger-footer-card-bg: #faf8f4;
+        --rp-burger-footer-card-fg: #1a120a;
+        --rp-burger-footer-muted: #5c534a;
+    }
+}

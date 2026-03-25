@@ -14,6 +14,25 @@ import StaffFlaggedMessagesView from '../views/StaffFlaggedMessagesView.vue';
 
 Vue.use(VueRouter);
 
+/** T135: маршрути, для яких потрібен важкий CSS чату (перший paint міг бути через welcome.css). */
+const ROUTES_NEEDING_CHAT_STYLES = new Set([
+    'chat',
+    'admin-hub',
+    'archive',
+    'staff-users',
+    'staff-stop-words',
+    'staff-flagged',
+]);
+
+let chatOnlyCssPromise = null;
+
+function loadChatOnlyStyles() {
+    if (!chatOnlyCssPromise) {
+        chatOnlyCssPromise = import('../../css/chat-only.css');
+    }
+    return chatOnlyCssPromise;
+}
+
 const router = new VueRouter({
     mode: 'history',
     routes: [
@@ -82,6 +101,20 @@ const router = new VueRouter({
             meta: { documentTitle: 'Чат Рудої Панди — черга модерації' },
         },
     ],
+});
+
+router.beforeEach((to, _from, next) => {
+    const initial = typeof window !== 'undefined' ? window.__RP_INITIAL_CSS_ENTRY__ : 'chat';
+    if (initial === 'welcome' && ROUTES_NEEDING_CHAT_STYLES.has(to.name)) {
+        loadChatOnlyStyles()
+            .then(() => next())
+            .catch((e) => {
+                console.error(e);
+                next();
+            });
+        return;
+    }
+    next();
 });
 
 /** T93: поза `/chat` і `/` — статичний заголовок з meta; чат і вітальня виставляють title у view. */

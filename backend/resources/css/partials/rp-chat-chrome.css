@@ -1,0 +1,542 @@
+/* -------------------------------------------------------------------------- */
+/* Чат-екран (T16): структура вікна, тло стрічки, панель інструментів композера   */
+/* -------------------------------------------------------------------------- */
+
+.rp-chat-feed-wash {
+    position: relative;
+}
+
+.rp-chat-feed-wash::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    /* Акцент ближче до правого нижнього кута як watermark у 05-chat-viewport.png */
+    background: radial-gradient(
+        ellipse 58% 50% at 82% 72%,
+        var(--rp-chat-feed-wash) 0%,
+        transparent 70%
+    );
+    opacity: 0.82;
+}
+
+/* T91 — декоративна панда (локальний PNG, без hotlink) */
+.rp-chat-feed-wash::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: var(--rp-chat-feed-panda-opacity);
+    filter: var(--rp-chat-feed-panda-filter);
+    background-image: var(--rp-chat-feed-panda-image);
+    background-repeat: no-repeat;
+    background-position: 98% 99%;
+    background-size: var(--rp-chat-feed-panda-size-w) auto;
+}
+
+/* Порожній стан стрічки: текст поверх watermark з достатнім контрастом (T81 / T91) */
+.rp-chat-feed-wash > .rp-chat-feed-empty {
+    background: color-mix(in srgb, var(--rp-chat-feed-bg) 78%, var(--rp-surface));
+    border-radius: 0.5rem;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rp-chat-chrome-border) 35%, transparent);
+}
+
+.rp-chat-feed-wash > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Менше «підкручування» сторінки при досягненні краю стрічки на touch (без JS) */
+.rp-chat-feed-wash > ul[role='log'] {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.rp-chat-composer-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 2.75rem;
+    max-height: 7rem;
+    resize: none;
+    overflow-y: auto;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.875rem;
+    line-height: 1.35;
+    color: var(--rp-text);
+    background: var(--rp-surface);
+    border: 1px solid var(--rp-chat-chrome-border);
+    border-radius: 0.375rem;
+    font-family: var(--font-sans);
+    vertical-align: middle;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.rp-chat-composer-input:hover {
+    border-color: var(--rp-border);
+}
+
+.rp-chat-composer-input:focus {
+    outline: none;
+}
+
+.rp-chat-composer-input:focus-visible {
+    border-color: var(--rp-focus-ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--rp-focus-ring) 35%, transparent);
+}
+
+/* T119: мобільний композер — без зуму iOS при фокусі (font ≥16px), одна лінія порожнього поля */
+@media (max-width: 767px) {
+    .rp-chat-composer-input {
+        min-height: 2.25rem;
+        font-size: 1rem;
+        line-height: 1.35;
+    }
+
+    .rp-chat-composer-row {
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+}
+
+.rp-chat-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.0625rem;
+    padding: 0.1875rem 0.375rem;
+    background: var(--rp-chat-toolbar-bg);
+    border-bottom: 1px solid var(--rp-chat-chrome-border);
+    border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.rp-chat-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0.25rem;
+    border: none;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--rp-text-muted);
+    cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition:
+        background 0.12s ease,
+        color 0.12s ease;
+}
+
+.rp-chat-toolbar-btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--rp-text) 8%, transparent);
+    color: var(--rp-text);
+}
+
+.rp-chat-toolbar-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+.rp-chat-toolbar-btn:focus {
+    outline: none;
+}
+
+.rp-chat-toolbar-btn:focus-visible {
+    outline: 2px solid var(--rp-focus-ring);
+    outline-offset: 1px;
+}
+
+.rp-chat-toolbar-btn--active {
+    background: color-mix(in srgb, var(--rp-primary) 22%, transparent);
+    color: var(--rp-text);
+}
+
+.rp-chat-toolbar-btn--active:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--rp-primary) 30%, transparent);
+}
+
+/* T30 — пресети в стрічці / архіві (без HTML від клієнта) */
+.rp-chat-msg-bold {
+    font-weight: 700;
+}
+
+.rp-chat-msg-italic {
+    font-style: italic;
+}
+
+.rp-chat-msg-underline {
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+}
+
+.rp-chat-msg-bg-amber,
+.rp-chat-msg-bg-mint,
+.rp-chat-msg-bg-sky,
+.rp-chat-msg-bg-lavender,
+.rp-chat-msg-bg-rose,
+.rp-chat-msg-bg-sand {
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    padding: 0.08em 0.22em;
+    border-radius: 0.2em;
+}
+
+.rp-chat-msg-bg-amber {
+    background: var(--rp-chat-fmt-bg-amber);
+    color: var(--rp-chat-fmt-on-amber);
+}
+
+.rp-chat-msg-bg-mint {
+    background: var(--rp-chat-fmt-bg-mint);
+    color: var(--rp-chat-fmt-on-mint);
+}
+
+.rp-chat-msg-bg-sky {
+    background: var(--rp-chat-fmt-bg-sky);
+    color: var(--rp-chat-fmt-on-sky);
+}
+
+.rp-chat-msg-bg-lavender {
+    background: var(--rp-chat-fmt-bg-lavender);
+    color: var(--rp-chat-fmt-on-lavender);
+}
+
+.rp-chat-msg-bg-rose {
+    background: var(--rp-chat-fmt-bg-rose);
+    color: var(--rp-chat-fmt-on-rose);
+}
+
+.rp-chat-msg-bg-sand {
+    background: var(--rp-chat-fmt-bg-sand);
+    color: var(--rp-chat-fmt-on-sand);
+}
+
+.rp-chat-msg-fg-blue {
+    color: var(--rp-chat-fmt-fg-blue);
+}
+
+.rp-chat-msg-fg-emerald {
+    color: var(--rp-chat-fmt-fg-emerald);
+}
+
+.rp-chat-msg-fg-rose {
+    color: var(--rp-chat-fmt-fg-rose);
+}
+
+.rp-chat-msg-fg-violet {
+    color: var(--rp-chat-fmt-fg-violet);
+}
+
+.rp-chat-msg-fg-amber {
+    color: var(--rp-chat-fmt-fg-amber);
+}
+
+.rp-chat-msg-fg-slate {
+    color: var(--rp-chat-fmt-fg-slate);
+}
+
+.rp-chat-fmt-swatch--amber {
+    background: var(--rp-chat-fmt-bg-amber);
+}
+
+.rp-chat-fmt-swatch--mint {
+    background: var(--rp-chat-fmt-bg-mint);
+}
+
+.rp-chat-fmt-swatch--sky {
+    background: var(--rp-chat-fmt-bg-sky);
+}
+
+.rp-chat-fmt-swatch--lavender {
+    background: var(--rp-chat-fmt-bg-lavender);
+}
+
+.rp-chat-fmt-swatch--rose {
+    background: var(--rp-chat-fmt-bg-rose);
+}
+
+.rp-chat-fmt-swatch--sand {
+    background: var(--rp-chat-fmt-bg-sand);
+}
+
+.rp-chat-fmt-swatch-fg--blue {
+    background: var(--rp-chat-fmt-fg-blue);
+}
+
+.rp-chat-fmt-swatch-fg--emerald {
+    background: var(--rp-chat-fmt-fg-emerald);
+}
+
+.rp-chat-fmt-swatch-fg--rose {
+    background: var(--rp-chat-fmt-fg-rose);
+}
+
+.rp-chat-fmt-swatch-fg--violet {
+    background: var(--rp-chat-fmt-fg-violet);
+}
+
+.rp-chat-fmt-swatch-fg--amber {
+    background: var(--rp-chat-fmt-fg-amber);
+}
+
+.rp-chat-fmt-swatch-fg--slate {
+    background: var(--rp-chat-fmt-fg-slate);
+}
+
+.rp-chat-toolbar-spacer {
+    flex: 1;
+    min-width: 0.5rem;
+}
+
+/* Нижній ряд композера — одна візуальна висота, референс board.te.ua */
+.rp-chat-composer-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem 0.5rem;
+}
+
+@media (min-width: 640px) {
+    .rp-chat-composer-row {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        padding-bottom: 0.5rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .rp-chat-composer-row {
+        flex-wrap: wrap;
+    }
+
+    .rp-chat-composer-trailing {
+        margin-left: auto;
+    }
+}
+
+.rp-chat-composer-rail-btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    border: 1px solid var(--rp-chat-chrome-border);
+    border-radius: 0.375rem;
+    background: var(--rp-surface);
+    color: var(--rp-text-muted);
+    cursor: pointer;
+    transition:
+        background 0.12s ease,
+        border-color 0.12s ease,
+        color 0.12s ease;
+}
+
+.rp-chat-composer-rail-btn:hover:not(:disabled) {
+    border-color: var(--rp-border);
+    color: var(--rp-text);
+    background: color-mix(in srgb, var(--rp-text) 4%, var(--rp-surface));
+}
+
+.rp-chat-composer-rail-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+.rp-chat-composer-rail-btn:focus {
+    outline: none;
+}
+
+.rp-chat-composer-rail-btn:focus-visible {
+    outline: 2px solid var(--rp-focus-ring);
+    outline-offset: 2px;
+}
+
+/* Кнопка надсилання — та сама висота що смайл/фото, лише іконка (референс) */
+.rp-chat-send-primary {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    border: none;
+    border-radius: 0.375rem;
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: var(--rp-chat-send-bg);
+    background-image: none;
+    color: var(--rp-chat-send-fg);
+    cursor: pointer;
+    box-shadow: none;
+    transition: background 0.15s ease;
+}
+
+.rp-chat-composer-trailing {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.rp-chat-send-primary:hover:not(:disabled) {
+    background-color: var(--rp-chat-send-bg-hover);
+}
+
+.rp-chat-send-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.rp-chat-send-primary:focus {
+    outline: none;
+}
+
+.rp-chat-send-primary:focus-visible {
+    outline: 2px solid var(--rp-focus-ring);
+    outline-offset: 2px;
+}
+
+/* Єдине вікно чату (аналог div#external_wrap) */
+.rp-chat-external-wrap {
+    display: flex;
+    min-height: 0;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+@media (min-width: 768px) {
+    .rp-chat-external-wrap {
+        flex-direction: row;
+        overflow: hidden;
+    }
+}
+
+.rp-chat-composer-slot {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Поля в темному сайдбарі (світла тема додатку) */
+.rp-chat-sidebar .rp-label {
+    color: var(--rp-chat-sidebar-fg);
+}
+
+.rp-chat-sidebar .rp-input {
+    color: var(--rp-chat-sidebar-fg);
+    background: var(--rp-chat-sidebar-input-bg);
+    border: none;
+}
+
+.rp-chat-sidebar .rp-input::placeholder {
+    color: var(--rp-chat-sidebar-muted);
+}
+
+.rp-chat-sidebar .rp-input:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--rp-focus-ring) 35%, transparent);
+}
+
+.rp-chat-sidebar .rp-tab {
+    color: var(--rp-chat-sidebar-muted);
+    background: transparent;
+    border-color: var(--rp-chat-sidebar-border);
+}
+
+.rp-chat-sidebar .rp-tab[aria-selected='true'] {
+    color: var(--rp-chat-sidebar-fg);
+    background: var(--rp-chat-sidebar-tab-active-bg);
+    border-color: var(--rp-chat-sidebar-border);
+}
+
+.rp-chat-sidebar .rp-btn-ghost {
+    color: var(--rp-chat-sidebar-link);
+}
+
+.rp-chat-sidebar .rp-btn-ghost:hover:not(:disabled) {
+    color: var(--rp-chat-sidebar-link-hover);
+}
+
+.rp-chat-sidebar .rp-chat-side-card {
+    border-color: var(--rp-chat-sidebar-border);
+    background: var(--rp-chat-sidebar-tab-active-bg);
+}
+
+.rp-chat-sidebar .rp-chat-side-room-btn {
+    border-color: var(--rp-chat-sidebar-border);
+    background: var(--rp-chat-sidebar-tab-active-bg);
+}
+
+.rp-chat-sidebar .rp-chat-side-room-btn:hover {
+    border-color: var(--rp-chat-sidebar-icon);
+}
+
+/* Мобільний off-canvas: повноекранна «шухляда», контент скролиться між шапкою та футером */
+@media (max-width: 767px) {
+    .rp-chat-burger-drawer {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 100vw;
+        border-left-width: 0;
+        /* T116: той самий токен, що й десктопний сайдбар (темна тема — без окремого «коричневого» шару) */
+        background: var(--rp-chat-sidebar-bg) !important;
+        color: var(--rp-chat-sidebar-fg);
+    }
+
+    .rp-chat-burger-drawer .rp-chat-burger-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .rp-chat-burger-drawer .rp-chat-side-card {
+        border-color: color-mix(in srgb, var(--rp-chat-sidebar-fg) 14%, transparent);
+        background: color-mix(in srgb, var(--rp-chat-sidebar-fg) 7%, transparent);
+    }
+
+    .rp-chat-burger-drawer .rp-chat-side-room-btn {
+        border-color: color-mix(in srgb, var(--rp-chat-sidebar-fg) 16%, transparent);
+        background: color-mix(in srgb, var(--rp-chat-sidebar-fg) 6%, transparent);
+    }
+}
+
+.rp-chat-sidebar .rp-chat-side-room-btn.is-active {
+    border-color: var(--rp-primary);
+    background: color-mix(in srgb, var(--rp-primary) 22%, transparent);
+}
+
+/* T49 — роль (щит / плюс) і стать у списку «Люди» */
+.rp-peer-role-wrap--admin {
+    color: var(--rp-peer-icon-admin);
+}
+
+.rp-peer-role-wrap--moderator {
+    color: var(--rp-peer-icon-mod);
+}
+
+.rp-peer-role-wrap--vip {
+    color: var(--rp-peer-icon-vip);
+}
+
+.rp-peer-sex {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--rp-peer-icon-sex);
+}

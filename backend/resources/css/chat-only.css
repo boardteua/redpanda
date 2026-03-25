@@ -1,0 +1,6 @@
+/**
+ * T135 — лише стрічка/сайдбар/композер (без повторного Tailwind). Підвантажується з JS,
+ * коли перший paint був через `welcome.css`.
+ */
+@import './partials/rp-chat-inline-private.css';
+@import './partials/rp-chat-chrome.css';

@@ -122,7 +122,11 @@ export default defineConfig(({ mode }) => {
         define: defineReverb,
         plugins: [
             laravel({
-                input: ['resources/css/app.css', 'resources/js/app.js'],
+                input: [
+                    'resources/css/welcome.css',
+                    'resources/css/chat.css',
+                    'resources/js/app.js',
+                ],
                 refresh: true,
             }),
             vue({

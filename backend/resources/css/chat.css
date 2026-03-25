@@ -1,0 +1,8 @@
+/**
+ * T135 — entry для першого завантаження маршрутів чату / архіву / staff (deep link).
+ */
+@import './partials/rp-tailwind-preamble.css';
+@import './partials/rp-tokens.css';
+@import './partials/rp-chat-inline-private.css';
+@import './partials/rp-global-ui.css';
+@import './partials/rp-chat-chrome.css';

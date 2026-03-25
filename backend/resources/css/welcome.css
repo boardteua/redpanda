@@ -1,0 +1,7 @@
+/**
+ * T135 — entry для вітальні / auth-only першого завантаження.
+ * Важкий шар чату: `chat-only.css` (динамічний import з router) або повний `chat.css` у Blade для deep link.
+ */
+@import './partials/rp-tailwind-preamble.css';
+@import './partials/rp-tokens.css';
+@import './partials/rp-global-ui.css';

@@ -15,7 +15,22 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
 
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @php
+            $path = trim(request()->path(), '/');
+            $useChatCss =
+                $path === 'chat'
+                || str_starts_with($path, 'chat/')
+                || $path === 'archive'
+                || str_starts_with($path, 'archive/');
+            $rpInitialCss = $useChatCss ? 'chat' : 'welcome';
+        @endphp
+        <script>
+            window.__RP_INITIAL_CSS_ENTRY__ = @json($rpInitialCss);
+        </script>
+        @vite([
+            $useChatCss ? 'resources/css/chat.css' : 'resources/css/welcome.css',
+            'resources/js/app.js',
+        ])
     </head>
     <body class="rp-body antialiased">
         <a href="#main-content" class="rp-skip-link">Перейти до основного вмісту</a>
