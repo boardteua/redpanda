@@ -1,7 +1,10 @@
 @php
     $baseUrl = rtrim((string) config('app.url'), '/');
     $reqPath = trim(request()->path(), '/');
-    $canonicalUrl = $reqPath === '' ? url('/') : url('/'.$reqPath);
+    $canonicalSegments = $reqPath === '' ? [] : array_values(array_filter(explode('/', $reqPath), fn (string $s): bool => $s !== ''));
+    $canonicalUrl = $canonicalSegments === []
+        ? $baseUrl.'/'
+        : $baseUrl.'/'.collect($canonicalSegments)->map(fn (string $seg): string => rawurlencode($seg))->join('/');
 
     $ogImagePath = (string) config('seo.og_image_path', '/brand/og-default.png');
     $ogImageUrl = $baseUrl.(str_starts_with($ogImagePath, '/') ? $ogImagePath : '/'.$ogImagePath);

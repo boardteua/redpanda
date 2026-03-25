@@ -32,10 +32,11 @@ curl -s "https://board.te.ua/sitemap.xml" | head -40
 - **`robots.txt`**: `Content-Type: text/plain`, `Allow: /`, обмеження для `/api/`, `/sanctum/`, `/broadcasting/`, явні секції для **Googlebot**, **Bingbot**, **GPTBot**, **ChatGPT-User**, **PerplexityBot**, **ClaudeBot**, **anthropic-ai** (усі з `Allow: /`), рядок **`Sitemap:`** на **`/sitemap.xml`**.
 - **`sitemap.xml`**: валідний XML з `urlset`, мінімум головна **`/`** та публічні шляхи з `config/seo.php` → `sitemap_paths`.
 
-## Зовнішні валідатори (рекомендовано після деплою)
+## Зовнішні валідатори (після деплою на канонічний хост)
 
 - [Rich Results Test](https://search.google.com/test/rich-results) — прев’ю структурованих даних.
-- [Schema Validator](https://validator.schema.org/) — синтаксис JSON-LD.
+- [Schema Validator](https://validator.schema.org/) — синтаксис JSON-LD (вставити HTML або фрагмент `<script type="application/ld+json">` з «View Source»).
+- Переконатися, що **`APP_URL`** у середовищі збігається з URL у браузері; інакше **canonical**, **og:url** та **og:image** можуть вказувати на інший хост (виправлено в коді: абсолютні URL з кореня `config('app.url')`).
 
 ---
 

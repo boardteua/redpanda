@@ -6,7 +6,7 @@
 
 | Критерій | Результат |
 |----------|-----------|
-| **validator.schema.org** — критичні помилки для **FAQPage** + **WebSite** + **Organization** | Перевірено вручну: JSON-LD згенеровано з `lang/*/seo.php`; структура **Question** / **Answer** відповідає очікуваній схемі. Сервіс validator — зовнішній; після деплою повторити з HTML сторінки. |
+| **validator.schema.org** — критичні помилки для **FAQPage** + **WebSite** + **Organization** | Обов’язково після кожного деплою на **канонічний** домен: зберегти «View Source» для `GET` головної (`/`) або вставити сирий HTML у [Schema Markup Validator](https://validator.schema.org/) / [Rich Results Test](https://search.google.com/test/rich-results). У репо: JSON-LD збирається з `lang/*/seo.php`; **canonical / og:url / og:image** мають спиратися на **`APP_URL`**, щоб не роз’їжджалися хост запиту (IP, staging) і канонічний прод. |
 | Довжини **meta description** (~150–160 символів для UA) | UA: **160** символів (`mb_strlen` для рядка в `lang/uk/seo.php`). |
 | **Read-aloud** (читабельність уголос) | Тексти перечитані; без купи ключових слів підряд. |
 | Узгодженість **llms.txt ↔ meta ↔ H1/lead** | Один продуктовий наратив: «живий український чат», гість/акаунт, правила/модерація без фейкових обіцянок. |
