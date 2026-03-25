@@ -10,7 +10,7 @@
             <div class="flex flex-col gap-2">
                 <div class="flex items-center gap-1">
                     <div
-                        class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5"
+                        class="rp-presence-row-transition flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5"
                         :class="presenceRowClass(viewerPresenceStatus)"
                         style="background: var(--rp-burger-self-bar-bg)"
                     >
@@ -21,7 +21,7 @@
                             decorative
                         />
                         <span
-                            class="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
+                            class="rp-presence-dot h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
                             :class="presenceDotClass(viewerPresenceStatus)"
                             role="img"
                             :aria-label="'Статус: ' + presenceLabelUa(viewerPresenceStatus)"
@@ -65,7 +65,7 @@
         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rp-chat-sidebar-muted)]">Онлайн</p>
         <ul v-if="user" class="hidden space-y-2 md:block">
             <li
-                class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
+                class="rp-presence-row-transition rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
                 :class="presenceRowClass(viewerPresenceStatus)"
             >
                 <div class="flex items-center gap-1">
@@ -77,7 +77,7 @@
                             decorative
                         />
                         <span
-                            class="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
+                            class="rp-presence-dot h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
                             :class="presenceDotClass(viewerPresenceStatus)"
                             role="img"
                             :aria-label="'Статус: ' + presenceLabelUa(viewerPresenceStatus)"
@@ -123,14 +123,14 @@
             <li
                 v-for="p in roomPresencePeers"
                 :key="'presence-' + p.id"
-                class="rp-chat-side-card flex flex-col rounded-md border px-2 py-2"
+                class="rp-presence-row-transition rp-chat-side-card flex flex-col rounded-md border px-2 py-2"
                 :class="presenceRowClass(peerSidebarStatus(p))"
             >
                 <div class="flex items-center gap-1">
                     <div class="flex min-w-0 flex-1 items-center gap-2">
                         <UserAvatar :src="p.avatar_url || ''" :name="p.user_name" variant="sidebar" decorative />
                         <span
-                            class="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
+                            class="rp-presence-dot h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
                             :class="presenceDotClass(peerSidebarStatus(p))"
                             role="img"
                             :aria-label="'Статус ' + p.user_name + ': ' + presenceLabelUa(peerSidebarStatus(p))"
@@ -380,6 +380,23 @@ export default {
 </script>
 
 <style scoped>
+.rp-presence-dot {
+    transition: background-color 0.22s ease-out;
+}
+
+.rp-presence-row-transition {
+    transition:
+        filter 0.22s ease-out,
+        opacity 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rp-presence-dot,
+    .rp-presence-row-transition {
+        transition: none;
+    }
+}
+
 .rp-presence-row--away,
 .rp-presence-row--inactive {
     filter: grayscale(1);

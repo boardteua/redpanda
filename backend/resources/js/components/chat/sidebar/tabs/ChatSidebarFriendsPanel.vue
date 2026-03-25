@@ -35,7 +35,7 @@
                 <li
                     v-for="f in friendsAcceptedDisplayRows"
                     :key="f.user.id"
-                    class="rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
+                    class="rp-presence-row-transition rp-chat-side-card flex flex-col gap-2 rounded-md border px-2 py-2"
                     :class="f.presenceRowClass"
                 >
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -43,7 +43,7 @@
                             <div class="flex min-w-0 flex-1 items-center gap-2">
                                 <UserAvatar :name="f.user.user_name" variant="sidebar" decorative />
                                 <span
-                                    class="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
+                                    class="rp-presence-dot h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--rp-chat-sidebar-border)]"
                                     :class="f.presenceDotClass"
                                     role="img"
                                     :aria-label="'Статус ' + f.user.user_name + ': ' + f.presenceStatusLabel"
@@ -222,6 +222,23 @@ export default {
 </script>
 
 <style scoped>
+.rp-presence-dot {
+    transition: background-color 0.22s ease-out;
+}
+
+.rp-presence-row-transition {
+    transition:
+        filter 0.22s ease-out,
+        opacity 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rp-presence-dot,
+    .rp-presence-row-transition {
+        transition: none;
+    }
+}
+
 .rp-presence-row--away,
 .rp-presence-row--inactive {
     filter: grayscale(1);
