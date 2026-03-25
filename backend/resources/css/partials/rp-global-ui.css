@@ -152,7 +152,7 @@ html {
 }
 
 .rp-auth-landing-lead {
-    margin: 0.65rem 0 0;
+    margin: 0;
     max-width: 36rem;
     font-size: 0.9375rem;
     line-height: 1.55;
@@ -293,7 +293,9 @@ html {
     color: #5c4034;
 }
 
-.rp-auth-landing--welcome-board .rp-auth-landing-hero-titles .rp-auth-landing-lead {
+.rp-auth-landing--welcome-board .rp-auth-landing-aside--welcome-board .rp-auth-landing-lead {
+    max-width: none;
+    margin: 0 0 0.25rem;
     color: #5c4034;
     font-weight: 600;
 }

@@ -27,9 +27,6 @@
                         <p class="rp-auth-landing-tagline">
                             {{ displayTagline }}
                         </p>
-                        <p class="rp-auth-landing-lead">
-                            {{ displayLead }}
-                        </p>
                     </div>
                 </div>
             </header>
@@ -345,6 +342,9 @@
                 class="rp-auth-landing-aside rp-auth-landing-aside--welcome-board flex min-w-0 flex-col space-y-4 p-5 lg:p-8"
                 aria-label="Новини та посилання"
             >
+                <p class="rp-auth-landing-lead">
+                    {{ displayLead }}
+                </p>
                 <div class="min-h-0 flex-1 space-y-4">
                     <div>
                         <h3 class="rp-auth-welcome-aside-title text-base font-semibold">
