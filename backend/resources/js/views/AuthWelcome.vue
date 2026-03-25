@@ -1,56 +1,48 @@
 <template>
-    <div class="rp-auth-landing flex min-h-0 flex-1 flex-col px-4 py-10 pb-12 sm:px-6">
+    <div
+        class="rp-auth-landing rp-auth-landing--welcome-board flex min-h-0 flex-1 flex-col px-4 py-8 pb-12 sm:px-6 sm:py-10"
+    >
         <main
             id="main-content"
             class="mx-auto w-full max-w-5xl flex-1"
             tabindex="-1"
         >
-            <div class="rp-auth-landing-card">
-                <div class="rp-auth-landing-brand">
-                    <div class="rp-auth-landing-brand-left">
-                        <a
-                            href="/"
-                            class="rp-auth-landing-logo-link rp-focusable"
-                            aria-label="На головну чату"
-                        >
-                            <img
-                                class="rp-auth-landing-logo"
-                                :src="landingLogoUrl"
-                                width="128"
-                                height="128"
-                                alt="Логотип чату — руда панда"
-                            />
-                        </a>
-                        <div class="rp-auth-landing-brand-titles">
-                            <h1>{{ displayTitle }}</h1>
-                            <h2 class="rp-auth-landing-tagline">
-                                {{ displayTagline }}
-                            </h2>
-                        </div>
-                    </div>
-                    <p
-                        v-if="!user"
-                        class="rp-auth-landing-online-header rp-auth-landing-online-header--trailing"
-                        role="status"
-                        aria-live="polite"
-                        aria-atomic="true"
+            <header class="rp-auth-landing-hero">
+                <div class="rp-auth-landing-hero-inner">
+                    <a
+                        href="/"
+                        class="rp-auth-landing-logo-link rp-auth-landing-hero-logo-link rp-focusable"
+                        aria-label="На головну чату"
                     >
-                        Користувачі онлайн
-                        <strong>{{ usersOnline }}</strong>
-                    </p>
+                        <img
+                            class="rp-auth-landing-logo rp-auth-landing-hero-logo"
+                            :src="landingLogoUrl"
+                            width="128"
+                            height="128"
+                            alt="Логотип чату — руда панда"
+                        />
+                    </a>
+                    <div class="rp-auth-landing-brand-titles rp-auth-landing-hero-titles">
+                        <h1>{{ displayTitle }}</h1>
+                        <p class="rp-auth-landing-tagline">
+                            {{ displayTagline }}
+                        </p>
+                    </div>
                 </div>
+            </header>
 
+            <div class="rp-auth-landing-card rp-auth-landing-card--welcome-board">
                 <div
                     class="rp-auth-landing-main-grid grid gap-0 lg:grid-cols-2 lg:items-stretch"
                 >
             <div
-                class="min-w-0 p-5 lg:p-6"
+                class="rp-auth-landing-form-col min-w-0 p-5 lg:p-8"
                 role="region"
                 :aria-labelledby="authRegionLabelledBy"
             >
                 <template v-if="!user">
                 <div
-                    class="mb-6 flex flex-wrap gap-2"
+                    class="rp-auth-welcome-tablist mb-6 flex gap-0"
                     role="tablist"
                     aria-label="Вхід або реєстрація"
                     @keydown="onAuthTabKeydown"
@@ -59,7 +51,7 @@
                         id="tab-login"
                         type="button"
                         role="tab"
-                        class="rp-tab rp-focusable"
+                        class="rp-auth-welcome-tab rp-focusable"
                         :tabindex="mode === 'login' ? 0 : -1"
                         :aria-selected="mode === 'login'"
                         aria-controls="auth-panel"
@@ -72,7 +64,7 @@
                         id="tab-register"
                         type="button"
                         role="tab"
-                        class="rp-tab rp-focusable"
+                        class="rp-auth-welcome-tab rp-focusable"
                         :tabindex="mode === 'register' ? 0 : -1"
                         :aria-selected="mode === 'register'"
                         aria-controls="auth-panel"
@@ -87,18 +79,8 @@
                     role="tabpanel"
                     :aria-labelledby="mode === 'login' ? 'tab-login' : 'tab-register'"
                 >
-                    <h3
-                        id="login-heading"
-                        :class="['text-lg font-semibold', mode === 'login' ? '' : 'rp-sr-only']"
-                    >
-                        Вхід
-                    </h3>
-                    <h3
-                        id="register-heading"
-                        :class="['text-lg font-semibold', mode === 'register' ? '' : 'rp-sr-only']"
-                    >
-                        Реєстрація
-                    </h3>
+                    <h3 id="login-heading" class="rp-sr-only">Вхід</h3>
+                    <h3 id="register-heading" class="rp-sr-only">Реєстрація</h3>
 
                     <div
                         v-if="formError"
@@ -155,7 +137,7 @@
                                 Забули пароль?
                             </router-link>
                         </p>
-                        <label class="flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text-muted)]">
+                        <label class="rp-auth-welcome-remember flex cursor-pointer items-center gap-2 text-sm">
                             <input
                                 v-model="loginForm.remember"
                                 type="checkbox"
@@ -163,7 +145,12 @@
                             />
                             Запам’ятати мене
                         </label>
-                        <RpButton native-type="submit" class="w-full" :loading="loading" :disabled="loading">
+                        <RpButton
+                            native-type="submit"
+                            class="rp-auth-welcome-submit w-full"
+                            :loading="loading"
+                            :disabled="loading"
+                        >
                             Увійти
                         </RpButton>
                     </form>
@@ -259,7 +246,12 @@
                                 {{ fieldError('password_confirmation') }}
                             </p>
                         </div>
-                        <RpButton native-type="submit" class="w-full" :loading="loading" :disabled="loading">
+                        <RpButton
+                            native-type="submit"
+                            class="rp-auth-welcome-submit w-full"
+                            :loading="loading"
+                            :disabled="loading"
+                        >
                             Зареєструватися
                         </RpButton>
                     </form>
@@ -274,34 +266,37 @@
                 </div>
                 <div
                     v-if="socialLoginUiVisible"
-                    class="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center"
+                    class="rp-auth-welcome-social mt-6 flex flex-col gap-2"
                     role="group"
                     aria-label="Вхід через соціальні мережі"
                 >
                     <RpButton
                         variant="ghost"
-                        class="w-full sm:w-auto"
-                        :disabled="loading"
-                        @click="startSocialLogin('google-oauth2')"
-                    >
-                        Google
-                    </RpButton>
-                    <RpButton
-                        variant="ghost"
-                        class="w-full sm:w-auto"
+                        class="rp-auth-welcome-social-fb w-full"
                         :disabled="loading"
                         @click="startSocialLogin('facebook')"
                     >
-                        Facebook
+                        <span class="rp-auth-welcome-social-fb-icon" aria-hidden="true">f</span>
+                        Увійти з facebook
                     </RpButton>
-                    <RpButton
-                        variant="ghost"
-                        class="w-full sm:w-auto"
-                        :disabled="loading"
-                        @click="startSocialLogin('twitter')"
-                    >
-                        X
-                    </RpButton>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-stretch">
+                        <RpButton
+                            variant="ghost"
+                            class="rp-auth-welcome-social-alt w-full sm:flex-1"
+                            :disabled="loading"
+                            @click="startSocialLogin('google-oauth2')"
+                        >
+                            Google
+                        </RpButton>
+                        <RpButton
+                            variant="ghost"
+                            class="rp-auth-welcome-social-alt w-full sm:flex-1"
+                            :disabled="loading"
+                            @click="startSocialLogin('twitter')"
+                        >
+                            X
+                        </RpButton>
+                    </div>
                 </div>
                 <div class="mt-8">
                     <div class="rp-divider" aria-hidden="true">
@@ -324,7 +319,12 @@
                             {{ guestFieldError }}
                         </p>
                     </div>
-                    <RpButton class="mt-4 w-full" :loading="loading" :disabled="loading" @click="submitGuest">
+                    <RpButton
+                        class="rp-auth-welcome-guest mt-4 w-full"
+                        :loading="loading"
+                        :disabled="loading"
+                        @click="submitGuest"
+                    >
                         Зайти анонімно
                     </RpButton>
                 </div>
@@ -339,31 +339,43 @@
             </div>
 
             <aside
-                class="rp-auth-landing-aside min-w-0 space-y-4 p-5 lg:p-6"
+                class="rp-auth-landing-aside rp-auth-landing-aside--welcome-board flex min-w-0 flex-col space-y-4 p-5 lg:p-8"
                 aria-label="Новини та посилання"
             >
-                <div>
-                    <h3 class="text-base font-semibold text-[var(--rp-text)]">
-                        {{ asideNewsTitle }}
-                    </h3>
-                    <div
-                        class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--rp-text-muted)]"
-                    >
-                        {{ asideNewsBody }}
+                <div class="min-h-0 flex-1 space-y-4">
+                    <div>
+                        <h3 class="rp-auth-welcome-aside-title text-base font-semibold">
+                            {{ asideNewsTitle }}
+                        </h3>
+                        <div
+                            class="rp-auth-welcome-aside-body mt-2 whitespace-pre-wrap text-sm leading-relaxed"
+                        >
+                            {{ asideNewsBody }}
+                        </div>
                     </div>
+                    <nav v-if="landingLinks.length" aria-label="Посилання з вітальні">
+                        <ul class="rp-auth-welcome-links space-y-2 text-sm">
+                            <li v-for="(item, i) in landingLinks" :key="'land-link-' + i">
+                                <a
+                                    :href="item.url"
+                                    class="rp-auth-welcome-link rp-focusable font-medium"
+                                >
+                                    {{ item.label || item.url }}
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
-                <nav v-if="landingLinks.length" aria-label="Посилання з вітальні">
-                    <ul class="space-y-2 text-sm">
-                        <li v-for="(item, i) in landingLinks" :key="'land-link-' + i">
-                            <a
-                                :href="item.url"
-                                class="rp-focusable font-medium text-[var(--rp-text)] underline decoration-[var(--rp-border-subtle)] underline-offset-2 hover:decoration-[var(--rp-text-muted)]"
-                            >
-                                {{ item.label || item.url }}
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
+                <p
+                    v-if="!user"
+                    class="rp-auth-welcome-aside-online mt-auto pt-4"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                >
+                    Користувачі онлайн
+                    <strong>{{ usersOnline }}</strong>
+                </p>
             </aside>
                 </div>
             </div>

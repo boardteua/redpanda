@@ -568,6 +568,286 @@ html {
     border-radius: 0.125rem;
 }
 
+/*
+ * Вітальня — візуальний паритет board.te.ua (реф. T77 / скрін клієнта):
+ * суцільний #E99726, заголовок над карткою, біла картка без великого radius,
+ * коричневі кнопки #4D3227 / #A66A3B, Facebook #3B5998.
+ */
+.rp-auth-landing--welcome-board.rp-auth-landing {
+    background: #e99726;
+    color: #4d3227;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-hero {
+    display: flex;
+    justify-content: center;
+    padding: 0 0 1.25rem;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-hero-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem 1.25rem;
+    max-width: 42rem;
+    text-align: left;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-hero-logo-link {
+    border-radius: 0.375rem;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-hero-logo {
+    width: 5rem;
+    height: 5rem;
+}
+
+@media (min-width: 640px) {
+    .rp-auth-landing--welcome-board .rp-auth-landing-hero-logo {
+        width: 5.5rem;
+        height: 5.5rem;
+    }
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-hero-titles h1 {
+    margin: 0;
+    font-size: 1.375rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #4d3227;
+    line-height: 1.2;
+}
+
+@media (min-width: 640px) {
+    .rp-auth-landing--welcome-board .rp-auth-landing-hero-titles h1 {
+        font-size: 1.625rem;
+    }
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-hero-titles .rp-auth-landing-tagline {
+    margin: 0.25rem 0 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #5c4034;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-card--welcome-board {
+    border-radius: 0;
+    border: 1px solid color-mix(in srgb, #4d3227 14%, #fff);
+    background: #ffffff;
+    box-shadow: 0 14px 42px rgb(77 50 39 / 0.18);
+    color: #4d3227;
+    overflow: hidden;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-form-col .rp-label {
+    color: #4d3227;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-form-col .rp-input {
+    border-width: 1px;
+    border-color: #d6cfc7;
+    background: #ffffff;
+    border-radius: 0.125rem;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-form-col .rp-input:focus-visible {
+    border-color: #4d3227;
+    box-shadow: 0 0 0 2px color-mix(in srgb, #4d3227 22%, transparent);
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-forgot-btn {
+    color: #c2410c;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-forgot-btn:hover {
+    color: #9a3412;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-remember {
+    color: #6b5346;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-tablist {
+    border: 1px solid #c9b8a8;
+    background: #faf6f2;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-tab {
+    flex: 1 1 0;
+    min-height: 2.875rem;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #4d3227;
+    background: #faf6f2;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-tab:only-child {
+    flex: 1 1 auto;
+    width: 100%;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-tab + .rp-auth-welcome-tab {
+    border-left: 1px solid #c9b8a8;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-tab[aria-selected='true'] {
+    background: #4d3227;
+    color: #ffffff;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-tab:focus {
+    outline: none;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-tab:focus-visible {
+    outline: 2px solid var(--rp-focus-ring);
+    outline-offset: -2px;
+    z-index: 1;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-submit.rp-btn-primary {
+    background: #4d3227;
+    color: #ffffff;
+    border-color: transparent;
+    border-radius: 0.125rem;
+    min-height: 3rem;
+    font-weight: 700;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-submit.rp-btn-primary:hover:not(:disabled) {
+    background: #3d281f;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-guest.rp-btn-primary {
+    background: #a66a3b;
+    color: #ffffff;
+    border-color: transparent;
+    border-radius: 0.125rem;
+    min-height: 3rem;
+    font-weight: 700;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-guest.rp-btn-primary:hover:not(:disabled) {
+    background: #8f5a32;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-social-fb.rp-btn {
+    justify-content: center;
+    min-height: 3rem;
+    font-weight: 700;
+    border-radius: 0.125rem;
+    border: none;
+    background: #3b5998;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-social-fb.rp-btn:hover:not(:disabled) {
+    background: #334d86;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-social-fb-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.5rem;
+    background: #ffffff;
+    color: #3b5998;
+    border-radius: 2px;
+    font-weight: 800;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-social-alt.rp-btn {
+    min-height: 2.75rem;
+    border-radius: 0.125rem;
+    border: 2px solid #c9b8a8;
+    background: #ffffff;
+    color: #4d3227;
+    text-decoration: none;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-social-alt.rp-btn:hover:not(:disabled) {
+    border-color: #a66a3b;
+    background: #fffaf5;
+    color: #4d3227;
+    text-decoration: none;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-aside-title {
+    color: #c2410c;
+    font-weight: 800;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-aside-body {
+    color: #3d2a22;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-link {
+    color: #4d3227;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, #4d3227 35%, transparent);
+    text-underline-offset: 3px;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-link:hover {
+    color: #3d281f;
+    text-decoration-color: #4d3227;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-aside-online {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #4d3227;
+    text-align: right;
+}
+
+@media (min-width: 640px) {
+    .rp-auth-landing--welcome-board .rp-auth-welcome-aside-online {
+        font-size: 1rem;
+    }
+}
+
+.rp-auth-landing--welcome-board .rp-auth-welcome-aside-online strong {
+    margin-left: 0.35em;
+    font-weight: 800;
+    color: #c2410c;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-aside--welcome-board {
+    min-height: 12rem;
+}
+
+@media (min-width: 1024px) {
+    .rp-auth-landing--welcome-board .rp-auth-landing-aside--welcome-board {
+        border-left: 1px solid #e8e0d6;
+    }
+}
+
+.rp-auth-landing--welcome-board .rp-divider {
+    color: #6b5346;
+}
+
 /* Honeypot: не display:none — частина ботів ігнорує такі поля */
 .rp-honeypot {
     position: absolute;
