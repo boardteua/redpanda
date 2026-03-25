@@ -16,6 +16,29 @@ CREATE DATABASE IF NOT EXISTS legacy_org100h
 
 Ім’я можна змінити; тоді те саме значення виставте в **`LEGACY_DB_DATABASE`**.
 
+### MySQL у Docker (типово: `mysql:8.0` у compose)
+
+Не вшивайте паролі в команди з локальної машини: використовуйте змінні **всередині** контейнера.
+
+Приклад (ім’я контейнера подивіться через `docker ps`, напр. `redpanda-local-deps-mysql-1`):
+
+```bash
+# Створити БД і дати додатковому читанню legacy існуючому користувачу додатку (напр. redpanda@%):
+docker exec redpanda-local-deps-mysql-1 sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+CREATE DATABASE IF NOT EXISTS legacy_org100h CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT SELECT ON legacy_org100h.* TO \"redpanda\"@\"%\";
+FLUSH PRIVILEGES;
+"'
+```
+
+Імпорт дампу, якщо файл **на хості** Docker (шлях на сервері, не в контейнері):
+
+```bash
+docker exec -i redpanda-local-deps-mysql-1 sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" legacy_org100h' < /secure/path/org100h.sql
+```
+
+**`LEGACY_DB_HOST`:** з процесу PHP на тому ж хості часто `127.0.0.1` + порт з `docker port …`, або ім’я сервісу з docker network (`mysql`), залежно від того, де виконується `php artisan`.
+
 ---
 
 ## 2. Імпорт дампу
