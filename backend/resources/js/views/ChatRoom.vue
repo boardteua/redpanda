@@ -197,6 +197,7 @@ import { resetFaviconPrivateUnreadBadge, setFaviconPrivateUnreadBadge } from '..
 import { showError } from '../utils/rpToastStack';
 import { buildChatRoomBrowserTitle } from '../utils/chatDocumentTitle';
 import {
+    PEER_PRESENCE_JOIN_DEBOUNCE_MS,
     PRESENCE_AWAY_IDLE_SEC,
     PRESENCE_INACTIVE_IDLE_SEC,
     readStoredSidebarTab,
@@ -1278,7 +1279,10 @@ export default {
                 return;
             }
             try {
-                await Promise.all([this.fetchPeerPresenceStatuses(), this.fetchPeerSexHints()]);
+                await Promise.all([
+                    this.fetchPeerPresenceStatuses(null),
+                    this.fetchPeerSexHints(),
+                ]);
                 const { data } = await window.axios.get(
                     `/api/v1/rooms/${this.selectedRoomId}/messages`,
                     { params: { limit: 80 } },
@@ -1394,8 +1398,8 @@ export default {
             this.presenceLastPostedAt = null;
         },
         /**
-         * @param {number} presenceFetchEpoch
-         * @param {boolean} immediate — після here() без debounce; joining — короткий debounce для пакетування.
+         * @param {number} presenceFetchEpoch Лічильник після increment у syncHere/addPeer (не передавати з poll).
+         * @param {boolean} immediate — після `here()` без debounce; `joining` — debounce `PEER_PRESENCE_JOIN_DEBOUNCE_MS`.
          */
         scheduleFetchPeerPresenceStatuses(presenceFetchEpoch, immediate = false) {
             if (this.presenceFetchDebounceTimer) {
@@ -1406,7 +1410,10 @@ export default {
                 try {
                     await this.ensureSanctum();
                 } catch {
-                    if (presenceFetchEpoch === this.peerPresenceStatusFetchEpoch) {
+                    if (
+                        presenceFetchEpoch != null &&
+                        presenceFetchEpoch === this.peerPresenceStatusFetchEpoch
+                    ) {
                         this.peerPresenceStatusFetchLoading = false;
                     }
 
@@ -1425,12 +1432,20 @@ export default {
             this.presenceFetchDebounceTimer = setTimeout(() => {
                 this.presenceFetchDebounceTimer = null;
                 void runFetches();
-            }, 80);
+            }, PEER_PRESENCE_JOIN_DEBOUNCE_MS);
         },
+        /**
+         * @param {number|null} presenceFetchEpoch Поточний лічильник з syncHere/addPeer; **`null`** — виклики
+         *   на кшталт poll при wsDegraded: **не** змінюють `peerPresenceStatusFetchLoading`.
+         * @param {{ skipEnsure?: boolean }} [options]
+         */
         async fetchPeerPresenceStatuses(presenceFetchEpoch, options = {}) {
             const skipEnsure = Boolean(options.skipEnsure);
             if (!this.selectedRoomId || !this.roomPresencePeers.length) {
-                if (presenceFetchEpoch === this.peerPresenceStatusFetchEpoch) {
+                if (
+                    presenceFetchEpoch != null &&
+                    presenceFetchEpoch === this.peerPresenceStatusFetchEpoch
+                ) {
                     this.peerPresenceStatusFetchLoading = false;
                 }
 
@@ -1450,7 +1465,10 @@ export default {
             } catch {
                 /* ignore */
             } finally {
-                if (presenceFetchEpoch === this.peerPresenceStatusFetchEpoch) {
+                if (
+                    presenceFetchEpoch != null &&
+                    presenceFetchEpoch === this.peerPresenceStatusFetchEpoch
+                ) {
                     this.peerPresenceStatusFetchLoading = false;
                 }
             }

@@ -1,0 +1,18 @@
+/* Спільні мікропереходи для індикатора присутності (Users / Friends). Імпорт у SFC з scoped. */
+
+.rp-presence-dot {
+    transition: background-color 0.22s ease-out;
+}
+
+.rp-presence-row-transition {
+    transition:
+        filter 0.22s ease-out,
+        opacity 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rp-presence-dot,
+    .rp-presence-row-transition {
+        transition: none;
+    }
+}

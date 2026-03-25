@@ -379,24 +379,8 @@ export default {
 };
 </script>
 
+<style scoped src="../chatSidebarPresence.motion.css"></style>
 <style scoped>
-.rp-presence-dot {
-    transition: background-color 0.22s ease-out;
-}
-
-.rp-presence-row-transition {
-    transition:
-        filter 0.22s ease-out,
-        opacity 0.22s ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .rp-presence-dot,
-    .rp-presence-row-transition {
-        transition: none;
-    }
-}
-
 .rp-presence-row--away,
 .rp-presence-row--inactive {
     filter: grayscale(1);
