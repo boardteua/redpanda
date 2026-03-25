@@ -34,6 +34,7 @@
         <label class="rp-sr-only" for="chat-composer">Повідомлення</label>
         <div class="rp-chat-composer-row min-w-0 w-full max-w-full">
             <button
+                ref="emojiOpenBtn"
                 type="button"
                 class="rp-focusable rp-chat-composer-rail-btn rounded-full"
                 :disabled="!selectedRoomId"
@@ -118,7 +119,12 @@
             @close="myImagesModalOpen = false"
             @select="onLibraryImageSelected"
         />
-        <ChatEmojiModal :open="emojiModalOpen" @close="emojiModalOpen = false" @select="onEmojiPicked" />
+        <ChatEmojiModal
+            :open="emojiModalOpen"
+            :get-anchor="getEmojiAnchorEl"
+            @close="emojiModalOpen = false"
+            @select="onEmojiPicked"
+        />
     </form>
 </template>
 
@@ -365,6 +371,12 @@ export default {
             }
             const needsSpace = !/\s$/.test(t);
             this.composerText = needsSpace ? `${t} ${insertion}` : t + insertion;
+        },
+        /** T127: якір для модалу смайлів (нижній лівий кут біля кнопки). */
+        getEmojiAnchorEl() {
+            const el = this.$refs.emojiOpenBtn;
+
+            return el instanceof HTMLElement ? el : null;
         },
         onEmojiPicked({ code }) {
             if (!code) {
