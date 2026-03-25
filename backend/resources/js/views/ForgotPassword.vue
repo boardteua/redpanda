@@ -20,7 +20,7 @@
                 </p>
                 <h1 class="text-xl font-semibold text-[var(--rp-text)]">Відновлення пароля</h1>
                 <p class="mt-2 text-sm text-[var(--rp-text-muted)]">
-                    Вкажіть email облікового запису з паролем. Якщо ви входите лише через Google чи інший сервіс — використайте той самий спосіб входу.
+                    Вкажіть email облікового запису
                 </p>
 
                 <div v-if="formError" class="rp-banner mt-4" role="alert" aria-live="polite">
