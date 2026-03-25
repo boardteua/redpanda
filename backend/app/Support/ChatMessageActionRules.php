@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\ChatMessage;
+use App\Models\ChatSetting;
 use App\Models\Room;
 use App\Models\User;
 
@@ -67,7 +68,7 @@ final class ChatMessageActionRules
             return true;
         }
 
-        $hours = max(1, (int) config('chat.message_edit_window_hours', 24));
+        $hours = once(fn (): int => ChatSetting::current()->effectiveMessageEditWindowHours());
         $ageSeconds = time() - (int) $message->post_date;
 
         return $ageSeconds <= $hours * 3600;

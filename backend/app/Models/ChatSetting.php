@@ -32,6 +32,7 @@ class ChatSetting extends Model
     protected $table = 'chat_settings';
 
     protected $fillable = [
+        'message_edit_window_hours',
         'room_create_min_public_messages',
         'public_message_count_scope',
         'message_count_room_id',
@@ -54,6 +55,7 @@ class ChatSetting extends Model
     protected function casts(): array
     {
         return [
+            'message_edit_window_hours' => 'integer',
             'room_create_min_public_messages' => 'integer',
             'message_count_room_id' => 'integer',
             'slash_command_max_per_window' => 'integer',
@@ -181,6 +183,21 @@ class ChatSetting extends Model
         $row = static::query()->firstOrFail();
 
         return $row;
+    }
+
+    /**
+     * Години, протягом яких звичайний зареєстрований може редагувати/видаляти власне публічне повідомлення (T122).
+     * Якщо у БД null — береться {@see config('chat.message_edit_window_hours')}. 0 = фактична заборона (вікно нульової довжини).
+     */
+    public function effectiveMessageEditWindowHours(): int
+    {
+        $stored = $this->message_edit_window_hours;
+
+        if ($stored === null) {
+            return max(0, (int) config('chat.message_edit_window_hours', 24));
+        }
+
+        return max(0, (int) $stored);
     }
 
     /**

@@ -20,6 +20,7 @@ class ChatSettingsResource extends JsonResource
         $configuredMax = max(1024, (int) ($m->max_attachment_bytes ?: ChatSetting::DEFAULT_MAX_ATTACHMENT_BYTES));
 
         $base = [
+            'message_edit_window_hours' => $m->effectiveMessageEditWindowHours(),
             'room_create_min_public_messages' => (int) $this->room_create_min_public_messages,
             'public_message_count_scope' => (string) $this->public_message_count_scope,
             'message_count_room_id' => $this->message_count_room_id,

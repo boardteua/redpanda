@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ChatSetting;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ class UserResource extends JsonResource
             return $base;
         }
 
-        $base['message_edit_window_hours'] = (int) config('chat.message_edit_window_hours', 24);
+        $base['message_edit_window_hours'] = once(fn (): int => ChatSetting::current()->effectiveMessageEditWindowHours());
         $base['can_create_room'] = Gate::forUser($this->resource)->allows('create', Room::class);
 
         $social = array_merge(User::defaultSocialLinkKeys(), $this->social_links ?? []);

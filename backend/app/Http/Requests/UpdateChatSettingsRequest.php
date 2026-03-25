@@ -23,6 +23,7 @@ class UpdateChatSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'message_edit_window_hours' => ['sometimes', 'integer', 'min:0', 'max:8760'],
             'room_create_min_public_messages' => ['sometimes', 'integer', 'min:0', 'max:99999999'],
             'public_message_count_scope' => ['sometimes', 'string', Rule::in(ChatSetting::scopeValues())],
             'message_count_room_id' => [

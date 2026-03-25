@@ -37,6 +37,7 @@ class ChatSettingsApiTest extends TestCase
             ->getJson('/api/v1/chat/settings');
         $response
             ->assertOk()
+            ->assertJsonPath('data.message_edit_window_hours', 24)
             ->assertJsonPath('data.room_create_min_public_messages', 100)
             ->assertJsonPath('data.public_message_count_scope', ChatSetting::SCOPE_ALL_PUBLIC_ROOMS)
             ->assertJsonPath('data.message_count_room_id', null)
@@ -89,6 +90,22 @@ class ChatSettingsApiTest extends TestCase
             ->assertJsonPath('data.public_message_count_scope', ChatSetting::SCOPE_DEFAULT_ROOM_ONLY);
 
         $this->assertSame(42, ChatSetting::current()->room_create_min_public_messages);
+    }
+
+    public function test_admin_can_patch_message_edit_window_hours(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'message_edit_window_hours' => 72,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.message_edit_window_hours', 72);
+
+        $this->assertSame(72, (int) ChatSetting::current()->message_edit_window_hours);
     }
 
     public function test_switching_scope_to_all_public_rooms_clears_room_id(): void

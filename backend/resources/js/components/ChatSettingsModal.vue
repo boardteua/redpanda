@@ -83,6 +83,25 @@
                 </div>
 
                 <div>
+                    <label class="rp-label" for="cs-edit-window-hours">
+                        Годин на редагування / видалення власного повідомлення
+                    </label>
+                    <input
+                        id="cs-edit-window-hours"
+                        v-model.number="form.message_edit_window_hours"
+                        type="number"
+                        min="0"
+                        max="8760"
+                        class="rp-input rp-focusable w-full max-w-xs"
+                    />
+                    <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                        Ціле ≥ 0. Звичайний зареєстрований може змінювати лише власні публічні повідомлення молодші за цей інтервал від часу відправки.
+                        <strong>0</strong> — нульове вікно (фактично без права на правки). <strong>VIP</strong> та персонал (модератор, адмін) цим лімітом не обмежені.
+                        Значення зберігається в базі й переважає над змінною <span class="font-mono">CHAT_MESSAGE_EDIT_WINDOW_HOURS</span> у конфігурації сервера.
+                    </p>
+                </div>
+
+                <div>
                     <label class="rp-label" for="cs-scope">Область лічби публічних повідомлень</label>
                     <select id="cs-scope" v-model="form.public_message_count_scope" class="rp-input rp-focusable w-full max-w-xl">
                         <option value="all_public_rooms">Усі публічні кімнати (усього чату)</option>
@@ -632,6 +651,7 @@ export default {
             loadError: '',
             saveError: '',
             form: {
+                message_edit_window_hours: 24,
                 room_create_min_public_messages: 100,
                 public_message_count_scope: 'all_public_rooms',
                 message_count_room_id: null,
@@ -810,6 +830,7 @@ export default {
                 return 'media';
             }
             if (
+                key === 'message_edit_window_hours' ||
                 key === 'room_create_min_public_messages' ||
                 key === 'public_message_count_scope' ||
                 key === 'message_count_room_id'
@@ -821,6 +842,7 @@ export default {
         },
         focusFieldForValidationKey(key) {
             const idMap = {
+                message_edit_window_hours: 'cs-edit-window-hours',
                 room_create_min_public_messages: 'cs-n',
                 public_message_count_scope: 'cs-scope',
                 message_count_room_id: 'cs-room',
@@ -896,7 +918,11 @@ export default {
 
                     return;
                 }
+                const editH = Number(d.message_edit_window_hours);
+
                 this.form = {
+                    message_edit_window_hours:
+                        Number.isFinite(editH) && editH >= 0 ? Math.min(8760, Math.floor(editH)) : 24,
                     room_create_min_public_messages: Number(d.room_create_min_public_messages) || 0,
                     public_message_count_scope:
                         d.public_message_count_scope === 'default_room_only'
@@ -979,6 +1005,7 @@ export default {
             try {
                 await this.ensureSanctum();
                 const body = {
+                    message_edit_window_hours: this.form.message_edit_window_hours,
                     room_create_min_public_messages: this.form.room_create_min_public_messages,
                     public_message_count_scope: this.form.public_message_count_scope,
                     slash_command_max_per_window: this.form.slash_command_max_per_window,

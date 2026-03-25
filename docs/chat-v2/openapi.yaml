@@ -3587,6 +3587,7 @@ components:
     ChatSettingsData:
       type: object
       required:
+        - message_edit_window_hours
         - room_create_min_public_messages
         - public_message_count_scope
         - slash_command_max_per_window
@@ -3600,6 +3601,14 @@ components:
         - landing_settings
         - registration_flags
       properties:
+        message_edit_window_hours:
+          type: integer
+          minimum: 0
+          maximum: 8760
+          description: |
+            Скільки годин після відправки звичайний зареєстрований може редагувати або видаляти **власне** публічне повідомлення (**T36/T37/T122**).
+            Значення з БД (якщо задано адміном через `PATCH /api/v1/chat/settings`) переважає над `CHAT_MESSAGE_EDIT_WINDOW_HOURS` у env; якщо в БД `null` — використовується env/config.
+            **0** — нульове вікно (фактична заборона для звичайного користувача). **VIP** і **staff** (модератор/адмін) не обмежені цим полем.
         room_create_min_public_messages:
           type: integer
           minimum: 0
@@ -3794,6 +3803,11 @@ components:
     PatchChatSettingsRequest:
       type: object
       properties:
+        message_edit_window_hours:
+          type: integer
+          minimum: 0
+          maximum: 8760
+          description: Лише **адмін чату**; зберігається в БД і переважає над env (**T122**).
         room_create_min_public_messages:
           type: integer
           minimum: 0

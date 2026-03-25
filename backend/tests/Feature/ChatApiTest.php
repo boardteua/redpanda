@@ -9,6 +9,7 @@ use App\Events\PresenceStatusUpdated;
 use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
 use App\Models\ChatMessage;
+use App\Models\ChatSetting;
 use App\Models\Friendship;
 use App\Models\Image;
 use App\Models\Room;
@@ -832,6 +833,63 @@ class ChatApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_patch_message_plain_user_respects_chat_setting_hours_over_config(): void
+    {
+        Config::set('chat.message_edit_window_hours', 999);
+        ChatSetting::query()->update(['message_edit_window_hours' => 1]);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $oldTs = time() - 7200;
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_date' => $oldTs]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'too late',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_patch_message_plain_user_allowed_within_chat_setting_window(): void
+    {
+        Config::set('chat.message_edit_window_hours', 1);
+        ChatSetting::query()->update(['message_edit_window_hours' => 2]);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $ts = time() - 1800;
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_date' => $ts]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'still ok',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.post_message', 'still ok');
+    }
+
+    public function test_patch_message_plain_user_forbidden_when_stored_window_is_zero(): void
+    {
+        Config::set('chat.message_edit_window_hours', 999);
+        ChatSetting::query()->update(['message_edit_window_hours' => 0]);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_date' => time() - 2]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id, [
+                'message' => 'nope',
+            ])
+            ->assertForbidden();
+    }
+
     public function test_patch_message_vip_can_edit_after_edit_window(): void
     {
         Config::set('chat.message_edit_window_hours', 1);
@@ -1016,6 +1074,23 @@ class ChatApiTest extends TestCase
     public function test_delete_message_plain_user_forbidden_after_edit_window(): void
     {
         Config::set('chat.message_edit_window_hours', 1);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $oldTs = time() - 7200;
+        $msg = $this->seedPublicChatMessage($public, $user, ['post_date' => $oldTs]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
+            ->assertForbidden();
+    }
+
+    public function test_delete_message_plain_user_respects_chat_setting_hours_over_config(): void
+    {
+        Config::set('chat.message_edit_window_hours', 999);
+        ChatSetting::query()->update(['message_edit_window_hours' => 1]);
 
         [$public] = $this->seedRooms();
         $user = User::factory()->create();
