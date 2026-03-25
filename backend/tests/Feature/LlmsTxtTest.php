@@ -43,6 +43,22 @@ class LlmsTxtTest extends TestCase
         $response->assertSee('redpanda Chat v2 API', false);
     }
 
+    public function test_public_openapi_yaml_alternate_chat_v2_path(): void
+    {
+        $this->get('/docs/chat-v2/openapi.yaml')
+            ->assertOk()
+            ->assertHeaderContains('Content-Type', 'yaml')
+            ->assertSee('openapi:', false);
+    }
+
+    public function test_public_doc_bundle_files_exist_on_disk(): void
+    {
+        $base = base_path('resources/public-monorepo-docs');
+        $this->assertFileExists($base.'/chat-v2/openapi.yaml');
+        $this->assertFileExists($base.'/chat-v2/AI-AGENT-FRIENDLY.md');
+        $this->assertFileExists($base.'/project-specs/chat-v2-setup.md');
+    }
+
     public function test_public_ai_agent_friendly_md_is_served(): void
     {
         $response = $this->get('/docs/chat-v2/AI-AGENT-FRIENDLY.md');

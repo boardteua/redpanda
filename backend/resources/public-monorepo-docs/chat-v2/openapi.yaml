@@ -1,0 +1,4491 @@
+openapi: 3.0.3
+info:
+  title: redpanda Chat v2 API
+  description: |
+    HTTP API для чату v2 (Laravel backend у каталозі `backend/`).
+
+    **Sanctum SPA (cookie):** для браузерного клієнта з того ж сайту спочатку викликайте `GET /sanctum/csrf-cookie` з `credentials: include`,
+    потім передавайте заголовок `X-XSRF-TOKEN` (значення з cookie `XSRF-TOKEN`, URL-decoded) на всі **змінюючі** запити (`POST` тощо) разом з cookie сесії.
+    Див. також [T03-QA.md](T03-QA.md).
+
+    **Вміст повідомлень:** поля `post_message`, `post_user`, `topic` повертаються як сирі рядки **plain text** (не HTML); клієнт має рендерити їх як **текст** (наприклад інтерполяція в шаблоні), а не як розмітку,
+    доки окремо не впроваджено санітизацію (див. [T04-QA.md](T04-QA.md)). Тіло запиту `message` у `POST`/`PATCH` кімнатних повідомлень — також **plain text**; максимальна довжина залежить від ролі: **гість 2000**, **звичайний користувач 4000**, **VIP / модератор / адмін 8000** символів (див. валідацію Laravel).
+
+    **Обмеження частоти:** див. опис відповідей `429` і реалізацію у `AppServiceProvider` (`auth-*` — для `auth-login` два ключі: IP і нормалізований `user_name`; `auth-guest` 12/хв на IP; інші — `landing-read`, `chat-read`, `chat-mark-read`, `chat-post`, `archive-read`, `image-upload`, `image-read`, `private-*`, `mod-actions`, `mod-user-read`, `mod-flagged-read`, `presence-status`, `room-create`, `room-manage`, `oembed-read`, `emoticon-read`).
+
+    **Смайли / emoticon (T63):** `GET /api/v1/chat/emoticons` — активні записи каталогу (throttle `emoticon-read`); файли за URL `/emoticon/{file}`. Адмін: `GET|POST|PATCH|DELETE /api/v1/mod/emoticons` (multipart на `POST` / опційно `PATCH`), `can:chat-admin`, throttle `mod-actions`. Деталі — [T63-QA.md](T63-QA.md).
+
+    **oEmbed-проксі (T55):** `GET /api/v1/oembed` — лише автентифікований користувач (Sanctum SPA); безпечний проксі до провайдерів з реєстру oEmbed, кеш, SSRF-захист, санітизація `html` (лише `iframe` з дозволених хостів). Деталі — [T55-oembed.md](T55-oembed.md).
+
+    **Кімнати CRUD (T54):** `PATCH /api/v1/rooms/{roomId}` — назва/опис для творця або staff; поле `access` — лише модератор/адмін. `DELETE` — творець або staff, **422** (`room_has_messages`), якщо в кімнаті є повідомлення (захист історії). Деталі — [T54-QA.md](T54-QA.md).
+
+    **Прочитане в кімнаті (T47):** `GET .../rooms/{roomId}/messages` — `meta.last_read_post_id`; опційно `since_read=true` → `meta.first_unread_post_id` у межах сторінки; `POST .../rooms/{roomId}/read` з `last_read_post_id` (монотонно). Деталі — [T47-QA.md](T47-QA.md).
+
+    **WebSocket (Laravel Reverb, протокол як у Pusher):** канал кімнати — **presence** `presence-room.{roomId}` (`Echo.join('room.{roomId}')`): авторизація через `POST /broadcasting/auth` повертає `auth` + `channel_data` (нік, `guest`, `avatar_url`, `chat_role`, `badge_color`, `chat_upload_disabled` для зареєстрованих — лише для тих, хто вже пройшов `RoomPolicy::interact`). Події **`.MessagePosted`**, **`.MessageUpdated`**, **`.MessageDeleted`**, **`.PresenceStatusUpdated`** (статус учасника online/away/inactive, T48) транслюються на той самий presence-канал. Окремо: приватний **`private-user.{userId}`** для **`.PrivateMessagePosted`** (T08) та **`.PrivateThreadCleared`** (T68).
+
+    **Статус присутності (T48):** `GET /api/v1/rooms/{roomId}/presence-statuses?user_ids=…` — мапа `userId → status` з кешу; `POST /api/v1/rooms/{roomId}/presence-status` з `{"status":"online"|"away"|"inactive"}` — оновлення власного статусу (throttle `presence-status`). Деталі — [T48-QA.md](T48-QA.md).
+
+    **Підказки для списку «Люди» (T49):** `GET /api/v1/rooms/{roomId}/peer-hints?user_ids=…` — стать (`male`/`female`/`other`) для **зареєстрованого** переглядача, якщо у цілі поле не приховане; **персонал модерації** додатково отримує `chat_upload_disabled` по кожній не-гостьовій цілі; **гість** отримує порожній об’єкт `data`. Ролі staff/VIP — з `chat_role` у presence / `auth/user`. Деталі — [T49-QA.md](T49-QA.md).
+
+    **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09); **`/chat/staff-users`** — пошук і керування користувачами для персоналу (T52); **`/chat/staff-flagged`** — черга повідомлень з прапорцем модерації (T60). З головної з `?history=1` після входу — перехід на архів.
+
+    **Архів (T09):** `GET /api/v1/archive/messages` — offset-пагінація (`page`, `per_page` ∈ {10,25,50,100}), пошук `q` (≤200 символів); деталі — [T09-QA.md](T09-QA.md).
+
+    **Медіа (T10, T31):** `GET /api/v1/images` — пагінований список **власних** зображень чату (для модалу «мої зображення»; гість — 403); `POST /api/v1/images` (multipart, поле `image`), `GET /api/v1/images/{id}/file` — файли на диску `storage/app/chat-images` (не в `public/`); доступ до файлу за політикою (власник або повідомлення в доступній кімнаті). Повідомлення: опційний `image_id` у `POST .../messages` — [T10-QA.md](T10-QA.md), [T31-QA.md](T31-QA.md).
+
+    **Спостережуваність (T11):** `GET /up` (liveness), `GET /health/ready` (readiness, JSON); структуровані логи — [T11-QA.md](T11-QA.md), runbook — [T11-RUNBOOK.md](T11-RUNBOOK.md).
+
+    **Модерація MVP (T12):** таблиці `banned_ips`, `filter_words`; на `users` — `user_rank`, `mute_until`, `kick_until` — [T12-QA.md](T12-QA.md). **T53:** `filter_words` — категорія, `match_mode` (substring | whole_word), `action` (mask | reject | flag | temp_mute), `mute_minutes`; CRUD під `can:moderate`; публічні повідомлення в кімнаті — застосування правил; приват — лише маскування (mask). **T60:** `GET /api/v1/mod/flagged-messages` (throttle `mod-flagged-read`) і `PATCH /api/v1/mod/flagged-messages/{postId}` — зняття `moderation_flag_at` (`mod-actions`); деталі — [T60-QA.md](T60-QA.md).
+
+    **Ролі чату (T21):** на `users` — `vip` (boolean), `user_rank` (0 користувач, 1 модератор, 2 адмін); `rooms.access` — `0` публічна, `1` лише зареєстровані, `≥2` VIP-кімната (доступ VIP або модератор/адмін). `POST /api/v1/mod/users/{id}/mute|kick` — `can:moderate` (`user_rank ≥ 1`, не гість); керування банами IP і словами фільтра — `can:chat-admin` (`user_rank ≥ 2`). Ліміти `chat-post` / `image-upload` залежать від ролі (гість/VIP/staff). Поля `chat_role` та `badge_color` у `User` і lookup — [T21-QA.md](T21-QA.md).
+
+    **Персонал: користувачі (T52):** `GET|PATCH /api/v1/mod/users` та `PATCH …/profile` — **`can:chat-admin`** (лише адміністратор чату); throttle `mod-user-read` / `mod-actions`. Пошук: підрядок у `user_name`, числовий `id`, за `email` якщо в `q` є `@`; у відповіді `email` для не-гостей. `PATCH …/{id}` — `vip` та `user_rank` (ціль з нижчим рангом); `PATCH …/profile` — повний набір як `PATCH /me/profile` (без зміни e-mail/пароля). **Модератор** ці ендпоінти **не** викликає; mute/kick лишаються під `can:moderate` (`POST …/mute|kick`). Деталі — [T52-QA.md](T52-QA.md).
+
+    **Приват і соціальне (T08, T56, T68):** `GET /api/v1/private/conversations` — у кожному елементі `unread_count` (вхідні від peer, ще не «прочитані»), у корені `meta.total_private_unread` (сума).
+    `GET|POST /api/v1/private/peers/{userId}/messages`; `POST /api/v1/private/peers/{userId}/read` — позначити вхідні від peer прочитаними (throttle `private-read`, ідемпотентно).
+    `DELETE /api/v1/private/peers/{userId}/thread` — видалити всю історію привату між поточним користувачем і peer (throttle `private-post`); **403** при взаємному ігнорі; подія **`.PrivateThreadCleared`** на **`private-user.{userId}`** для **обох** учасників (`peer_one_id`, `peer_two_id`, `cleared_by_user_id`).
+    `GET /api/v1/users/lookup` (точний нік), **`GET /api/v1/users/autocomplete?q=`** — префіксний пошук зареєстрованих для привату (T85, throttle `user-autocomplete`); ендпоінти `friends*` та `ignores*` (деталі — [T08-QA.md](T08-QA.md)); непрочитані приватні — [T56-QA.md](T56-QA.md).
+    **Друзі (T50):** `GET /api/v1/friends` — усі прийняті друзі (без фільтра онлайн); `DELETE /api/v1/friends/{userId}` — прибрати з друзів або скасувати вихідний запит (throttle `private-post`).
+    Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
+
+    **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
+  version: "0.18.0"
+  license:
+    name: Proprietary
+    url: https://example.com/
+
+servers:
+  - url: /
+    description: Відносно origin додатку (наприклад http://127.0.0.1:8000)
+
+tags:
+  - name: Auth
+    description: Реєстрація, сесія, профіль
+  - name: Chat
+    description: Кімнати та публічні повідомлення (T04)
+  - name: Health
+    description: Liveness / readiness (T11)
+  - name: Moderation
+    description: Mute/kick — модератор (`user_rank ≥ 1`); бан IP і фільтр слів — адмін (`user_rank ≥ 2`), T12+T21
+  - name: Private
+    description: Приватні повідомлення, друзі, ігнор (T08, T50, T56, T68, T85)
+
+paths:
+  /up:
+    get:
+      tags: [Health]
+      summary: Liveness (процес відповідає)
+      description: Вбудований маршрут Laravel; HTML-відповідь. Не перевіряє БД.
+      operationId: healthUp
+      security: []
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Помилка під час діагностики (див. подію DiagnosingHealth)
+
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness (БД та за потреби Redis)
+      description: |
+        `checks.database` завжди; `checks.redis` — якщо `HEALTH_CHECK_REDIS=true` або cache/queue на redis.
+        **503** якщо `status` = `degraded`.
+      operationId: healthReady
+      security: []
+      responses:
+        "200":
+          description: Усі перевірки ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
+        "503":
+          description: Одна або кілька перевірок fail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
+
+  /api/v1/mod/banned-ips:
+    get:
+      tags: [Moderation]
+      summary: Список заблокованих IP
+      operationId: modListBannedIps
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Масив у `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModBannedIpListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Moderation]
+      summary: Додати IP у бан
+      operationId: modStoreBannedIp
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModBanIpRequest"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModBannedIpCreatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/banned-ips/{bannedIpId}:
+    delete:
+      tags: [Moderation]
+      summary: Прибрати IP з бану
+      operationId: modDestroyBannedIp
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/BannedIpId"
+      responses:
+        "204":
+          description: Видалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/flagged-messages:
+    get:
+      tags: [Moderation]
+      summary: Черга повідомлень з прапорцем модерації (T60)
+      description: |
+        `can:moderate`, throttle `mod-flagged-read`. Лише рядки з непорожнім `moderation_flag_at`.
+        Відповідь без зайвого PII: уривок тексту (`snippet` до 160 символів); для видалених повідомлень `snippet` порожній, `is_deleted` true.
+      operationId: modListFlaggedMessages
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: room_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: Фільтр за `chat.post_roomid`
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Сторінка в `data`, пагінація в `meta`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModFlaggedMessageListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/flagged-messages/{message}:
+    patch:
+      tags: [Moderation]
+      summary: Зняти прапорець модерації з повідомлення (T60)
+      description: "`can:moderate`, throttle `mod-actions`. Встановлює `moderation_flag_at` у `null`."
+      operationId: modClearMessageModerationFlag
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - name: message
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: "`chat.post_id`"
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModClearModerationFlagResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/filter-words:
+    get:
+      tags: [Moderation]
+      summary: Список слів фільтра / стоп-слів (T53)
+      description: "`can:moderate` (модератор або адміністратор)."
+      operationId: modListFilterWords
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Масив у `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModFilterWordListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Moderation]
+      summary: Додати слово / правило (T53)
+      description: "`can:moderate`. Поля `match_mode`, `action`, `mute_minutes` — див. схему запиту."
+      operationId: modStoreFilterWord
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModFilterWordRequest"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModFilterWordCreatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/filter-words/{filterWordId}:
+    patch:
+      tags: [Moderation]
+      summary: Оновити правило стоп-слова / фільтра (T53)
+      description: "`can:moderate`. Хоча б одне поле в тілі."
+      operationId: modPatchFilterWord
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/FilterWordId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModFilterWordPatchRequest"
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModFilterWordCreatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    delete:
+      tags: [Moderation]
+      summary: Прибрати слово з фільтра
+      description: "`can:moderate`."
+      operationId: modDestroyFilterWord
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/FilterWordId"
+      responses:
+        "204":
+          description: Видалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users:
+    get:
+      tags: [Moderation]
+      summary: Каталог / пошук користувачів для адміна чату (T52, T57)
+      description: |
+        `can:chat-admin`. Потрібно **одне з**: непорожній `q`, `browse=true`, або будь-який фільтр (`guest`, `user_rank`, `vip`, `muted`, `kicked`, `disabled`).
+        Пошук: `instr(lower(user_name), lower(q))`, опційно `id` якщо `q` — лише цифри; збіг по `email`, якщо в `q` є `@`.
+      operationId: modStaffUserSearch
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 191
+        - name: browse
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: guest
+          in: query
+          schema:
+            type: boolean
+        - name: user_rank
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1, 2]
+        - name: vip
+          in: query
+          schema:
+            type: boolean
+        - name: muted
+          in: query
+          description: Активний мут зараз (`mute_until` > now)
+          schema:
+            type: boolean
+        - name: kicked
+          in: query
+          description: Активний kick зараз (`kick_until` > now)
+          schema:
+            type: boolean
+        - name: disabled
+          in: query
+          description: Обліковий запис вимкнено (`account_disabled_at` не null)
+          schema:
+            type: boolean
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [id, user_name, created_at]
+            default: id
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Сторінка результатів
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserSearchResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Moderation]
+      summary: Створити зареєстрованого користувача (T57)
+      description: |
+        `can:chat-admin`. Якщо `password` не передано — генерується випадковий пароль; один раз повертається в `meta.generated_password`.
+      operationId: modStaffUserCreate
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffUserCreateRequest"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserCreateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/bulk:
+    post:
+      tags: [Moderation]
+      summary: Масові дії над користувачами (T57)
+      description: |
+        `can:chat-admin`. До 50 id за запит; транзакція — усі або помилка. Для `mute`/`kick` обов’язково `minutes` (1–525600).
+        Дії: `set_vip`, `clear_vip`, `set_rank` (+`user_rank`), `mute`, `clear_mute`, `kick`, `clear_kick`, `disable_account`, `enable_account`.
+      operationId: modStaffUserBulk
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffUserBulkRequest"
+      responses:
+        "200":
+          description: Успіх
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserBulkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/{userId}:
+    get:
+      tags: [Moderation]
+      summary: Один користувач для адміна (T57)
+      description: "`can:chat-admin`."
+      operationId: modStaffUserShow
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: Рядок користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags: [Moderation]
+      summary: Зміна VIP, рангу та soft-disable облікового запису (T52, T57)
+      description: |
+        `can:chat-admin`; ціль має мати **нижчий** `user_rank`, ніж актор; не на себе.
+        Новий ранг не може бути вищим за ранг актора. `account_disabled` — лише для не-гостя (встановлює `account_disabled_at`).
+      operationId: modStaffUserPatchRoles
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffUserRolesPatchRequest"
+      responses:
+        "200":
+          description: Оновлений рядок користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/{userId}/profile:
+    patch:
+      tags: [Moderation]
+      summary: Редагування профілю користувача адміном (T52)
+      description: |
+        `can:chat-admin`; ціль — зареєстрований користувач (не гість), нижчий ранг за актора.
+        Повний набір полів профілю, соцмережі, звукові преференції (як `MeProfilePatchRequest`).
+      operationId: modStaffUserPatchProfile
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffUserProfilePatchRequest"
+      responses:
+        "200":
+          description: Оновлений рядок користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUserSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/{userId}/mute:
+    post:
+      tags: [Moderation]
+      summary: Мут користувача (хвилини; 0 або відсутнє — зняти)
+      operationId: modMuteUser
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModMinutesRequest"
+      responses:
+        "200":
+          description: Оновлені обмеження
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModUserRestrictionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/{userId}/kick:
+    post:
+      tags: [Moderation]
+      summary: Kick користувача (хвилини; 0 або відсутнє — зняти)
+      operationId: modKickUser
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModMinutesRequest"
+      responses:
+        "200":
+          description: Оновлені обмеження
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModUserRestrictionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/users/{userId}/network-insight:
+    get:
+      tags: [Moderation]
+      summary: Мережевий огляд користувача для персоналу (T23)
+      description: |
+        Джерело: останні записи таблиці `sessions` при `SESSION_DRIVER=database` (IP, user-agent останньої сесії, унікальні IP у вибірці, прапорець бану по `banned_ips`).
+        Доступ лише за `can:moderate` (модератор/адмін, не гість). Ліміт `mod-network-insight`.
+      operationId: modUserNetworkInsight
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: Агреговані дані без дублювання PII у логах клієнта
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModUserNetworkInsightResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /sanctum/csrf-cookie:
+    get:
+      tags: [Auth]
+      summary: Отримати CSRF cookie (перед POST з браузера)
+      operationId: sanctumCsrfCookie
+      security: []
+      responses:
+        "204":
+          description: Cookie `XSRF-TOKEN` виставлено; використайте його для заголовка `X-XSRF-TOKEN`.
+        "403":
+          description: Доступ заборонено (наприклад, некоректний origin для stateful Sanctum).
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Реєстрація
+      description: |
+        Якщо в налаштуваннях чату вимкнено реєстрацію (`registration_open: false`), повертається **403** навіть при валідному тілі.
+        Поле `department` — honeypot: має бути відсутнім або порожнім рядком.
+      operationId: authRegister
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Створено; сесія відкрита
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "403":
+          description: Реєстрацію вимкнено в налаштуваннях чату
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Вхід за паролем
+      description: |
+        **Throttle:** одночасно ліміт **5**/хв на IP (`auth-login-ip`) і **30**/хв на нормалізований `user_name` у нижньому регістрі (`auth-login-name`, спільно для всіх IP) — стримує перебір одного ніка з ботнету.
+      operationId: authLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK; сесія відкрита
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/guest:
+    post:
+      tags: [Auth]
+      summary: Вхід як гість
+      description: Throttle **12**/хв на IP (`auth-guest`).
+      operationId: authGuest
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuestRequest"
+      responses:
+        "201":
+          description: Створено гостьового користувача; сесія відкрита
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Запит посилання для скидання пароля (T94)
+      description: |
+        Завжди **200** з однаковим `message` (немає user enumeration). Лист надсилається якщо знайдено **не-гостьовий**
+        обліковий запис з валідною email і (**непорожній пароль** **або** імпорт з legacy без пароля: `legacy_imported_at` задано, `password` порожній — **T129**).
+        Throttle **5**/хв на IP (`auth-forgot-password`).
+      operationId: authForgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        "200":
+          description: OK (однакова відповідь незалежно від існування email)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/account-legacy-password-link:
+    post:
+      tags: [Auth]
+      summary: Лист для встановлення пароля після імпорту legacy (T129)
+      description: |
+        Лише для **авторизованого** не-гостя з `legacy_imported_at` і **без** пароля в БД: надсилає той самий лист скидання, що й публічний forgot-password (**T94**).
+        **422** якщо умови не виконані (не legacy / пароль уже є / немає email). Throttle **3**/хв на користувача (`auth-account-legacy-password-link`).
+      operationId: authAccountLegacyPasswordLink
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Гість
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          description: Брокер скидання не зміг надіслати лист
+
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Підтвердження нового пароля за токеном з листа (T94)
+      description: |
+        Після успіху інші сесії користувача в `SESSION_DRIVER=database` видаляються з таблиці `sessions`;
+        персональні токени Sanctum (`personal_access_tokens`) — також. Пароль — `Password::defaults()` як у реєстрації.
+        Throttle **10**/хв на IP (`auth-reset-password`).
+      operationId: authResetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "200":
+          description: Пароль оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/landing:
+    get:
+      tags: [Auth]
+      summary: Публічний зріз вітальні (T75)
+      description: |
+        Без автентифікації: тексти та посилання для гостьової сторінки, прапорці реєстрації (без секретів),
+        приблизний лічильник користувачів з активною сесією (`SESSION_DRIVER=database`). Throttle `landing-read`.
+      operationId: getLandingPublic
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LandingPublicResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/user:
+    get:
+      tags: [Auth]
+      summary: Поточний користувач
+      operationId: authUser
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Поточний користувач (обгортка `data`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Вихід (інвалідація сесії)
+      operationId: authLogout
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      responses:
+        "204":
+          description: Немає тіла
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/me/avatar:
+    post:
+      tags: [Auth]
+      summary: Завантажити аватар профілю
+      description: |
+        Лише для зареєстрованих користувачів (`guest === false`). Гість отримує **403**.
+        Обмеження як у `POST /api/v1/images`: JPEG, PNG, GIF, WebP; розмір файлу — див. `max_chat_image_upload_bytes` у `GET /api/v1/chat/settings`.
+        Додатково (T19): фактичний тип і декодування перевіряються за вмістом (magic bytes / `getimagesize`); максимальний розмір зображення **4096×4096 px**; MIME у БД береться з вмісту, а не лише з заголовка клієнта.
+        Окремий throttle **`avatar-upload`** (нижчий за загальний `image-upload` для вкладень у чат).
+        Відповідь — оновлений профіль у форматі `UserResponse` (поле `avatar_url` вказує на `GET /api/v1/images/{id}/file`).
+      operationId: uploadProfileAvatar
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Аватар збережено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/me/profile:
+    get:
+      tags: [Auth]
+      summary: Профіль зареєстрованого користувача (повне тіло як UserResponse)
+      description: Гість отримує **403**. Дані профілю, соцмереж та звуків збігаються з полями в `GET /api/v1/auth/user` для `guest === false`.
+      operationId: getMeProfile
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags: [Auth]
+      summary: Оновити персональні дані, соцмережі та преференції звуків
+      description: Гість **403**. Часткове оновлення (лише передані блоки). Пароль і e-mail — через `PATCH /api/v1/me/account`.
+      operationId: patchMeProfile
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeProfilePatchRequest"
+      responses:
+        "200":
+          description: Оновлений користувач
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/me/account:
+    patch:
+      tags: [Auth]
+      summary: Зміна e-mail та/або пароля
+      description: |
+        Лише зареєстрований користувач (**403** для гостя).
+        Потрібен валідний `current_password`. Має бути вказано новий `email` (відмінний від поточного) або новий `password` (з `password_confirmation`).
+        Після зміни e-mail `email_verified_at` скидається (верифікація — за політикою застосунку).
+      operationId: patchMeAccount
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeAccountPatchRequest"
+      responses:
+        "200":
+          description: Оновлений користувач
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/private/conversations:
+    get:
+      tags: [Private]
+      summary: Список розмов (останнє повідомлення на peer)
+      description: |
+        Для кожного peer — останнє повідомлення в парі, `unread_count` (вхідні від peer після `last_read_incoming_message_id`),
+        у `meta.total_private_unread` — сума `unread_count` по всіх рядках.
+        Throttle: `private-read`.
+      operationId: listPrivateConversations
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateConversationsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/private/peers/{peer}/messages:
+    get:
+      tags: [Private]
+      summary: Історія привату з peer (курсор)
+      description: |
+        Повідомлення в хронологічному порядку (зростання `id`) на сторінці; новіші зазвичай в кінці списку.
+        Параметри: `before` (опційно, `id` верхньої межі для наступної сторінки), `limit` (1–100, типово 50).
+        Після відповіді сервер позначає вхідні від peer як прочитані до поточного max(id) (**T56**).
+        Throttle: `private-read`. **403** якщо пара в ігнорі. **422** якщо `peer` — поточний користувач.
+      operationId: listPrivatePeerMessages
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/PeerUserId"
+        - name: before
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: Повернути повідомлення з `id` строго меншим за `before` (пагінація назад у часі).
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateMessagesPageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Взаємний ігнор або недоступність переписки
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Некоректний peer або валідація query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Private]
+      summary: Надіслати приватне повідомлення peer
+      description: |
+        Тіло: `message` (plain text, до 4000 символів), `client_message_id` (UUID) для ідемпотентності.
+        **201** — нове повідомлення; **200** з `meta.duplicate: true` — той самий `client_message_id` уже збережений для цього peer.
+        **403** — ігнор або мут/кік (**UserPostingGate**). **422** — не себе, або `client_message_id` вже використано для іншого peer.
+        **T125:** той самий антифлуд, що й для `POST /api/v1/rooms/{roomId}/messages` (після перевірки дубля `client_message_id`); **`429`** з **`code`: `message_flood_limit`**.
+        Broadcast: `.PrivateMessagePosted` на `private-user.{recipientId}`.
+        Throttle: `private-post`.
+      operationId: storePrivateMessage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/PeerUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StorePrivateMessageRequest"
+      responses:
+        "200":
+          description: Дубль за `client_message_id` (тіло як у створеного)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateMessageStoredResponse"
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateMessageStoredResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Ігнор, мут або кік
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          description: Throttle `private-post` або **T125** `message_flood_limit`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+
+  /api/v1/private/peers/{peer}/read:
+    post:
+      tags: [Private]
+      summary: Позначити вхідні від peer прочитаними
+      description: |
+        Ідемпотентно оновлює `last_read_incoming_message_id` до поточного максимуму вхідних від peer.
+        Throttle: `private-read`.
+      operationId: markPrivatePeerRead
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/PeerUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaOkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Ігнор
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Не себе
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/private/peers/{peer}/thread:
+    delete:
+      tags: [Private]
+      summary: Очистити всю переписку з peer (**T68**)
+      description: |
+        Видаляє всі повідомлення між поточним користувачем і peer та read-state; broadcast `.PrivateThreadCleared` на `private-user.{userId}` для обох.
+        **403** при взаємному ігнорі. Throttle: `private-post`.
+      operationId: destroyPrivateThread
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/PeerUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateThreadClearedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Ігнор
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Не себе
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/users/autocomplete:
+    get:
+      tags: [Auth]
+      summary: Автокомпліт ніків зареєстрованих користувачів (T85)
+      description: |
+        Префіксний пошук по `user_name` для поля «Почати приватний чат».
+        У відповіді лише **не**-гості з активним акаунтом (`account_disabled_at` IS NULL), без поточного користувача.
+        Запит до БД — `LIKE 'prefix%'` на індексованій колонці (`user_name` UNIQUE); екранування `%`, `_`, `!` у префіксі.
+        Параметр **`q`**: мінімум 2 символи, максимум 64; повертається до **15** записів, відсортовано за `user_name`.
+        Throttle: **`user-autocomplete`** (на користувача).
+      operationId: usersAutocomplete
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 64
+          description: Префікс ніка (без глобального wildcard).
+      responses:
+        "200":
+          description: Список кандидатів (той самий набір полів, що й у `users/lookup` → `data`)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    maxItems: 15
+                    items:
+                      $ref: "#/components/schemas/UserLookupPeer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/users/lookup:
+    get:
+      tags: [Private]
+      summary: Точний пошук користувача за ніком (приват / slash)
+      description: |
+        Query **`name`** — точний `user_name` (до 191 символів). Повертає той самий набір полів, що й елементи `users/autocomplete` (`UserLookupPeer` у `data`).
+        **404** — не знайдено. **422** — спроба вибрати себе.
+      operationId: usersLookupByName
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 191
+          description: Точний нік (`users.user_name`).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/UserLookupPeer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Користувача не знайдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Некоректний запит (наприклад, себе)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+
+  /api/v1/oembed:
+    get:
+      tags: [Chat]
+      summary: oEmbed-метадані через серверний проксі (T55)
+      description: |
+        Параметр **`url`** — публічне `http`/`https` посилання на ресурс; має відповідати **хоча б одній** схемі з реєстру провайдерів (`backend/data/oembed-providers.json`).
+        Вихідний HTTP-запит виконується **лише** на `endpoint` обраного провайдера з реєстру, не на довільний хост з `url`.
+        Поле **`html`** (якщо є) — лише безпечні `iframe` з білого списку хостів; `<script>` та інша розмітка відкидаються.
+        Кеш на бекенді за ключем нормалізованого `url` і TTL з `cache_age` відповіді (у межах конфігу).
+        Throttle: **`oembed-read`** (на користувача).
+      operationId: getOembedProxy
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 2048
+          description: URL ресурсу для вбудовування (має матчитися реєстру oEmbed).
+        - name: maxwidth
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2000
+        - name: maxheight
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2000
+      responses:
+        "200":
+          description: Підмножина полів oEmbed JSON
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: Напр. `private, max-age=300`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OEmbedProxyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: URL небезпечний / не з реєстру / не вдалося підібрати провайдера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "502":
+          description: Провайдер недоступний або некоректна відповідь
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/friends:
+    get:
+      tags: [Private]
+      summary: Список прийнятих друзів (T50)
+      description: Усі зв’язки зі статусом accepted; для кожного рядка — peer (`user`) і `since` (ISO 8601, `updated_at` дружби).
+      operationId: listFriends
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendsAcceptedListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friends/requests/incoming:
+    get:
+      tags: [Private]
+      summary: Вхідні запити в друзі (pending)
+      description: Запити, де поточний користувач — addressee.
+      operationId: listFriendRequestsIncoming
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRequestsListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friends/requests/outgoing:
+    get:
+      tags: [Private]
+      summary: Вихідні запити в друзі (pending)
+      description: Запити, де поточний користувач — requester.
+      operationId: listFriendRequestsOutgoing
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRequestsListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/friends/{userId}/accept:
+    post:
+      tags: [Private]
+      summary: Прийняти вхідний запит у друзі
+      description: Поточний користувач має бути addressee для pending-запиту від `userId`. **404** — немає такого запиту.
+      operationId: acceptFriendRequest
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Немає pending-запиту від цього користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+
+  /api/v1/friends/{userId}/reject:
+    post:
+      tags: [Private]
+      summary: Відхилити вхідний запит у друзі
+      description: Статус запиту стає rejected. **404** — немає такого запиту.
+      operationId: rejectFriendRequest
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Немає pending-запиту від цього користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+
+  /api/v1/friends/{userId}:
+    post:
+      tags: [Private]
+      summary: Надіслати запит у друзі або повторити після відхилення (T50)
+      description: |
+        **422** — себе, гість як ціль, дубль pending/accepted, тощо.
+        **409** — інший користувач уже надіслав вам запит (потрібно прийняти зі своєї сторони).
+        **201** — створено або «Запит надіслано повторно.» (оновлення з rejected).
+      operationId: storeFriendRequest
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "201":
+          description: Запит створено або повторно надіслано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Вхідний pending-запит від цілі — прийміть його
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Некоректний запит
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+    delete:
+      tags: [Private]
+      summary: Прибрати з друзів або скасувати запит у друзі (T50)
+      description: |
+        Видаляє рядок `friendships` між поточним користувачем і `userId`:
+        **accepted** — прибрати з друзів; **pending** — скасувати вихідний запит або прибрати вхідний;
+        **rejected** — очистити запис (можна надіслати новий запит). Не застосовується до себе (**422**).
+        Обмеження частоти: `private-post` (як і змінюючі запити привату).
+      operationId: destroyFriendship
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: Операція виконана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Немає рядка дружби з цим користувачем
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: Некоректний запит (наприклад, спроба застосувати до себе)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/ignores:
+    get:
+      tags: [Private]
+      summary: Список ігнорованих користувачів
+      description: Кожен елемент — `user` з `id` та `user_name` (ціль не гість у моделі, але поля мінімальні).
+      operationId: listIgnores
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IgnoreListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/ignores/{userId}:
+    post:
+      tags: [Private]
+      summary: Додати користувача в ігнор
+      description: Ідемпотентне `firstOrCreate`. **422** — спроба ігнорувати себе.
+      operationId: storeIgnore
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "201":
+          description: Додано (або вже був у списку)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Некоректна ціль
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+    delete:
+      tags: [Private]
+      summary: Прибрати користувача з ігнору
+      description: "**404** — запису не було."
+      operationId: destroyIgnore
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/ModUserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Запису в ігнорі немає
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+
+  /api/v1/rooms:
+    get:
+      tags: [Chat]
+      summary: Список кімнат, доступних користувачу
+      description: Гості — лише `access === 0`; зареєстровані без VIP — `access < 2`; VIP або staff бачать усі кімнати, до яких є `interact`.
+      operationId: listRooms
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Список кімнат у полі `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Chat]
+      summary: Створити публічну кімнату
+      description: |
+        **T44:** лише **не гість**. Адміністратор, модератор і VIP можуть завжди. Звичайний зареєстрований — якщо кількість його публічних повідомлень (за `GET /api/v1/chat/settings`: область лічби та поріг **N**) **строго більша** за **N**.
+        Нова кімната завжди з `access = 0` (публічна). Поле опису — `topic`.
+      operationId: createRoom
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoomRequest"
+      responses:
+        "201":
+          description: Створена кімната в `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: |
+            Гість (`message` про заборону) або недостатня кількість публічних повідомлень (`code`: `room_create_insufficient_messages`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  code:
+                    type: string
+                    enum: [room_create_insufficient_messages]
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}:
+    parameters:
+      - $ref: "#/components/parameters/RoomId"
+    patch:
+      tags: [Chat]
+      summary: Оновити кімнату (T54)
+      description: |
+        Лише **не гість**. Потрібен доступ `interact` до кімнати. Поля `room_name` та `topic` — **творець** (`created_by_user_id`) або **модератор/адмін**; legacy-кімнати без творця редагують лише staff.
+        Поле `access` (0 / 1 / 2) — **лише модератор або адмін**. Хоча б одне поле в тілі. Throttle `room-manage`.
+      operationId: patchRoom
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchRoomRequest"
+      responses:
+        "200":
+          description: Оновлена кімната в `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Гість, немає `interact`, або недостатньо прав на поля
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    delete:
+      tags: [Chat]
+      summary: Видалити порожню кімнату (T54)
+      description: |
+        Лише **не гість**; **творець** або **модератор/адмін**; доступ `interact`. Якщо є хоча б одне повідомлення в історії — **422** (`room_has_messages`). Throttle `room-manage`.
+      operationId: deleteRoom
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      responses:
+        "204":
+          description: Кімнату видалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Немає прав або немає доступу до кімнати
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          description: У кімнаті є повідомлення
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  code:
+                    type: string
+                    enum: [room_has_messages]
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/chat/settings:
+    get:
+      tags: [Chat]
+      summary: Глобальні опції чату (зріз для клієнта)
+      description: |
+        Поріг **N** і область лічби публічних повідомлень для права створення кімнат (**T51** / **T44**).
+        Ліміт **slash-команд** на користувача: `slash_command_max_per_window` / `slash_command_window_seconds` (див. схему `ChatSettingsData`).
+        Доступно будь-якому авторизованому користувачу (у т.ч. гостю); без PII.
+        **Адміністратор чату** додатково отримує `transactional_mail_from_name` та `mail_template_overrides` (**T110**); іншим ці поля **не** повертаються.
+      operationId: getChatSettings
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Поточні значення
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags: [Chat]
+      summary: Оновити глобальні опції чату
+      description: |
+        Лише **адміністратор чату** (`chat-admin`).
+        Опційно — **транзакційні листи** (`transactional_mail_from_name`, `mail_template_overrides`, **T110**); плейсхолдери — `docs/chat-v2/T110-MAIL-PLACEHOLDERS.md`.
+      operationId: patchChatSettings
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchChatSettingsRequest"
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/chat/emoticons:
+    get:
+      tags: [Chat]
+      summary: Публічний каталог смайлів (активні)
+      description: |
+        Список для модалу композера та клієнтського парсера `:code:` у стрічці (**T63**).
+        Лише `is_active=true`, сортування `sort_order`, `id`.
+      operationId: listChatEmoticons
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Масив у `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatEmoticonPublicListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/emoticons:
+    get:
+      tags: [Moderation]
+      summary: Список смайлів (адмін)
+      description: Усі записи каталогу; **`can:chat-admin`**, throttle `mod-actions`.
+      operationId: modListEmoticons
+      security:
+        - sanctumSession: []
+      responses:
+        "200":
+          description: Масив у `data`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatEmoticonAdminListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Moderation]
+      summary: Додати смайл (multipart)
+      description: Поля форми + файл `file` (GIF/PNG/WebP, ≤512 КБ). **`can:chat-admin`**.
+      operationId: modCreateEmoticon
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ModCreateEmoticonMultipart"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatEmoticonAdminOneResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/mod/emoticons/{emoticonId}:
+    patch:
+      tags: [Moderation]
+      summary: Оновити смайл
+      description: JSON або `multipart/form-data` з опційним `file`. **`can:chat-admin`**.
+      operationId: modPatchEmoticon
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - name: emoticonId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModPatchEmoticonRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ModPatchEmoticonMultipart"
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatEmoticonAdminOneResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    delete:
+      tags: [Moderation]
+      summary: Видалити запис смайла
+      description: Видаляє рядок; файл з диска прибирається, якщо більше не посилається іншим записом. **`can:chat-admin`**.
+      operationId: modDeleteEmoticon
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - name: emoticonId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: Видалено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/archive/messages:
+    get:
+      tags: [Chat]
+      summary: Архів публічних повідомлень (offset-пагінація)
+      description: |
+        Вибірка з усіх кімнат, доступних користувачу за правилом `interact` (аналогічно до `GET /api/v1/rooms`).
+        Параметр `room` обмежує однією кімнатою; **403**, якщо кімната недоступна, **404**, якщо `room_id` не існує.
+        Пошук `q` — підрядок у `post_message` або `post_user` (символи `%` та `_` у вводі екрануються для SQL LIKE).
+      operationId: listArchiveMessages
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            enum: [10, 25, 50, 100]
+            default: 25
+        - name: q
+          in: query
+          description: Пошук за текстом повідомлення або ніком автора
+          schema:
+            type: string
+            maxLength: 200
+        - name: room
+          in: query
+          description: Фільтр за `room_id`
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Сторінка повідомлень у форматі пагінації Laravel (`data`, `links`, `meta`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchiveMessagesPaginatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/images:
+    get:
+      tags: [Chat]
+      summary: Список останніх зображень поточного користувача (чат)
+      description: |
+        Повертає лише записи з `images.user_id` = поточний користувач, за спаданням `date_sent` та `id`.
+        **Гість** — `403`. Параметр `per_page` обмежено **60** (якщо більше — обрізається). Формат відповіді — стандартна пагінація Laravel (`data`, `total`, `links`, тощо).
+      operationId: listMyChatImages
+      security:
+        - sanctumSession: []
+      parameters:
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 60
+            default: 24
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        "200":
+          description: Сторінка зображень
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatImagesPaginatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: [Chat]
+      summary: Завантажити зображення (чернетка перед повідомленням)
+      description: |
+        `multipart/form-data`, поле **`image`**. Дозволені MIME: `image/jpeg`, `image/png`, `image/gif`, `image/webp`.
+        Максимальний розмір — **мінімум** з `max_attachment_bytes` (адмін, `GET/PATCH /api/v1/chat/settings`) та обмеження PHP `upload_max_filesize` / `post_max_size`; фактична межа в байтах — поле **`max_chat_image_upload_bytes`** у `GET /api/v1/chat/settings`. При перевищенні — **422** з поясненням у `message` / `errors`.
+        Додатково (T19): перевірка **фактичного вмісту** (magic bytes + декодування) і ліміт розмірів зображення **8192×8192 px**; збережений `mime` узгоджений з вмістом.
+        У відповіді — `data.id` для передачі в `POST /api/v1/rooms/{roomId}/messages` як `image_id`.
+      operationId: uploadChatImage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Збережено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatImageUploadResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/images/{imageId}/file:
+    get:
+      tags: [Chat]
+      summary: Отримати файл зображення
+      description: |
+        Потік байтів з коректним `Content-Type`. Доступ: власник зображення або користувач з доступом до кімнати, де є повідомлення з цим `image_id` у полі `file`.
+      operationId: downloadChatImageFile
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/ImageId"
+      responses:
+        "200":
+          description: Тіло зображення
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}/read:
+    post:
+      tags: [Chat]
+      summary: Позначити прочитане до post_id (кімната)
+      description: |
+        Оновлює для поточного користувача пару `(user, room)` поле **останнього прочитаного** `post_id` **лише вгору** (монотонно).
+        `post_id` має існувати в цій кімнаті і бути **видимим** цьому користувачу (як у `GET .../messages`).
+      operationId: postRoomRead
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostRoomReadRequest"
+      responses:
+        "200":
+          description: Поточний маркер після оновлення (або без зміни при меншому post_id)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomReadResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Невідомий post_id у цій кімнаті для цього користувача
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}/peer-hints:
+    get:
+      tags: [Chat]
+      summary: Підказки профілю для списку учасників (стать, T49)
+      description: |
+        Для переданих `user_ids` (до 100) повертає об’єкт `data[userId]` з полем `sex` ∈ {`male`,`female`,`other`},
+        якщо ціль — зареєстрований користувач, `profile_sex_hidden === false`, і значення дозволене.
+        **Гість** (переглядач) завжди отримує порожній `data` (без PII). Власний id у списку ігнорується (стать «я» з `GET auth/user`).
+      operationId: listRoomPeerHints
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - name: user_ids
+          in: query
+          required: true
+          description: Ідентифікатори користувачів через кому або пробіл
+          schema:
+            type: string
+            maxLength: 4096
+      responses:
+        "200":
+          description: Мапа user id → { sex }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomPeerHintsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}/presence-statuses:
+    get:
+      tags: [Chat]
+      summary: Статуси присутності за списком user id (T48)
+      description: |
+        Повертає для переданих `user_ids` (до 100 id) збережені в кеші статуси **online**, **away**, **inactive**,
+        якщо запис ще не прострочений (TTL з `config/chat.php`, `presence_status_ttl_seconds`).
+        Використовується SPA разом з Echo presence для списку «Люди».
+      operationId: listRoomPresenceStatuses
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - name: user_ids
+          in: query
+          required: true
+          description: Ідентифікатори користувачів через кому або пробіл (напр. `1,2,5`)
+          schema:
+            type: string
+            maxLength: 4096
+      responses:
+        "200":
+          description: Мапа рядкових user id → статус
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomPresenceStatusesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}/presence-status:
+    post:
+      tags: [Chat]
+      summary: Оновити власний статус присутності в кімнаті (T48)
+      description: |
+        Зберігає статус поточного користувача в кеші та транслює **`.PresenceStatusUpdated`** на presence-канал кімнати
+        (лише якщо значення змінилось). Throttle — `presence-status`.
+      operationId: postRoomPresenceStatus
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostRoomPresenceStatusRequest"
+      responses:
+        "200":
+          description: Підтвердження збереженого статусу
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomPresenceStatusPostResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/rooms/{roomId}/messages:
+    get:
+      tags: [Chat]
+      summary: Історія повідомлень (сторінка)
+      description: |
+        Повертає до `limit` повідомлень старіших за `before` (якщо задано), у полі `data` — у **хронологічному** порядку (старі → новіші у межах сторінки).
+        `meta.next_cursor` — мінімальний `post_id` у сторінці для наступного запиту «старіше».
+        `meta.last_read_post_id` — збережений маркер прочитаного для цієї кімнати (`null`, якщо ще не зберігали).
+        Якщо `since_read=true`, додатково `meta.first_unread_post_id` — перший `post_id` **у межах повернутої сторінки** з `post_id` > `last_read_post_id` (або `null`).
+      operationId: listRoomMessages
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - name: before
+          in: query
+          description: Повернути лише повідомлення з `post_id` < `before`
+          schema:
+            type: integer
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: since_read
+          in: query
+          description: Якщо true — додати `meta.first_unread_post_id` для поточної сторінки
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Сторінка повідомлень і `meta` (у т.ч. `last_read_post_id`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+    post:
+      tags: [Chat]
+      summary: Надіслати повідомлення
+      description: |
+        Ідемпотентність: повтор з тим самим `client_message_id` у **тій самій** кімнаті повертає **200** і той самий ресурс з `meta.duplicate: true`.
+        Той самий ключ у **іншій** кімнаті — **422**.
+        `meta.slash` завжди присутній; для відповіді-дубля — `recognized: false` (тіло повторного запиту не застосовується).
+        **Slash-команди (T66, T67):** рядок після пробілів, що починається з `/` і має непорожнє ім’я команди (до першого пробілу), обробляється реєстром на бекенді;
+        невідома команда зберігається як `type: client_only` (видно лише автору), без події `MessagePosted` у кімнату.
+        **T67 (користувач / гість):** `/manual` — довідник (client_only); `/away` — перемикання away/online у кімнаті + broadcast `PresenceStatusUpdated`;
+        `/me` — публічне «дійове» повідомлення; `/seen нік` — client_only (активність у кімнаті); `/msg нік текст` — інлайн-приват (як T25, `meta.slash.name: msg`); голий `/msg` — **422**;
+        `/friend нік` — запит у друзі (client_only або помилки як у `POST /friends/{user}`); **гостю** `/friend` — **403**.
+        **T68:** `/ignore нік`, `/ignoreclear` — **403** для гостя; очищення приватного треду — **`DELETE …/private/peers/{peer}/thread`** або рядок **`/clear`** у полі привату (Vue), не через `POST …/rooms/.../messages`.
+        **T69 (модератор кімнати / staff):** `/mute нік [хвилини]`, `/unmute нік`, `/kick нік [хвилини]`, `/upon нік`, `/upoff нік` — **403** без `can:moderate`; цілі з вищим рангом — **403**; відповідь успіху — **`client_only`** (як інші slash). `/ban нік` — **лише адмін** (`user_rank` адміна); модератор без адмін-прав — **403** з підказкою про `/kick`; гостя як ціль — **422**. Поле **`chat_upload_disabled`** (через `/upoff|upon`) блокує **`POST /api/v1/images`**, аватар і **`image_id`** у повідомленні.
+        **T70 (кімната):** `/topic текст` або `/topic` без аргументів (скинути тему) — **403** без права `updateDetails` на кімнату (творець, модератор або адмін; кімната без `created_by_user_id` — лише staff); публічний рядок у стрічці + оновлення `rooms.topic` + broadcast `RoomTopicUpdated` у `room.{id}`. `/clear` без аргументів — те саме право; **soft-delete** усіх **`type: public`** у цій кімнаті, **client_only** відповідь автору, broadcast `RoomJournalCleared`; інлайн-приват у стрічці не чіпається. Аргументи після `/clear` — **422**. Історія **`GET …/messages`** та **архів** не повертають видалені (`post_deleted_at` задано) публічні пости.
+        **T72 (адмін, каталог UI-тем):** `/addtheme назва` — запис у `chat_themes` (до 64 символів; дублікат назви — **422**, зокрема різний регістр при колації utf8mb4_unicode_ci); `/deltheme назва` — видалення за збігом імені **без** урахування регістру; **403** без `can:chat-admin`; успіх — публічне системне повідомлення в стрічці (`meta.slash.name`: `addtheme` / `deltheme`). Вибір теми в UI — поза межами T72.
+        Окремий ліміт slash-команд на користувача (`429`): **`slash_command_max_per_window`** спроб за **`slash_command_window_seconds`** с (див. `GET/PATCH /api/v1/chat/settings`); разом із `image_id` такі рядки **422**.
+        **T125 (антифлуд повідомлень):** якщо в `GET /api/v1/chat/settings` увімкнено **`message_flood_enabled`**, після перевірки ідемпотентності `client_message_id` застосовується ліміт **`message_flood_max_messages`** за ковзне вікно **`message_flood_window_seconds`** с (кеш); **не** діє на адміна чату, модераторів і **VIP**. Перевищення — **`429`** з полем **`code`: `message_flood_limit`** (разом із `message`).
+        Потрібен **непорожній** `message` (після trim) або **`image_id`** власного завантаження (`POST /api/v1/images`).
+        Поле `message` — **plain text**; max довжина: гість **2000**, користувач **4000**, VIP/модератор/адмін **8000** (інакше **422**).
+      operationId: postRoomMessage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostChatMessageRequest"
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessagePostResponseCreated"
+        "200":
+          description: Ідемпотентний повтор (дубль)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessagePostResponseDuplicate"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Валідація або конфлікт `client_message_id` з іншою кімнатою
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ValidationErrorBody"
+                  - $ref: "#/components/schemas/ClientIdRoomConflict"
+        "429":
+          description: Slash rate limit або **T125** `message_flood_limit` (див. тіло `message` / `code`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+
+  /api/v1/rooms/{roomId}/messages/{postId}:
+    patch:
+      tags: [Chat]
+      summary: Редагувати публічне повідомлення
+      description: |
+        Лише `type: public`. RBAC: адмін — будь-який допис у кімнаті; модератор — будь-який, крім авторства адміністратора;
+        звичайний користувач — лише власні в межах `message_edit_window_hours` з `GET /api/v1/auth/user`; VIP — власні без обмеження часу; гість — заборонено.
+        Текст проходить той самий word-filter, що й при створенні. Поле `style` опційне; якщо не передано — стиль не змінюється.
+        Поле `message` — **plain text**; max довжина як у `POST` (гість 2000 / користувач 4000 / VIP або staff 8000).
+        **Вкладене зображення** (`file` / `image` у відповіді) цим запитом **не змінюється** і в тілі PATCH **не передається**.
+        Якщо після `trim` текст порожній, запит валідний лише коли в повідомленні вже є вкладення (інакше 422).
+      operationId: patchRoomMessage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - $ref: "#/components/parameters/ChatPostId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchChatMessageRequest"
+      responses:
+        "200":
+          description: Оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessagePatchResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Валідація
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorBody"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+    delete:
+      tags: [Chat]
+      summary: Видалити публічне повідомлення (soft-delete)
+      description: |
+        Лише `type: public` (інлайн-приват — як `PATCH`, заборонено). RBAC ідентичний редагуванню (T36/T37).
+        Повторний `DELETE` з тими самими правами — **200** і той самий стан (ідемпотентно), без другого broadcast.
+        Тіло та вкладення очищуються; у стрічці лишається рядок-плейсхолдер (`post_deleted_at`, порожнє `post_message`).
+      operationId: deleteRoomMessage
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - $ref: "#/components/parameters/ChatPostId"
+      responses:
+        "200":
+          description: Видалено або вже було видалено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageDeleteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+components:
+  securitySchemes:
+    sanctumSession:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+      description: Ім’я cookie зазвичай з `SESSION_COOKIE` у `.env` (типово `laravel_session`).
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Після `GET /sanctum/csrf-cookie` — значення з cookie `XSRF-TOKEN` (URL decode).
+
+  parameters:
+    ImageId:
+      name: imageId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    BannedIpId:
+      name: bannedIpId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    FilterWordId:
+      name: filterWordId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    ModUserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: "`users.id` цілі"
+
+    PeerUserId:
+      name: peer
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: "`users.id` співрозмовника (peer) у приваті"
+
+    ChatPostId:
+      name: postId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: "`chat.post_id`"
+
+    RoomId:
+      name: roomId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Первинний ключ `rooms.room_id`
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [user_name, email, password, password_confirmation]
+      properties:
+        user_name:
+          type: string
+          minLength: 2
+          maxLength: 191
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          maxLength: 1024
+        password_confirmation:
+          type: string
+          maxLength: 1024
+        department:
+          type: string
+          maxLength: 0
+          description: Honeypot (антиспам). Не заповнювати; лише порожній рядок або відсутнє поле.
+
+    LoginRequest:
+      type: object
+      required: [user_name, password]
+      properties:
+        user_name:
+          type: string
+        password:
+          type: string
+          maxLength: 1024
+          description: Обмеження довжини знижує ризик DoS на `Hash::check`.
+        remember:
+          type: boolean
+
+    GuestRequest:
+      type: object
+      properties:
+        user_name:
+          type: string
+          nullable: true
+          description: Якщо null/відсутнє — сервер генерує нік.
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordRequest:
+      type: object
+      required: [email, token, password, password_confirmation]
+      properties:
+        email:
+          type: string
+          format: email
+        token:
+          type: string
+          description: Токен з листа (plain, не хеш)
+        password:
+          type: string
+          maxLength: 1024
+        password_confirmation:
+          type: string
+          maxLength: 1024
+
+    ApiPlainMessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: Людськочитаний текст для UI або логів
+
+    UserProfile:
+      type: object
+      description: Лише для `guest === false` у `User`
+      properties:
+        country:
+          type: string
+          nullable: true
+          description: ISO 3166-1 alpha-2 (два символи A–Z), напр. UA, PL; null якщо не обрано
+        region:
+          type: string
+          nullable: true
+        age:
+          type: integer
+          nullable: true
+          minimum: 13
+          maximum: 120
+        sex:
+          type: string
+          nullable: true
+          enum: [male, female, other, prefer_not]
+        country_hidden:
+          type: boolean
+        region_hidden:
+          type: boolean
+        age_hidden:
+          type: boolean
+        sex_hidden:
+          type: boolean
+        occupation:
+          type: string
+          nullable: true
+        about:
+          type: string
+          nullable: true
+
+    SocialLinks:
+      type: object
+      description: Рядки-посилання або ніки; порожні значення допустимі
+      properties:
+        facebook: { type: string, maxLength: 500 }
+        instagram: { type: string, maxLength: 500 }
+        telegram: { type: string, maxLength: 500 }
+        twitter: { type: string, maxLength: 500 }
+        youtube: { type: string, maxLength: 500 }
+        tiktok: { type: string, maxLength: 500 }
+        discord: { type: string, maxLength: 500 }
+        website: { type: string, maxLength: 500 }
+
+    NotificationSoundPrefs:
+      type: object
+      properties:
+        public_messages:
+          type: boolean
+        mentions:
+          type: boolean
+        private:
+          type: boolean
+        volume_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+
+    MeProfilePatchRequest:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/UserProfile"
+        social_links:
+          $ref: "#/components/schemas/SocialLinks"
+        notification_sound_prefs:
+          $ref: "#/components/schemas/NotificationSoundPrefs"
+
+    MeAccountPatchRequest:
+      type: object
+      required: [current_password]
+      properties:
+        current_password:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        password_confirmation:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+        guest:
+          type: boolean
+        email:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+          description: URL аватарки профілю (`GET /api/v1/images/{id}/file`); null якщо не завантажено
+        chat_role:
+          type: string
+          enum: [guest, user, vip, moderator, admin]
+          description: Роль для UI (staff має пріоритет над VIP)
+        badge_color:
+          type: string
+          nullable: true
+          description: "Колір плашки: адмін `#1a1a1a`, мод `#16a34a`, VIP `#ea580c`; null для guest/user"
+        profile:
+          allOf:
+            - $ref: "#/components/schemas/UserProfile"
+          nullable: true
+          description: Лише якщо `guest === false`
+        social_links:
+          allOf:
+            - $ref: "#/components/schemas/SocialLinks"
+          nullable: true
+        notification_sound_prefs:
+          allOf:
+            - $ref: "#/components/schemas/NotificationSoundPrefs"
+          nullable: true
+        message_edit_window_hours:
+          type: integer
+          minimum: 1
+          description: Години, протягом яких звичайний користувач може редагувати власні публічні повідомлення (T36); лише якщо `guest === false`
+        can_create_room:
+          type: boolean
+          description: Чи дозволено поточному користувачу `POST /api/v1/rooms` (**T44**); лише якщо `guest === false`
+        chat_upload_disabled:
+          type: boolean
+          description: Лише для **власного** облікового запису (`data.id` збігається з авторизованим); модераторське вимкнення завантажень у чаті / аватарки.
+        requires_password_setup:
+          type: boolean
+          description: |
+            Лише для **власного** облікового запису. **true** після імпорту з legacy (**T129**), якщо є email і пароль ще не встановлено (наприклад вхід через Auth0); UI веде на маршрут `/legacy-password-setup`.
+
+    UserLookupPeer:
+      type: object
+      required: [id, user_name, guest, chat_role, badge_color]
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+        guest:
+          type: boolean
+        chat_role:
+          type: string
+        badge_color:
+          type: string
+
+    PrivatePeerStub:
+      type: object
+      required: [id, user_name]
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+
+    PrivateMessage:
+      type: object
+      required:
+        [id, sender_id, recipient_id, body, sent_at, sent_time, client_message_id]
+      properties:
+        id:
+          type: integer
+        sender_id:
+          type: integer
+        recipient_id:
+          type: integer
+        body:
+          type: string
+          description: Plain text (після word-filter на бекенді)
+        sent_at:
+          type: integer
+          description: Unix time у секундах (UTC instant); клієнт форматує в локальний час (T121).
+        sent_time:
+          type: string
+          description: Легасі `H:i` як у БД; для UI — `sent_at`.
+        client_message_id:
+          type: string
+          format: uuid
+
+    PrivateConversationItem:
+      type: object
+      required: [peer, last_message, unread_count]
+      properties:
+        peer:
+          $ref: "#/components/schemas/PrivatePeerStub"
+        last_message:
+          $ref: "#/components/schemas/PrivateMessage"
+        unread_count:
+          type: integer
+          minimum: 0
+
+    PrivateConversationsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrivateConversationItem"
+        meta:
+          type: object
+          required: [total_private_unread]
+          properties:
+            total_private_unread:
+              type: integer
+              minimum: 0
+
+    PrivateMessagesPageResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrivateMessage"
+        meta:
+          type: object
+          required: [next_cursor]
+          properties:
+            next_cursor:
+              type: integer
+              nullable: true
+              description: Мінімальний `id` на сторінці для наступного запиту з `before`; `null` якщо порожньо
+
+    StorePrivateMessageRequest:
+      type: object
+      required: [message, client_message_id]
+      properties:
+        message:
+          type: string
+          maxLength: 4000
+        client_message_id:
+          type: string
+          format: uuid
+
+    PrivateMessageStoredResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/PrivateMessage"
+        meta:
+          type: object
+          required: [duplicate]
+          properties:
+            duplicate:
+              type: boolean
+
+    MetaOkResponse:
+      type: object
+      required: [meta]
+      properties:
+        meta:
+          type: object
+          required: [ok]
+          properties:
+            ok:
+              type: boolean
+              enum: [true]
+
+    PrivateThreadClearedResponse:
+      type: object
+      required: [meta]
+      properties:
+        meta:
+          type: object
+          required: [ok, cleared_peer_id]
+          properties:
+            ok:
+              type: boolean
+              enum: [true]
+            cleared_peer_id:
+              type: integer
+
+    FriendAcceptedRow:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/PrivatePeerStub"
+        since:
+          type: string
+          format: date-time
+          nullable: true
+
+    FriendsAcceptedListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendAcceptedRow"
+
+    FriendRequestRow:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/PrivatePeerStub"
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    FriendRequestsListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendRequestRow"
+
+    IgnoreListRow:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/PrivatePeerStub"
+
+    IgnoreListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/IgnoreListRow"
+
+    UserResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/User"
+
+    Room:
+      type: object
+      properties:
+        room_id:
+          type: integer
+        room_name:
+          type: string
+        topic:
+          type: string
+          nullable: true
+        access:
+          type: integer
+          description: "0 — усі авторизовані (гості дозволені); 1 — лише зареєстровані; ≥2 — VIP-кімната (VIP або модератор/адмін)"
+        created_by_user_id:
+          type: integer
+          nullable: true
+          description: Творець кімнати (**T54**); `null` для legacy-рядків
+        created_by_me:
+          type: boolean
+          description: Чи є поточний користувач творцем цієї кімнати (**T58**)
+        is_room_moderator:
+          type: boolean
+          description: Чи має поточний користувач права модерації повідомлень у цій кімнаті як творець (**T58**); зараз еквівалентно `created_by_me`
+        messages_count:
+          type: integer
+          nullable: true
+          description: Кількість повідомлень у кімнаті (для UI delete); у `GET /rooms` завжди присутнє після T54
+
+    HealthReadyResponse:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ok, fail]
+          description: Мінімум `database`; опційно `redis`
+
+    ModBanIpRequest:
+      type: object
+      required: [ip]
+      properties:
+        ip:
+          type: string
+          description: IPv4 або IPv6
+
+    ModBannedIpRow:
+      type: object
+      properties:
+        id:
+          type: integer
+        ip:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ModBannedIpListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModBannedIpRow"
+
+    ModBannedIpCreatedResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ModBannedIpRow"
+
+    ModFilterWordRequest:
+      type: object
+      required: [word]
+      properties:
+        word:
+          type: string
+          minLength: 2
+          maxLength: 191
+        category:
+          type: string
+          maxLength: 64
+          nullable: true
+        match_mode:
+          type: string
+          enum: [substring, whole_word]
+        action:
+          type: string
+          enum: [mask, reject, flag, temp_mute]
+        mute_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          nullable: true
+          description: Для `action=temp_mute`; якщо пропущено — дефолт з `config('chat.automod_default_mute_minutes')` під час застосування.
+
+    ModFilterWordPatchRequest:
+      type: object
+      minProperties: 1
+      properties:
+        word:
+          type: string
+          minLength: 2
+          maxLength: 191
+        category:
+          type: string
+          maxLength: 64
+          nullable: true
+        match_mode:
+          type: string
+          enum: [substring, whole_word]
+        action:
+          type: string
+          enum: [mask, reject, flag, temp_mute]
+        mute_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          nullable: true
+
+    ModFilterWordRow:
+      type: object
+      properties:
+        id:
+          type: integer
+        word:
+          type: string
+        category:
+          type: string
+        match_mode:
+          type: string
+          enum: [substring, whole_word]
+        action:
+          type: string
+          enum: [mask, reject, flag, temp_mute]
+        mute_minutes:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    ModFilterWordListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModFilterWordRow"
+
+    ModFlaggedMessageItem:
+      type: object
+      required:
+        - post_id
+        - post_roomid
+        - room_name
+        - author_name
+        - snippet
+        - post_time
+        - post_date
+        - moderation_flag_at
+        - is_deleted
+      properties:
+        post_id: { type: integer }
+        post_roomid: { type: integer }
+        room_name: { type: string }
+        author_name: { type: string }
+        snippet: { type: string }
+        post_time:
+          type: string
+          nullable: true
+        post_date: { type: integer }
+        moderation_flag_at: { type: integer }
+        post_deleted_at:
+          type: integer
+          nullable: true
+        is_deleted: { type: boolean }
+
+    ModFlaggedMessageListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModFlaggedMessageItem"
+        meta:
+          type: object
+          required: [current_page, last_page, per_page, total]
+          properties:
+            current_page: { type: integer }
+            last_page: { type: integer }
+            per_page: { type: integer }
+            total: { type: integer }
+
+    ModClearModerationFlagResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [post_id, moderation_flag_at]
+          properties:
+            post_id: { type: integer }
+            moderation_flag_at:
+              type: integer
+              nullable: true
+
+    ModFilterWordCreatedResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ModFilterWordRow"
+
+    ModMinutesRequest:
+      type: object
+      properties:
+        minutes:
+          type: integer
+          minimum: 0
+          maximum: 525600
+          nullable: true
+          description: Тривалість; 0 або пропуск — зняти обмеження
+
+    ModUserRestrictionData:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+        mute_until:
+          type: integer
+          nullable: true
+        kick_until:
+          type: integer
+          nullable: true
+
+    ModUserRestrictionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ModUserRestrictionData"
+
+    ModUserNetworkInsightResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ModUserNetworkInsightData"
+
+    ModUserNetworkInsightData:
+      type: object
+      required: [user_id, latest_session, recent_ips, sessions_sampled]
+      properties:
+        user_id:
+          type: integer
+        latest_session:
+          type: object
+          nullable: true
+          properties:
+            ip_address:
+              type: string
+            last_activity_at:
+              type: string
+              format: date-time
+            user_agent:
+              type: string
+              nullable: true
+        recent_ips:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModUserNetworkIpRow"
+        sessions_sampled:
+          type: integer
+          minimum: 0
+
+    ModUserNetworkIpRow:
+      type: object
+      required: [ip, last_seen_at, banned]
+      properties:
+        ip:
+          type: string
+        last_seen_at:
+          type: string
+          format: date-time
+        banned:
+          type: boolean
+
+    StaffUserProfileSummary:
+      type: object
+      description: Лише для `guest === false` у рядку пошуку / відповіді PATCH
+      properties:
+        country:
+          type: string
+          nullable: true
+          description: ISO 3166-1 alpha-2 (A–Z)
+        region: { type: string, nullable: true }
+        age: { type: integer, nullable: true }
+        sex:
+          type: string
+          nullable: true
+          enum: [male, female, other, prefer_not]
+        country_hidden: { type: boolean }
+        region_hidden: { type: boolean }
+        age_hidden: { type: boolean }
+        sex_hidden: { type: boolean }
+        occupation: { type: string, nullable: true }
+        about: { type: string, nullable: true }
+
+    StaffUserListRow:
+      type: object
+      required:
+        - id
+        - user_name
+        - guest
+        - user_rank
+        - vip
+        - chat_role
+        - badge_color
+        - muted_active
+        - kicked_active
+        - account_disabled
+        - can_manage
+      properties:
+        id: { type: integer }
+        user_name: { type: string }
+        guest: { type: boolean }
+        user_rank: { type: integer, minimum: 0, maximum: 2 }
+        vip: { type: boolean }
+        chat_role:
+          type: string
+          enum: [guest, user, vip, moderator, admin]
+        badge_color: { type: string, nullable: true }
+        mute_until: { type: integer, nullable: true }
+        kick_until: { type: integer, nullable: true }
+        muted_active: { type: boolean }
+        kicked_active: { type: boolean }
+        account_disabled: { type: boolean }
+        can_manage: { type: boolean }
+        email:
+          type: string
+          nullable: true
+          description: Лише для адміна; для гостя відсутнє
+        profile:
+          allOf:
+            - $ref: "#/components/schemas/StaffUserProfileSummary"
+          nullable: true
+
+    StaffUserSearchMeta:
+      type: object
+      required: [current_page, last_page, per_page, total]
+      properties:
+        current_page: { type: integer, minimum: 1 }
+        last_page: { type: integer, minimum: 0 }
+        per_page: { type: integer, minimum: 1 }
+        total: { type: integer, minimum: 0 }
+
+    StaffUserSearchResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StaffUserListRow"
+        meta:
+          $ref: "#/components/schemas/StaffUserSearchMeta"
+
+    StaffUserSingleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/StaffUserListRow"
+
+    StaffUserRolesPatchRequest:
+      type: object
+      minProperties: 1
+      properties:
+        vip: { type: boolean }
+        user_rank:
+          type: integer
+          enum: [0, 1, 2]
+          description: Ендпоінт лише для `can:chat-admin`
+        account_disabled:
+          type: boolean
+          description: Soft-disable логіну для зареєстрованого користувача
+
+    StaffUserCreateRequest:
+      type: object
+      required: [user_name, email]
+      properties:
+        user_name:
+          type: string
+          minLength: 2
+          maxLength: 191
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          description: Якщо не вказано — згенеровано на сервері
+
+    StaffUserCreateResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/StaffUserListRow"
+        meta:
+          type: object
+          properties:
+            generated_password:
+              type: string
+              description: Лише коли пароль згенеровано автоматично
+
+    StaffUserBulkRequest:
+      type: object
+      required: [user_ids, action]
+      properties:
+        user_ids:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: integer
+        action:
+          type: string
+          enum:
+            - set_vip
+            - clear_vip
+            - set_rank
+            - mute
+            - clear_mute
+            - kick
+            - clear_kick
+            - disable_account
+            - enable_account
+        minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          description: Обов’язково для `mute` та `kick`
+        user_rank:
+          type: integer
+          enum: [0, 1, 2]
+          description: Обов’язково для `set_rank`
+
+    StaffUserBulkResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [ok, affected]
+          properties:
+            ok: { type: boolean }
+            affected: { type: integer }
+
+    StaffUserProfilePatchRequest:
+      type: object
+      minProperties: 1
+      properties:
+        profile:
+          $ref: "#/components/schemas/UserProfile"
+        social_links:
+          $ref: "#/components/schemas/SocialLinks"
+        notification_sound_prefs:
+          $ref: "#/components/schemas/NotificationSoundPrefs"
+
+    RoomListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+
+    CreateRoomRequest:
+      type: object
+      required: [room_name]
+      properties:
+        room_name:
+          type: string
+          maxLength: 191
+        topic:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Опис кімнати (поле `topic` у моделі)
+
+    PatchRoomRequest:
+      type: object
+      minProperties: 1
+      properties:
+        room_name:
+          type: string
+          minLength: 1
+          maxLength: 191
+        topic:
+          type: string
+          nullable: true
+          maxLength: 2000
+        access:
+          type: integer
+          enum: [0, 1, 2]
+          description: Лише staff (**T54**)
+
+    RoomSingleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Room"
+
+    LandingLinkItem:
+      type: object
+      required: [label, url]
+      properties:
+        label:
+          type: string
+        url:
+          type: string
+
+    LandingSettingsPayload:
+      type: object
+      required: [page_title, tagline, news_title, news_body, links]
+      properties:
+        page_title:
+          type: string
+          nullable: true
+        tagline:
+          type: string
+          nullable: true
+        news_title:
+          type: string
+        news_body:
+          type: string
+        links:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/LandingLinkItem"
+
+    RegistrationFlagsPayload:
+      type: object
+      required: [registration_open, min_age, show_social_login_buttons]
+      properties:
+        registration_open:
+          type: boolean
+        min_age:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 120
+        show_social_login_buttons:
+          type: boolean
+          description: Прапорець видимості соц-кнопок на вітальні (**T76** / Auth0); `false` приховує блок навіть якщо Auth0 увімкнено.
+
+    Auth0PublicPayload:
+      type: object
+      description: Публічні полі для Auth0 SPA SDK (**T76**); без секретів.
+      properties:
+        enabled:
+          type: boolean
+        domain:
+          type: string
+          nullable: true
+        client_id:
+          type: string
+          nullable: true
+        audience:
+          type: string
+          nullable: true
+
+    LandingPublicData:
+      type: object
+      required: [landing, registration, users_online]
+      properties:
+        landing:
+          $ref: "#/components/schemas/LandingSettingsPayload"
+        registration:
+          $ref: "#/components/schemas/RegistrationFlagsPayload"
+        users_online:
+          type: integer
+          minimum: 0
+        auth0:
+          $ref: "#/components/schemas/Auth0PublicPayload"
+
+    LandingPublicResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/LandingPublicData"
+
+    MailTemplateOverrideBlock:
+      type: object
+      description: Перевизначення одного типу листа; порожній `html_body` — використовується шаблон за замовчуванням у коді.
+      properties:
+        subject:
+          type: string
+          maxLength: 200
+        html_body:
+          type: string
+          maxLength: 32000
+        text_body:
+          type: string
+          maxLength: 32000
+
+    ChatSettingsData:
+      type: object
+      required:
+        - message_edit_window_hours
+        - room_create_min_public_messages
+        - public_message_count_scope
+        - slash_command_max_per_window
+        - slash_command_window_seconds
+        - mod_slash_default_mute_minutes
+        - mod_slash_default_kick_minutes
+        - silent_mode
+        - sound_on_every_post
+        - message_flood_enabled
+        - message_flood_max_messages
+        - message_flood_window_seconds
+        - max_attachment_bytes
+        - max_chat_image_upload_bytes
+        - landing_settings
+        - registration_flags
+      properties:
+        message_edit_window_hours:
+          type: integer
+          minimum: 0
+          maximum: 8760
+          description: |
+            Скільки годин після відправки звичайний зареєстрований може редагувати або видаляти **власне** публічне повідомлення (**T36/T37/T122**).
+            Значення з БД (якщо задано адміном через `PATCH /api/v1/chat/settings`) переважає над `CHAT_MESSAGE_EDIT_WINDOW_HOURS` у env; якщо в БД `null` — використовується env/config.
+            **0** — нульове вікно (фактична заборона для звичайного користувача). **VIP** і **staff** (модератор/адмін) не обмежені цим полем.
+        room_create_min_public_messages:
+          type: integer
+          minimum: 0
+          description: Мінімальна кількість публічних повідомлень; право створення кімнати при лічильнику **> N** (**T44**).
+        public_message_count_scope:
+          type: string
+          enum: [all_public_rooms, default_room_only]
+          description: Усі публічні кімнати vs одна обрана кімната для лічби.
+        message_count_room_id:
+          type: integer
+          nullable: true
+          description: Якщо scope = `default_room_only` — `room_id` публічної кімнати; інакше null.
+        slash_command_max_per_window:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          description: Скільки разів за вікно можна ініціювати обробку slash-команди (`/` + непорожня назва) на одного користувача.
+        slash_command_window_seconds:
+          type: integer
+          minimum: 10
+          maximum: 86400
+          description: Тривалість вікна ліміту slash-команд у секундах (разом із `slash_command_max_per_window` — `RateLimiter` на бекенді).
+        mod_slash_default_mute_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          description: Дефолтні хвилини для slash `/mute нік` без другого аргументу (**T69**); змінює лише **адмін** (`PATCH /api/v1/chat/settings`).
+        mod_slash_default_kick_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+          description: Дефолтні хвилини для slash `/kick нік` без другого аргументу (**T69**).
+        silent_mode:
+          type: boolean
+          description: Глобальне приглушення звуків чату (**T71**); slash `/silent On|Off` або `PATCH` адміном.
+        sound_on_every_post:
+          type: boolean
+          description: Legacy-опція «звук на кожен пост» (**T75**); клієнтський newpost (див. T65).
+        message_flood_enabled:
+          type: boolean
+          description: |
+            **T125:** увімкнути продуктовий ліміт частоти **звичайних** повідомлень (кімната та приват) на користувача.
+            **Не** застосовується до адміністратора чату, модераторів і **VIP**; ідемпотентний повтор з тим самим `client_message_id` **не** споживає квоту.
+        message_flood_max_messages:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          description: Максимум відправок за ковзне вікно `message_flood_window_seconds` (**T125**).
+        message_flood_window_seconds:
+          type: integer
+          minimum: 1
+          maximum: 86400
+          description: Тривалість ковзного вікна лічби в секундах (**T125**); лічильники в кеші з TTL.
+        max_attachment_bytes:
+          type: integer
+          minimum: 1024
+          description: Ліміт розміру вкладення в чат (байти), задає **адмін** (**T86**); верхня межа в застосунку — 100 MiB; PHP може обмежити нижче.
+        max_chat_image_upload_bytes:
+          type: integer
+          minimum: 1
+          description: Фактична межа для `POST /api/v1/images` — `min(max_attachment_bytes, PHP upload_max_filesize)`; для перевірки на клієнті перед відправкою.
+        landing_settings:
+          $ref: "#/components/schemas/LandingSettingsPayload"
+        registration_flags:
+          $ref: "#/components/schemas/RegistrationFlagsPayload"
+        transactional_mail_from_name:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Лише якщо запит від **адміна**; ім’я відправника (адреса лишається з `MAIL_FROM_ADDRESS`).
+        mail_template_overrides:
+          type: object
+          description: Лише якщо запит від **адміна**; усі три ключа завжди присутні у відповіді адміна.
+          properties:
+            password_reset:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+            welcome_registered:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+            account_security_notice:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+
+    ChatSettingsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatSettingsData"
+
+    ChatEmoticonPublicItem:
+      type: object
+      required: [code, display_name, file, keywords]
+      properties:
+        code:
+          type: string
+          description: Унікальний код; у тексті `:code:`.
+        display_name:
+          type: string
+        file:
+          type: string
+          description: Базове ім’я файлу в `/emoticon/`.
+        keywords:
+          type: string
+          description: Рядок для пошуку в модалу; може бути порожнім.
+
+    ChatEmoticonPublicListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatEmoticonPublicItem"
+
+    ChatEmoticonAdminItem:
+      type: object
+      required: [id, code, display_name, file, sort_order, is_active]
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        display_name:
+          type: string
+        file:
+          type: string
+        sort_order:
+          type: integer
+        is_active:
+          type: boolean
+        keywords:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ChatEmoticonAdminListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatEmoticonAdminItem"
+
+    ChatEmoticonAdminOneResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatEmoticonAdminItem"
+
+    ModCreateEmoticonMultipart:
+      type: object
+      required: [code, display_name, file]
+      properties:
+        code:
+          type: string
+          maxLength: 64
+          pattern: '^[a-zA-Z0-9_]+$'
+        display_name:
+          type: string
+          maxLength: 200
+        sort_order:
+          type: integer
+          minimum: 0
+        is_active:
+          type: boolean
+        keywords:
+          type: string
+          maxLength: 500
+        file:
+          type: string
+          format: binary
+          description: GIF, PNG або WebP; max 512 KB.
+
+    ModPatchEmoticonRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          maxLength: 200
+        sort_order:
+          type: integer
+          minimum: 0
+        is_active:
+          type: boolean
+        keywords:
+          type: string
+          nullable: true
+          maxLength: 500
+
+    ModPatchEmoticonMultipart:
+      allOf:
+        - $ref: "#/components/schemas/ModPatchEmoticonRequest"
+        - type: object
+          properties:
+            file:
+              type: string
+              format: binary
+
+    PatchChatSettingsRequest:
+      type: object
+      properties:
+        message_edit_window_hours:
+          type: integer
+          minimum: 0
+          maximum: 8760
+          description: Лише **адмін чату**; зберігається в БД і переважає над env (**T122**).
+        room_create_min_public_messages:
+          type: integer
+          minimum: 0
+          maximum: 99999999
+        public_message_count_scope:
+          type: string
+          enum: [all_public_rooms, default_room_only]
+        message_count_room_id:
+          type: integer
+          nullable: true
+          description: Лише `rooms` з `access === 0` (публічна); інакше 422.
+        slash_command_max_per_window:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        slash_command_window_seconds:
+          type: integer
+          minimum: 10
+          maximum: 86400
+        mod_slash_default_mute_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+        mod_slash_default_kick_minutes:
+          type: integer
+          minimum: 1
+          maximum: 525600
+        silent_mode:
+          type: boolean
+          description: Беззвучний режим чату (**T71**).
+        sound_on_every_post:
+          type: boolean
+        message_flood_enabled:
+          type: boolean
+          description: **T125**; лише **адмін чату**.
+        message_flood_max_messages:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        message_flood_window_seconds:
+          type: integer
+          minimum: 1
+          maximum: 86400
+        max_attachment_bytes:
+          type: integer
+          minimum: 1024
+          maximum: 104857600
+          description: Максимальний розмір файлу вкладення в чат (байти); **T86**.
+        landing_settings:
+          type: object
+          properties:
+            page_title:
+              type: string
+              nullable: true
+              maxLength: 120
+            tagline:
+              type: string
+              nullable: true
+              maxLength: 200
+            news_title:
+              type: string
+              maxLength: 200
+            news_body:
+              type: string
+              maxLength: 8000
+            links:
+              type: array
+              maxItems: 8
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                    maxLength: 100
+                  url:
+                    type: string
+                    maxLength: 500
+        registration_flags:
+          type: object
+          properties:
+            registration_open:
+              type: boolean
+            show_social_login_buttons:
+              type: boolean
+            min_age:
+              type: integer
+              nullable: true
+              minimum: 0
+              maximum: 120
+        transactional_mail_from_name:
+          type: string
+          nullable: true
+          maxLength: 120
+        mail_template_overrides:
+          type: object
+          properties:
+            password_reset:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+            welcome_registered:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+            account_security_notice:
+              $ref: "#/components/schemas/MailTemplateOverrideBlock"
+
+    PatchChatMessageRequest:
+      type: object
+      properties:
+        message:
+          type: string
+          description: |
+            Plain text (не HTML). Після trim порожній дозволено лише якщо у повідомлення вже є вкладене зображення.
+            Максимальна довжина — як у `PostChatMessageRequest.message` (роль: 2000 / 4000 / 8000).
+        style:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChatMessageBodyStyle"
+
+    ChatMessagePatchResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatMessage"
+
+    ChatMessageDeleteResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatMessage"
+
+    ChatMessage:
+      type: object
+      properties:
+        post_id:
+          type: integer
+        user_id:
+          type: integer
+        post_date:
+          type: integer
+          description: >
+            Unix time у секундах (UTC instant). Джерело правди для моменту допису; клієнт показує час у локальній TZ/локалі (T121).
+            Поле `post_time` — легасі-рядок з серверної TZ, не використовувати як єдине джерело для відображення.
+        post_edited_at:
+          type: integer
+          nullable: true
+          description: Unix час останнього редагування; null — не редагувалось
+        can_edit:
+          type: boolean
+          description: Чи дозволено поточному користувачу `PATCH` це повідомлення (T36)
+        post_deleted_at:
+          type: integer
+          nullable: true
+          description: Unix час soft-delete; null — повідомлення активне (T37)
+        can_delete:
+          type: boolean
+          description: Чи дозволено поточному користувачу `DELETE` це повідомлення; false після видалення (T37)
+        post_time:
+          type: string
+          nullable: true
+          description: Легасі H:i з сервера; для UI віддавати перевагу `post_date` (T121).
+        post_user:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+          description: URL аватарки автора на момент допису; null — показувати ініціали (див. T17/T18)
+        post_message:
+          description: Plain text тіла повідомлення (не HTML); клієнт не повинен інтерпретувати як розмітку.
+          type: string
+        post_style:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChatMessageBodyStyle"
+        post_color:
+          type: string
+          nullable: true
+        post_roomid:
+          type: integer
+        type:
+          type: string
+          description: >
+            `public` — загальне повідомлення кімнати; `inline_private` — інлайн-приват у стрічці (T25),
+            видимий лише відправнику та адресату в `GET .../rooms/{id}/messages`; не потрапляє в архів.
+            Для `inline_private` сервер також створює рядок у `private_messages` (той самий `client_message_id`), щоб узгодити з приватним API.
+            `client_only` (T66) — відповідь slash-команди лише для автора; інші учасники кімнати не бачать рядок у стрічці; без broadcast у `room.*`.
+        recipient_user_id:
+          type: integer
+          nullable: true
+          description: Для `inline_private` — id адресата; інакше відсутнє.
+        mentioned_user_ids:
+          type: array
+          description: >
+            Id користувачів, згаданих префіксом «нік > …» у `public` повідомленні (T25/T123);
+            порожній масив, якщо префікса немає або нік не знайдено. Для Echo `MessagePosted` збігається з REST.
+          items:
+            type: integer
+        client_message_id:
+          type: string
+          nullable: true
+        file:
+          type: integer
+          description: 0 — без вкладення; інакше `images.id`
+        image:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            url:
+              type: string
+              format: uri
+
+    ChatImageUploadResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [id, url, mime, size_bytes]
+          properties:
+            id:
+              type: integer
+            url:
+              type: string
+              format: uri
+            mime:
+              type: string
+            size_bytes:
+              type: integer
+
+    ChatImageListItem:
+      type: object
+      required: [id, url, mime, size_bytes, file_name, date_sent]
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+          format: uri
+        mime:
+          type: string
+        size_bytes:
+          type: integer
+        file_name:
+          type: string
+        date_sent:
+          type: integer
+          description: Unix timestamp (секунди)
+
+    ChatImagesPaginatedResponse:
+      type: object
+      description: LengthAwarePaginator у JSON (поля на верхньому рівні, як у Laravel)
+      required: [data, current_page, last_page, per_page, total]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatImageListItem"
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        links:
+          type: array
+          items:
+            type: object
+        first_page_url:
+          type: string
+          nullable: true
+        last_page_url:
+          type: string
+          nullable: true
+        next_page_url:
+          type: string
+          nullable: true
+        prev_page_url:
+          type: string
+          nullable: true
+        path:
+          type: string
+        from:
+          type: integer
+          nullable: true
+        to:
+          type: integer
+          nullable: true
+
+    SlashMeta:
+      type: object
+      required: [name, recognized, client_only]
+      properties:
+        name:
+          type: string
+          nullable: true
+        recognized:
+          type: boolean
+        client_only:
+          type: boolean
+          description: "true — відповідь лише ініціатору (`type: client_only` у `data`)"
+
+    ChatMessageBodyStyle:
+      type: object
+      description: >
+        Пресети форматування тіла повідомлення (T30). Текст лишається plain; стиль — JSON на бекенді.
+        Поля `bg` та `fg` взаємовиключні (одночасно не приймаються).
+      properties:
+        bold:
+          type: boolean
+        italic:
+          type: boolean
+        underline:
+          type: boolean
+        bg:
+          type: string
+          nullable: true
+          enum: [amber, mint, sky, lavender, rose, sand]
+          description: Колір тла «чіпа» повідомлення
+        fg:
+          type: string
+          nullable: true
+          enum: [blue, emerald, rose, violet, amber, slate]
+          description: Колір тексту без окремого тла
+
+    PostChatMessageRequest:
+      type: object
+      required: [client_message_id]
+      properties:
+        message:
+          type: string
+          nullable: true
+          description: |
+            Plain text (не HTML). Максимальна довжина залежить від ролі автентифікованого користувача:
+            гість — 2000, звичайний користувач — 4000, VIP / модератор / адмін — 8000 символів.
+        image_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Ідентифікатор з `POST /api/v1/images`; має належати поточному користувачу
+        client_message_id:
+          type: string
+          format: uuid
+        style:
+          $ref: "#/components/schemas/ChatMessageBodyStyle"
+          nullable: true
+          description: Опційно; «липкий» стан зазвичай зберігається в localStorage на клієнті
+
+    ChatMessageListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        meta:
+          type: object
+          required: [next_cursor, last_read_post_id]
+          properties:
+            next_cursor:
+              type: integer
+              nullable: true
+            last_read_post_id:
+              type: integer
+              nullable: true
+              description: Останній прочитаний post_id (T47); null якщо стану ще немає
+            first_unread_post_id:
+              type: integer
+              nullable: true
+              description: Лише коли `since_read=true` у запиті; перший непрочитаний у межах сторінки
+
+    PostRoomReadRequest:
+      type: object
+      required: [last_read_post_id]
+      properties:
+        last_read_post_id:
+          type: integer
+          minimum: 1
+
+    RoomReadResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [room_id, last_read_post_id]
+          properties:
+            room_id:
+              type: integer
+            last_read_post_id:
+              type: integer
+
+    RoomPresenceStatusesResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [online, away, inactive]
+          description: Ключі — рядкові user id
+
+    PostRoomPresenceStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [online, away, inactive]
+
+    RoomPresenceStatusPostResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [room_id, user_id, status]
+          properties:
+            room_id:
+              type: integer
+            user_id:
+              type: integer
+            status:
+              type: string
+              enum: [online, away, inactive]
+
+    RoomPeerHintEntry:
+      type: object
+      required: [sex]
+      properties:
+        sex:
+          type: string
+          enum: [male, female, other]
+
+    RoomPeerHintsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/RoomPeerHintEntry"
+
+    ArchiveMessagesPaginatedResponse:
+      type: object
+      required: [data, links, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        links:
+          type: object
+          description: Посилання пагінації Laravel (`first`, `last`, `prev`, `next`; можуть бути `null`)
+        meta:
+          type: object
+          description: Метадані LengthAwarePaginator (мінімум current_page, last_page, per_page, total)
+          properties:
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+            from:
+              type: integer
+              nullable: true
+            to:
+              type: integer
+              nullable: true
+
+    ChatMessagePostResponseCreated:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatMessage"
+        meta:
+          type: object
+          required: [duplicate, slash]
+          properties:
+            duplicate:
+              type: boolean
+              enum: [false]
+            slash:
+              $ref: "#/components/schemas/SlashMeta"
+
+    ChatMessagePostResponseDuplicate:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ChatMessage"
+        meta:
+          type: object
+          required: [duplicate, slash]
+          properties:
+            duplicate:
+              type: boolean
+              enum: [true]
+            slash:
+              $ref: "#/components/schemas/SlashMeta"
+
+    ValidationErrorBody:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    ClientIdRoomConflict:
+      type: object
+      properties:
+        message:
+          type: string
+          example: client_message_id already used for another room.
+
+    OEmbedProxyResponse:
+      type: object
+      description: >
+        Піднабір полів oEmbed. `html` присутній лише якщо залишилися дозволені `iframe`;
+        інша розмітка від провайдера відкидається.
+      properties:
+        type:
+          type: string
+          example: video
+        version:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        author_name:
+          type: string
+          nullable: true
+        author_url:
+          type: string
+          nullable: true
+        provider_name:
+          type: string
+          nullable: true
+        provider_url:
+          type: string
+          nullable: true
+        cache_age:
+          type: integer
+          nullable: true
+        thumbnail_url:
+          type: string
+          nullable: true
+        thumbnail_width:
+          type: integer
+          nullable: true
+        thumbnail_height:
+          type: integer
+          nullable: true
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        html:
+          type: string
+          nullable: true
+          description: Лише санітизовані `iframe` (https, білий список хостів)
+
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          description: |
+            Опційний машиночитаний код помилки (наприклад **`message_flood_limit`** для **T125** при `429` на `POST …/messages`).
+
+  responses:
+    Unauthorized:
+      description: Неавторизовано
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    Forbidden:
+      description: Немає доступу до кімнати
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    NotFound:
+      description: Кімната не знайдена
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    ValidationError:
+      description: Помилка валідації
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationErrorBody"
+    TooManyRequests:
+      description: Перевищено ліміт запитів
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"

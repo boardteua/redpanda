@@ -34,6 +34,16 @@ else
   git pull --ff-only origin "$DEPLOY_GIT_REF"
 fi
 
+# Публічні маршрути Laravel /docs/* читають файли з монорепо; перед видаленням docs/project-specs
+# копіюємо три артефакти в backend — інакше GET /docs/openapi.yaml та посилання з llms.txt дають 404.
+if [[ -f "$REPO_DIR/docs/chat-v2/openapi.yaml" ]]; then
+  mkdir -p "$BACKEND_DIR/resources/public-monorepo-docs/chat-v2" "$BACKEND_DIR/resources/public-monorepo-docs/project-specs"
+  cp -f "$REPO_DIR/docs/chat-v2/openapi.yaml" "$BACKEND_DIR/resources/public-monorepo-docs/chat-v2/"
+  cp -f "$REPO_DIR/docs/chat-v2/AI-AGENT-FRIENDLY.md" "$BACKEND_DIR/resources/public-monorepo-docs/chat-v2/"
+  cp -f "$REPO_DIR/project-specs/chat-v2-setup.md" "$BACKEND_DIR/resources/public-monorepo-docs/project-specs/"
+  echo "[deploy] synced backend/resources/public-monorepo-docs for /docs/* (before repo cleanup)"
+fi
+
 # На проді не потрібні Cursor, внутрішні спеки та дока в репо (не чіпаємо backend/resources/markdown — там контент для Vite).
 if [[ "${DEPLOY_SKIP_REPO_CLEANUP:-}" != "1" ]]; then
   rm -rf \

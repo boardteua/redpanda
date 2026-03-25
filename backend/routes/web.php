@@ -24,6 +24,7 @@ Route::get('/llms.txt', LlmsTxtController::class)->name('llms.txt');
 Route::get('/robots.txt', RobotsTxtController::class)->name('robots.txt');
 Route::get('/sitemap.xml', SitemapXmlController::class)->name('sitemap.xml');
 Route::get('/docs/openapi.yaml', [PublicDocumentationController::class, 'openapiYaml'])->name('docs.openapi');
+Route::get('/docs/chat-v2/openapi.yaml', [PublicDocumentationController::class, 'openapiYaml'])->name('docs.openapi.chat-v2-path');
 Route::get('/docs/chat-v2/AI-AGENT-FRIENDLY.md', [PublicDocumentationController::class, 'aiAgentFriendly'])
     ->name('docs.ai-agent-friendly');
 Route::get('/docs/project-specs/chat-v2-setup.md', [PublicDocumentationController::class, 'chatV2Setup'])
