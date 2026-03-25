@@ -151,6 +151,15 @@ html {
     color: var(--rp-text-muted);
 }
 
+.rp-auth-landing-lead {
+    margin: 0.65rem 0 0;
+    max-width: 36rem;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    font-weight: 500;
+    color: var(--rp-text);
+}
+
 .rp-auth-landing-main-grid > * {
     min-width: 0;
 }
@@ -282,6 +291,11 @@ html {
     font-size: 0.9375rem;
     font-weight: 600;
     color: #5c4034;
+}
+
+.rp-auth-landing--welcome-board .rp-auth-landing-hero-titles .rp-auth-landing-lead {
+    color: #5c4034;
+    font-weight: 600;
 }
 
 .rp-auth-landing--welcome-board .rp-auth-landing-card--welcome-board {

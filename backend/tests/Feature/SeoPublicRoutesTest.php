@@ -48,6 +48,8 @@ class SeoPublicRoutesTest extends TestCase
         $this->assertStringContainsString('application/ld+json', $html);
         $this->assertStringContainsString('"@type":"WebSite"', $html);
         $this->assertStringContainsString('"@type":"Organization"', $html);
+        $this->assertStringContainsString('"@type":"FAQPage"', $html);
+        $this->assertStringContainsString('"@type":"Question"', $html);
         $this->assertStringContainsString('http://localhost/brand/og-default.png', $html);
     }
 }

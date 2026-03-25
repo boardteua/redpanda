@@ -8,6 +8,10 @@
 
         @include('partials.seo-head')
 
+        <script>
+            window.__RP_SEO_WELCOME_LEAD__ = @json(__('seo.welcome_lead'));
+        </script>
+
         {{-- Паритет з legacy board.te.ua: favicon з https://www.board.te.ua/favicon.ico (збережено як /board-te-ua-favicon.ico) --}}
         <link rel="icon" href="{{ url('/board-te-ua-favicon.ico') }}" type="image/x-icon">
         <link rel="alternate" type="text/markdown" href="{{ url('/llms.txt') }}" title="LLM context (Chat v2)">

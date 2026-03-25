@@ -27,6 +27,9 @@
                         <p class="rp-auth-landing-tagline">
                             {{ displayTagline }}
                         </p>
+                        <p class="rp-auth-landing-lead">
+                            {{ displayLead }}
+                        </p>
                     </div>
                 </div>
             </header>
@@ -432,7 +435,16 @@ export default {
         displayTagline() {
             const t = this.landing && this.landing.tagline;
 
-            return t && String(t).trim() ? String(t).trim() : 'Український онлайн-чат';
+            return t && String(t).trim() ? String(t).trim() : 'Живі кімнати, теплі розмови — без зайвого пафосу';
+        },
+        displayLead() {
+            const w = typeof window !== 'undefined' ? window.__RP_SEO_WELCOME_LEAD__ : null;
+
+            if (w != null && String(w).trim() !== '') {
+                return String(w).trim();
+            }
+
+            return 'Коротко: можна зайти як гість або з акаунтом, обрати кімнату й писати. Правила чату й межі модерації підказують, як лишатися в темі й не псувати настрій іншим — усе поруч із формою входу.';
         },
         landingNewsTitle() {
             return this.landing && this.landing.news_title ? String(this.landing.news_title).trim() : '';

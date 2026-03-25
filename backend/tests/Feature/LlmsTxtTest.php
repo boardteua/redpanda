@@ -18,7 +18,8 @@ class LlmsTxtTest extends TestCase
         $this->assertNotNull($contentType);
         $this->assertStringContainsString('text/markdown', $contentType);
         $this->assertStringContainsString('charset=utf-8', strtolower($contentType));
-        $response->assertSee('Redpanda Chat v2', false);
+        $response->assertSee('Чат Рудої Панди', false);
+        $response->assertSee('Chat v2', false);
         $response->assertSee('/api/v1/landing', false);
         $response->assertDontSee('__APP_URL__', false);
     }

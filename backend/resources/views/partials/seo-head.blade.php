@@ -34,6 +34,36 @@
             ],
         ],
     ];
+
+    $faqRaw = \Illuminate\Support\Facades\Lang::get('seo.faq');
+    if (is_array($faqRaw) && $faqRaw !== []) {
+        $mainEntity = [];
+        foreach ($faqRaw as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $q = isset($item['question']) ? trim((string) $item['question']) : '';
+            $a = isset($item['answer']) ? trim((string) $item['answer']) : '';
+            if ($q === '' || $a === '') {
+                continue;
+            }
+            $mainEntity[] = [
+                '@type' => 'Question',
+                'name' => $q,
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => $a,
+                ],
+            ];
+        }
+        if ($mainEntity !== []) {
+            $jsonLd['@graph'][] = [
+                '@type' => 'FAQPage',
+                'mainEntity' => $mainEntity,
+            ];
+        }
+    }
+
     $jsonLdEncoded = json_encode($jsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 @endphp
         <title>{{ $metaTitle }}</title>
