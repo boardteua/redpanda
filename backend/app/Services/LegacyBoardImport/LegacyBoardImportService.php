@@ -201,7 +201,7 @@ final class LegacyBoardImportService
                         'post_target' => $this->nullableString($row->post_target ?? ''),
                         'avatar' => $this->nullableString($row->avatar ?? ''),
                         'file' => 0,
-                        'client_message_id' => null,
+                        'client_message_id' => $this->legacyChatClientMessageId((int) $row->post_id),
                         'post_style' => null,
                         'post_edited_at' => null,
                         'post_deleted_at' => null,
@@ -409,5 +409,19 @@ final class LegacyBoardImportService
         $this->importSeenEmails[$k] = true;
 
         return $email;
+    }
+
+    /**
+     * Стабільний UUID-подібний рядок від legacy post_id (ідемпотентність ручного імпорту / діагностика, T130).
+     */
+    private function legacyChatClientMessageId(int $postId): string
+    {
+        $hex = md5('redpanda:legacy:chat:'.$postId);
+
+        return substr($hex, 0, 8)
+            .'-'.substr($hex, 8, 4)
+            .'-'.substr($hex, 12, 4)
+            .'-'.substr($hex, 16, 4)
+            .'-'.substr($hex, 20, 12);
     }
 }

@@ -42,6 +42,9 @@ class ChatLegacyCommandsTest extends TestCase
 
         $this->artisan('chat:legacy-import-staging', ['--dry-run' => true])
             ->assertFailed();
+
+        $this->artisan('chat:legacy-import-production', ['--dry-run' => true])
+            ->assertFailed();
     }
 
     public function test_legacy_sync_avatars_fails_when_not_configured(): void
