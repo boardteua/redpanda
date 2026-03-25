@@ -6,7 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Redpanda') }}</title>
+        @include('partials.seo-head')
 
         {{-- Паритет з legacy board.te.ua: favicon з https://www.board.te.ua/favicon.ico (збережено як /board-te-ua-favicon.ico) --}}
         <link rel="icon" href="{{ url('/board-te-ua-favicon.ico') }}" type="image/x-icon">
