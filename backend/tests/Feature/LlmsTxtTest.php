@@ -19,7 +19,7 @@ class LlmsTxtTest extends TestCase
         $this->assertStringContainsString('text/markdown', $contentType);
         $this->assertStringContainsString('charset=utf-8', strtolower($contentType));
         $response->assertSee('Чат Рудої Панди', false);
-        $response->assertSee('Chat v2', false);
+        $response->assertSee('Тернопільський Анонімний Чат', false);
         $response->assertSee('/api/v1/landing', false);
         $response->assertDontSee('__APP_URL__', false);
     }
@@ -40,7 +40,7 @@ class LlmsTxtTest extends TestCase
         $this->assertNotNull($contentType);
         $this->assertStringContainsString('yaml', $contentType);
         $response->assertSee('openapi:', false);
-        $response->assertSee('redpanda Chat v2 API', false);
+        $response->assertSee('Тернопільський Анонімний Чат API', false);
     }
 
     public function test_public_openapi_yaml_alternate_chat_v2_path(): void
@@ -67,7 +67,7 @@ class LlmsTxtTest extends TestCase
         $contentType = $response->headers->get('Content-Type');
         $this->assertNotNull($contentType);
         $this->assertStringContainsString('text/markdown', $contentType);
-        $response->assertSee('Redpanda Chat v2', false);
+        $response->assertSee('Тернопільський Анонімний Чат', false);
         $response->assertSee('без виконання JavaScript', false);
     }
 

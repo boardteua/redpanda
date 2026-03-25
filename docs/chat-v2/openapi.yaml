@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: redpanda Chat v2 API
+  title: Тернопільський Анонімний Чат API
   description: |
-    HTTP API для чату v2 (Laravel backend у каталозі `backend/`).
+    HTTP API для продукту «Тернопільський Анонімний Чат» (внутрішній код репозиторію redpanda; Laravel backend у каталозі `backend/`).
 
     **Sanctum SPA (cookie):** для браузерного клієнта з того ж сайту спочатку викликайте `GET /sanctum/csrf-cookie` з `credentials: include`,
     потім передавайте заголовок `X-XSRF-TOKEN` (значення з cookie `XSRF-TOKEN`, URL-decoded) на всі **змінюючі** запити (`POST` тощо) разом з cookie сесії.
