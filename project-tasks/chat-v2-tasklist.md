@@ -1676,8 +1676,9 @@
 
 ---
 
-### [ ] T130 — **Production:** імпорт **публічного чату** (кімнати + `chat`) з legacy у цільову БД redpanda
+### [x] T130 — **Production:** імпорт **публічного чату** (кімнати + `chat`) з legacy у цільову БД redpanda
 
+- **Статус:** **PASS** (2026-03-25). Команда `chat:legacy-import-production`; стабільний `client_message_id` у `LegacyBoardImportService`; документ [T130-LEGACY-PUBLIC-CHAT-IMPORT.md](../docs/chat-v2/T130-LEGACY-PUBLIC-CHAT-IMPORT.md); оновлено T13. **QA:** `php artisan test` (ChatLegacyCommandsTest + suite) — PASS.
 - **Контекст клієнта:** те, що вже робить **`chat:legacy-import-staging`** (**T13**) для **порожньої** схеми, має мати **керований prod-шлях**: `--dry-run`, підтвердження, **ідемпотентність** або явна політика «тільки в порожню БД» / «merge по `legacy_id`» — **один варіант у PR**. Узгодити з **T113** (відбір користувачів, стаби для сиріт `chat→users`).
 - **Delegate:** Backend Architect
 - **Залежність:** **T128** (runbook, legacy БД на місці); **T13**/**T113**; **T04**/**T06** (модель повідомлень, idempotency `client_message_id` при **ручному** імпорті — зафіксувати чи генерується стабільний id з legacy ключа)
@@ -1690,8 +1691,9 @@
 
 ---
 
-### [ ] T131 — **Імпорт приватних повідомлень** з legacy (`private`) у модель redpanda (**T08**)
+### [x] T131 — **Імпорт приватних повідомлень** з legacy (`private`) у модель redpanda (**T08**)
 
+- **Статус:** **PASS** (2026-03-25). `LegacyPrivateMessageImportService` + `chat:legacy-import-private`; документ [T131-LEGACY-PRIVATE-IMPORT.md](../docs/chat-v2/T131-LEGACY-PRIVATE-IMPORT.md). **QA:** `php artisan test tests/Feature/LegacyPrivateImportTest.php` + повний suite — PASS.
 - **Контекст клієнта:** у **T13** явно зазначено, що **приват, друзі, зображення** в тій версії **не** імпортуються; потрібно **окремий** ETL для **`private`** → таблиці привату redpanda з мапінгом `user_id` (після імпорту користувачів **T129**/**T130**), треди peer-to-peer, timestamps; за наявності у legacy — read/unread (узгодити з **`private_message_read_states`**).
 - **Delegate:** Backend Architect (+ короткий огляд Frontend Developer лише якщо змінюється контракт API)
 - **Залежність:** **T08**/**T56** (приват API і непрочитані); **T130** (стабільні `users.id` після імпорту); **T128**; специфікація [`docs/board-te-ua/PRIVATE-MESSAGES.md`](../docs/board-te-ua/PRIVATE-MESSAGES.md) для семантики `/msg` і пари учасників

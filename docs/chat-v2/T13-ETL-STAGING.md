@@ -78,6 +78,10 @@ php artisan chat:legacy-import-staging
 | `php artisan chat:legacy-inspect` | Звіт по legacy + сироти |
 | `php artisan chat:legacy-import-staging --dry-run` | Оцінка обсягу |
 | `php artisan chat:legacy-import-staging` | Імпорт у порожні `rooms` / `users` / `chat` |
+| `php artisan chat:legacy-import-production …` | Той самий імпорт для **production** за runbook **T128** (**T130**) |
+| `php artisan chat:legacy-import-private …` | Імпорт приватів legacy → `private_messages` (**T131**) |
 | `php artisan chat:legacy-sync-avatars` | Опційно (T113): rsync аватарок з legacy — `LEGACY_AVATAR_RSYNC_*` у `.env` |
+| `php artisan chat:legacy-sync-uploads …` | rsync `uploads` з legacy (**T132**) |
+| `php artisan chat:legacy-remap-board-urls …` | Ремап URL board.te.ua у `chat` / `private_messages` (**T132**) |
 
 Конфіг з’єднання: `config/database.php` → `legacy`. Параметри rsync: `config/legacy.php`.
