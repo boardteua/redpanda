@@ -115,6 +115,8 @@ docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisa
 docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-sync-avatars'
 docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-sync-uploads'
 docker exec -it redpanda-local-deps-php-1 sh -lc 'cd /var/www/html && php artisan chat:legacy-remap-board-urls --force'
+# Опційно — прибрати порожні legacy span / зламані fancybox у текстах (з хоста зручніше):
+# ./docker/sanitize-imported-html.sh --dry-run && ./docker/sanitize-imported-html.sh --force
 ```
 
 Перед **T132** залиште **`--dry-run`** для `chat:legacy-sync-avatars` / `chat:legacy-sync-uploads` / `chat:legacy-remap-board-urls`; задайте **`LEGACY_*_RSYNC_*`** та **`LEGACY_URL_REMAP_TARGET_ORIGIN`** у `production.env`, потім **`docker compose … up -d --force-recreate php queue reverb`** і `config:cache` (див. [T132-LEGACY-MEDIA-MIGRATION.md](T132-LEGACY-MEDIA-MIGRATION.md)).

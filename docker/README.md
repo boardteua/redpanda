@@ -67,6 +67,15 @@ docker compose -f docker/compose.yaml --profile app up -d --build
 
 Архіви: `$REPO_DIR/backups/redpanda-<UTC>.sql.gz`.
 
+### Очищення legacy HTML у БД
+
+Після імпорту чату: [`sanitize-imported-html.sh`](./sanitize-imported-html.sh) викликає `php artisan chat:sanitize-imported-html` у контейнері **php** (як `restart-stack.sh`, з `--env-file` за наявності `docker/production.env`).
+
+```bash
+./docker/sanitize-imported-html.sh --dry-run
+./docker/sanitize-imported-html.sh --force   # production
+```
+
 ### Перед міграціями у `deploy.sh`
 
 **`BACKUP_BEFORE_DEPLOY=1`** викликає лише `docker/backup-mysql.sh`. Потрібен уже запущений `mysql` (перший деплой — тимчасово вимкніть або спочатку `up` без бекапу).

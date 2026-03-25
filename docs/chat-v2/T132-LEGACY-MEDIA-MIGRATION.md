@@ -56,6 +56,29 @@ php artisan chat:legacy-remap-board-urls --force
 
 **Зображення в `images` / `avatar_image_id`:** не змінюються цією командою; прив’язка файлів — окремі кроки продукту (T10/T18/T113).
 
+## 4. Очищення «сміттєвого» HTML у дописах (після імпорту)
+
+Команда **`chat:sanitize-imported-html`** прибирає порожні legacy-`<span style="color:; background:;">` та зламані блоки fancybox/img без URL у **`chat.post_message`** і **`private_messages.body`**.
+
+**З хоста через Docker** (той самий `--env-file`, що `deploy.sh`; сервіс **`php` у профілі `app` має бути запущений):
+
+```bash
+# з кореня репозиторію
+./docker/sanitize-imported-html.sh --dry-run
+./docker/sanitize-imported-html.sh
+# на production:
+./docker/sanitize-imported-html.sh --force
+```
+
+Еквівалент вручну (ім’я контейнера може відрізнятися — подивіться `docker ps`):
+
+```bash
+docker compose --env-file docker/production.env -f docker/compose.yaml --profile app exec -T php \
+  php artisan chat:sanitize-imported-html --dry-run
+```
+
+Деталі реалізації: `App\Support\LegacyChatHtmlGarbageCleaner`, Artisan-клас `ChatSanitizeImportedHtmlCommand`.
+
 ## QA
 
 - `php artisan test` — `LegacyBoardUrlRemapTest`, `ChatLegacyCommandsTest` (конфіг).
