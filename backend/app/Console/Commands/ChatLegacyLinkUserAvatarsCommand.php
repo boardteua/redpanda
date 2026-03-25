@@ -23,7 +23,11 @@ class ChatLegacyLinkUserAvatarsCommand extends Command
             return self::FAILURE;
         }
 
-        $dir = trim((string) $this->option('dir'));
+        $dirOption = $this->option('dir');
+        $dirFromCli = is_string($dirOption) ? trim($dirOption) : '';
+        $explicitDirArg = $dirFromCli !== '';
+
+        $dir = $dirFromCli;
         if ($dir === '') {
             $dir = trim((string) config('legacy.avatar_rsync_dest', ''));
         }
@@ -31,8 +35,9 @@ class ChatLegacyLinkUserAvatarsCommand extends Command
         $canonical = storage_path('app/legacy-avatars');
         if ($dir === '') {
             $dir = $canonical;
-        } elseif (! is_dir($dir)) {
+        } elseif (! is_dir($dir) && ! $explicitDirArg) {
             // На хості rsync часто пише в /var/www/redpanda/backend/storage/...; у контейнері PHP проєкт — /var/www/html, той самий шлях хоста не існує.
+            // Явний --dir не підміняємо (тести / оператор мають отримати помилку).
             if (is_dir($canonical)) {
                 $this->warn('Каталог з env недоступний у ФС PHP: '.$dir);
                 $this->line('  → використовується '.$canonical.' (змонтований backend у Docker: /var/www/html/storage/app/legacy-avatars).');

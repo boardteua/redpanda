@@ -1735,8 +1735,9 @@
 
 ---
 
-### [ ] T134 — Локально: повний перезапуск чату і smoke-перевірка працездатності
+### [x] T134 — Локально: повний перезапуск чату і smoke-перевірка працездатності
 
+- **Статус:** **PASS** (2026-03-25). Після `php artisan config:clear` (скидання docker-абсолютних шляхів у кеші конфігу) — `php artisan test` **375 passed**; `npm run build` — PASS. Runbook і нотатка про `--dir` у `chat:legacy-link-user-avatars`: [docs/chat-v2/T134-LOCAL-SMOKE-QA.md](../docs/chat-v2/T134-LOCAL-SMOKE-QA.md).
 - **Контекст клієнта:** «холодний» або чистий перезапуск локального стеку й підтвердження, що основні сценарії чату працюють після старту (узгоджено з шапкою цього файлу та розділом **«Локальне середовище real-time при завершенні задачі»** у [docs/chat-v2/AGENT-ORCHESTRATION.md](../docs/chat-v2/AGENT-ORCHESTRATION.md)).
 - **Delegate:** Full stack / оператор локального середовища (+ DevOps Automator, якщо стек через Docker)
 - **Залежність:** немає; для перевірки WS — актуальні **`.env`** / **`VITE_REVERB_*`** (**T05**)
