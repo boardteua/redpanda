@@ -1117,6 +1117,7 @@ paths:
         Тіло: `message` (plain text, до 4000 символів), `client_message_id` (UUID) для ідемпотентності.
         **201** — нове повідомлення; **200** з `meta.duplicate: true` — той самий `client_message_id` уже збережений для цього peer.
         **403** — ігнор або мут/кік (**UserPostingGate**). **422** — не себе, або `client_message_id` вже використано для іншого peer.
+        **T125:** той самий антифлуд, що й для `POST /api/v1/rooms/{roomId}/messages` (після перевірки дубля `client_message_id`); **`429`** з **`code`: `message_flood_limit`**.
         Broadcast: `.PrivateMessagePosted` на `private-user.{recipientId}`.
         Throttle: `private-post`.
       operationId: storePrivateMessage
@@ -1155,7 +1156,11 @@ paths:
         "422":
           $ref: "#/components/responses/ValidationError"
         "429":
-          $ref: "#/components/responses/TooManyRequests"
+          description: Throttle `private-post` або **T125** `message_flood_limit`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /api/v1/private/peers/{peer}/read:
     post:
@@ -2352,6 +2357,7 @@ paths:
         **T70 (кімната):** `/topic текст` або `/topic` без аргументів (скинути тему) — **403** без права `updateDetails` на кімнату (творець, модератор або адмін; кімната без `created_by_user_id` — лише staff); публічний рядок у стрічці + оновлення `rooms.topic` + broadcast `RoomTopicUpdated` у `room.{id}`. `/clear` без аргументів — те саме право; **soft-delete** усіх **`type: public`** у цій кімнаті, **client_only** відповідь автору, broadcast `RoomJournalCleared`; інлайн-приват у стрічці не чіпається. Аргументи після `/clear` — **422**. Історія **`GET …/messages`** та **архів** не повертають видалені (`post_deleted_at` задано) публічні пости.
         **T72 (адмін, каталог UI-тем):** `/addtheme назва` — запис у `chat_themes` (до 64 символів; дублікат назви — **422**, зокрема різний регістр при колації utf8mb4_unicode_ci); `/deltheme назва` — видалення за збігом імені **без** урахування регістру; **403** без `can:chat-admin`; успіх — публічне системне повідомлення в стрічці (`meta.slash.name`: `addtheme` / `deltheme`). Вибір теми в UI — поза межами T72.
         Окремий ліміт slash-команд на користувача (`429`): **`slash_command_max_per_window`** спроб за **`slash_command_window_seconds`** с (див. `GET/PATCH /api/v1/chat/settings`); разом із `image_id` такі рядки **422**.
+        **T125 (антифлуд повідомлень):** якщо в `GET /api/v1/chat/settings` увімкнено **`message_flood_enabled`**, після перевірки ідемпотентності `client_message_id` застосовується ліміт **`message_flood_max_messages`** за ковзне вікно **`message_flood_window_seconds`** с (кеш); **не** діє на адміна чату, модераторів і **VIP**. Перевищення — **`429`** з полем **`code`: `message_flood_limit`** (разом із `message`).
         Потрібен **непорожній** `message` (після trim) або **`image_id`** власного завантаження (`POST /api/v1/images`).
         Поле `message` — **plain text**; max довжина: гість **2000**, користувач **4000**, VIP/модератор/адмін **8000** (інакше **422**).
       operationId: postRoomMessage
@@ -2394,7 +2400,11 @@ paths:
                   - $ref: "#/components/schemas/ValidationErrorBody"
                   - $ref: "#/components/schemas/ClientIdRoomConflict"
         "429":
-          $ref: "#/components/responses/TooManyRequests"
+          description: Slash rate limit або **T125** `message_flood_limit` (див. тіло `message` / `code`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /api/v1/rooms/{roomId}/messages/{postId}:
     patch:
@@ -3596,6 +3606,9 @@ components:
         - mod_slash_default_kick_minutes
         - silent_mode
         - sound_on_every_post
+        - message_flood_enabled
+        - message_flood_max_messages
+        - message_flood_window_seconds
         - max_attachment_bytes
         - max_chat_image_upload_bytes
         - landing_settings
@@ -3647,6 +3660,21 @@ components:
         sound_on_every_post:
           type: boolean
           description: Legacy-опція «звук на кожен пост» (**T75**); клієнтський newpost (див. T65).
+        message_flood_enabled:
+          type: boolean
+          description: |
+            **T125:** увімкнути продуктовий ліміт частоти **звичайних** повідомлень (кімната та приват) на користувача.
+            **Не** застосовується до адміністратора чату, модераторів і **VIP**; ідемпотентний повтор з тим самим `client_message_id` **не** споживає квоту.
+        message_flood_max_messages:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          description: Максимум відправок за ковзне вікно `message_flood_window_seconds` (**T125**).
+        message_flood_window_seconds:
+          type: integer
+          minimum: 1
+          maximum: 86400
+          description: Тривалість ковзного вікна лічби в секундах (**T125**); лічильники в кеші з TTL.
         max_attachment_bytes:
           type: integer
           minimum: 1024
@@ -3840,6 +3868,17 @@ components:
           description: Беззвучний режим чату (**T71**).
         sound_on_every_post:
           type: boolean
+        message_flood_enabled:
+          type: boolean
+          description: **T125**; лише **адмін чату**.
+        message_flood_max_messages:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        message_flood_window_seconds:
+          type: integer
+          minimum: 1
+          maximum: 86400
         max_attachment_bytes:
           type: integer
           minimum: 1024
@@ -4380,6 +4419,10 @@ components:
       properties:
         message:
           type: string
+        code:
+          type: string
+          description: |
+            Опційний машиночитаний код помилки (наприклад **`message_flood_limit`** для **T125** при `429` на `POST …/messages`).
 
   responses:
     Unauthorized:

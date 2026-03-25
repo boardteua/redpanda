@@ -1,5 +1,6 @@
 import { maybePlayPrivateMessageSound } from '../utils/chatNotificationSounds';
 import { setFaviconPrivateUnreadBadge } from '../utils/faviconUnreadBadge';
+import { showError } from '../utils/rpToastStack';
 
 /**
  * T103: приватні розмови (REST + стан панелі) — методи для ChatRoom.vue.
@@ -226,7 +227,13 @@ export const chatRoomPrivateMethods = {
             }
             await this.loadConversations();
         } catch (e) {
-            this.privateLoadError = e.response?.data?.message || 'Не вдалося надіслати.';
+            const st = e.response && e.response.status;
+            const msg = e.response?.data?.message || 'Не вдалося надіслати.';
+            if (st === 429) {
+                showError(msg);
+            } else {
+                this.privateLoadError = msg;
+            }
         } finally {
             this.sendingPrivate = false;
             if (privateSendOk) {

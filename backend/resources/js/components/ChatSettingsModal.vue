@@ -164,6 +164,49 @@
                     </div>
 
                     <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Антифлуд повідомлень (T125)</h3>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Обмежує частоту <strong>звичайних</strong> повідомлень (кімната та приват) для користувачів без
+                            VIP і без прав модерації/адміна. Ідемпотентний повтор з тим самим
+                            <span class="font-mono">client_message_id</span> не зараховується. При перевищенні —
+                            <span class="font-mono">429</span> з кодом <span class="font-mono">message_flood_limit</span>.
+                        </p>
+                        <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
+                            <input
+                                id="cs-flood-enabled"
+                                v-model="form.message_flood_enabled"
+                                type="checkbox"
+                                class="rp-focusable h-4 w-4 rounded border"
+                            />
+                            Увімкнути ліміт частоти
+                        </label>
+                        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="rp-label" for="cs-flood-max">Максимум повідомлень за вікно</label>
+                                <input
+                                    id="cs-flood-max"
+                                    v-model.number="form.message_flood_max_messages"
+                                    type="number"
+                                    min="1"
+                                    max="65535"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-flood-window">Тривалість вікна (секунди)</label>
+                                <input
+                                    id="cs-flood-window"
+                                    v-model.number="form.message_flood_window_seconds"
+                                    type="number"
+                                    min="1"
+                                    max="86400"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-[var(--rp-border-subtle)] pt-4">
                         <h3 class="text-sm font-semibold text-[var(--rp-text)]">Модерація (slash)</h3>
                         <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
                             Дефолтні хвилини для <span class="font-mono">/mute</span> та <span class="font-mono">/kick</span>,
@@ -661,6 +704,9 @@ export default {
                 mod_slash_default_kick_minutes: 60,
                 silent_mode: false,
                 sound_on_every_post: false,
+                message_flood_enabled: false,
+                message_flood_max_messages: 5,
+                message_flood_window_seconds: 10,
                 landing_settings: {
                     page_title: '',
                     tagline: '',
@@ -823,7 +869,11 @@ export default {
             if (key === 'transactional_mail_from_name' || key.startsWith('mail_template_overrides')) {
                 return 'mail';
             }
-            if (key.startsWith('slash_command') || key.startsWith('mod_slash')) {
+            if (
+                key.startsWith('slash_command')
+                || key.startsWith('mod_slash')
+                || key.startsWith('message_flood')
+            ) {
                 return 'slash';
             }
             if (key === 'silent_mode' || key === 'sound_on_every_post' || key === 'max_attachment_bytes') {
@@ -848,6 +898,9 @@ export default {
                 message_count_room_id: 'cs-room',
                 slash_command_max_per_window: 'cs-slash-max',
                 slash_command_window_seconds: 'cs-slash-window',
+                message_flood_enabled: 'cs-flood-enabled',
+                message_flood_max_messages: 'cs-flood-max',
+                message_flood_window_seconds: 'cs-flood-window',
                 mod_slash_default_mute_minutes: 'cs-mod-mute',
                 mod_slash_default_kick_minutes: 'cs-mod-kick',
                 silent_mode: 'cs-silent-mode',
@@ -945,6 +998,15 @@ export default {
                             : 60,
                     silent_mode: Boolean(d.silent_mode),
                     sound_on_every_post: Boolean(d.sound_on_every_post),
+                    message_flood_enabled: Boolean(d.message_flood_enabled),
+                    message_flood_max_messages:
+                        Number(d.message_flood_max_messages) >= 1
+                            ? Number(d.message_flood_max_messages)
+                            : 5,
+                    message_flood_window_seconds:
+                        Number(d.message_flood_window_seconds) >= 1
+                            ? Number(d.message_flood_window_seconds)
+                            : 10,
                 };
                 const ls = d.landing_settings && typeof d.landing_settings === 'object' ? d.landing_settings : {};
                 const rawLinks = Array.isArray(ls.links) ? ls.links : [];
@@ -1014,6 +1076,9 @@ export default {
                     mod_slash_default_kick_minutes: this.form.mod_slash_default_kick_minutes,
                     silent_mode: Boolean(this.form.silent_mode),
                     sound_on_every_post: Boolean(this.form.sound_on_every_post),
+                    message_flood_enabled: Boolean(this.form.message_flood_enabled),
+                    message_flood_max_messages: Number(this.form.message_flood_max_messages),
+                    message_flood_window_seconds: Number(this.form.message_flood_window_seconds),
                     landing_settings: {
                         page_title: (this.form.landing_settings.page_title || '').trim() || null,
                         tagline: (this.form.landing_settings.tagline || '').trim() || null,
@@ -1043,6 +1108,28 @@ export default {
                     body.message_count_room_id = this.form.message_count_room_id;
                 } else {
                     body.message_count_room_id = null;
+                }
+                const floodMax = Number(this.form.message_flood_max_messages);
+                const floodWin = Number(this.form.message_flood_window_seconds);
+                if (
+                    !Number.isFinite(floodMax)
+                    || floodMax < 1
+                    || floodMax > 65535
+                    || !Number.isFinite(floodWin)
+                    || floodWin < 1
+                    || floodWin > 86400
+                ) {
+                    this.saveError = 'Вкажіть коректні параметри антифлуду (N і T).';
+                    this.activeSettingsTab = 'slash';
+                    this.saving = false;
+                    this.$nextTick(() => {
+                        const el = document.getElementById('cs-flood-max');
+                        if (el && typeof el.focus === 'function') {
+                            el.focus();
+                        }
+                    });
+
+                    return;
                 }
                 const mb = Number(this.form.max_attachment_mb);
                 if (!Number.isFinite(mb) || mb <= 0) {

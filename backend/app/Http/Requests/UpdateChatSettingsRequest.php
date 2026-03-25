@@ -38,6 +38,9 @@ class UpdateChatSettingsRequest extends FormRequest
             'mod_slash_default_kick_minutes' => ['sometimes', 'integer', 'min:1', 'max:525600'],
             'silent_mode' => ['sometimes', 'boolean'],
             'sound_on_every_post' => ['sometimes', 'boolean'],
+            'message_flood_enabled' => ['sometimes', 'boolean'],
+            'message_flood_max_messages' => ['sometimes', 'integer', 'min:1', 'max:65535'],
+            'message_flood_window_seconds' => ['sometimes', 'integer', 'min:1', 'max:86400'],
             'max_attachment_bytes' => [
                 'sometimes',
                 'integer',

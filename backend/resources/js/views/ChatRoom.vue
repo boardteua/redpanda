@@ -193,6 +193,7 @@ import {
     playActiveRoomIncomingSounds,
 } from '../utils/chatNotificationSounds';
 import { resetFaviconPrivateUnreadBadge, setFaviconPrivateUnreadBadge } from '../utils/faviconUnreadBadge';
+import { showError } from '../utils/rpToastStack';
 import { buildChatRoomBrowserTitle } from '../utils/chatDocumentTitle';
 import {
     PRESENCE_AWAY_IDLE_SEC,
@@ -2256,7 +2257,13 @@ export default {
                     }
                 }
             } catch (e) {
-                this.loadError = e.response?.data?.message || 'Не вдалося надіслати.';
+                const st = e.response && e.response.status;
+                const msg = e.response?.data?.message || 'Не вдалося надіслати.';
+                if (st === 429) {
+                    showError(msg);
+                } else {
+                    this.loadError = msg;
+                }
             } finally {
                 this.sending = false;
                 this.$nextTick(() => {

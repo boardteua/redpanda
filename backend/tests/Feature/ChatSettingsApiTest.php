@@ -46,6 +46,9 @@ class ChatSettingsApiTest extends TestCase
             ->assertJsonPath('data.mod_slash_default_mute_minutes', 30)
             ->assertJsonPath('data.mod_slash_default_kick_minutes', 60)
             ->assertJsonPath('data.sound_on_every_post', false)
+            ->assertJsonPath('data.message_flood_enabled', false)
+            ->assertJsonPath('data.message_flood_max_messages', 5)
+            ->assertJsonPath('data.message_flood_window_seconds', 10)
             ->assertJsonPath('data.max_attachment_bytes', 4 * 1024 * 1024)
             ->assertJsonPath('data.landing_settings.links', [])
             ->assertJsonPath('data.registration_flags.registration_open', true);
@@ -278,5 +281,28 @@ class ChatSettingsApiTest extends TestCase
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['message_count_room_id']);
+    }
+
+    public function test_admin_can_patch_message_flood_settings(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'message_flood_enabled' => true,
+                'message_flood_max_messages' => 3,
+                'message_flood_window_seconds' => 120,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.message_flood_enabled', true)
+            ->assertJsonPath('data.message_flood_max_messages', 3)
+            ->assertJsonPath('data.message_flood_window_seconds', 120);
+
+        $row = ChatSetting::current();
+        $this->assertTrue((bool) $row->message_flood_enabled);
+        $this->assertSame(3, (int) $row->message_flood_max_messages);
+        $this->assertSame(120, (int) $row->message_flood_window_seconds);
     }
 }

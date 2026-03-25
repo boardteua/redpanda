@@ -47,6 +47,9 @@ class ChatSetting extends Model
         'max_attachment_bytes',
         'transactional_mail_from_name',
         'mail_template_overrides',
+        'message_flood_enabled',
+        'message_flood_max_messages',
+        'message_flood_window_seconds',
     ];
 
     /**
@@ -68,6 +71,9 @@ class ChatSetting extends Model
             'sound_on_every_post' => 'boolean',
             'max_attachment_bytes' => 'integer',
             'mail_template_overrides' => 'array',
+            'message_flood_enabled' => 'boolean',
+            'message_flood_max_messages' => 'integer',
+            'message_flood_window_seconds' => 'integer',
         ];
     }
 

@@ -12,6 +12,7 @@ use App\Models\PrivateMessageReadState;
 use App\Models\User;
 use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\UserPostingGate;
+use App\Services\Chat\MessageFloodGate;
 use App\Services\PrivateMessageGate;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,7 @@ class PrivateMessageController extends Controller
     public function __construct(
         private readonly ContentWordFilter $wordFilter,
         private readonly UserPostingGate $postingGate,
+        private readonly MessageFloodGate $messageFloodGate,
     ) {}
 
     public function conversations(Request $request): JsonResponse
@@ -184,6 +186,10 @@ class PrivateMessageController extends Controller
                 ->additional(['meta' => ['duplicate' => true]])
                 ->response()
                 ->setStatusCode(200);
+        }
+
+        if ($resp = $this->messageFloodGate->ensureWithinLimit($user)) {
+            return $resp;
         }
 
         $now = time();

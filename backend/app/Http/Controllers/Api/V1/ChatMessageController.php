@@ -24,6 +24,7 @@ use App\Services\Chat\ChatMessageMutationService;
 use App\Services\Moderation\ChatAutomoderationService;
 use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\UserPostingGate;
+use App\Services\Chat\MessageFloodGate;
 use App\Services\PrivateMessageGate;
 use App\Support\ChatMessageBodyStyle;
 use App\Support\ChatMessageListAbilityMap;
@@ -42,6 +43,7 @@ class ChatMessageController extends Controller
         private readonly UserPostingGate $postingGate,
         private readonly ChatAutomoderationService $automod,
         private readonly ChatMessageMutationService $messageMutation,
+        private readonly MessageFloodGate $messageFloodGate,
     ) {}
 
     public function index(Request $request, Room $room): AnonymousResourceCollection|JsonResponse
@@ -147,6 +149,10 @@ class ChatMessageController extends Controller
             }
 
             return $this->duplicateMessageResponse($existing);
+        }
+
+        if ($resp = $this->messageFloodGate->ensureWithinLimit($user)) {
+            return $resp;
         }
 
         $validated = $request->validated();
