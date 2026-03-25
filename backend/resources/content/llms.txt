@@ -18,7 +18,6 @@
 
 - [OpenAPI 3 — REST API](__APP_URL__/docs/openapi.yaml): канонічний контракт (джерело в монорепо або бандл `backend/resources/public-monorepo-docs/` на проді). **Без виконання JS** для читання спеки.
 - [Документ для інтеграторів і LLM](__APP_URL__/docs/chat-v2/AI-AGENT-FRIENDLY.md): логін, гість, обмеження, **без PII**.
-- [Специфікація проєкту (індекс)](__APP_URL__/docs/project-specs/chat-v2-setup.md): стек і вимоги.
 
 ## Публічні HTTP (без секретів)
 
