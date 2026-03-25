@@ -459,6 +459,84 @@ class ChatApiTest extends TestCase
         $this->assertSame('presence-room.'.$public->room_id, $channels[0]->name);
     }
 
+    public function test_message_posted_broadcast_includes_mentioned_user_ids_for_reply_prefix(): void
+    {
+        [$public] = $this->seedRooms();
+        $alice = User::factory()->create(['user_name' => 'mnt_alice_99']);
+        $bob = User::factory()->create(['user_name' => 'mnt_bob_99']);
+
+        $m = ChatMessage::query()->create([
+            'user_id' => $bob->id,
+            'post_date' => 2100,
+            'post_time' => '12:00',
+            'post_user' => $bob->user_name,
+            'post_message' => $alice->user_name.' > ping reply',
+            'post_color' => 'user',
+            'post_roomid' => $public->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => '',
+            'file' => 0,
+            'client_message_id' => 'f0000000-0000-4000-8000-000000000099',
+        ]);
+
+        $payload = (new MessagePosted($m))->broadcastWith();
+        $this->assertSame([(int) $alice->id], $payload['mentioned_user_ids']);
+    }
+
+    public function test_message_posted_broadcast_mentioned_user_ids_empty_when_no_reply_prefix(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $m = ChatMessage::query()->create([
+            'user_id' => $user->id,
+            'post_date' => 2101,
+            'post_time' => '12:00',
+            'post_user' => $user->user_name,
+            'post_message' => 'no prefix here',
+            'post_color' => 'user',
+            'post_roomid' => $public->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => '',
+            'file' => 0,
+            'client_message_id' => 'f0000000-0000-4000-8000-000000000098',
+        ]);
+
+        $payload = (new MessagePosted($m))->broadcastWith();
+        $this->assertSame([], $payload['mentioned_user_ids']);
+    }
+
+    public function test_room_messages_include_mentioned_user_ids_for_reply_prefix(): void
+    {
+        [$public] = $this->seedRooms();
+        $alice = User::factory()->create(['user_name' => 'mnt_alice_rest']);
+        $bob = User::factory()->create(['user_name' => 'mnt_bob_rest']);
+
+        ChatMessage::query()->create([
+            'user_id' => $bob->id,
+            'post_date' => 3100,
+            'post_time' => '12:00',
+            'post_user' => $bob->user_name,
+            'post_message' => $alice->user_name.' > hi rest',
+            'post_color' => 'user',
+            'post_roomid' => $public->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => '',
+            'file' => 0,
+            'client_message_id' => 'a1000000-0000-4000-8000-000000000001',
+        ]);
+
+        Sanctum::actingAs($alice);
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/rooms/'.$public->room_id.'/messages?limit=10')
+            ->assertOk()
+            ->assertJsonPath('data.0.mentioned_user_ids.0', $alice->id);
+    }
+
     public function test_inline_private_hidden_from_third_user_in_room_feed(): void
     {
         [$public] = $this->seedRooms();

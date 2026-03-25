@@ -189,7 +189,7 @@ import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
 import {
     markChatSoundUserActivated,
     maybePlayGlobalGsound,
-    maybePlayNewPostSound,
+    playActiveRoomIncomingSounds,
 } from '../utils/chatNotificationSounds';
 import { resetFaviconPrivateUnreadBadge, setFaviconPrivateUnreadBadge } from '../utils/faviconUnreadBadge';
 import { buildChatRoomBrowserTitle } from '../utils/chatDocumentTitle';
@@ -609,7 +609,7 @@ export default {
             window.removeEventListener('keydown', h, { capture: true });
             this.chatSoundActivateHandler = null;
         },
-        /** T65: newpost — активна кімната (merge уже фільтрує), не себе, видимість вкладки (крім T75). */
+        /** T65 + T123: newpost / mention — активна кімната; mention має пріоритет (один звук). */
         handleNewRoomMessageSound(m) {
             if (!m || !this.user) {
                 return;
@@ -625,8 +625,9 @@ export default {
                 this.chatSettings && this.chatSettings.sound_on_every_post,
             );
             const silent = Boolean(this.chatSettings && this.chatSettings.silent_mode);
-            maybePlayNewPostSound(this.user, {
+            playActiveRoomIncomingSounds(this.user, {
                 userId: m.user_id,
+                mentionedUserIds: m.mentioned_user_ids,
                 legacySoundEveryPost: legacyEveryPost,
                 type: m.type,
                 chatSilentMode: silent,

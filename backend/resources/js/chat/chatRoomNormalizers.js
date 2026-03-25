@@ -84,6 +84,13 @@ export function normalizeMessage(raw) {
         file,
         image,
     };
+    if (Array.isArray(raw.mentioned_user_ids)) {
+        base.mentioned_user_ids = raw.mentioned_user_ids
+            .map((x) => Number(x))
+            .filter((n) => Number.isFinite(n));
+    } else {
+        base.mentioned_user_ids = [];
+    }
     if (Object.prototype.hasOwnProperty.call(raw || {}, 'can_edit')) {
         base.can_edit = Boolean(raw.can_edit);
     }

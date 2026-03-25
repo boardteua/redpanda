@@ -3986,6 +3986,13 @@ components:
           type: integer
           nullable: true
           description: Для `inline_private` — id адресата; інакше відсутнє.
+        mentioned_user_ids:
+          type: array
+          description: >
+            Id користувачів, згаданих префіксом «нік > …» у `public` повідомленні (T25/T123);
+            порожній масив, якщо префікса немає або нік не знайдено. Для Echo `MessagePosted` збігається з REST.
+          items:
+            type: integer
         client_message_id:
           type: string
           nullable: true

@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Chat\RoomReplyPrefixMentionParser;
 use App\Models\ChatMessage;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -61,6 +62,7 @@ class MessagePosted implements ShouldBroadcast
             'client_message_id' => $m->client_message_id,
             'file' => $fileId,
             'image' => $image,
+            'mentioned_user_ids' => RoomReplyPrefixMentionParser::mentionedUserIds($m),
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Chat\RoomReplyPrefixMentionParser;
 use App\Models\ChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -39,6 +40,7 @@ class ChatMessageResource extends JsonResource
                 $this->type === 'inline_private' && $this->post_target !== null && $this->post_target !== '',
                 fn () => (int) $this->post_target,
             ),
+            'mentioned_user_ids' => RoomReplyPrefixMentionParser::mentionedUserIds($this->resource),
             'client_message_id' => $this->client_message_id,
             'avatar' => $this->avatar,
             'file' => (int) $this->file,
