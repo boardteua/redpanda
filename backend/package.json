@@ -6,7 +6,8 @@
         "build": "vite build",
         "dev": "vite",
         "test:msg-parse": "node --test resources/js/utils/chatMessageBodyParse.test.mjs",
-        "test:country-filter": "node --test resources/js/utils/rpCountryComboboxFilter.test.mjs"
+        "test:country-filter": "node --test resources/js/utils/rpCountryComboboxFilter.test.mjs",
+        "test:format-chat-time": "node --test resources/js/utils/formatChatMessageTime.test.mjs"
     },
     "dependencies": {
         "@auth0/auth0-spa-js": "^2.18.0",

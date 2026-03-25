@@ -57,7 +57,10 @@ export function normalizeMessage(raw) {
         post_id: raw.post_id,
         post_roomid: raw.post_roomid,
         user_id: raw.user_id,
-        post_date: raw.post_date,
+        post_date:
+            raw.post_date != null && raw.post_date !== ''
+                ? Number(raw.post_date)
+                : raw.post_date,
         post_edited_at:
             raw.post_edited_at != null && raw.post_edited_at !== ''
                 ? Number(raw.post_edited_at)

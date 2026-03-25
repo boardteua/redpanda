@@ -35,7 +35,9 @@
                 />
                 <div class="min-w-0 flex-1">
                     <div class="text-xs text-[var(--rp-text-muted)]">
-                        <time>{{ m.sent_time || '—' }}</time>
+                        <time :datetime="privateMessageDatetime(m) || undefined">{{
+                            privateMessageTimeLabel(m)
+                        }}</time>
                         <span class="ml-2 font-medium text-[var(--rp-text)]">{{ labelFor(m) }}</span>
                     </div>
                     <ChatMessageBody
@@ -72,6 +74,7 @@
 
 <script>
 import ChatMessageBody from './chat/feed/ChatMessageBody.vue';
+import { formatChatMessageTimeLocal, isoUtcFromUnixSeconds } from '../utils/formatChatMessageTime';
 
 export default {
     name: 'PrivateChatPanel',
@@ -140,6 +143,17 @@ export default {
         },
     },
     methods: {
+        privateMessageTimeLabel(m) {
+            const formatted = formatChatMessageTimeLocal(m && m.sent_at);
+            if (formatted) {
+                return formatted;
+            }
+
+            return (m && m.sent_time) || '—';
+        },
+        privateMessageDatetime(m) {
+            return isoUtcFromUnixSeconds(m && m.sent_at);
+        },
         labelFor(m) {
             return Number(m.sender_id) === Number(this.currentUserId) ? 'Ви' : this.peer.user_name;
         },

@@ -102,8 +102,9 @@
                     </span>
                     <time
                         class="font-mono text-[0.6875rem] tabular-nums text-[var(--rp-text-muted)]"
+                        :datetime="postTimeDatetime || undefined"
                     >
-                        {{ message.post_time || '—' }}
+                        {{ displayPostTime }}
                     </time>
                 </div>
             </div>
@@ -138,6 +139,7 @@ import ChatMessageBody from './ChatMessageBody.vue';
 import { openImageLightbox } from '../../../utils/imageLightboxStore';
 import { messageHasBlockMedia } from '../../../utils/chatMessageBodyParse';
 import { chatMessageBodyClassList, nickColorStyleForPost } from '../../../utils/chatMessageStyle';
+import { formatChatMessageTimeLocal, isoUtcFromUnixSeconds } from '../../../utils/formatChatMessageTime';
 
 export default {
     name: 'ChatFeedMessageRow',
@@ -194,6 +196,19 @@ export default {
         },
         messageBodyRootClass() {
             return ['rounded', 'px-0.5', 'inline-block', 'max-w-full', 'align-baseline'];
+        },
+        /** T121: час з `post_date` (Unix s) у локальній TZ браузера; fallback — легасі `post_time`. */
+        displayPostTime() {
+            const m = this.message;
+            const formatted = formatChatMessageTimeLocal(m && m.post_date);
+            if (formatted) {
+                return formatted;
+            }
+
+            return (m && m.post_time) || '—';
+        },
+        postTimeDatetime() {
+            return isoUtcFromUnixSeconds(this.message && this.message.post_date);
         },
     },
     methods: {

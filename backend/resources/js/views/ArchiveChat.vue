@@ -192,6 +192,7 @@
 import ChatMessageBody from '../components/chat/feed/ChatMessageBody.vue';
 import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
 import { chatMessageBodyClassList } from '../utils/chatMessageStyle';
+import { formatChatArchiveDateTimeLocal } from '../utils/formatChatMessageTime';
 
 export default {
     name: 'ArchiveChat',
@@ -242,26 +243,12 @@ export default {
             this.roomFilter = Number.isFinite(n) ? String(n) : '';
         },
         formatArchiveDate(m) {
-            const ts = m && m.post_date;
-            if (ts == null || ts === '') {
-                return m && m.post_time ? String(m.post_time) : '—';
+            const formatted = formatChatArchiveDateTimeLocal(m && m.post_date);
+            if (formatted) {
+                return formatted;
             }
-            try {
-                const d = new Date(Number(ts) * 1000);
-                const datePart = d.toLocaleDateString('uk-UA', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                });
-                const timePart = m.post_time || d.toLocaleTimeString('uk-UA', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                });
 
-                return `${datePart} ${timePart}`;
-            } catch {
-                return m.post_time || '—';
-            }
+            return m && m.post_time ? String(m.post_time) : '—';
         },
         async fetchUser() {
             try {

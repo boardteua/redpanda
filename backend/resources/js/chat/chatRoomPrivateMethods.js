@@ -167,7 +167,7 @@ export const chatRoomPrivateMethods = {
             sender_id: raw.sender_id,
             recipient_id: raw.recipient_id,
             body: raw.body,
-            sent_at: raw.sent_at,
+            sent_at: raw.sent_at != null && raw.sent_at !== '' ? Number(raw.sent_at) : raw.sent_at,
             sent_time: raw.sent_time,
             client_message_id: raw.client_message_id,
         });
