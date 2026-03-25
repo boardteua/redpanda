@@ -9,15 +9,13 @@
 <script>
 import RpImageLightbox from './components/RpImageLightbox.vue';
 import RpToastStack from './components/ui/RpToastStack.vue';
-
-const THEME_KEY = 'redpanda-theme';
+import { getResolvedTheme } from './chat/chatRoomConstants';
 
 export default {
     name: 'App',
     components: { RpImageLightbox, RpToastStack },
     mounted() {
-        const stored = localStorage.getItem(THEME_KEY) || 'system';
-        document.documentElement.setAttribute('data-theme', stored);
+        document.documentElement.setAttribute('data-theme', getResolvedTheme());
     },
 };
 </script>

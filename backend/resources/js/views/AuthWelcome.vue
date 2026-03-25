@@ -1,16 +1,5 @@
 <template>
     <div class="rp-auth-landing flex min-h-0 flex-1 flex-col px-4 py-10 pb-12 sm:px-6">
-        <div class="rp-auth-landing-theme">
-            <RpButton
-                variant="ghost"
-                class="shrink-0 text-sm"
-                aria-label="Перемкнути тему оформлення"
-                @click="cycleTheme"
-            >
-                {{ themeLabel }}
-            </RpButton>
-        </div>
-
         <main
             id="main-content"
             class="mx-auto w-full max-w-5xl flex-1"
@@ -63,13 +52,15 @@
                 <div
                     class="mb-6 flex flex-wrap gap-2"
                     role="tablist"
-                    aria-label="Режим форми"
+                    aria-label="Вхід або реєстрація"
+                    @keydown="onAuthTabKeydown"
                 >
                     <button
                         id="tab-login"
                         type="button"
                         role="tab"
                         class="rp-tab rp-focusable"
+                        :tabindex="mode === 'login' ? 0 : -1"
                         :aria-selected="mode === 'login'"
                         aria-controls="auth-panel"
                         @click="setMode('login')"
@@ -82,6 +73,7 @@
                         type="button"
                         role="tab"
                         class="rp-tab rp-focusable"
+                        :tabindex="mode === 'register' ? 0 : -1"
                         :aria-selected="mode === 'register'"
                         aria-controls="auth-panel"
                         @click="setMode('register')"
@@ -383,7 +375,6 @@
 import { cacheAuth0FromLandingPayload, ensureAuth0Client } from '../lib/rpAuth0';
 import { CHAT_BRAND_TITLE, sanitizeTitleSegment } from '../utils/chatDocumentTitle';
 
-const THEME_KEY = 'redpanda-theme';
 const LANDING_POLL_MS = 45000;
 
 export default {
@@ -410,7 +401,6 @@ export default {
                 password_confirmation: '',
                 department: '',
             },
-            themeUi: 'system',
             landing: null,
             registration: null,
             usersOnline: 0,
@@ -482,19 +472,6 @@ export default {
 
             return this.mode === 'login' ? 'login-heading' : 'register-heading';
         },
-        themeLabel() {
-            if (this.themeUi === 'light') {
-                return 'Тема: світла';
-            }
-            if (this.themeUi === 'dark') {
-                return 'Тема: темна';
-            }
-
-            return 'Тема: як у системі';
-        },
-    },
-    created() {
-        this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
     },
     async mounted() {
         this.fetchLandingPublic();
@@ -583,14 +560,41 @@ export default {
         setMode(m) {
             this.mode = m;
             this.clearErrors();
+            this.$nextTick(() => {
+                const id = m === 'login' ? 'tab-login' : 'tab-register';
+                const el = document.getElementById(id);
+                if (el && typeof el.focus === 'function') {
+                    try {
+                        el.focus();
+                    } catch {
+                        /* */
+                    }
+                }
+            });
         },
-        cycleTheme() {
-            const order = ['system', 'light', 'dark'];
-            const i = Math.max(0, order.indexOf(this.themeUi));
-            const next = order[(i + 1) % order.length];
-            this.themeUi = next;
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem(THEME_KEY, next);
+        /** T133: WAI-ARIA Tabs — стрілки та Home/End між «Вхід» і «Реєстрація». */
+        onAuthTabKeydown(e) {
+            if (!this.registrationOpen) {
+                return;
+            }
+            const keys = ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'];
+            if (!keys.includes(e.key)) {
+                return;
+            }
+            e.preventDefault();
+            let next = this.mode;
+            if (e.key === 'Home') {
+                next = 'login';
+            } else if (e.key === 'End') {
+                next = 'register';
+            } else if (this.mode === 'login') {
+                next = 'register';
+            } else {
+                next = 'login';
+            }
+            if (next !== this.mode) {
+                this.setMode(next);
+            }
         },
         async ensureSanctum() {
             await window.axios.get('/sanctum/csrf-cookie');

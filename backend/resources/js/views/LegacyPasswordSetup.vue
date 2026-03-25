@@ -52,7 +52,7 @@
 <script>
 import RpButton from '../components/ui/RpButton.vue';
 
-const THEME_KEY = 'redpanda-theme';
+import { getResolvedTheme, THEME_KEY } from '../chat/chatRoomConstants';
 
 export default {
     name: 'LegacyPasswordSetup',
@@ -80,7 +80,7 @@ export default {
         },
     },
     created() {
-        this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
+        this.themeUi = getResolvedTheme();
     },
     async mounted() {
         document.documentElement.setAttribute('data-theme', this.themeUi);

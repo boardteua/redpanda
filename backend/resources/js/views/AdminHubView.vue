@@ -54,8 +54,7 @@
 
 <script>
 import RpBanner from '../components/ui/RpBanner.vue';
-
-const THEME_KEY = 'redpanda-theme';
+import { getResolvedTheme, THEME_KEY } from '../chat/chatRoomConstants';
 
 export default {
     name: 'AdminHubView',
@@ -129,7 +128,7 @@ export default {
         },
     },
     created() {
-        this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
+        this.themeUi = getResolvedTheme();
     },
     async mounted() {
         document.documentElement.setAttribute('data-theme', this.themeUi);

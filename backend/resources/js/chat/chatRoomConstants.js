@@ -2,6 +2,26 @@
 
 export const THEME_KEY = 'redpanda-theme';
 
+/**
+ * T133: без збереженого вибору — світла тема (не `system`), щоб нова сесія не наслідувала ОС на вітальні.
+ * @returns {'system'|'light'|'dark'}
+ */
+export function getResolvedTheme() {
+    if (typeof localStorage === 'undefined') {
+        return 'light';
+    }
+    try {
+        const v = localStorage.getItem(THEME_KEY);
+        if (v != null && String(v).trim() !== '') {
+            return v;
+        }
+    } catch {
+        /* */
+    }
+
+    return 'light';
+}
+
 /** Збереження останньої вкладки сайдбару; відсутній/невалідний ключ → «Люди». */
 export const SIDEBAR_TAB_STORAGE_KEY = 'redpanda-chat-sidebar-tab';
 

@@ -200,6 +200,7 @@ import {
     PEER_PRESENCE_JOIN_DEBOUNCE_MS,
     PRESENCE_AWAY_IDLE_SEC,
     PRESENCE_INACTIVE_IDLE_SEC,
+    getResolvedTheme,
     readStoredSidebarTab,
     SIDEBAR_TAB_ICONS,
     SIDEBAR_TAB_IDS,
@@ -540,7 +541,7 @@ export default {
         },
     },
     created() {
-        this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
+        this.themeUi = getResolvedTheme();
         if (typeof window !== 'undefined' && window.matchMedia) {
             const mq = window.matchMedia('(max-width: 767px)');
             this.isNarrowViewport = mq.matches;

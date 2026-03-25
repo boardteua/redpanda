@@ -675,9 +675,8 @@
 import RpModal from '../components/RpModal.vue';
 import RpCountryCombobox from '../components/ui/RpCountryCombobox.vue';
 import countryRows from '../../data/iso3166-alpha2-uk.json';
+import { getResolvedTheme, THEME_KEY } from '../chat/chatRoomConstants';
 import { normalizeStoredCountryCode } from '../utils/countryProfile.js';
-
-const THEME_KEY = 'redpanda-theme';
 const VALID_COUNTRY_CODES = new Set(countryRows.map((r) => r.code));
 
 export default {
@@ -766,7 +765,7 @@ export default {
         },
     },
     created() {
-        this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
+        this.themeUi = getResolvedTheme();
     },
     async mounted() {
         document.documentElement.setAttribute('data-theme', this.themeUi);

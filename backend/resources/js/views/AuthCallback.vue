@@ -5,15 +5,13 @@
 </template>
 
 <script>
+import { getResolvedTheme } from '../chat/chatRoomConstants';
 import { ensureAuth0BootstrapFromLandingApi, ensureAuth0Client } from '../lib/rpAuth0';
 
 export default {
     name: 'AuthCallback',
     async mounted() {
-        document.documentElement.setAttribute(
-            'data-theme',
-            typeof localStorage !== 'undefined' ? localStorage.getItem('redpanda-theme') || 'system' : 'system',
-        );
+        document.documentElement.setAttribute('data-theme', getResolvedTheme());
         await ensureAuth0BootstrapFromLandingApi();
         const client = await ensureAuth0Client();
         if (!client) {

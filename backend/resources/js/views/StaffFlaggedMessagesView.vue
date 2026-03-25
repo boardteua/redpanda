@@ -179,9 +179,8 @@
 </template>
 
 <script>
+import { getResolvedTheme, THEME_KEY } from '../chat/chatRoomConstants';
 import { isStaffRole } from '../lib/userBadgeMenuItems';
-
-const THEME_KEY = 'redpanda-theme';
 
 export default {
     name: 'StaffFlaggedMessagesView',
@@ -224,7 +223,7 @@ export default {
         },
     },
     created() {
-        this.themeUi = localStorage.getItem(THEME_KEY) || 'system';
+        this.themeUi = getResolvedTheme();
     },
     async mounted() {
         document.documentElement.setAttribute('data-theme', this.themeUi);
