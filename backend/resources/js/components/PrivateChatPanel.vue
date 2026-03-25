@@ -55,6 +55,7 @@
             </p>
             <textarea
                 id="private-composer"
+                ref="privateComposer"
                 :value="composerText"
                 class="rp-input rp-focusable mb-2 min-h-[4rem] resize-y font-sans"
                 maxlength="4000"
@@ -191,6 +192,26 @@ export default {
             }
             e.preventDefault();
             this.onSubmit();
+        },
+        /** T124: після успішної відправки та `sending=false` у батька. */
+        scheduleFocusComposer() {
+            window.requestAnimationFrame(() => {
+                this.$nextTick(() => {
+                    this.$nextTick(() => {
+                        const el = this.$refs.privateComposer;
+                        if (!el || typeof el.focus !== 'function') {
+                            return;
+                        }
+                        el.focus();
+                        const len = String(this.composerText || '').length;
+                        try {
+                            el.setSelectionRange(len, len);
+                        } catch {
+                            /* */
+                        }
+                    });
+                });
+            });
         },
     },
 };

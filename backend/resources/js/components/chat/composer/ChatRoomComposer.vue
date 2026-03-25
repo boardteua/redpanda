@@ -343,6 +343,16 @@ export default {
             this.formatPanel = null;
             this.$nextTick(() => this.syncComposerInputHeight());
         },
+        /**
+         * T124: після зняття `disabled` на textarea (батько виставляє `sending=false`) повернути фокус і курсор у кінець.
+         */
+        focusComposerAfterSend() {
+            window.requestAnimationFrame(() => {
+                this.$nextTick(() => {
+                    this.$nextTick(() => this.focusComposerEnd());
+                });
+            });
+        },
         appendToComposer(insertion) {
             if (insertion == null || insertion === '') {
                 return;

@@ -207,6 +207,7 @@ export const chatRoomPrivateMethods = {
         this.sendingPrivate = true;
         await this.ensureSanctum();
         const clientMessageId = crypto.randomUUID();
+        let privateSendOk = false;
         try {
             const { data, status } = await window.axios.post(
                 `/api/v1/private/peers/${this.privatePeer.id}/messages`,
@@ -221,12 +222,21 @@ export const chatRoomPrivateMethods = {
             }
             if (status === 201 || status === 200) {
                 this.privateComposerText = '';
+                privateSendOk = true;
             }
             await this.loadConversations();
         } catch (e) {
             this.privateLoadError = e.response?.data?.message || 'Не вдалося надіслати.';
         } finally {
             this.sendingPrivate = false;
+            if (privateSendOk) {
+                this.$nextTick(() => {
+                    const p = this.$refs.privateChatPanel;
+                    if (p && typeof p.scheduleFocusComposer === 'function') {
+                        p.scheduleFocusComposer();
+                    }
+                });
+            }
         }
     },
 };

@@ -156,6 +156,7 @@
 
         <PrivateChatPanel
             v-if="user && privatePeer"
+            ref="privateChatPanel"
             :peer="privatePeer"
             :messages="privateMessages"
             :loading="loadingPrivateMessages"
@@ -2187,6 +2188,7 @@ export default {
             }
             this.sending = true;
             await this.ensureSanctum();
+            let focusComposerAfterSend = false;
             try {
                 if (editPostId != null) {
                     const patchBody = { message: text };
@@ -2204,6 +2206,7 @@ export default {
                     }
                     if (status === 200) {
                         comp.resetAfterSend();
+                        focusComposerAfterSend = true;
                     }
                 } else {
                     const clientMessageId = crypto.randomUUID();
@@ -2226,6 +2229,7 @@ export default {
                     }
                     if (status === 201 || status === 200) {
                         comp.resetAfterSend();
+                        focusComposerAfterSend = true;
                         const slashName = data.meta && data.meta.slash && data.meta.slash.name;
                         if (slashName === 'ignore' || slashName === 'ignoreclear') {
                             await this.loadFriendsAndIgnores();
@@ -2252,14 +2256,16 @@ export default {
                     }
                 }
             } catch (e) {
-                const msg = e.response?.data?.message || 'Не вдалося надіслати.';
-                this.loadError = msg;
+                this.loadError = e.response?.data?.message || 'Не вдалося надіслати.';
             } finally {
                 this.sending = false;
                 this.$nextTick(() => {
                     const c = this.$refs.chatComposer;
                     if (c && typeof c.syncComposerInputHeight === 'function') {
                         c.syncComposerInputHeight();
+                    }
+                    if (focusComposerAfterSend && c && typeof c.focusComposerAfterSend === 'function') {
+                        c.focusComposerAfterSend();
                     }
                 });
             }
