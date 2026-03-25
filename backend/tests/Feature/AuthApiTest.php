@@ -222,6 +222,25 @@ class AuthApiTest extends TestCase
         $this->assertDatabaseMissing('users', ['user_name' => 'ClosedReg']);
     }
 
+    public function test_auth_user_includes_requires_password_setup_for_legacy_import_without_password(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'leg@example.com',
+            'guest' => false,
+        ]);
+        $user->forceFill([
+            'password' => null,
+            'legacy_imported_at' => now(),
+        ])->save();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/auth/user')
+            ->assertOk()
+            ->assertJsonPath('data.requires_password_setup', true);
+    }
+
     public function test_register_rejects_non_empty_honeypot(): void
     {
         $this->from(config('app.url'))

@@ -5,6 +5,7 @@ import AuthWelcome from '../views/AuthWelcome.vue';
 import AuthCallback from '../views/AuthCallback.vue';
 import ForgotPassword from '../views/ForgotPassword.vue';
 import ResetPassword from '../views/ResetPassword.vue';
+import LegacyPasswordSetup from '../views/LegacyPasswordSetup.vue';
 import ChatRoom from '../views/ChatRoom.vue';
 import AdminHubView from '../views/AdminHubView.vue';
 import StaffUsersView from '../views/StaffUsersView.vue';
@@ -32,6 +33,12 @@ const router = new VueRouter({
             name: 'reset-password',
             component: ResetPassword,
             meta: { documentTitle: 'Чат Рудої Панди — новий пароль' },
+        },
+        {
+            path: '/legacy-password-setup',
+            name: 'legacy-password-setup',
+            component: LegacyPasswordSetup,
+            meta: { documentTitle: 'Чат Рудої Панди — встановлення пароля' },
         },
         {
             path: '/auth/callback',

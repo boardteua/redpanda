@@ -43,6 +43,11 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::get('auth/user', [AuthController::class, 'user']);
         Route::post('auth/logout', [AuthController::class, 'logout']);
 
+        Route::middleware('throttle:auth-account-legacy-password-link')->post(
+            'auth/account-legacy-password-link',
+            [PasswordResetController::class, 'sendResetLinkForAuthenticatedLegacyAccount'],
+        );
+
         Route::middleware('throttle:avatar-upload')->post('me/avatar', [UserAvatarController::class, 'store']);
 
         Route::middleware('throttle:me-profile')->group(function (): void {

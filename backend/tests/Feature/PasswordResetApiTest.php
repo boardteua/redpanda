@@ -71,17 +71,80 @@ class PasswordResetApiTest extends TestCase
     {
         Notification::fake();
 
-        User::factory()->create([
+        $u = User::factory()->create([
             'email' => 'oauth@example.com',
             'guest' => false,
-            'password' => null,
         ]);
+        $u->forceFill(['password' => null, 'legacy_imported_at' => null])->save();
 
         $this->from(config('app.url'))
             ->withHeaders($this->statefulHeaders())
             ->postJson('/api/v1/auth/forgot-password', [
                 'email' => 'oauth@example.com',
             ])->assertOk();
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_forgot_password_sends_for_legacy_imported_user_without_password(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create([
+            'email' => 'legacy@example.com',
+            'guest' => false,
+        ]);
+        $user->forceFill([
+            'password' => null,
+            'legacy_imported_at' => now(),
+        ])->save();
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/forgot-password', [
+                'email' => 'legacy@example.com',
+            ])->assertOk();
+
+        Notification::assertSentTo($user, ResetPasswordNotification::class);
+    }
+
+    public function test_authenticated_legacy_user_can_request_password_link(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create([
+            'email' => 'a@example.com',
+            'guest' => false,
+        ]);
+        $user->forceFill([
+            'password' => null,
+            'legacy_imported_at' => now(),
+        ])->save();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/account-legacy-password-link')
+            ->assertOk()
+            ->assertJsonStructure(['message']);
+
+        Notification::assertSentTo($user, ResetPasswordNotification::class);
+    }
+
+    public function test_authenticated_non_legacy_user_gets_422_on_legacy_password_link(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create([
+            'email' => 'b@example.com',
+            'guest' => false,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/auth/account-legacy-password-link')
+            ->assertUnprocessable();
 
         Notification::assertNothingSent();
     }

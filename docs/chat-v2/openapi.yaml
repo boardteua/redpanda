@@ -809,8 +809,9 @@ paths:
       tags: [Auth]
       summary: Запит посилання для скидання пароля (T94)
       description: |
-        Завжди **200** з однаковим `message` (немає user enumeration). Лист надсилається лише якщо знайдено **не-гостьовий**
-        обліковий запис з **непорожнім паролем** і валідною email. Throttle **5**/хв на IP (`auth-forgot-password`).
+        Завжди **200** з однаковим `message` (немає user enumeration). Лист надсилається якщо знайдено **не-гостьовий**
+        обліковий запис з валідною email і (**непорожній пароль** **або** імпорт з legacy без пароля: `legacy_imported_at` задано, `password` порожній — **T129**).
+        Throttle **5**/хв на IP (`auth-forgot-password`).
       operationId: authForgotPassword
       security: []
       requestBody:
@@ -830,6 +831,35 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/account-legacy-password-link:
+    post:
+      tags: [Auth]
+      summary: Лист для встановлення пароля після імпорту legacy (T129)
+      description: |
+        Лише для **авторизованого** не-гостя з `legacy_imported_at` і **без** пароля в БД: надсилає той самий лист скидання, що й публічний forgot-password (**T94**).
+        **422** якщо умови не виконані (не legacy / пароль уже є / немає email). Throttle **3**/хв на користувача (`auth-account-legacy-password-link`).
+      operationId: authAccountLegacyPasswordLink
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Гість
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          description: Брокер скидання не зміг надіслати лист
 
   /api/v1/auth/reset-password:
     post:
@@ -2766,6 +2796,10 @@ components:
         chat_upload_disabled:
           type: boolean
           description: Лише для **власного** облікового запису (`data.id` збігається з авторизованим); модераторське вимкнення завантажень у чаті / аватарки.
+        requires_password_setup:
+          type: boolean
+          description: |
+            Лише для **власного** облікового запису. **true** після імпорту з legacy (**T129**), якщо є email і пароль ще не встановлено (наприклад вхід через Auth0); UI веде на маршрут `/legacy-password-setup`.
 
     UserLookupPeer:
       type: object

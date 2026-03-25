@@ -607,6 +607,15 @@ export default {
             if (!this.user) {
                 return;
             }
+            if (this.user.requires_password_setup) {
+                this.$router.replace({ name: 'legacy-password-setup' }).catch((err) => {
+                    if (import.meta.env.DEV) {
+                        console.warn('[AuthWelcome] redirect to legacy password setup failed', err);
+                    }
+                });
+
+                return;
+            }
             const h = this.$route.query.history;
             if (h === '1' || h === 1) {
                 this.$router.replace({ name: 'archive' }).catch((err) => {

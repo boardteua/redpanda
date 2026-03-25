@@ -72,6 +72,7 @@ class User extends Authenticatable
             'account_disabled_at' => 'datetime',
             'chat_upload_disabled' => 'boolean',
             'presence_invisible' => 'boolean',
+            'legacy_imported_at' => 'datetime',
         ];
     }
 

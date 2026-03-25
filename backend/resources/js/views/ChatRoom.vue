@@ -814,6 +814,12 @@ export default {
                     return;
                 }
 
+                if (this.user.requires_password_setup) {
+                    await this.$router.replace({ name: 'legacy-password-setup' });
+
+                    return;
+                }
+
                 if (this.user.chat_role === 'admin') {
                     const raw = this.$route.query.open_chat_settings;
                     openChatSettingsAfterBootstrap =

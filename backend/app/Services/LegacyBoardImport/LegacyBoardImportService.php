@@ -253,6 +253,7 @@ final class LegacyBoardImportService
             'email_verified_at' => null,
             'password' => $this->legacyPasswordForStorage((string) ($lu->user_password ?? ''), $guest),
             'guest' => $guest,
+            'legacy_imported_at' => $guest ? null : $now,
             'remember_token' => null,
             'created_at' => $now,
             'updated_at' => $now,

@@ -163,6 +163,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by('auth-reset-password:'.$request->ip());
         });
 
+        RateLimiter::for('auth-account-legacy-password-link', function (Request $request) {
+            /** @var User|null $user */
+            $user = $request->user();
+
+            return Limit::perMinute(3)->by($user ? 'auth-alpl-u:'.$user->id : 'auth-alpl-ip:'.$request->ip());
+        });
+
         RateLimiter::for('landing-read', function (Request $request) {
             return Limit::perMinute(120)->by($request->ip());
         });

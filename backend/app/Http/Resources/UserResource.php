@@ -49,6 +49,7 @@ class UserResource extends JsonResource
         if ($auth !== null && (int) $this->id === (int) $auth->id) {
             $uploadFlag['chat_upload_disabled'] = (bool) $this->chat_upload_disabled;
             $uploadFlag['presence_invisible'] = (bool) $this->presence_invisible;
+            $uploadFlag['requires_password_setup'] = $this->requiresPasswordSetupAfterLegacyImport();
         }
 
         return array_merge($base, $uploadFlag, [
@@ -67,5 +68,17 @@ class UserResource extends JsonResource
             'social_links' => $social,
             'notification_sound_prefs' => $sounds,
         ]);
+    }
+
+    private function requiresPasswordSetupAfterLegacyImport(): bool
+    {
+        if ($this->guest || $this->legacy_imported_at === null) {
+            return false;
+        }
+        if ($this->email === null || trim((string) $this->email) === '') {
+            return false;
+        }
+
+        return $this->password === null || $this->password === '';
     }
 }

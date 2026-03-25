@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -23,7 +24,15 @@ class PasswordResetController extends Controller
         $email = $request->validated('email');
         $user = User::query()->where('email', $email)->first();
 
-        if ($user === null || $user->guest || $user->password === null || $user->email === null) {
+        $canSendForgot = $user !== null
+            && ! $user->guest
+            && $user->email !== null
+            && (
+                $user->password !== null
+                || ($user->legacy_imported_at !== null && $user->password === null)
+            );
+
+        if (! $canSendForgot) {
             Hash::check('password', AuthController::AUTH_TIMING_DUMMY_BCRYPT);
 
             return response()->json(['message' => self::FORGOT_PUBLIC_MESSAGE]);
@@ -36,6 +45,37 @@ class PasswordResetController extends Controller
         }
 
         return response()->json(['message' => self::FORGOT_PUBLIC_MESSAGE]);
+    }
+
+    /**
+     * Авторизований користувач після імпорту legacy без пароля: лист на збережений email (T129).
+     */
+    public function sendResetLinkForAuthenticatedLegacyAccount(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($user->guest) {
+            return response()->json(['message' => 'Недоступно для гостьового режиму.'], 403);
+        }
+
+        if ($user->email === null || trim((string) $user->email) === '') {
+            return response()->json(['message' => 'У профілі немає збереженої адреси для листа.'], 422);
+        }
+
+        if ($user->legacy_imported_at === null || $user->password !== null) {
+            return response()->json(['message' => 'Ця дія не потрібна для вашого облікового запису.'], 422);
+        }
+
+        $status = Password::broker()->sendResetLink(['email' => $user->email]);
+
+        if ($status !== Password::RESET_LINK_SENT && $status !== Password::RESET_THROTTLED) {
+            return response()->json(['message' => 'Не вдалося надіслати лист. Спробуйте пізніше.'], 503);
+        }
+
+        return response()->json([
+            'message' => 'Якщо пошта доступна, надіслано лист із посиланням для встановлення пароля.',
+        ]);
     }
 
     public function reset(ResetPasswordRequest $request): JsonResponse
