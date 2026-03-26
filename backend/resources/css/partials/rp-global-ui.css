@@ -309,6 +309,16 @@ html {
     overflow: hidden;
 }
 
+/*
+ * T145 — зменшення CLS (PSI): підміна Instrument Sans змінювала висоту блоку форми на вузькому екрані.
+ * Мінімальна висота резервує місце до завантаження шрифтів (разом із preload woff2 у spa.blade.php).
+ */
+@media (max-width: 1023.98px) {
+    .rp-auth-landing--welcome-board .rp-auth-landing-card--welcome-board {
+        min-height: 26rem;
+    }
+}
+
 .rp-auth-landing--welcome-board .rp-auth-landing-form-col .rp-label {
     color: #4d3227;
 }

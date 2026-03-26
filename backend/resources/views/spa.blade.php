@@ -24,7 +24,29 @@
                 || $path === 'archive'
                 || str_starts_with($path, 'archive/');
             $rpInitialCss = $useChatCss ? 'chat' : 'welcome';
+
+            /** Ранній fetch woff2 — менший CLS на вітальні при font-display:swap (T145). Без hot / з production manifest. */
+            $rpFontPreloadHrefs = [];
+            if (! file_exists(public_path('hot'))) {
+                $manifestPath = public_path('build/manifest.json');
+                if (is_readable($manifestPath)) {
+                    $manifest = json_decode((string) file_get_contents($manifestPath), true) ?: [];
+                    foreach ([
+                        'node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-400-normal.woff2',
+                        'node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-600-normal.woff2',
+                        'node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-700-normal.woff2',
+                        'node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-ext-400-normal.woff2',
+                    ] as $fontKey) {
+                        if (! empty($manifest[$fontKey]['file'])) {
+                            $rpFontPreloadHrefs[] = asset('build/'.$manifest[$fontKey]['file']);
+                        }
+                    }
+                }
+            }
         @endphp
+        @foreach ($rpFontPreloadHrefs as $fontHref)
+            <link rel="preload" href="{{ $fontHref }}" as="font" type="font/woff2" crossorigin>
+        @endforeach
         <script>
             window.__RP_INITIAL_CSS_ENTRY__ = @json($rpInitialCss);
         </script>
