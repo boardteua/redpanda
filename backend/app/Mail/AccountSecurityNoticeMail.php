@@ -46,7 +46,7 @@ class AccountSecurityNoticeMail extends Mailable implements ShouldQueue
         $from = new Address($fromAddr, $custom ?? $defaultName);
 
         return new Envelope(
-            from: [$from],
+            from: $from,
             subject: $this->resolvedSubject,
         );
     }
