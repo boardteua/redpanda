@@ -99,6 +99,10 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
             'chat/system-bot/profile',
             [SystemBotProfileController::class, 'update'],
         );
+        Route::middleware(['can:chat-admin', 'throttle:avatar-upload'])->post(
+            'chat/system-bot/avatar',
+            [UserAvatarController::class, 'storeSystemBot'],
+        );
 
         Route::middleware('throttle:archive-read')->get('archive/messages', [ChatArchiveController::class, 'index']);
 

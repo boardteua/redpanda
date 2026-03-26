@@ -22,8 +22,6 @@ class UserAvatarController extends Controller
 {
     public function store(Request $request, UserPostingGate $postingGate): JsonResponse
     {
-        ChatImageUploadValidation::validateUploadedImage($request);
-
         /** @var User $user */
         $user = $request->user();
 
@@ -40,6 +38,28 @@ class UserAvatarController extends Controller
         }
 
         $postingGate->ensureCanPost($user);
+
+        return $this->persistAvatarForUser($request, $user);
+    }
+
+    /**
+     * T151: аватар системного бота — лише `can:chat-admin` (маршрут).
+     */
+    public function storeSystemBot(Request $request): JsonResponse
+    {
+        $bot = User::query()->where('is_system_bot', true)->orderBy('id')->first();
+        if ($bot === null) {
+            return response()->json([
+                'message' => 'Системного бота не знайдено.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->persistAvatarForUser($request, $bot);
+    }
+
+    private function persistAvatarForUser(Request $request, User $user): JsonResponse
+    {
+        ChatImageUploadValidation::validateUploadedImage($request);
 
         $file = $request->file('image');
         $inspected = ChatUploadedImageInspector::inspectOrFail(

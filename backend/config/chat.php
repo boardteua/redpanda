@@ -83,9 +83,4 @@ return [
         ? (int) env('CHAT_BOT_ANNOUNCE_ROOM_ID')
         : null,
 
-    /*
-    | Мінімальний інтервал між «зайшов у кімнату» для того самого користувача
-    | в тій самій кімнаті (секунди).
-    */
-    'bot_join_debounce_seconds' => max(10, (int) env('CHAT_BOT_JOIN_DEBOUNCE_SECONDS', 90)),
 ];

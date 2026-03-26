@@ -1,5 +1,0 @@
-/* T150 — системні повідомлення бота «Руда панда» у стрічці */
-.rp-chat-feed-row--system {
-    background: var(--rp-chat-row-system-bg) !important;
-    box-shadow: inset 3px 0 0 0 var(--rp-chat-row-system-border);
-}

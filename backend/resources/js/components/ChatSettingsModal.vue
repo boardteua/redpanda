@@ -511,8 +511,9 @@
                     <div>
                         <h3 class="text-sm font-semibold text-[var(--rp-text)]">Системний бот «Руда панда»</h3>
                         <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
-                            Оголошення в стрічці та кнопка переходу до нової кімнати (T149–T150). Нік — літери, цифри,
-                            <span class="font-mono">_</span> та <span class="font-mono">-</span> (без пробілів), мінімум 2 символи.
+                            Оголошення в стрічці та кнопка переходу до нової кімнати (T149–T150). Аватар — як у профілі
+                            користувача (T151). Нік — літери, цифри, <span class="font-mono">_</span> та
+                            <span class="font-mono">-</span> (без пробілів), мінімум 2 символи.
                         </p>
                     </div>
                     <p
@@ -529,6 +530,42 @@
                         Системного бота не знайдено (міграції та сидер <span class="font-mono">SystemBotUserSeeder</span>).
                     </p>
                     <template v-else>
+                        <div class="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
+                            <UserAvatar
+                                :src="botAvatarUrl"
+                                :name="botForm.user_name || 'Бот'"
+                                variant="sidebar"
+                                decorative
+                            />
+                            <div class="w-full space-y-2 sm:flex-1">
+                                <input
+                                    ref="botAvatarInput"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                    class="rp-sr-only"
+                                    @change="onBotAvatarFileSelected"
+                                />
+                                <RpButton
+                                    variant="secondary"
+                                    class="text-sm"
+                                    :loading="botAvatarUploading"
+                                    :disabled="botAvatarUploading || loading"
+                                    @click="onBotAvatarPickClick"
+                                >
+                                    {{ botAvatarUploading ? 'Завантаження…' : 'Змінити аватарку' }}
+                                </RpButton>
+                                <p
+                                    v-if="botAvatarError"
+                                    role="alert"
+                                    class="text-xs text-[var(--rp-error)]"
+                                >
+                                    {{ botAvatarError }}
+                                </p>
+                                <p class="text-xs text-[var(--rp-text-muted)]">
+                                    JPEG, PNG, GIF або WebP; обмеження як для звичайного аватара.
+                                </p>
+                            </div>
+                        </div>
                         <div>
                             <label class="rp-label" for="cs-bot-name">Нік у чаті</label>
                             <input
@@ -838,6 +875,9 @@ export default {
             botProfileSaving: false,
             botProfileError: '',
             botProfileMissing: false,
+            botAvatarUrl: '',
+            botAvatarUploading: false,
+            botAvatarError: '',
             botForm: {
                 user_name: '',
                 profile: {
@@ -891,6 +931,7 @@ export default {
                 this.saveError = '';
                 this.emoticonError = '';
                 this.botProfileError = '';
+                this.botAvatarError = '';
                 this.load();
                 this.loadEmoticonList();
             }
@@ -1172,6 +1213,7 @@ export default {
                     country: p.country != null && String(p.country).trim() !== '' ? String(p.country).trim().toUpperCase() : null,
                     about: p.about != null ? String(p.about) : '',
                 };
+                this.botAvatarUrl = d.avatar_url != null ? String(d.avatar_url) : '';
             } catch (e) {
                 const st = e.response && e.response.status;
                 if (st === 404) {
@@ -1183,6 +1225,50 @@ export default {
                 }
             } finally {
                 this.botProfileLoading = false;
+            }
+        },
+        onBotAvatarPickClick() {
+            const el = this.$refs.botAvatarInput;
+            if (el && typeof el.click === 'function') {
+                el.click();
+            }
+        },
+        async onBotAvatarFileSelected(e) {
+            const input = e.target;
+            const file = input.files && input.files[0];
+            if (!file) {
+                return;
+            }
+            this.botAvatarError = '';
+            this.botAvatarUploading = true;
+            try {
+                await this.ensureSanctum();
+                const form = new FormData();
+                form.append('image', file);
+                const { data } = await window.axios.post('/api/v1/chat/system-bot/avatar', form, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                const d = data && data.data;
+                if (d && d.avatar_url != null) {
+                    this.botAvatarUrl = String(d.avatar_url);
+                } else {
+                    await this.loadBotProfile();
+                }
+                this.$emit('saved');
+            } catch (err) {
+                const st = err.response && err.response.status;
+                if (st === 403) {
+                    this.botAvatarError = 'Недостатньо прав (потрібен адміністратор чату).';
+                } else {
+                    const payload = err.response && err.response.data;
+                    const msg =
+                        (payload && payload.message) ||
+                        (err.response && err.response.status === 422 ? 'Перевірте формат або розмір файлу.' : '');
+                    this.botAvatarError = msg || 'Не вдалося оновити аватарку.';
+                }
+            } finally {
+                this.botAvatarUploading = false;
+                input.value = '';
             }
         },
         async saveBotProfile() {

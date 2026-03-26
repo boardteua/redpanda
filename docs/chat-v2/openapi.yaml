@@ -49,7 +49,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.18.1"
+  version: "0.18.2"
   license:
     name: Proprietary
     url: https://example.com/
@@ -1919,6 +1919,51 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           description: Системного користувача з `is_system_bot` не знайдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/chat/system-bot/avatar:
+    post:
+      tags: [Chat]
+      summary: Завантажити аватар системного бота (T151)
+      description: |
+        Лише **адміністратор чату** (`can:chat-admin`), throttle **`avatar-upload`**.
+        Поле `image` (multipart) — ті самі обмеження, що й `POST /api/v1/me/avatar` (розмір, magic bytes, 4096×4096).
+        Файл прив’язується до рядка `users` з `is_system_bot = true`. Відповідь — `UserResponse` (**201**).
+      operationId: postSystemBotAvatar
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Аватар бота збережено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Рядка бота з `is_system_bot` немає в БД
           content:
             application/json:
               schema:

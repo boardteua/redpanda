@@ -192,7 +192,6 @@ export default {
                 even ? 'bg-[var(--rp-chat-row-even)]' : 'bg-[var(--rp-chat-row-odd)]',
                 m.type === 'inline_private' ? 'rp-chat-feed-row--inline-private' : '',
                 m.type === 'client_only' ? 'rp-chat-feed-row--client-only' : '',
-                this.isSystem ? 'rp-chat-feed-row--system' : '',
                 this.isDeleted ? 'opacity-90' : '',
             ];
         },

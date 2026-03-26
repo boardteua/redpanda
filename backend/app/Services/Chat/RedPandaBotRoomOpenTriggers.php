@@ -4,7 +4,6 @@ namespace App\Services\Chat;
 
 use App\Models\Room;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -53,14 +52,16 @@ final class RedPandaBotRoomOpenTriggers
 
     private function maybeSendJoinAnnouncement(User $viewer, Room $room): void
     {
-        $seconds = (int) config('chat.bot_join_debounce_seconds', 90);
-        $cacheKey = sprintf('rp_bot_join:%d:%d', $viewer->id, $room->room_id);
+        // T151: після welcome у `chat_bot_welcome_sent` вже є рядок — не дублювати «зайшов»
+        // на кожному F5 / повторному GET історії (кеш 90s не покривав довгі паузи).
+        $alreadyOpened = DB::table('chat_bot_welcome_sent')
+            ->where('user_id', $viewer->id)
+            ->where('room_id', $room->room_id)
+            ->exists();
 
-        if (Cache::has($cacheKey)) {
+        if ($alreadyOpened) {
             return;
         }
-
-        Cache::put($cacheKey, true, now()->addSeconds($seconds));
 
         $nick = $this->sanitizeDisplayFragment($viewer->user_name);
         $roomName = $this->sanitizeDisplayFragment($room->room_name);

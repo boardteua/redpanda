@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Chat\SystemBotMessageService;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -63,7 +64,7 @@ class SystemBotApiTest extends TestCase
         $this->assertSame(1, ChatMessage::query()->where('type', 'system')->where('system_kind', 'room_welcome')->count());
     }
 
-    public function test_second_visit_sends_join_debounced(): void
+    public function test_refresh_after_welcome_does_not_post_room_join(): void
     {
         [$hub] = $this->seedTwoPublicRooms();
         User::factory()->systemChatBot()->create();
@@ -76,6 +77,7 @@ class SystemBotApiTest extends TestCase
             ->getJson('/api/v1/rooms/'.$hub->room_id.'/messages?limit=20')
             ->assertOk();
 
+        $this->assertSame(1, ChatMessage::query()->where('system_kind', 'room_welcome')->count());
         $this->assertSame(0, ChatMessage::query()->where('system_kind', 'room_join')->count());
 
         $this->from(config('app.url'))
@@ -83,14 +85,8 @@ class SystemBotApiTest extends TestCase
             ->getJson('/api/v1/rooms/'.$hub->room_id.'/messages?limit=20')
             ->assertOk();
 
-        $this->assertSame(1, ChatMessage::query()->where('system_kind', 'room_join')->count());
-
-        $this->from(config('app.url'))
-            ->withHeaders(['Referer' => config('app.url')])
-            ->getJson('/api/v1/rooms/'.$hub->room_id.'/messages?limit=20')
-            ->assertOk();
-
-        $this->assertSame(1, ChatMessage::query()->where('system_kind', 'room_join')->count());
+        $this->assertSame(1, ChatMessage::query()->where('system_kind', 'room_welcome')->count());
+        $this->assertSame(0, ChatMessage::query()->where('system_kind', 'room_join')->count());
     }
 
     public function test_new_public_room_posts_announcement_in_hub(): void
@@ -171,6 +167,33 @@ class SystemBotApiTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.user_name', 'RedPandaBot');
+    }
+
+    public function test_system_bot_avatar_post_forbidden_for_non_admin(): void
+    {
+        User::factory()->systemChatBot()->create();
+        $user = User::factory()->create();
+        $file = UploadedFile::fake()->image('sb.png', 80, 80);
+
+        Sanctum::actingAs($user);
+        $this->from(config('app.url'))
+            ->withHeaders(['Referer' => config('app.url')])
+            ->post('/api/v1/chat/system-bot/avatar', ['image' => $file])
+            ->assertForbidden();
+    }
+
+    public function test_system_bot_avatar_post_ok_for_chat_admin(): void
+    {
+        User::factory()->systemChatBot()->create();
+        $admin = User::factory()->admin()->create();
+        $file = UploadedFile::fake()->image('sb-admin.png', 80, 80);
+
+        Sanctum::actingAs($admin);
+        $this->from(config('app.url'))
+            ->withHeaders(['Referer' => config('app.url')])
+            ->post('/api/v1/chat/system-bot/avatar', ['image' => $file])
+            ->assertCreated()
+            ->assertJsonStructure(['data' => ['avatar_url']]);
     }
 
     public function test_staff_patch_profile_rejected_for_system_bot(): void

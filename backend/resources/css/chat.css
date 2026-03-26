@@ -5,6 +5,5 @@
 @import './partials/rp-tailwind-preamble.css';
 @import './partials/rp-tokens.css';
 @import './partials/rp-chat-inline-private.css';
-@import './partials/rp-chat-system-bot.css';
 @import './partials/rp-global-ui.css';
 @import './partials/rp-chat-chrome.css';
