@@ -84,6 +84,18 @@ export function normalizeMessage(raw) {
         file,
         image,
     };
+    if (raw.type === 'system') {
+        base.system_kind = raw.system_kind != null ? String(raw.system_kind) : null;
+        const tr = raw.target_room_id;
+        base.target_room_id =
+            tr != null && tr !== '' && Number.isFinite(Number(tr)) ? Number(tr) : null;
+        base.action_label =
+            raw.action_label != null && raw.action_label !== '' ? String(raw.action_label) : null;
+    } else {
+        base.system_kind = null;
+        base.target_room_id = null;
+        base.action_label = null;
+    }
     if (Array.isArray(raw.mentioned_user_ids)) {
         base.mentioned_user_ids = raw.mentioned_user_ids
             .map((x) => Number(x))

@@ -29,6 +29,7 @@
                     :message="item.message"
                     :index="item.msgIndex"
                     :viewer-name="viewerName"
+                    :current-room-id="currentRoomId"
                     @inline-private="$emit('inline-private', $event)"
                     @mention="$emit('mention', $event)"
                     @edit="$emit('edit', $event)"
@@ -60,6 +61,8 @@ export default {
         messages: { type: Array, required: true },
         loadingMessages: { type: Boolean, default: false },
         viewerName: { type: String, default: '' },
+        /** Поточна відкрита кімната — щоб приховати CTA «перейти», якщо вже там (T150). */
+        currentRoomId: { type: Number, default: null },
         /** Перший post_id блоку «нові» після входу в кімнату (T47). */
         dividerBeforePostId: { type: Number, default: null },
         dividerDismissed: { type: Boolean, default: false },

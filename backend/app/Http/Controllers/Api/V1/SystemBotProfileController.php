@@ -10,6 +10,16 @@ use Illuminate\Http\JsonResponse;
 
 class SystemBotProfileController extends Controller
 {
+    public function show(): UserResource|JsonResponse
+    {
+        $bot = User::query()->where('is_system_bot', true)->orderBy('id')->first();
+        if ($bot === null) {
+            return response()->json(['message' => 'Системного бота не знайдено.'], 404);
+        }
+
+        return UserResource::make($bot);
+    }
+
     public function update(UpdateSystemBotProfileRequest $request): UserResource|JsonResponse
     {
         $bot = User::query()->where('is_system_bot', true)->orderBy('id')->first();

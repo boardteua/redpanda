@@ -500,11 +500,80 @@
                     </div>
                 </div>
 
+                <div
+                    v-show="activeSettingsTab === 'system_bot'"
+                    :id="tabPanelId('system_bot')"
+                    role="tabpanel"
+                    :aria-labelledby="tabElementId('system_bot')"
+                    :aria-hidden="activeSettingsTab === 'system_bot' ? 'false' : 'true'"
+                    class="space-y-4"
+                >
+                    <div>
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Системний бот «Руда панда»</h3>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Оголошення в стрічці та кнопка переходу до нової кімнати (T149–T150). Нік — літери, цифри,
+                            <span class="font-mono">_</span> та <span class="font-mono">-</span> (без пробілів), мінімум 2 символи.
+                        </p>
+                    </div>
+                    <p
+                        v-if="botProfileError"
+                        role="alert"
+                        class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-error-bg)] px-2 py-1.5 text-sm text-[var(--rp-error)]"
+                    >
+                        {{ botProfileError }}
+                    </p>
+                    <p v-else-if="botProfileLoading" class="text-sm text-[var(--rp-text-muted)]" role="status">
+                        Завантаження профілю бота…
+                    </p>
+                    <p v-else-if="botProfileMissing" class="text-sm text-[var(--rp-text-muted)]">
+                        Системного бота не знайдено (міграції та сидер <span class="font-mono">SystemBotUserSeeder</span>).
+                    </p>
+                    <template v-else>
+                        <div>
+                            <label class="rp-label" for="cs-bot-name">Нік у чаті</label>
+                            <input
+                                id="cs-bot-name"
+                                v-model.trim="botForm.user_name"
+                                type="text"
+                                minlength="2"
+                                maxlength="191"
+                                class="rp-input rp-focusable mt-1 w-full max-w-xl"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <RpCountryCombobox
+                            input-id="cs-bot-country"
+                            label="Країна (необов’язково)"
+                            :value="botForm.profile.country || ''"
+                            @input="onBotCountryInput"
+                        />
+                        <div>
+                            <label class="rp-label" for="cs-bot-about">Про мене</label>
+                            <textarea
+                                id="cs-bot-about"
+                                v-model="botForm.profile.about"
+                                rows="4"
+                                maxlength="5000"
+                                class="rp-input rp-focusable mt-1 w-full max-w-2xl font-sans text-sm"
+                            />
+                        </div>
+                        <RpButton
+                            class="text-sm"
+                            :loading="botProfileSaving"
+                            :disabled="botProfileSaving || loading"
+                            @click="saveBotProfile"
+                        >
+                            {{ botProfileSaving ? 'Збереження…' : 'Зберегти профіль бота' }}
+                        </RpButton>
+                    </template>
+                </div>
+
             </fieldset>
 
             <div class="border-t border-[var(--rp-border-subtle)] pt-4">
                 <div class="flex flex-wrap items-center gap-2">
                     <RpButton
+                        v-if="activeSettingsTab !== 'system_bot'"
                         class="text-sm"
                         :loading="saving"
                         :disabled="saving || loading"
@@ -512,6 +581,9 @@
                     >
                         {{ saving ? 'Збереження…' : 'Зберегти' }}
                     </RpButton>
+                    <p v-else class="text-xs text-[var(--rp-text-muted)]">
+                        Загальні налаштування чату зберігаються кнопкою «Зберегти» на інших вкладках.
+                    </p>
                     <p v-if="activeSettingsTab === 'emoticons'" class="text-xs text-[var(--rp-text-muted)]">
                         Зберігає всі поля налаштувань чату з інших вкладок.
                     </p>
@@ -670,6 +742,7 @@
 
 <script>
 import RpModal from './RpModal.vue';
+import RpCountryCombobox from './ui/RpCountryCombobox.vue';
 import { formatChatImageMaxLabel } from '../utils/chatComposerImageUpload';
 import { loadChatEmoticonsCatalog } from '../utils/chatEmoticons';
 
@@ -677,7 +750,7 @@ let titleSeq = 0;
 
 export default {
     name: 'ChatSettingsModal',
-    components: { RpModal },
+    components: { RpModal, RpCountryCombobox },
     props: {
         open: { type: Boolean, default: false },
         rooms: { type: Array, default: () => [] },
@@ -761,6 +834,17 @@ export default {
                 sort_order: 0,
             },
             newEmoticonFile: null,
+            botProfileLoading: false,
+            botProfileSaving: false,
+            botProfileError: '',
+            botProfileMissing: false,
+            botForm: {
+                user_name: '',
+                profile: {
+                    country: null,
+                    about: '',
+                },
+            },
         };
     },
     computed: {
@@ -772,6 +856,7 @@ export default {
                 { id: 'landing', label: 'Вітальня' },
                 { id: 'registration', label: 'Реєстрація' },
                 { id: 'mail', label: 'Листи' },
+                { id: 'system_bot', label: 'Руда панда' },
                 { id: 'emoticons', label: 'Смайли' },
             ];
         },
@@ -805,6 +890,7 @@ export default {
                 this.loadError = '';
                 this.saveError = '';
                 this.emoticonError = '';
+                this.botProfileError = '';
                 this.load();
                 this.loadEmoticonList();
             }
@@ -1059,6 +1145,80 @@ export default {
                 this.loadError = 'Не вдалося завантажити налаштування.';
             } finally {
                 this.loading = false;
+            }
+            await this.loadBotProfile();
+        },
+        onBotCountryInput(v) {
+            const s = v != null ? String(v).trim().toUpperCase() : '';
+
+            this.botForm.profile.country = s.length === 2 ? s : null;
+        },
+        async loadBotProfile() {
+            this.botProfileLoading = true;
+            this.botProfileError = '';
+            this.botProfileMissing = false;
+            try {
+                await this.ensureSanctum();
+                const { data } = await window.axios.get('/api/v1/chat/system-bot/profile');
+                const d = data && data.data;
+                if (!d) {
+                    this.botProfileMissing = true;
+
+                    return;
+                }
+                this.botForm.user_name = d.user_name != null ? String(d.user_name) : '';
+                const p = d.profile && typeof d.profile === 'object' ? d.profile : {};
+                this.botForm.profile = {
+                    country: p.country != null && String(p.country).trim() !== '' ? String(p.country).trim().toUpperCase() : null,
+                    about: p.about != null ? String(p.about) : '',
+                };
+            } catch (e) {
+                const st = e.response && e.response.status;
+                if (st === 404) {
+                    this.botProfileMissing = true;
+                } else if (st === 403) {
+                    this.botProfileError = 'Недостатньо прав (потрібен адміністратор чату).';
+                } else {
+                    this.botProfileError = 'Не вдалося завантажити профіль бота.';
+                }
+            } finally {
+                this.botProfileLoading = false;
+            }
+        },
+        async saveBotProfile() {
+            this.botProfileSaving = true;
+            this.botProfileError = '';
+            try {
+                await this.ensureSanctum();
+                const name = (this.botForm.user_name || '').trim();
+                const body = {
+                    user_name: name,
+                    profile: {
+                        country: this.botForm.profile.country,
+                        about: (this.botForm.profile.about || '').trim() || null,
+                    },
+                };
+                await window.axios.patch('/api/v1/chat/system-bot/profile', body);
+                this.$emit('saved');
+                await this.loadBotProfile();
+            } catch (e) {
+                const st = e.response && e.response.status;
+                const payload = e.response && e.response.data;
+                const errs = payload && payload.errors;
+                if (st === 403) {
+                    this.botProfileError = 'Недостатньо прав (потрібен адміністратор чату).';
+                } else if (errs && typeof errs === 'object' && !Array.isArray(errs)) {
+                    const keys = Object.keys(errs);
+                    const firstKey = keys.length ? keys[0] : '';
+                    const msgs = firstKey ? errs[firstKey] : null;
+                    const firstMsg =
+                        Array.isArray(msgs) && msgs.length && typeof msgs[0] === 'string' ? msgs[0] : '';
+                    this.botProfileError = firstMsg || (payload && payload.message) || 'Не вдалося зберегти.';
+                } else {
+                    this.botProfileError = (payload && payload.message) || 'Не вдалося зберегти.';
+                }
+            } finally {
+                this.botProfileSaving = false;
             }
         },
         async save() {

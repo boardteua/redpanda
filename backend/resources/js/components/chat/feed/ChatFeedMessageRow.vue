@@ -5,7 +5,7 @@
         :data-rp-post-id="message.post_id"
     >
         <button
-            v-if="viewerName && !isDeleted && message.post_user !== viewerName"
+            v-if="viewerName && !isDeleted && !isSystem && message.post_user !== viewerName"
             type="button"
             class="rp-focusable h-fit shrink-0 rounded-full border-0 bg-transparent p-0"
             :aria-label="'Приват у полі вводу: ' + message.post_user"
@@ -29,7 +29,7 @@
             <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
                 <div class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
                     <button
-                        v-if="viewerName && !isDeleted"
+                        v-if="viewerName && !isDeleted && !isSystem"
                         type="button"
                         class="rp-focusable mr-1.5 inline font-semibold hover:underline"
                         :style="nickStyle"
@@ -64,6 +64,19 @@
                         :text="message.post_message"
                         variant="feed"
                     />
+                    <div
+                        v-if="showRoomCta"
+                        class="mt-1.5 flex flex-wrap items-center gap-2"
+                    >
+                        <button
+                            type="button"
+                            class="rp-focusable rounded-md border border-[var(--rp-chat-row-system-border)] bg-[var(--rp-surface-elevated)] px-2.5 py-1 text-xs font-medium text-[var(--rp-text)] hover:bg-[var(--rp-surface)]"
+                            :aria-label="roomCtaAriaLabel"
+                            @click.stop="goToTargetRoom"
+                        >
+                            {{ roomCtaLabel }}
+                        </button>
+                    </div>
                 </div>
                 <div class="flex shrink-0 items-center gap-1.5">
                     <button
@@ -158,8 +171,15 @@ export default {
             type: String,
             default: '',
         },
+        currentRoomId: {
+            type: Number,
+            default: null,
+        },
     },
     computed: {
+        isSystem() {
+            return Boolean(this.message && this.message.type === 'system');
+        },
         isDeleted() {
             const t = this.message && this.message.post_deleted_at;
 
@@ -172,8 +192,30 @@ export default {
                 even ? 'bg-[var(--rp-chat-row-even)]' : 'bg-[var(--rp-chat-row-odd)]',
                 m.type === 'inline_private' ? 'rp-chat-feed-row--inline-private' : '',
                 m.type === 'client_only' ? 'rp-chat-feed-row--client-only' : '',
+                this.isSystem ? 'rp-chat-feed-row--system' : '',
                 this.isDeleted ? 'opacity-90' : '',
             ];
+        },
+        targetRoomIdNum() {
+            const t = this.message && this.message.target_room_id;
+
+            return t != null && t !== '' && Number.isFinite(Number(t)) ? Number(t) : null;
+        },
+        showRoomCta() {
+            if (!this.isSystem || this.isDeleted || this.targetRoomIdNum == null) {
+                return false;
+            }
+            const cur = this.currentRoomId;
+
+            return cur == null || Number(cur) !== Number(this.targetRoomIdNum);
+        },
+        roomCtaLabel() {
+            const raw = this.message && this.message.action_label;
+
+            return raw && String(raw).trim() !== '' ? String(raw).trim() : 'Перейти в кімнату';
+        },
+        roomCtaAriaLabel() {
+            return `${this.roomCtaLabel} (кімната #${this.targetRoomIdNum})`;
         },
         isClientOnly() {
             return this.message && this.message.type === 'client_only';
@@ -212,6 +254,13 @@ export default {
         },
     },
     methods: {
+        goToTargetRoom() {
+            const id = this.targetRoomIdNum;
+            if (id == null || !this.$router) {
+                return;
+            }
+            this.$router.replace({ path: '/chat', query: { room: String(id) } }).catch(() => {});
+        },
         onAttachmentLightbox(event) {
             const url = this.message && this.message.image && this.message.image.url;
             if (!url) {

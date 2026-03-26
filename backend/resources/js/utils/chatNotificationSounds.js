@@ -104,6 +104,9 @@ export function playActiveRoomIncomingSounds(user, opts = {}) {
     if (type === 'inline_private' || type === 'client_only') {
         return;
     }
+    if (type === 'system') {
+        return;
+    }
 
     const viewerId = Number(user.id);
     const rawIds = opts.mentionedUserIds;

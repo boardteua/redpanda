@@ -73,6 +73,10 @@
     /* Інлайн-приват у стрічці (T25) — окремий фон + акцент зліва */
     --rp-chat-row-inline-private-bg: color-mix(in srgb, #e8eef6 88%, transparent);
     --rp-chat-row-inline-private-border: #4a6fa5;
+    /* T150 — системний бот у стрічці */
+    --rp-chat-row-system-bg: color-mix(in srgb, #fff7ed 78%, transparent);
+    --rp-chat-row-system-border: #ea580c;
+    --rp-chat-nick-system: #9a3412;
     /* Надіслати — ті самі акценти, що й --rp-primary (узгоджено з темною темою / WebKit) */
     --rp-chat-send-bg: var(--rp-primary);
     --rp-chat-send-bg-hover: var(--rp-primary-hover);
@@ -152,6 +156,9 @@
     --rp-chat-row-odd: color-mix(in srgb, #152033 82%, transparent);
     --rp-chat-row-inline-private-bg: color-mix(in srgb, #243047 88%, transparent);
     --rp-chat-row-inline-private-border: #7ea3d9;
+    --rp-chat-row-system-bg: color-mix(in srgb, #431407 35%, transparent);
+    --rp-chat-row-system-border: #fb923c;
+    --rp-chat-nick-system: #fdba74;
     --rp-chat-send-bg: var(--rp-primary);
     --rp-chat-send-bg-hover: var(--rp-primary-hover);
     --rp-chat-send-fg: var(--rp-on-primary);
@@ -258,6 +265,9 @@ html[data-theme='dark'] {
         --rp-chat-row-odd: color-mix(in srgb, #152033 82%, transparent);
         --rp-chat-row-inline-private-bg: color-mix(in srgb, #243047 88%, transparent);
         --rp-chat-row-inline-private-border: #7ea3d9;
+        --rp-chat-row-system-bg: color-mix(in srgb, #431407 35%, transparent);
+        --rp-chat-row-system-border: #fb923c;
+        --rp-chat-nick-system: #fdba74;
         --rp-chat-send-bg: var(--rp-primary);
         --rp-chat-send-bg-hover: var(--rp-primary-hover);
         --rp-chat-send-fg: var(--rp-on-primary);

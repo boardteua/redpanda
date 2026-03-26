@@ -91,6 +91,10 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         );
 
         Route::middleware(['can:chat-admin', 'throttle:mod-actions'])->patch('chat/settings', [ChatSettingsController::class, 'update']);
+        Route::middleware(['can:chat-admin', 'throttle:me-profile'])->get(
+            'chat/system-bot/profile',
+            [SystemBotProfileController::class, 'show'],
+        );
         Route::middleware(['can:chat-admin', 'throttle:me-profile'])->patch(
             'chat/system-bot/profile',
             [SystemBotProfileController::class, 'update'],

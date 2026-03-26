@@ -133,10 +133,29 @@ class SystemBotApiTest extends TestCase
         Sanctum::actingAs($user);
         $this->from(config('app.url'))
             ->withHeaders(['Referer' => config('app.url')])
+            ->getJson('/api/v1/chat/system-bot/profile')
+            ->assertForbidden();
+        $this->from(config('app.url'))
+            ->withHeaders(['Referer' => config('app.url')])
             ->patchJson('/api/v1/chat/system-bot/profile', [
                 'user_name' => 'Hacker',
             ])
             ->assertForbidden();
+    }
+
+    public function test_system_bot_profile_get_ok_for_chat_admin(): void
+    {
+        User::factory()->systemChatBot()->create([
+            'user_name' => 'RedPandaBot',
+        ]);
+        $admin = User::factory()->admin()->create();
+
+        Sanctum::actingAs($admin);
+        $this->from(config('app.url'))
+            ->withHeaders(['Referer' => config('app.url')])
+            ->getJson('/api/v1/chat/system-bot/profile')
+            ->assertOk()
+            ->assertJsonPath('data.user_name', 'RedPandaBot');
     }
 
     public function test_system_bot_profile_patch_ok_for_chat_admin(): void

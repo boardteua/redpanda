@@ -171,6 +171,9 @@ export function nickColorStyleForPost(m) {
     if (m.post_color === 'admin') {
         return { color: 'var(--rp-chat-role-admin)' };
     }
+    if (m.post_color === 'system' || m.type === 'system') {
+        return { color: 'var(--rp-chat-nick-system)' };
+    }
     /* Темні відтінки ≥ ~4.5:1 на білому для жирного ~15px (WCAG AA) */
     const palette = [
         '#9a3412',

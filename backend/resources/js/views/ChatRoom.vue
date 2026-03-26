@@ -30,6 +30,7 @@
                     :messages="messages"
                     :loading-messages="loadingMessages"
                     :viewer-name="user && user.user_name ? user.user_name : ''"
+                    :current-room-id="selectedRoomId != null ? Number(selectedRoomId) : null"
                     :divider-before-post-id="newMsgDividerBeforePostId"
                     :divider-dismissed="newMsgDividerDismissed"
                     :bottom-dismiss-suppress-until="roomReadSuppressBottomUntil"

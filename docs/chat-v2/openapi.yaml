@@ -49,7 +49,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.18.0"
+  version: "0.18.1"
   license:
     name: Proprietary
     url: https://example.com/
@@ -1859,6 +1859,35 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/chat/system-bot/profile:
+    get:
+      tags: [Chat]
+      summary: Профіль системного бота «Руда панда» (читання, T150)
+      description: |
+        Лише **адміністратор чату** (`can:chat-admin`), throttle `me-profile`.
+        Формат тіла — `UserResponse` (як `PATCH`); для заповнення форми в адмін-UI.
+      operationId: getSystemBotProfile
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      responses:
+        "200":
+          description: Поточний профіль бота
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Рядка бота з `is_system_bot` немає в БД
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     patch:
       tags: [Chat]
       summary: Профіль системного бота «Руда панда» (T149)
@@ -4010,7 +4039,7 @@ components:
           type: boolean
         message_flood_enabled:
           type: boolean
-          description: **T125**; лише **адмін чату**.
+          description: "**T125**; лише **адмін чату**."
         message_flood_max_messages:
           type: integer
           minimum: 1
