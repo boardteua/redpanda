@@ -59,6 +59,11 @@ class MessagePosted implements ShouldBroadcast
             'post_style' => $m->post_style,
             'post_color' => $m->post_color,
             'type' => $m->type,
+            'system_kind' => $m->type === 'system' ? $m->system_kind : null,
+            'target_room_id' => $m->type === 'system' && $m->system_target_room_id !== null
+                ? (int) $m->system_target_room_id
+                : null,
+            'action_label' => $m->type === 'system' ? $m->system_action_label : null,
             'client_message_id' => $m->client_message_id,
             'file' => $fileId,
             'image' => $image,

@@ -21,10 +21,11 @@ use App\Models\Room;
 use App\Models\RoomReadState;
 use App\Models\User;
 use App\Services\Chat\ChatMessageMutationService;
+use App\Services\Chat\MessageFloodGate;
+use App\Services\Chat\RedPandaBotRoomOpenTriggers;
 use App\Services\Moderation\ChatAutomoderationService;
 use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\UserPostingGate;
-use App\Services\Chat\MessageFloodGate;
 use App\Services\PrivateMessageGate;
 use App\Support\ChatMessageBodyStyle;
 use App\Support\ChatMessageListAbilityMap;
@@ -44,6 +45,7 @@ class ChatMessageController extends Controller
         private readonly ChatAutomoderationService $automod,
         private readonly ChatMessageMutationService $messageMutation,
         private readonly MessageFloodGate $messageFloodGate,
+        private readonly RedPandaBotRoomOpenTriggers $redPandaBotRoomOpenTriggers,
     ) {}
 
     public function index(Request $request, Room $room): AnonymousResourceCollection|JsonResponse
@@ -60,6 +62,10 @@ class ChatMessageController extends Controller
         $before = isset($validated['before']) ? (int) $validated['before'] : null;
 
         $uid = (int) $request->user()->id;
+
+        if ($before === null) {
+            $this->redPandaBotRoomOpenTriggers->handle($request->user(), $room);
+        }
 
         $lastReadPostId = RoomReadState::query()
             ->where('user_id', $uid)

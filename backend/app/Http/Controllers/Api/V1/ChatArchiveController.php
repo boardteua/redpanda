@@ -63,7 +63,7 @@ class ChatArchiveController extends Controller
 
         $query = ChatMessage::query()
             ->whereIn('post_roomid', $accessibleIds)
-            ->where('type', 'public')
+            ->whereIn('type', ['public', 'system'])
             ->whereNull('post_deleted_at')
             ->orderByDesc('post_id');
 

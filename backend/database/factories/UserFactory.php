@@ -74,4 +74,17 @@ class UserFactory extends Factory
             $user->forceFill(['vip' => true])->save();
         });
     }
+
+    /**
+     * Системний користувач для повідомлень бота «Руда панда» (T149).
+     */
+    public function systemChatBot(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'user_name' => 'Руда панда',
+            'email' => 'system-bot-'.Str::lower(Str::random(12)).'@redpanda.test',
+        ])->afterCreating(function (User $user): void {
+            $user->forceFill(['is_system_bot' => true])->save();
+        });
+    }
 }

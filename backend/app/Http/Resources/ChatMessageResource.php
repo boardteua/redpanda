@@ -36,6 +36,11 @@ class ChatMessageResource extends JsonResource
             'post_color' => $this->post_color,
             'post_roomid' => (int) $this->post_roomid,
             'type' => $this->type,
+            'system_kind' => $this->type === 'system' ? $this->system_kind : null,
+            'target_room_id' => $this->type === 'system' && $this->system_target_room_id !== null
+                ? (int) $this->system_target_room_id
+                : null,
+            'action_label' => $this->type === 'system' ? $this->system_action_label : null,
             'recipient_user_id' => $this->when(
                 $this->type === 'inline_private' && $this->post_target !== null && $this->post_target !== '',
                 fn () => (int) $this->post_target,

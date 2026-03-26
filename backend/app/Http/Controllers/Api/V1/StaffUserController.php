@@ -237,6 +237,10 @@ class StaffUserController extends Controller
             foreach ($ids as $id) {
                 $user = User::query()->findOrFail($id);
 
+                if ($user->isSystemBot()) {
+                    abort(422, 'Неможливо застосувати дію до системного бота.');
+                }
+
                 if ((int) $user->id === (int) $actor->id) {
                     abort(422, 'Неможливо застосувати масову дію до власного облікового запису.');
                 }
@@ -284,6 +288,10 @@ class StaffUserController extends Controller
                 abort(422, 'Неможливо змінити власний обліковий запис.');
             }
             abort(403, 'Недостатньо прав для дії щодо цього користувача.');
+        }
+
+        if ($user->isSystemBot()) {
+            abort(422, 'Неможливо змінювати ролі системного бота через цей ендпоінт.');
         }
 
         $validated = $request->validate([
@@ -347,6 +355,10 @@ class StaffUserController extends Controller
 
         if ($user->guest) {
             abort(422, 'Профіль гостя не редагується через цей ендпоінт.');
+        }
+
+        if ($user->isSystemBot()) {
+            abort(422, 'Профіль системного бота оновлюється через PATCH /api/v1/chat/system-bot/profile.');
         }
 
         $profileIn = $request->input('profile');

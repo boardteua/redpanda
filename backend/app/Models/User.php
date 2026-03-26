@@ -60,6 +60,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'guest' => 'boolean',
+            'is_system_bot' => 'boolean',
             'vip' => 'boolean',
             'user_rank' => 'integer',
             'mute_until' => 'integer',
@@ -117,6 +118,11 @@ class User extends Authenticatable
         }
 
         return (int) $this->user_rank >= self::RANK_ADMIN;
+    }
+
+    public function isSystemBot(): bool
+    {
+        return (bool) $this->is_system_bot;
     }
 
     public function isVip(): bool

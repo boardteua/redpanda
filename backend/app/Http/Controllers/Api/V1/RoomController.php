@@ -7,6 +7,7 @@ use App\Http\Requests\StoreRoomRequest;
 use App\Http\Requests\UpdateRoomRequest;
 use App\Http\Resources\RoomResource;
 use App\Models\Room;
+use App\Services\Chat\RedPandaBotNewPublicRoomAnnouncer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\Gate;
 
 class RoomController extends Controller
 {
+    public function __construct(
+        private readonly RedPandaBotNewPublicRoomAnnouncer $newPublicRoomAnnouncer,
+    ) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $user = $request->user();
@@ -53,6 +58,8 @@ class RoomController extends Controller
             'created_by_user_id' => $user->id,
         ]);
         $room->loadCount('messages');
+
+        $this->newPublicRoomAnnouncer->announce($room);
 
         return RoomResource::make($room)
             ->response()

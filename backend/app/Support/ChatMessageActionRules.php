@@ -18,6 +18,10 @@ final class ChatMessageActionRules
             return false;
         }
 
+        if ($message->type === 'system') {
+            return false;
+        }
+
         if ($message->type === 'client_only') {
             return false;
         }
@@ -27,6 +31,17 @@ final class ChatMessageActionRules
 
     public static function canDelete(User $viewer, ChatMessage $message, ?User $author, ?Room $room): bool
     {
+        if ($message->type === 'system') {
+            if ($message->post_deleted_at !== null) {
+                return false;
+            }
+            if ($viewer->guest) {
+                return false;
+            }
+
+            return $viewer->isChatAdmin();
+        }
+
         if ($message->type === 'client_only') {
             if ($viewer->guest) {
                 return false;

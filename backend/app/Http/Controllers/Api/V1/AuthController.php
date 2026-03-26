@@ -59,6 +59,13 @@ class AuthController extends Controller
         $plain = $request->validated('password');
         $user = User::query()->where('user_name', $request->validated('user_name'))->first();
 
+        if ($user !== null && $user->isSystemBot()) {
+            Hash::check($plain, self::AUTH_TIMING_DUMMY_BCRYPT);
+            throw ValidationException::withMessages([
+                'user_name' => [__('auth.failed')],
+            ]);
+        }
+
         $passwordOk = false;
         if ($user && ! $user->guest && $user->password) {
             $passwordOk = Hash::check($plain, $user->password);

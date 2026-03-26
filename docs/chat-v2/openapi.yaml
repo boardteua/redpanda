@@ -1858,6 +1858,47 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/chat/system-bot/profile:
+    patch:
+      tags: [Chat]
+      summary: Профіль системного бота «Руда панда» (T149)
+      description: |
+        Лише **адміністратор чату** (`can:chat-admin`), throttle `me-profile`.
+        Часткове оновлення: `user_name` (regex як у реєстрації, без пробілів) та/або блоки як у `PATCH /api/v1/me/profile`.
+        Для бота **не** використовуйте `PATCH /api/v1/mod/users/{id}/profile` — поверне **422**.
+        Якщо рядок бота в БД ще не створено (без сидера) — **404**.
+      operationId: patchSystemBotProfile
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchSystemBotProfileRequest"
+      responses:
+        "200":
+          description: Оновлений бот у форматі `UserResponse`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Системного користувача з `is_system_bot` не знайдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/chat/emoticons:
     get:
       tags: [Chat]
@@ -2785,6 +2826,17 @@ components:
           $ref: "#/components/schemas/SocialLinks"
         notification_sound_prefs:
           $ref: "#/components/schemas/NotificationSoundPrefs"
+
+    PatchSystemBotProfileRequest:
+      allOf:
+        - $ref: "#/components/schemas/MeProfilePatchRequest"
+        - type: object
+          properties:
+            user_name:
+              type: string
+              minLength: 2
+              maxLength: 191
+              description: Відображуваний нік бота; латиниця/кирилиця, цифри, `_` та `-` (без пробілів).
 
     MeAccountPatchRequest:
       type: object
@@ -4109,6 +4161,21 @@ components:
             видимий лише відправнику та адресату в `GET .../rooms/{id}/messages`; не потрапляє в архів.
             Для `inline_private` сервер також створює рядок у `private_messages` (той самий `client_message_id`), щоб узгодити з приватним API.
             `client_only` (T66) — відповідь slash-команди лише для автора; інші учасники кімнати не бачать рядок у стрічці; без broadcast у `room.*`.
+            `system` (**T149**) — службове повідомлення від системного бота; `post_color` зазвичай `system`; згадки «нік >» не застосовуються (`mentioned_user_ids` порожній).
+        system_kind:
+          type: string
+          nullable: true
+          description: >
+            Для `type === system`: `room_join` | `room_welcome` | `new_public_room`; інакше `null`.
+        target_room_id:
+          type: integer
+          nullable: true
+          description: >
+            Для `type === system` (напр. оголошення про нову кімнату) — `room_id` для кнопки переходу у **T150**; інакше `null`.
+        action_label:
+          type: string
+          nullable: true
+          description: Підпис для CTA (напр. «Перейти в кімнату») для **T150**; інакше `null`.
         recipient_user_id:
           type: integer
           nullable: true

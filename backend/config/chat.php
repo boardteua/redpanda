@@ -62,4 +62,30 @@ return [
     */
     'landing_online_recent_session_seconds' => (int) env('CHAT_LANDING_ONLINE_SESSION_SECONDS', 300),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Системний бот «Руда панда» (T149)
+    |--------------------------------------------------------------------------
+    |
+    | Явний id користувача-бота (опційно). Якщо null — береться перший рядок з
+    | is_system_bot = true (після сидера).
+    |
+    */
+    'system_bot_user_id' => filled(env('CHAT_SYSTEM_BOT_USER_ID'))
+        ? (int) env('CHAT_SYSTEM_BOT_USER_ID')
+        : null,
+
+    /*
+    | Кімната для оголошень про нову публічну кімнату (null = найменший room_id
+    | серед access = public).
+    */
+    'bot_announce_room_id' => filled(env('CHAT_BOT_ANNOUNCE_ROOM_ID'))
+        ? (int) env('CHAT_BOT_ANNOUNCE_ROOM_ID')
+        : null,
+
+    /*
+    | Мінімальний інтервал між «зайшов у кімнату» для того самого користувача
+    | в тій самій кімнаті (секунди).
+    */
+    'bot_join_debounce_seconds' => max(10, (int) env('CHAT_BOT_JOIN_DEBOUNCE_SECONDS', 90)),
 ];

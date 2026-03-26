@@ -43,6 +43,9 @@ class ChatMessage extends Model
         'post_color',
         'post_roomid',
         'type',
+        'system_kind',
+        'system_target_room_id',
+        'system_action_label',
         'post_target',
         'avatar',
         'file',
@@ -86,6 +89,7 @@ class ChatMessage extends Model
             ->whereNull('post_deleted_at')
             ->where(function ($outer) use ($userId) {
                 $outer->where('type', 'public')
+                    ->orWhere('type', 'system')
                     ->orWhere(function ($q) use ($userId) {
                         $q->where('type', 'client_only')
                             ->where('user_id', $userId);

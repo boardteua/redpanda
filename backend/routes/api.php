@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\RoomPresenceStatusController;
 use App\Http\Controllers\Api\V1\RoomReadController;
 use App\Http\Controllers\Api\V1\RoomUserProfileController;
 use App\Http\Controllers\Api\V1\StaffUserController;
+use App\Http\Controllers\Api\V1\SystemBotProfileController;
 use App\Http\Controllers\Api\V1\UserAvatarController;
 use App\Http\Controllers\Api\V1\UserLookupController;
 use App\Http\Middleware\RejectBannedIp;
@@ -90,6 +91,10 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         );
 
         Route::middleware(['can:chat-admin', 'throttle:mod-actions'])->patch('chat/settings', [ChatSettingsController::class, 'update']);
+        Route::middleware(['can:chat-admin', 'throttle:me-profile'])->patch(
+            'chat/system-bot/profile',
+            [SystemBotProfileController::class, 'update'],
+        );
 
         Route::middleware('throttle:archive-read')->get('archive/messages', [ChatArchiveController::class, 'index']);
 
