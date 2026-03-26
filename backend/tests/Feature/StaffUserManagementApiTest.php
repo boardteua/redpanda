@@ -146,11 +146,18 @@ class StaffUserManagementApiTest extends TestCase
                 'profile' => [
                     'country' => 'PL',
                     'occupation' => 'dev',
+                    'occupation_hidden' => true,
+                    'about_hidden' => true,
                 ],
             ])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('data.profile.occupation_hidden', true)
+            ->assertJsonPath('data.profile.about_hidden', true);
 
-        $this->assertSame('PL', $victim->fresh()->profile_country);
+        $fresh = $victim->fresh();
+        $this->assertSame('PL', $fresh->profile_country);
+        $this->assertTrue($fresh->profile_occupation_hidden);
+        $this->assertTrue($fresh->profile_about_hidden);
     }
 
     public function test_profile_patch_rejects_guest_target(): void

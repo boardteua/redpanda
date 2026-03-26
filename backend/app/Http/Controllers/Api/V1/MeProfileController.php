@@ -39,7 +39,9 @@ class MeProfileController extends Controller
                 'age_hidden' => 'profile_age_hidden',
                 'sex_hidden' => 'profile_sex_hidden',
                 'occupation' => 'profile_occupation',
+                'occupation_hidden' => 'profile_occupation_hidden',
                 'about' => 'profile_about',
+                'about_hidden' => 'profile_about_hidden',
             ];
             foreach ($map as $jsonKey => $column) {
                 if (array_key_exists($jsonKey, $p)) {

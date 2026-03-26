@@ -53,21 +53,58 @@ class UserResource extends JsonResource
         }
 
         return array_merge($base, $uploadFlag, [
-            'profile' => [
-                'country' => $this->profile_country,
-                'region' => $this->profile_region,
-                'age' => $this->profile_age,
-                'sex' => $this->profile_sex,
-                'country_hidden' => (bool) $this->profile_country_hidden,
-                'region_hidden' => (bool) $this->profile_region_hidden,
-                'age_hidden' => (bool) $this->profile_age_hidden,
-                'sex_hidden' => (bool) $this->profile_sex_hidden,
-                'occupation' => $this->profile_occupation,
-                'about' => $this->profile_about,
-            ],
+            'profile' => $this->profilePayloadForRequest($request),
             'social_links' => $social,
             'notification_sound_prefs' => $sounds,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function profilePayloadForRequest(Request $request): array
+    {
+        /** @var User $subject */
+        $subject = $this->resource;
+        $viewer = $request->user();
+        $full = $viewer !== null
+            && ((int) $viewer->id === (int) $subject->id || $viewer->canModerate());
+
+        if ($full) {
+            return [
+                'country' => $subject->profile_country,
+                'region' => $subject->profile_region,
+                'age' => $subject->profile_age,
+                'sex' => $subject->profile_sex,
+                'country_hidden' => (bool) $subject->profile_country_hidden,
+                'region_hidden' => (bool) $subject->profile_region_hidden,
+                'age_hidden' => (bool) $subject->profile_age_hidden,
+                'sex_hidden' => (bool) $subject->profile_sex_hidden,
+                'occupation' => $subject->profile_occupation,
+                'occupation_hidden' => (bool) $subject->profile_occupation_hidden,
+                'about' => $subject->profile_about,
+                'about_hidden' => (bool) $subject->profile_about_hidden,
+            ];
+        }
+
+        $maskHidden = static function (bool $hidden, mixed $value): mixed {
+            return $hidden ? null : $value;
+        };
+
+        return [
+            'country' => $maskHidden((bool) $subject->profile_country_hidden, $subject->profile_country),
+            'region' => $maskHidden((bool) $subject->profile_region_hidden, $subject->profile_region),
+            'age' => $maskHidden((bool) $subject->profile_age_hidden, $subject->profile_age),
+            'sex' => $maskHidden((bool) $subject->profile_sex_hidden, $subject->profile_sex),
+            'country_hidden' => false,
+            'region_hidden' => false,
+            'age_hidden' => false,
+            'sex_hidden' => false,
+            'occupation' => $maskHidden((bool) $subject->profile_occupation_hidden, $subject->profile_occupation),
+            'occupation_hidden' => false,
+            'about' => $maskHidden((bool) $subject->profile_about_hidden, $subject->profile_about),
+            'about_hidden' => false,
+        ];
     }
 
     private function requiresPasswordSetupAfterLegacyImport(): bool

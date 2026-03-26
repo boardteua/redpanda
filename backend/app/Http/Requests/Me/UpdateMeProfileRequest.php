@@ -54,7 +54,9 @@ class UpdateMeProfileRequest extends FormRequest
             'profile.age_hidden' => ['sometimes', 'boolean'],
             'profile.sex_hidden' => ['sometimes', 'boolean'],
             'profile.occupation' => ['sometimes', 'nullable', 'string', 'max:191'],
+            'profile.occupation_hidden' => ['sometimes', 'boolean'],
             'profile.about' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'profile.about_hidden' => ['sometimes', 'boolean'],
 
             'social_links' => ['sometimes', 'array'],
             'social_links.facebook' => $socialRule,

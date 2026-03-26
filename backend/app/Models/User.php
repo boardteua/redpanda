@@ -31,7 +31,9 @@ use Laravel\Sanctum\HasApiTokens;
     'profile_age_hidden',
     'profile_sex_hidden',
     'profile_occupation',
+    'profile_occupation_hidden',
     'profile_about',
+    'profile_about_hidden',
     'social_links',
     'notification_sound_prefs',
 ])]
@@ -67,6 +69,8 @@ class User extends Authenticatable
             'profile_region_hidden' => 'boolean',
             'profile_age_hidden' => 'boolean',
             'profile_sex_hidden' => 'boolean',
+            'profile_occupation_hidden' => 'boolean',
+            'profile_about_hidden' => 'boolean',
             'social_links' => 'array',
             'notification_sound_prefs' => 'array',
             'account_disabled_at' => 'datetime',

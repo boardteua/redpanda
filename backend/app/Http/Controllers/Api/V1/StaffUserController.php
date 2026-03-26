@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\Iso3166Alpha2Uk;
 use App\Services\Moderation\ModerationService;
+use App\Support\Iso3166Alpha2Uk;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -375,7 +375,9 @@ class StaffUserController extends Controller
             'profile.age_hidden' => ['sometimes', 'boolean'],
             'profile.sex_hidden' => ['sometimes', 'boolean'],
             'profile.occupation' => ['sometimes', 'nullable', 'string', 'max:191'],
+            'profile.occupation_hidden' => ['sometimes', 'boolean'],
             'profile.about' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'profile.about_hidden' => ['sometimes', 'boolean'],
             'social_links' => ['sometimes', 'array'],
             'social_links.facebook' => $socialRule,
             'social_links.instagram' => $socialRule,
@@ -408,7 +410,9 @@ class StaffUserController extends Controller
                 'age_hidden' => 'profile_age_hidden',
                 'sex_hidden' => 'profile_sex_hidden',
                 'occupation' => 'profile_occupation',
+                'occupation_hidden' => 'profile_occupation_hidden',
                 'about' => 'profile_about',
+                'about_hidden' => 'profile_about_hidden',
             ];
             foreach ($map as $jsonKey => $column) {
                 if (! array_key_exists($jsonKey, $p)) {
@@ -532,7 +536,9 @@ class StaffUserController extends Controller
                 'age_hidden' => (bool) $user->profile_age_hidden,
                 'sex_hidden' => (bool) $user->profile_sex_hidden,
                 'occupation' => $user->profile_occupation,
+                'occupation_hidden' => (bool) $user->profile_occupation_hidden,
                 'about' => $user->profile_about,
+                'about_hidden' => (bool) $user->profile_about_hidden,
             ];
         }
 

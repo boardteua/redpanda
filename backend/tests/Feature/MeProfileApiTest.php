@@ -130,6 +130,32 @@ class MeProfileApiTest extends TestCase
         $this->assertSame(42, $user->notification_sound_prefs['volume_percent']);
     }
 
+    public function test_patch_me_profile_persists_occupation_and_about_hidden_flags(): void
+    {
+        $user = User::factory()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/me/profile', [
+                'profile' => [
+                    'occupation' => 'Writer',
+                    'occupation_hidden' => true,
+                    'about' => 'Long bio',
+                    'about_hidden' => true,
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.profile.occupation', 'Writer')
+            ->assertJsonPath('data.profile.occupation_hidden', true)
+            ->assertJsonPath('data.profile.about', 'Long bio')
+            ->assertJsonPath('data.profile.about_hidden', true);
+
+        $user->refresh();
+        $this->assertTrue($user->profile_occupation_hidden);
+        $this->assertTrue($user->profile_about_hidden);
+    }
+
     public function test_patch_me_account_requires_change_and_valid_current_password(): void
     {
         $user = User::factory()->create([

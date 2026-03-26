@@ -2667,7 +2667,12 @@ components:
 
     UserProfile:
       type: object
-      description: Лише для `guest === false` у `User`
+      description: |
+        Лише для `guest === false` у `User`.
+        Для **стороннього** переглядача (не власник і не персонал з `canModerate`) значення полів,
+        позначених прихованими у БД, у відповіді **`null`**; прапорці `*_hidden` у такому випадку
+        **завжди `false`**, щоб не розкривати факт приховування. Власник і модератор/адмін бачать
+        повні значення та реальні `*_hidden`.
       properties:
         country:
           type: string
@@ -2696,9 +2701,13 @@ components:
         occupation:
           type: string
           nullable: true
+        occupation_hidden:
+          type: boolean
         about:
           type: string
           nullable: true
+        about_hidden:
+          type: boolean
 
     SocialLinks:
       type: object
@@ -2779,7 +2788,8 @@ components:
           allOf:
             - $ref: "#/components/schemas/UserProfile"
           nullable: true
-          description: Лише якщо `guest === false`
+          description: |
+            Лише якщо `guest === false`. Редокція прихованих полів для чужого профілю — див. опис `UserProfile` (**T146**).
         social_links:
           allOf:
             - $ref: "#/components/schemas/SocialLinks"
@@ -3326,7 +3336,9 @@ components:
         age_hidden: { type: boolean }
         sex_hidden: { type: boolean }
         occupation: { type: string, nullable: true }
+        occupation_hidden: { type: boolean }
         about: { type: string, nullable: true }
+        about_hidden: { type: boolean }
 
     StaffUserListRow:
       type: object
