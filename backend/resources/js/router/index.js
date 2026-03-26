@@ -1,18 +1,20 @@
 import Vue from 'vue';
 import VueRouter from 'vue-router';
-import ArchiveChat from '../views/ArchiveChat.vue';
 import AuthWelcome from '../views/AuthWelcome.vue';
-import AuthCallback from '../views/AuthCallback.vue';
-import ForgotPassword from '../views/ForgotPassword.vue';
-import ResetPassword from '../views/ResetPassword.vue';
-import LegacyPasswordSetup from '../views/LegacyPasswordSetup.vue';
-import ChatRoom from '../views/ChatRoom.vue';
-import AdminHubView from '../views/AdminHubView.vue';
-import StaffUsersView from '../views/StaffUsersView.vue';
-import StaffStopWordsView from '../views/StaffStopWordsView.vue';
-import StaffFlaggedMessagesView from '../views/StaffFlaggedMessagesView.vue';
 
 Vue.use(VueRouter);
+
+/** Ліниві чанки: менший початковий JS на `/` (PSI «unused JavaScript» / LCP). */
+const ArchiveChat = () => import('../views/ArchiveChat.vue');
+const AuthCallback = () => import('../views/AuthCallback.vue');
+const ForgotPassword = () => import('../views/ForgotPassword.vue');
+const ResetPassword = () => import('../views/ResetPassword.vue');
+const LegacyPasswordSetup = () => import('../views/LegacyPasswordSetup.vue');
+const ChatRoom = () => import('../views/ChatRoom.vue');
+const AdminHubView = () => import('../views/AdminHubView.vue');
+const StaffUsersView = () => import('../views/StaffUsersView.vue');
+const StaffStopWordsView = () => import('../views/StaffStopWordsView.vue');
+const StaffFlaggedMessagesView = () => import('../views/StaffFlaggedMessagesView.vue');
 
 /** T135: маршрути, для яких потрібен важкий CSS чату (перший paint міг бути через welcome.css). */
 const ROUTES_NEEDING_CHAT_STYLES = new Set([

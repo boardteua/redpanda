@@ -1880,7 +1880,19 @@
   - **`docker/nginx/default.conf`:** ті самі заголовки для контейнерного nginx (prod-хост — перенести в свій `server` за потреби).
   - Залежність **`@fontsource/instrument-sans`** у **`package.json`** (latin + latin-ext через ваги 400–700).
 - **QA evidence:** **`npm run build`** — PASS; після деплою **`curl -sSI 'https://board.te.ua/build/assets/<hashed>.js'`** та **`/brand/board-te-ua-orange.png`** — наявність **Cache-Control** (не **None**); опційно повторний прогін **PSI mobile** після релізу.
-- **Трасування:** узгоджено з рекомендаціями PSI (efficient cache, зменшення зовнішнього ланцюга шрифтів); **unused JS** — окремий обсяг, потребує code-splitting/ленивих імпортів у наступних задачах за пріоритетом.
+- **Трасування:** узгоджено з рекомендаціями PSI (efficient cache, зменшення зовнішнього ланцюга шрифтів); **unused JS** — див. **T143**.
+
+---
+
+### [x] T143 — **PSI / Lighthouse:** прибрати залишок **fonts.bunny.net** на `welcome.blade.php` + **code-splitting** маршрутів (менший початковий JS)
+
+- **Статус:** **PASS** (2026-03-26). Доповнення до **T142** за діагностиками: **render-blocking** / **font-display** на bunny (якщо десь лишався дефолтний Laravel **welcome**); **Remove unused JavaScript** на головному чанку — **ліниві імпорти** для всіх маршрутів крім **`/`** (`AuthWelcome` лишається синхронно).
+- **Delegate:** **Frontend Developer**
+- **Залежність:** **T142**, **T135**
+- **Deliverables:**
+  - **`resources/views/welcome.blade.php`:** видалено **preconnect** і **stylesheet** на **fonts.bunny.net** (при збірці Vite шрифти з **welcome.css**; без збірки — системний стек з inline Tailwind fallback).
+  - **`resources/js/router/index.js`:** **`() => import(...)`** для **ChatRoom**, архіву, staff, паролів, **AuthCallback**; без зміни логіки **`loadChatOnlyStyles`**.
+- **QA evidence:** **`npm run build`** — PASS; порівняння розміру головного **`app-*.js`** (до/після — суттєве зменшення, чат у окремому чанку); **`php artisan test`** — PASS; після деплою PSI — відсутність запитів до **fonts.bunny.net** на SPA-шляхах і зменшення «unused» на першому завантаженні **`/`**.
 
 ---
 
