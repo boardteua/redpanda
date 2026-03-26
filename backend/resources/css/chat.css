@@ -1,6 +1,7 @@
 /**
  * T135 — entry для першого завантаження маршрутів чату / архіву / staff (deep link).
  */
+@import './partials/rp-font-instrument-sans.css';
 @import './partials/rp-tailwind-preamble.css';
 @import './partials/rp-tokens.css';
 @import './partials/rp-chat-inline-private.css';

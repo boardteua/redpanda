@@ -16,9 +16,6 @@
         <link rel="icon" href="{{ url('/board-te-ua-favicon.ico') }}" type="image/x-icon">
         <link rel="alternate" type="text/markdown" href="{{ url('/llms.txt') }}" title="LLM context (Тернопільський Анонімний Чат)">
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
-
         @php
             $path = trim(request()->path(), '/');
             $useChatCss =

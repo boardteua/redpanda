@@ -1,0 +1,8 @@
+/**
+ * Self-hosted Instrument Sans (latin + latin-ext) — без зовнішнього fonts.bunny.net:
+ * менший критичний ланцюг, Cache-Control на тому ж хості що й Vite-асети.
+ */
+@import '@fontsource/instrument-sans/400.css';
+@import '@fontsource/instrument-sans/500.css';
+@import '@fontsource/instrument-sans/600.css';
+@import '@fontsource/instrument-sans/700.css';

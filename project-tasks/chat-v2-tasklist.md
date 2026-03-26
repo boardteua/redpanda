@@ -1868,3 +1868,19 @@
 
 ---
 
+### [x] T142 — **Мобільний PageSpeed / PSI:** кеш статики, шрифти без стороннього блокування (паритет legacy board.te.ua)
+
+- **Статус:** **PASS** (2026-03-26). **Lighthouse (Chrome DevTools MCP, mobile, navigation)** на `https://board.te.ua/`: **Accessibility 95**, **Best Practices 96**, **SEO 100** (performance у цьому режимі MCP не виводиться — орієнтир **PageSpeed Insights** / DevTools **Performance**). Реалізація в **redpanda** за знімком PSI клієнта: відсутній **Cache-Control** на `/build/assets/*` та `/brand/*`; **render-blocking** і критичний ланцюг через **fonts.bunny.net**; рекомендації **font-display** — закрито переносом **Instrument Sans** у бандл (**@fontsource/instrument-sans**) + **Cache-Control** у **`public/.htaccess`** (Apache); для **nginx** — дублювати заголовки в `location` (коментар у `.htaccess`).
+- **Контекст клієнта:** підтягнути швидкість на мобільному; повторні візити та менший критичний шлях.
+- **Delegate:** **Frontend Developer** + **DevOps** (перевірка заголовків на prod **Apache vs nginx**)
+- **Залежність:** **T135** (розділені CSS entry); **T136** (канонічний домен board.te.ua)
+- **Deliverables:**
+  - **`resources/css/partials/rp-font-instrument-sans.css`** + імпорт у **`welcome.css`** / **`chat.css`**; прибрано **preconnect + stylesheet** fonts.bunny.net з **`spa.blade.php`**.
+  - **`public/.htaccess`:** `Cache-Control` для **`/build/assets/`** (immutable 1y) та **`/brand/`** (7d).
+  - **`docker/nginx/default.conf`:** ті самі заголовки для контейнерного nginx (prod-хост — перенести в свій `server` за потреби).
+  - Залежність **`@fontsource/instrument-sans`** у **`package.json`** (latin + latin-ext через ваги 400–700).
+- **QA evidence:** **`npm run build`** — PASS; після деплою **`curl -sSI 'https://board.te.ua/build/assets/<hashed>.js'`** та **`/brand/board-te-ua-orange.png`** — наявність **Cache-Control** (не **None**); опційно повторний прогін **PSI mobile** після релізу.
+- **Трасування:** узгоджено з рекомендаціями PSI (efficient cache, зменшення зовнішнього ланцюга шрифтів); **unused JS** — окремий обсяг, потребує code-splitting/ленивих імпортів у наступних задачах за пріоритетом.
+
+---
+
