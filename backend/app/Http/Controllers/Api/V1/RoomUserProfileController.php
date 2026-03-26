@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\Room;
 use App\Models\User;
+use App\Services\Chat\RoomUserProfileCardAuthorizer;
 use Illuminate\Http\Request;
 
 /**
@@ -19,6 +20,12 @@ class RoomUserProfileController extends Controller
         abort_if($viewer === null || $viewer->guest, 403, 'Гості не можуть переглядати профіль інших користувачів.');
 
         $this->authorize('interact', $room);
+
+        abort_unless(
+            RoomUserProfileCardAuthorizer::allows($viewer, $room, $user),
+            403,
+            'Недостатньо прав для перегляду профілю користувача в цьому контексті.',
+        );
 
         return UserResource::make($user);
     }

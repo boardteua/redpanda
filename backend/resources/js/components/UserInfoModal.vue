@@ -53,11 +53,7 @@
                         <span class="text-[var(--rp-text-muted)]">Ви увійшли як гість.</span>
                     </p>
                     <template v-if="!viewer.guest">
-                        <UserInfoProfileBlock
-                            :profile="viewer.profile"
-                            :country-label-fn="countryLabelUk"
-                            :sex-label-fn="sexLabelUk"
-                        />
+                        <UserInfoProfileBlock :profile="viewer.profile" />
                         <UserInfoSocialBlock :links="resolvedSocialLinksForUser(viewer)" />
                     </template>
                     <div
@@ -129,8 +125,6 @@
                             <UserInfoProfileBlock
                                 v-if="!cardError || fetchedCard"
                                 :profile="displayUser.profile"
-                                :country-label-fn="countryLabelUk"
-                                :sex-label-fn="sexLabelUk"
                             />
                             <UserInfoSocialBlock :links="resolvedSocialLinksForUser(displayUser)" />
                         </template>
@@ -192,142 +186,13 @@
 <script>
 import RpModal from './RpModal.vue';
 import UserAvatar from './UserAvatar.vue';
-import countryRows from '../../data/iso3166-alpha2-uk.json';
-import { normalizeStoredCountryCode } from '../utils/countryProfile.js';
-import { normalizeSocialHref } from '../utils/socialLinks.js';
-
-const VALID_COUNTRY_CODES = new Set(countryRows.map((r) => r.code));
-
-const SOCIAL_LABELS = {
-    facebook: 'Facebook',
-    instagram: 'Instagram',
-    telegram: 'Telegram',
-    twitter: 'X / Twitter',
-    youtube: 'YouTube',
-    tiktok: 'TikTok',
-    discord: 'Discord',
-    website: 'Сайт',
-};
+import UserInfoProfileBlock from './UserInfoProfileBlock.vue';
+import UserInfoSocialBlock from './UserInfoSocialBlock.vue';
+import { buildUserInfoSocialLinks } from '../utils/socialLinks.js';
 
 function isStaffRole(role) {
     return role === 'moderator' || role === 'admin';
 }
-
-const UserInfoProfileBlock = {
-    name: 'UserInfoProfileBlock',
-    functional: true,
-    props: {
-        profile: { type: Object, default: null },
-        countryLabelFn: { type: Function, required: true },
-        sexLabelFn: { type: Function, required: true },
-    },
-    render(h, ctx) {
-        const pr = ctx.props.profile;
-        if (!pr || typeof pr !== 'object') {
-            return h('div');
-        }
-        const rows = [];
-        const countryLabel = ctx.props.countryLabelFn(pr.country);
-        if (countryLabel) {
-            rows.push(
-                h('p', { key: 'c' }, [
-                    h('span', { class: 'font-medium' }, 'Країна: '),
-                    countryLabel,
-                ]),
-            );
-        }
-        if (pr.region != null && String(pr.region).trim() !== '') {
-            rows.push(
-                h('p', { key: 'r' }, [
-                    h('span', { class: 'font-medium' }, 'Регіон: '),
-                    String(pr.region),
-                ]),
-            );
-        }
-        if (pr.age != null && pr.age !== '' && Number.isFinite(Number(pr.age))) {
-            rows.push(
-                h('p', { key: 'a' }, [
-                    h('span', { class: 'font-medium' }, 'Вік: '),
-                    String(pr.age),
-                ]),
-            );
-        }
-        const sexL = ctx.props.sexLabelFn(pr.sex);
-        if (sexL) {
-            rows.push(
-                h('p', { key: 's' }, [
-                    h('span', { class: 'font-medium' }, 'Стать: '),
-                    sexL,
-                ]),
-            );
-        }
-        if (pr.occupation != null && String(pr.occupation).trim() !== '') {
-            rows.push(
-                h('p', { key: 'o' }, [
-                    h('span', { class: 'font-medium' }, 'Рід занять: '),
-                    String(pr.occupation),
-                ]),
-            );
-        }
-        if (pr.about != null && String(pr.about).trim() !== '') {
-            rows.push(
-                h('p', { key: 'b', class: 'space-y-1' }, [
-                    h('span', { class: 'font-medium block' }, 'Про мене:'),
-                    h(
-                        'span',
-                        {
-                            class: 'block whitespace-pre-wrap break-words text-[var(--rp-text)]',
-                        },
-                        String(pr.about),
-                    ),
-                ]),
-            );
-        }
-        if (!rows.length) {
-            return h('div');
-        }
-
-        return h('div', { class: 'space-y-2 border-t border-[var(--rp-border-subtle)] pt-3 mt-2' }, rows);
-    },
-};
-
-const UserInfoSocialBlock = {
-    name: 'UserInfoSocialBlock',
-    functional: true,
-    props: {
-        links: { type: Array, default: () => [] },
-    },
-    render(h, ctx) {
-        const links = ctx.props.links || [];
-        if (!links.length) {
-            return h('div');
-        }
-
-        return h('div', { class: 'space-y-2 border-t border-[var(--rp-border-subtle)] pt-3 mt-2' }, [
-            h('p', { class: 'text-xs font-semibold uppercase tracking-wide text-[var(--rp-text-muted)]' }, 'Соцмережі'),
-            h(
-                'ul',
-                { class: 'list-none space-y-1.5 p-0 m-0' },
-                links.map((l) =>
-                    h('li', { key: l.key }, [
-                        h(
-                            'a',
-                            {
-                                class: 'rp-focusable text-[var(--rp-link)] underline underline-offset-2',
-                                attrs: {
-                                    href: l.href,
-                                    target: '_blank',
-                                    rel: 'noopener noreferrer',
-                                },
-                            },
-                            l.label,
-                        ),
-                    ]),
-                ),
-            ),
-        ]);
-    },
-};
 
 export default {
     name: 'UserInfoModal',
@@ -454,49 +319,12 @@ export default {
         },
     },
     methods: {
-        countryLabelUk(code) {
-            if (code == null || code === '') {
-                return null;
-            }
-            const c = normalizeStoredCountryCode(code, VALID_COUNTRY_CODES);
-            if (!c) {
-                return null;
-            }
-            const row = countryRows.find((r) => r.code === c);
-
-            return row ? row.labelUk : null;
-        },
-        sexLabelUk(sex) {
-            if (sex == null || sex === '') {
-                return null;
-            }
-            const map = {
-                male: 'Чоловік',
-                female: 'Жінка',
-                other: 'Інше',
-                prefer_not: 'Не вказувати',
-            };
-
-            return map[sex] || null;
-        },
         resolvedSocialLinksForUser(u) {
-            if (!u || u.guest || !u.social_links || typeof u.social_links !== 'object') {
+            if (!u || u.guest) {
                 return [];
             }
-            const out = [];
-            Object.keys(SOCIAL_LABELS).forEach((key) => {
-                const raw = u.social_links[key];
-                if (raw == null || !String(raw).trim()) {
-                    return;
-                }
-                const href = normalizeSocialHref(key, raw);
-                if (!href) {
-                    return;
-                }
-                out.push({ key, label: SOCIAL_LABELS[key], href });
-            });
 
-            return out;
+            return buildUserInfoSocialLinks(u.social_links);
         },
         async loadPeerCard() {
             this.cardError = '';

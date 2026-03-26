@@ -1,3 +1,39 @@
+/** Підписи полів соцмереж у модалі «Інформація про користувача». */
+export const USER_INFO_SOCIAL_LABELS = {
+    facebook: 'Facebook',
+    instagram: 'Instagram',
+    telegram: 'Telegram',
+    twitter: 'X / Twitter',
+    youtube: 'YouTube',
+    tiktok: 'TikTok',
+    discord: 'Discord',
+    website: 'Сайт',
+};
+
+/**
+ * @param {Record<string, unknown>|null|undefined} socialLinks
+ * @returns {{ key: string, label: string, href: string }[]}
+ */
+export function buildUserInfoSocialLinks(socialLinks) {
+    if (!socialLinks || typeof socialLinks !== 'object') {
+        return [];
+    }
+    const out = [];
+    Object.keys(USER_INFO_SOCIAL_LABELS).forEach((key) => {
+        const raw = socialLinks[key];
+        if (raw == null || !String(raw).trim()) {
+            return;
+        }
+        const href = normalizeSocialHref(key, raw);
+        if (!href) {
+            return;
+        }
+        out.push({ key, label: USER_INFO_SOCIAL_LABELS[key], href });
+    });
+
+    return out;
+}
+
 /**
  * @param {string} key
  * @param {string} raw
