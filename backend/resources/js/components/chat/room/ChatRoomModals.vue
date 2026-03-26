@@ -10,6 +10,7 @@
             :mode="userInfoModalMode"
             :viewer="user"
             :target="userInfoModalTarget"
+            :room-context-room-id="userInfoRoomId"
             :theme-label="themeLabel"
             @close="$emit('user-info-close')"
             @cycle-theme="$emit('user-info-cycle-theme')"
@@ -97,6 +98,7 @@ export default {
         userInfoModalOpen: { type: Boolean, default: false },
         userInfoModalMode: { type: String, default: 'self' },
         userInfoModalTarget: { type: Object, default: null },
+        userInfoRoomId: { type: [Number, String], default: null },
         user: { type: Object, default: null },
         themeLabel: { type: String, default: '' },
         chatSettingsModalOpen: { type: Boolean, default: false },

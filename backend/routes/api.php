@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomPeerHintsController;
 use App\Http\Controllers\Api\V1\RoomPresenceStatusController;
 use App\Http\Controllers\Api\V1\RoomReadController;
+use App\Http\Controllers\Api\V1\RoomUserProfileController;
 use App\Http\Controllers\Api\V1\StaffUserController;
 use App\Http\Controllers\Api\V1\UserAvatarController;
 use App\Http\Controllers\Api\V1\UserLookupController;
@@ -72,6 +73,11 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
         Route::middleware('throttle:chat-read')->get(
             'rooms/{room}/peer-hints',
             [RoomPeerHintsController::class, 'index'],
+        );
+
+        Route::middleware('throttle:chat-read')->get(
+            'rooms/{room}/users/{user}/profile-card',
+            [RoomUserProfileController::class, 'show'],
         );
 
         Route::middleware('throttle:chat-read')->get(

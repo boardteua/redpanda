@@ -25,7 +25,7 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'user_name' => $this->user_name,
             'guest' => (bool) $this->guest,
-            'email' => $this->email,
+            'email' => $this->emailVisibleTo($request),
             'avatar_url' => $this->resolveAvatarUrl(),
             'chat_role' => $role->value,
             'badge_color' => $role->badgeColor(),
@@ -62,6 +62,22 @@ class UserResource extends JsonResource
     /**
      * @return array<string, mixed>
      */
+    private function emailVisibleTo(Request $request): ?string
+    {
+        $viewer = $request->user();
+        if ($viewer === null) {
+            return null;
+        }
+        if ((int) $viewer->id === (int) $this->id) {
+            return $this->email;
+        }
+        if ($viewer->canModerate()) {
+            return $this->email;
+        }
+
+        return null;
+    }
+
     private function profilePayloadForRequest(Request $request): array
     {
         /** @var User $subject */

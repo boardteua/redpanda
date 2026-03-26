@@ -153,6 +153,10 @@
                                 maxlength="191"
                                 class="rp-input rp-focusable w-full"
                             />
+                            <label class="mt-1 flex items-center gap-2 text-xs text-[var(--rp-text-muted)]">
+                                <input v-model="personal.occupation_hidden" type="checkbox" class="rp-focusable" />
+                                Приховано для інших
+                            </label>
                         </div>
                         <div>
                             <label class="rp-label" for="pf-about">Про мене</label>
@@ -163,6 +167,10 @@
                                 maxlength="5000"
                                 class="rp-input rp-focusable w-full resize-y"
                             />
+                            <label class="mt-1 flex items-center gap-2 text-xs text-[var(--rp-text-muted)]">
+                                <input v-model="personal.about_hidden" type="checkbox" class="rp-focusable" />
+                                Приховано для інших
+                            </label>
                         </div>
                         <RpButton
                             class="w-full sm:w-auto"
@@ -363,7 +371,9 @@ export default {
                 age_hidden: false,
                 sex_hidden: false,
                 occupation: '',
+                occupation_hidden: false,
                 about: '',
+                about_hidden: false,
             },
             account: {
                 email: '',
@@ -443,7 +453,9 @@ export default {
                 age_hidden: Boolean(pr.age_hidden),
                 sex_hidden: Boolean(pr.sex_hidden),
                 occupation: pr.occupation != null ? String(pr.occupation) : '',
+                occupation_hidden: Boolean(pr.occupation_hidden),
                 about: pr.about != null ? String(pr.about) : '',
+                about_hidden: Boolean(pr.about_hidden),
             };
             this.account = {
                 email: u.email != null ? String(u.email) : '',
@@ -502,7 +514,9 @@ export default {
                         age_hidden: this.personal.age_hidden,
                         sex_hidden: this.personal.sex_hidden,
                         occupation: this.personal.occupation || null,
+                        occupation_hidden: this.personal.occupation_hidden,
                         about: this.personal.about || null,
+                        about_hidden: this.personal.about_hidden,
                     },
                 });
                 if (data.data) {

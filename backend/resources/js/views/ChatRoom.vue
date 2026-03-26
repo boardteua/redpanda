@@ -118,6 +118,7 @@
             :user-info-modal-open="userInfoModalOpen"
             :user-info-modal-mode="userInfoModalMode"
             :user-info-modal-target="userInfoModalTarget"
+            :user-info-room-id="selectedRoomId"
             :user="user"
             :theme-label="themeLabel"
             :chat-settings-modal-open="chatSettingsModalOpen"

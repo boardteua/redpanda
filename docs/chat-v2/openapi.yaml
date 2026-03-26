@@ -2249,6 +2249,44 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/rooms/{roomId}/users/{userId}/profile-card:
+    get:
+      tags: [Chat]
+      summary: Публічна картка користувача в контексті кімнати (T148)
+      description: |
+        **Не гість.** Потрібен доступ `interact` до кімнати. Повертає `User` у форматі `UserResponse`:
+        профіль з редокцією прихованих полів для стороннього переглядача, `email` лише для власника або персоналу модерації.
+      operationId: getRoomUserProfileCard
+      security:
+        - sanctumSession: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: "`users.id` користувача, картку якого запитують"
+      responses:
+        "200":
+          description: Картка користувача
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/rooms/{roomId}/presence-statuses:
     get:
       tags: [Chat]
