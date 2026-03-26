@@ -86,7 +86,7 @@
 
 .rp-chat-composer-input:focus-visible {
     border-color: var(--rp-focus-ring);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--rp-focus-ring) 35%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--rp-focus-ring) 5%, transparent);
 }
 
 /* T119: мобільний композер — без зуму iOS при фокусі (font ≥16px), одна лінія порожнього поля */

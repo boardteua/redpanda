@@ -2,6 +2,7 @@
 /* Design tokens — світла / темна (data-theme: light | dark | system)         */
 /* -------------------------------------------------------------------------- */
 
+
 :root,
 :root[data-theme='light'] {
     --rp-bg: #f1f5f9;
@@ -14,7 +15,7 @@
     --rp-primary: #c2410c;
     --rp-primary-hover: #9a3412;
     --rp-on-primary: #ffffff;
-    --rp-focus-ring: #1d4ed8;
+    --rp-focus-ring: #9a3412;
     --rp-error: #b91c1c;
     --rp-error-bg: #fef2f2;
     --rp-link: #1d4ed8;
