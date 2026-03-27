@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateRoomRequest;
 use App\Http\Resources\RoomResource;
 use App\Models\Room;
 use App\Services\Chat\RedPandaBotNewPublicRoomAnnouncer;
+use App\Services\Chat\RoomSlugService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -18,6 +19,7 @@ class RoomController extends Controller
 {
     public function __construct(
         private readonly RedPandaBotNewPublicRoomAnnouncer $newPublicRoomAnnouncer,
+        private readonly RoomSlugService $roomSlugService,
     ) {}
 
     public function index(Request $request): AnonymousResourceCollection
@@ -57,6 +59,12 @@ class RoomController extends Controller
             'access' => Room::ACCESS_PUBLIC,
             'created_by_user_id' => $user->id,
         ]);
+
+        if (array_key_exists('slug', $validated)) {
+            $this->roomSlugService->assignManualSlug($room, $validated['slug']);
+            $room->save();
+        }
+
         $room->loadCount('messages');
 
         $this->newPublicRoomAnnouncer->announce($room);
@@ -80,12 +88,17 @@ class RoomController extends Controller
             Gate::forUser($user)->authorize('updateAccess', $room);
         }
 
-        if (array_key_exists('room_name', $validated) || array_key_exists('topic', $validated)) {
+        if (array_key_exists('room_name', $validated) || array_key_exists('topic', $validated) || array_key_exists('slug', $validated)) {
             Gate::forUser($user)->authorize('updateDetails', $room);
         }
 
-        if (array_key_exists('room_name', $validated)) {
+        if (array_key_exists('room_name', $validated) && $validated['room_name'] !== $room->room_name) {
+            $this->roomSlugService->assignSlugAfterRename($room, $validated['room_name']);
             $room->room_name = $validated['room_name'];
+        }
+
+        if (array_key_exists('slug', $validated)) {
+            $this->roomSlugService->assignManualSlug($room, $validated['slug']);
         }
 
         if (array_key_exists('topic', $validated)) {

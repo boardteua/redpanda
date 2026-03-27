@@ -26,6 +26,7 @@ class StoreRoomRequest extends FormRequest
     {
         return [
             'room_name' => ['required', 'string', 'max:191'],
+            'slug' => ['sometimes', 'string', 'max:191', 'regex:/^[a-zA-Z0-9-]+$/'],
             'topic' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ];
     }

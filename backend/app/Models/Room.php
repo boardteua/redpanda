@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Chat\RoomSlugService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Room extends Model
 {
+    /** Сегмент URL/API, з якого виконано binding (для `slug_redirect` у JSON). */
+    public ?string $slugBindingSource = null;
+
     public const ACCESS_PUBLIC = 0;
 
     /** Лише зареєстровані (не гість). */
@@ -33,10 +37,20 @@ class Room extends Model
 
     protected $fillable = [
         'room_name',
+        'slug',
         'topic',
         'access',
         'created_by_user_id',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Room $room): void {
+            if (! filled($room->slug)) {
+                $room->slug = app(RoomSlugService::class)->proposeUniqueSlugFromName((string) $room->room_name, null);
+            }
+        });
+    }
 
     /**
      * @return BelongsTo<User, $this>
@@ -57,5 +71,42 @@ class Room extends Model
     public function getRouteKeyName(): string
     {
         return 'room_id';
+    }
+
+    /**
+     * `rooms/{room}`: спочатку поточний **slug**, потім **історія** слагів, далі числовий **room_id** (**T153**).
+     *
+     * @param  mixed  $value
+     */
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        if ($field !== null) {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        $raw = strtolower((string) $value);
+
+        $room = static::query()->where('slug', $raw)->first();
+        if ($room !== null) {
+            $room->slugBindingSource = (string) $value;
+
+            return $room;
+        }
+
+        $history = RoomSlugHistory::query()->where('slug', $raw)->first();
+        if ($history !== null) {
+            $room = static::query()->where('room_id', $history->room_id)->first();
+            if ($room !== null) {
+                $room->slugBindingSource = (string) $value;
+            }
+
+            return $room;
+        }
+
+        if (ctype_digit($raw)) {
+            return static::query()->where('room_id', (int) $raw)->first();
+        }
+
+        return null;
     }
 }

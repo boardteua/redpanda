@@ -91,9 +91,17 @@ class ChatMessageController extends Controller
 
         $nextCursor = $page->isNotEmpty() ? $page->first()->post_id : null;
 
+        $slugSource = $room->slugBindingSource ?? null;
+        $slugRedirect = is_string($slugSource)
+            && $slugSource !== ''
+            && strtolower($slugSource) !== strtolower((string) $room->slug);
+
         $meta = [
             'next_cursor' => $nextCursor,
             'last_read_post_id' => $lastReadPostId !== null ? (int) $lastReadPostId : null,
+            'slug_redirect' => $slugRedirect,
+            'canonical_slug' => (string) $room->slug,
+            'canonical_room_id' => (int) $room->room_id,
         ];
 
         if ($request->boolean('since_read')) {

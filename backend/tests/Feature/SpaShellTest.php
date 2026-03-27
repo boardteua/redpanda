@@ -26,6 +26,14 @@ class SpaShellTest extends TestCase
             ->assertSee('type="module"', false);
     }
 
+    public function test_chat_slug_route_returns_spa_shell(): void
+    {
+        $this->get('/chat/zagalna')
+            ->assertOk()
+            ->assertSee('<div id="app"></div>', false)
+            ->assertSee('type="module"', false);
+    }
+
     public function test_archive_route_returns_spa_shell(): void
     {
         $this->get('/archive')

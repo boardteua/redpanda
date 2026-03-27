@@ -219,6 +219,13 @@ import { createChatRoomSidebarState } from '../chat/chatRoomSidebarState';
 import { chatRoomFriendsIgnoresMethods } from '../chat/chatRoomFriendsIgnoresMethods';
 import { chatRoomPeerAutocompleteMethods } from '../chat/chatRoomPeerAutocompleteMethods';
 import { chatRoomPrivateMethods } from '../chat/chatRoomPrivateMethods';
+import {
+    apiRoomPathSegment,
+    buildChatRoute,
+    CHAT_DEFAULT_PUBLIC_ROOM_ID,
+    isChatRoute,
+    staffContextQuery,
+} from '../utils/chatRoomNavigation';
 
 export default {
     name: 'ChatRoom',
@@ -341,6 +348,10 @@ export default {
         },
         currentRoom() {
             return this.rooms.find((r) => r.room_id === this.selectedRoomId) || null;
+        },
+        /** T153: сегмент для `…/rooms/{segment}/…` (slug або numeric id). */
+        selectedRoomApiSegment() {
+            return apiRoomPathSegment(this.rooms || [], this.selectedRoomId);
         },
         chatTitle() {
             const r = this.currentRoom && this.currentRoom.room_name;
@@ -504,21 +515,41 @@ export default {
                 this.closeRoomEditModal();
             }
         },
-        '$route.query': {
+        $route: {
             handler() {
-                if (!this.chatBootstrapDone || this.$route.path !== '/chat') {
+                if (!this.chatBootstrapDone || !isChatRoute(this.$route)) {
                     return;
                 }
                 this.consumeOpenChatSettingsQuery();
+                const slug = this.$route.params.roomSlug;
                 const newQ = this.$route.query || {};
-                const newRoom = newQ.room != null ? Number(newQ.room) : null;
+                let targetId = null;
+                if (slug != null && String(slug).trim() !== '') {
+                    const bySlug = this.rooms.find((r) => String(r.slug) === String(slug));
+                    if (bySlug) {
+                        targetId = bySlug.room_id;
+                    }
+                } else if (newQ.room != null && String(newQ.room).trim() !== '') {
+                    const raw = String(newQ.room).trim();
+                    const n = Number(raw);
+                    if (Number.isFinite(n) && raw === String(n)) {
+                        if (this.rooms.some((r) => Number(r.room_id) === n)) {
+                            targetId = n;
+                        }
+                    } else {
+                        const byS = this.rooms.find((r) => String(r.slug) === raw);
+                        if (byS) {
+                            targetId = byS.room_id;
+                        }
+                    }
+                }
                 if (
-                    newRoom
-                    && Number.isFinite(newRoom)
-                    && newRoom !== this.selectedRoomId
-                    && this.rooms.some((r) => r.room_id === newRoom)
+                    targetId != null
+                    && Number.isFinite(Number(targetId))
+                    && Number(targetId) !== Number(this.selectedRoomId)
+                    && this.rooms.some((r) => Number(r.room_id) === Number(targetId))
                 ) {
-                    this.selectedRoomId = newRoom;
+                    this.selectedRoomId = Number(targetId);
                     void this.applyRoomSelection();
 
                     return;
@@ -536,8 +567,8 @@ export default {
         browserDocumentTitleForChat() {
             this.syncChatDocumentTitle();
         },
-        '$route.path'(path) {
-            if (path === '/chat') {
+        '$route.name'(name) {
+            if (name === 'chat') {
                 this.syncChatDocumentTitle();
             }
         },
@@ -593,7 +624,7 @@ export default {
             if (typeof document === 'undefined') {
                 return;
             }
-            if (!this.$route || this.$route.path !== '/chat') {
+            if (!this.$route || !isChatRoute(this.$route)) {
                 return;
             }
             document.title = this.browserDocumentTitleForChat;
@@ -806,16 +837,115 @@ export default {
                 this.user = nextUser;
             }
         },
+        defaultFallbackRoom() {
+            let r = this.rooms.find((x) => Number(x.room_id) === CHAT_DEFAULT_PUBLIC_ROOM_ID);
+            if (!r) {
+                r = this.rooms[0];
+            }
+
+            return r || null;
+        },
+        preserveSidebarRouteQuery() {
+            const q = {};
+            const fp = this.$route.query.focus_post;
+            if (fp != null && String(fp).trim() !== '') {
+                q.focus_post = String(fp);
+            }
+            const ocs = this.$route.query.open_chat_settings;
+            if (ocs != null) {
+                q.open_chat_settings = String(ocs);
+            }
+
+            return q;
+        },
+        async resolveInitialRoomFromRoute() {
+            const slugParam = this.$route.params.roomSlug;
+            const qRoom = this.$route.query.room;
+            let picked = null;
+
+            if (slugParam != null && String(slugParam).trim() !== '') {
+                const s = String(slugParam);
+                picked = this.rooms.find((r) => String(r.slug) === s);
+                if (!picked) {
+                    try {
+                        await this.ensureSanctum();
+                        const { data } = await window.axios.get(
+                            `/api/v1/rooms/${encodeURIComponent(s)}/messages`,
+                            { params: { limit: 1 } },
+                        );
+                        const rid = data.meta && data.meta.canonical_room_id;
+                        if (rid != null) {
+                            this.selectedRoomId = Number(rid);
+                            await this.loadRooms();
+                            picked = this.rooms.find((r) => Number(r.room_id) === Number(rid));
+                        }
+                    } catch (e) {
+                        const st = e.response && e.response.status;
+                        if (st === 403 || st === 404) {
+                            const fb = this.defaultFallbackRoom();
+                            if (fb) {
+                                this.selectedRoomId = fb.room_id;
+                                const loc = buildChatRoute(
+                                    this.rooms,
+                                    this.selectedRoomId,
+                                    this.preserveSidebarRouteQuery(),
+                                );
+                                await this.$router.replace(loc).catch(() => {});
+                                await this.applyRoomSelection();
+                            }
+
+                            return;
+                        }
+                    }
+                }
+            } else if (qRoom != null && String(qRoom).trim() !== '') {
+                const raw = String(qRoom).trim();
+                const n = Number(raw);
+                if (Number.isFinite(n) && raw === String(n)) {
+                    picked = this.rooms.find((r) => Number(r.room_id) === n);
+                } else {
+                    picked = this.rooms.find((r) => String(r.slug) === raw);
+                }
+            }
+
+            if (!picked && this.rooms.length > 0) {
+                picked = this.defaultFallbackRoom();
+            }
+
+            if (!picked) {
+                this.selectedRoomId = null;
+
+                return;
+            }
+
+            this.selectedRoomId = picked.room_id;
+            const loc = buildChatRoute(this.rooms, this.selectedRoomId, this.preserveSidebarRouteQuery());
+            await this.$router.replace(loc).catch(() => {});
+            await this.applyRoomSelection();
+        },
         async bootstrap() {
             let openChatSettingsAfterBootstrap = false;
             try {
                 await ensureAuth0BootstrapFromLandingApi();
-                this.user = await this.fetchUser();
-                if (!this.user) {
-                    await this.$router.replace({ path: '/' });
+                let user = await this.fetchUser();
+                if (!user) {
+                    const deepSlug = this.$route.params.roomSlug;
+                    if (deepSlug != null && String(deepSlug).trim() !== '') {
+                        await this.ensureSanctum();
+                        try {
+                            await window.axios.post('/api/v1/auth/guest', {});
+                            user = await this.fetchUser();
+                        } catch {
+                            /* ignore */
+                        }
+                    }
+                    if (!user) {
+                        await this.$router.replace({ path: '/' });
 
-                    return;
+                        return;
+                    }
                 }
+                this.user = user;
 
                 if (this.user.requires_password_setup) {
                     await this.$router.replace({ name: 'legacy-password-setup' });
@@ -832,23 +962,7 @@ export default {
                 }
 
                 await Promise.all([this.loadRooms(), this.loadChatSettings(), loadChatEmoticonsCatalog()]);
-                const qRoom = this.$route.query.room;
-                const fromQuery = qRoom ? Number(qRoom) : null;
-                if (fromQuery && this.rooms.some((r) => r.room_id === fromQuery)) {
-                    this.selectedRoomId = fromQuery;
-                } else if (this.rooms.length > 0) {
-                    this.selectedRoomId = this.rooms[0].room_id;
-                }
-
-                if (this.selectedRoomId) {
-                    const q = { room: String(this.selectedRoomId) };
-                    const fp = this.$route.query.focus_post;
-                    if (fp != null && String(fp).trim() !== '') {
-                        q.focus_post = String(fp);
-                    }
-                    await this.$router.replace({ path: '/chat', query: q }).catch(() => {});
-                    await this.applyRoomSelection();
-                }
+                await this.resolveInitialRoomFromRoute();
 
                 await Promise.all([this.loadConversations(), this.loadFriendsAndIgnores()]);
             } finally {
@@ -882,7 +996,7 @@ export default {
             }
             const q = { ...this.$route.query };
             delete q.open_chat_settings;
-            this.$router.replace({ path: '/chat', query: q }).catch(() => {});
+            this.$router.replace(buildChatRoute(this.rooms, this.selectedRoomId, q)).catch(() => {});
             this.chatSettingsModalOpen = true;
         },
         openAddRoomModal() {
@@ -913,7 +1027,7 @@ export default {
                 if (created && created.room_id) {
                     this.selectedRoomId = created.room_id;
                     await this.$router
-                        .replace({ path: '/chat', query: { room: String(created.room_id) } })
+                        .replace(buildChatRoute(this.rooms, created.room_id, this.preserveSidebarRouteQuery()))
                         .catch(() => {});
                     await this.applyRoomSelection();
                 }
@@ -998,13 +1112,15 @@ export default {
                     if (this.rooms.length > 0) {
                         this.selectedRoomId = this.rooms[0].room_id;
                         await this.$router
-                            .replace({ path: '/chat', query: { room: String(this.selectedRoomId) } })
+                            .replace(
+                                buildChatRoute(this.rooms, this.selectedRoomId, this.preserveSidebarRouteQuery()),
+                            )
                             .catch(() => {});
                         await this.applyRoomSelection();
                     } else {
                         this.selectedRoomId = null;
                         this.clearMessages();
-                        await this.$router.replace({ path: '/chat' }).catch(() => {});
+                        await this.$router.replace({ name: 'chat', query: {} }).catch(() => {});
                     }
                 }
             } catch (e) {
@@ -1188,13 +1304,10 @@ export default {
             }
             const q = { ...this.$route.query };
             delete q.focus_post;
-            if (!q.room && this.selectedRoomId != null) {
-                q.room = String(this.selectedRoomId);
-            }
-            this.$router.replace({ path: '/chat', query: q }).catch(() => {});
+            this.$router.replace(buildChatRoute(this.rooms, this.selectedRoomId, q)).catch(() => {});
         },
         tryApplyFocusPostFromQuery() {
-            if (!this.chatBootstrapDone || this.$route.path !== '/chat' || this.loadError) {
+            if (!this.chatBootstrapDone || !isChatRoute(this.$route) || this.loadError) {
                 return;
             }
             const fpRaw = this.$route.query.focus_post;
@@ -1222,15 +1335,26 @@ export default {
             this.stripFocusPostFromRoute();
         },
         async loadMessages() {
-            if (!this.selectedRoomId) {
+            if (!this.selectedRoomId || !this.selectedRoomApiSegment) {
                 return;
             }
             this.loadingMessages = true;
             try {
                 const { data } = await window.axios.get(
-                    `/api/v1/rooms/${this.selectedRoomId}/messages`,
+                    `/api/v1/rooms/${this.selectedRoomApiSegment}/messages`,
                     { params: { limit: 80 } },
                 );
+                if (data.meta && data.meta.slug_redirect && data.meta.canonical_slug) {
+                    const q = { ...this.$route.query };
+                    delete q.room;
+                    await this.$router
+                        .replace({
+                            name: 'chat',
+                            params: { roomSlug: String(data.meta.canonical_slug) },
+                            query: q,
+                        })
+                        .catch(() => {});
+                }
                 this.clearMessages();
                 (data.data || []).forEach((row) => this.mergeMessage(row));
 
@@ -1273,9 +1397,13 @@ export default {
                 if (!rid || !Number.isFinite(pid)) {
                     return;
                 }
+                const seg = apiRoomPathSegment(this.rooms, rid);
+                if (!seg) {
+                    return;
+                }
                 try {
                     await this.ensureSanctum();
-                    await window.axios.post(`/api/v1/rooms/${rid}/read`, {
+                    await window.axios.post(`/api/v1/rooms/${seg}/read`, {
                         last_read_post_id: pid,
                     });
                 } catch {
@@ -1284,7 +1412,7 @@ export default {
             }, 450);
         },
         async pollNewMessages() {
-            if (!this.selectedRoomId || !this.wsDegraded) {
+            if (!this.selectedRoomId || !this.selectedRoomApiSegment || !this.wsDegraded) {
                 return;
             }
             try {
@@ -1293,7 +1421,7 @@ export default {
                     this.fetchPeerSexHints(),
                 ]);
                 const { data } = await window.axios.get(
-                    `/api/v1/rooms/${this.selectedRoomId}/messages`,
+                    `/api/v1/rooms/${this.selectedRoomApiSegment}/messages`,
                     { params: { limit: 80 } },
                 );
                 const prevIds = new Set(this.messageIds);
@@ -1450,7 +1578,7 @@ export default {
          */
         async fetchPeerPresenceStatuses(presenceFetchEpoch, options = {}) {
             const skipEnsure = Boolean(options.skipEnsure);
-            if (!this.selectedRoomId || !this.roomPresencePeers.length) {
+            if (!this.selectedRoomId || !this.selectedRoomApiSegment || !this.roomPresencePeers.length) {
                 if (
                     presenceFetchEpoch != null &&
                     presenceFetchEpoch === this.peerPresenceStatusFetchEpoch
@@ -1466,7 +1594,7 @@ export default {
                     await this.ensureSanctum();
                 }
                 const { data } = await window.axios.get(
-                    `/api/v1/rooms/${this.selectedRoomId}/presence-statuses`,
+                    `/api/v1/rooms/${this.selectedRoomApiSegment}/presence-statuses`,
                     { params: { user_ids: ids } },
                 );
                 const map = data && data.data && typeof data.data === 'object' ? data.data : {};
@@ -1484,7 +1612,7 @@ export default {
         },
         async fetchPeerSexHints(options = {}) {
             const skipEnsure = Boolean(options.skipEnsure);
-            if (!this.selectedRoomId || !this.roomPresencePeers.length) {
+            if (!this.selectedRoomId || !this.selectedRoomApiSegment || !this.roomPresencePeers.length) {
                 return;
             }
             if (!this.user || this.user.guest) {
@@ -1498,7 +1626,7 @@ export default {
                     await this.ensureSanctum();
                 }
                 const { data } = await window.axios.get(
-                    `/api/v1/rooms/${this.selectedRoomId}/peer-hints`,
+                    `/api/v1/rooms/${this.selectedRoomApiSegment}/peer-hints`,
                     { params: { user_ids: ids } },
                 );
                 const map = data && data.data && typeof data.data === 'object' ? data.data : {};
@@ -1508,7 +1636,7 @@ export default {
             }
         },
         async postSelfPresenceStatusIfNeeded(computedStatus) {
-            if (!this.user || this.selectedRoomId == null) {
+            if (!this.user || this.selectedRoomId == null || !this.selectedRoomApiSegment) {
                 return;
             }
             const now = Date.now();
@@ -1519,7 +1647,7 @@ export default {
             }
             await this.ensureSanctum();
             try {
-                await window.axios.post(`/api/v1/rooms/${this.selectedRoomId}/presence-status`, {
+                await window.axios.post(`/api/v1/rooms/${this.selectedRoomApiSegment}/presence-status`, {
                     status: computedStatus,
                 });
                 this.presenceLastSentStatus = computedStatus;
@@ -1909,14 +2037,14 @@ export default {
             const m = this.deleteConfirmTarget;
             this.deleteConfirmOpen = false;
             this.deleteConfirmTarget = null;
-            if (!m || m.post_id == null || !this.selectedRoomId) {
+            if (!m || m.post_id == null || !this.selectedRoomId || !this.selectedRoomApiSegment) {
                 return;
             }
             const postId = m.post_id;
             await this.ensureSanctum();
             try {
                 const { data } = await window.axios.delete(
-                    `/api/v1/rooms/${this.selectedRoomId}/messages/${postId}`,
+                    `/api/v1/rooms/${this.selectedRoomApiSegment}/messages/${postId}`,
                 );
                 if (data.data) {
                     this.mergeMessage(data.data);
@@ -2021,11 +2149,9 @@ export default {
                 return;
             }
             if (id === 'admin-hub') {
-                const q = {};
-                if (this.selectedRoomId != null) {
-                    q.room = String(this.selectedRoomId);
-                }
-                this.$router.push({ name: 'admin-hub', query: q }).catch(() => {});
+                this.$router
+                    .push({ name: 'admin-hub', query: staffContextQuery(this.rooms, this.selectedRoomId) })
+                    .catch(() => {});
 
                 return;
             }
@@ -2035,29 +2161,29 @@ export default {
                 return;
             }
             if (id === 'staff-users') {
-                const q = {};
-                if (this.selectedRoomId != null) {
-                    q.room = String(this.selectedRoomId);
-                }
-                this.$router.push({ name: 'staff-users', query: q }).catch(() => {});
+                this.$router
+                    .push({ name: 'staff-users', query: staffContextQuery(this.rooms, this.selectedRoomId) })
+                    .catch(() => {});
 
                 return;
             }
             if (id === 'staff-stop-words') {
-                const q = {};
-                if (this.selectedRoomId != null) {
-                    q.room = String(this.selectedRoomId);
-                }
-                this.$router.push({ name: 'staff-stop-words', query: q }).catch(() => {});
+                this.$router
+                    .push({
+                        name: 'staff-stop-words',
+                        query: staffContextQuery(this.rooms, this.selectedRoomId),
+                    })
+                    .catch(() => {});
 
                 return;
             }
             if (id === 'staff-flagged') {
-                const q = {};
-                if (this.selectedRoomId != null) {
-                    q.room = String(this.selectedRoomId);
-                }
-                this.$router.push({ name: 'staff-flagged', query: q }).catch(() => {});
+                this.$router
+                    .push({
+                        name: 'staff-flagged',
+                        query: staffContextQuery(this.rooms, this.selectedRoomId),
+                    })
+                    .catch(() => {});
 
                 return;
             }
@@ -2239,7 +2365,9 @@ export default {
                 return;
             }
             this.selectedRoomId = roomId;
-            this.$router.replace({ path: '/chat', query: { room: String(roomId) } }).catch(() => {});
+            this.$router
+                .replace(buildChatRoute(this.rooms, roomId, this.preserveSidebarRouteQuery()))
+                .catch(() => {});
             await this.applyRoomSelection();
             if (this.isNarrowViewport && this.panelOpen) {
                 const mainCol = this.$refs.chatMainColumn;
@@ -2259,7 +2387,7 @@ export default {
                 return;
             }
             const { text, imageId, stylePayload, editPostId, editHadFile } = comp.getSendPayload();
-            if (!this.selectedRoomId || this.sending) {
+            if (!this.selectedRoomId || !this.selectedRoomApiSegment || this.sending) {
                 return;
             }
             if (editPostId == null && !text && !imageId) {
@@ -2280,7 +2408,7 @@ export default {
                         underline: false,
                     };
                     const { data, status } = await window.axios.patch(
-                        `/api/v1/rooms/${this.selectedRoomId}/messages/${editPostId}`,
+                        `/api/v1/rooms/${this.selectedRoomApiSegment}/messages/${editPostId}`,
                         patchBody,
                     );
                     if (data.data) {
@@ -2303,7 +2431,7 @@ export default {
                         body.style = stylePayload;
                     }
                     const { data, status } = await window.axios.post(
-                        `/api/v1/rooms/${this.selectedRoomId}/messages`,
+                        `/api/v1/rooms/${this.selectedRoomApiSegment}/messages`,
                         body,
                     );
                     if (data.data) {

@@ -27,7 +27,9 @@ info:
 
     **Підказки для списку «Люди» (T49):** `GET /api/v1/rooms/{roomId}/peer-hints?user_ids=…` — стать (`male`/`female`/`other`) для **зареєстрованого** переглядача, якщо у цілі поле не приховане; **персонал модерації** додатково отримує `chat_upload_disabled` по кожній не-гостьовій цілі; **гість** отримує порожній об’єкт `data`. Ролі staff/VIP — з `chat_role` у presence / `auth/user`. Деталі — [T49-QA.md](T49-QA.md).
 
-    **SPA:** маршрут **`/chat`** (Vue) — стрічка кімнати з Echo + poll fallback; **`/archive`** — архів (таблиця, пагінація, пошук, T09); **`/chat/staff-users`** — пошук і керування користувачами для персоналу (T52); **`/chat/staff-flagged`** — черга повідомлень з прапорцем модерації (T60). З головної з `?history=1` після входу — перехід на архів.
+    **SPA:** канонічний чат — **`/chat/{roomSlug}`** (Vue); **`/chat`** без слага перенаправляє клієнтом на дефолтну публічну кімнату (узгоджено з `CHAT_DEFAULT_PUBLIC_ROOM_ID`, типово `room_id=1`). Зворотна сумісність: **`/chat?room=`** приймає `room_id` (число) або **slug** (рядок). Статичні сегменти **`/chat/admin`**, **`/chat/staff-*`** зарезервовані (не перетинаються з slug кімнат). **`/archive`** — архів (T09); **`/chat/staff-users`** (T52); **`/chat/staff-flagged`** (T60). З головної з `?history=1` після входу — перехід на архів.
+
+    **Кімнати: slug (T153):** у БД `rooms.slug` (унікальний, `[a-z0-9-]+`); історія старих слагів у `room_slug_histories` для розв’язання застарілого сегмента в URL/API. У шляхах **`/api/v1/rooms/{roomIdOrSlug}/…`** параметр — або **числовий `room_id`**, або **поточний slug**, або **історичний slug** (останній дає `meta.slug_redirect` + `meta.canonical_slug` у `GET …/messages`). `GET /api/v1/rooms` повертає `slug` (і опційно `slug_redirect` лише коли ресурс зібрано з контексту redirect — зазвичай у списку `false`). Резерв слагів — `config/chat.php` → `reserved_chat_room_slugs`. Деталі — [T153-QA.md](T153-QA.md).
 
     **Архів (T09):** `GET /api/v1/archive/messages` — offset-пагінація (`page`, `per_page` ∈ {10,25,50,100}), пошук `q` (≤200 символів); деталі — [T09-QA.md](T09-QA.md).
 
@@ -49,7 +51,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.18.2"
+  version: "0.19.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -2488,6 +2490,7 @@ paths:
         `meta.next_cursor` — мінімальний `post_id` у сторінці для наступного запиту «старіше».
         `meta.last_read_post_id` — збережений маркер прочитаного для цієї кімнати (`null`, якщо ще не зберігали).
         Якщо `since_read=true`, додатково `meta.first_unread_post_id` — перший `post_id` **у межах повернутої сторінки** з `post_id` > `last_read_post_id` (або `null`).
+        **T153:** завжди `meta.canonical_slug` (рядок) і `meta.canonical_room_id` (int); якщо запит був за **історичним** slug — `meta.slug_redirect: true` (клієнт оновлює URL на `canonical_slug`), інакше `false`.
       operationId: listRoomMessages
       security:
         - sanctumSession: []
@@ -2739,9 +2742,15 @@ components:
       in: path
       required: true
       schema:
-        type: integer
-        minimum: 1
-      description: Первинний ключ `rooms.room_id`
+        oneOf:
+          - type: integer
+            minimum: 1
+          - type: string
+            pattern: '^[a-zA-Z0-9-]+$'
+            minLength: 1
+      description: |
+        **T153:** первинний ключ `rooms.room_id` (ціле) **або** поточний/історичний **slug** кімнати (рядок `a-z`, `0-9`, `-`).
+        Розв’язання: спочатку slug у `rooms`, потім у `room_slug_histories`, далі числовий `room_id`.
 
   schemas:
     RegisterRequest:
@@ -3192,6 +3201,12 @@ components:
           type: integer
         room_name:
           type: string
+        slug:
+          type: string
+          description: Канонічний сегмент URL/API (**T153**); `[a-z0-9-]+`
+        slug_redirect:
+          type: boolean
+          description: Якщо `true` — запит був за історичним slug; клієнт має оновити URL на `canonical_slug` з `GET …/messages` (**T153**)
         topic:
           type: string
           nullable: true
@@ -3683,6 +3698,11 @@ components:
         room_name:
           type: string
           maxLength: 191
+        slug:
+          type: string
+          maxLength: 191
+          pattern: '^[a-zA-Z0-9-]+$'
+          description: Опційно; інакше генерується з `room_name` (**T153**). 422 якщо зарезервовано або зайнято.
         topic:
           type: string
           nullable: true
@@ -3697,6 +3717,11 @@ components:
           type: string
           minLength: 1
           maxLength: 191
+        slug:
+          type: string
+          maxLength: 191
+          pattern: '^[a-zA-Z0-9-]+$'
+          description: Ручний slug (**T153**); 422 якщо зарезервовано або зайнято; попередній slug потрапляє в історію.
         topic:
           type: string
           nullable: true
@@ -4425,7 +4450,7 @@ components:
             $ref: "#/components/schemas/ChatMessage"
         meta:
           type: object
-          required: [next_cursor, last_read_post_id]
+          required: [next_cursor, last_read_post_id, slug_redirect, canonical_slug, canonical_room_id]
           properties:
             next_cursor:
               type: integer
@@ -4438,6 +4463,15 @@ components:
               type: integer
               nullable: true
               description: Лише коли `since_read=true` у запиті; перший непрочитаний у межах сторінки
+            slug_redirect:
+              type: boolean
+              description: T153 — true, якщо path був історичним slug
+            canonical_slug:
+              type: string
+              description: T153 — поточний slug кімнати для URL
+            canonical_room_id:
+              type: integer
+              description: T153 — `rooms.room_id` для кімнати відповіді
 
     PostRoomReadRequest:
       type: object

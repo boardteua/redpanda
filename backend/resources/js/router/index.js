@@ -68,11 +68,6 @@ const router = new VueRouter({
             meta: { documentTitle: 'Чат Рудої Панди — вхід' },
         },
         {
-            path: '/chat',
-            name: 'chat',
-            component: ChatRoom,
-        },
-        {
             path: '/chat/admin',
             name: 'admin-hub',
             component: AdminHubView,
@@ -101,6 +96,11 @@ const router = new VueRouter({
             name: 'staff-flagged',
             component: StaffFlaggedMessagesView,
             meta: { documentTitle: 'Чат Рудої Панди — черга модерації' },
+        },
+        {
+            path: '/chat/:roomSlug?',
+            name: 'chat',
+            component: ChatRoom,
         },
     ],
 });
