@@ -71,6 +71,10 @@ class RoomSlugService
             $slug = 'room';
         }
 
+        if (! preg_match('/[a-z]/', $slug)) {
+            $slug = 'room-'.$slug;
+        }
+
         if (strlen($slug) > 180) {
             $slug = substr($slug, 0, 180);
             $slug = rtrim($slug, '-');
@@ -89,6 +93,11 @@ class RoomSlugService
         if (! preg_match('/^[a-z0-9-]+$/', $s)) {
             throw ValidationException::withMessages([
                 'slug' => ['Некоректний формат slug (лише a-z, 0-9, дефіс).'],
+            ]);
+        }
+        if (! preg_match('/[a-z]/', $s)) {
+            throw ValidationException::withMessages([
+                'slug' => ['Slug повинен містити хоча б одну латинську літеру.'],
             ]);
         }
         if (strlen($s) > 191) {

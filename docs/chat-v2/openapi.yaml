@@ -3701,8 +3701,8 @@ components:
         slug:
           type: string
           maxLength: 191
-          pattern: '^[a-zA-Z0-9-]+$'
-          description: Опційно; інакше генерується з `room_name` (**T153**). 422 якщо зарезервовано або зайнято.
+          pattern: '^(?=.*[a-zA-Z])[a-zA-Z0-9-]+$'
+          description: Опційно; інакше генерується з `room_name` (**T153**). Має містити хоча б одну латинську літеру; 422 якщо зарезервовано або зайнято.
         topic:
           type: string
           nullable: true
@@ -3720,8 +3720,8 @@ components:
         slug:
           type: string
           maxLength: 191
-          pattern: '^[a-zA-Z0-9-]+$'
-          description: Ручний slug (**T153**); 422 якщо зарезервовано або зайнято; попередній slug потрапляє в історію.
+          pattern: '^(?=.*[a-zA-Z])[a-zA-Z0-9-]+$'
+          description: Ручний slug (**T153**); має містити хоча б одну латинську літеру; 422 якщо зарезервовано або зайнято; попередній slug потрапляє в історію.
         topic:
           type: string
           nullable: true

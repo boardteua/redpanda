@@ -10,7 +10,7 @@
             <template v-for="item in feedItems">
                 <li
                     v-if="item.kind === 'divider'"
-                    :key="item.key"
+                    :key="`${item.key}-divider`"
                     class="mx-2 my-2 flex list-none items-center gap-2 py-0.5"
                     role="separator"
                     aria-orientation="horizontal"
@@ -25,13 +25,14 @@
                 </li>
                 <ChatFeedMessageRow
                     v-else
-                    :key="item.key"
+                    :key="`${item.key}-row`"
                     :message="item.message"
                     :index="item.msgIndex"
                     :viewer-name="viewerName"
                     :current-room-id="currentRoomId"
                     @inline-private="$emit('inline-private', $event)"
                     @mention="$emit('mention', $event)"
+                    @go-to-room="$emit('go-to-room', $event)"
                     @edit="$emit('edit', $event)"
                     @delete="$emit('delete', $event)"
                 />

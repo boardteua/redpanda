@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class RoomController extends Controller
@@ -53,17 +54,22 @@ class RoomController extends Controller
         }
 
         $validated = $request->validated();
-        $room = Room::query()->create([
+        $payload = [
             'room_name' => $validated['room_name'],
             'topic' => $validated['topic'] ?? null,
             'access' => Room::ACCESS_PUBLIC,
             'created_by_user_id' => $user->id,
-        ]);
+        ];
 
         if (array_key_exists('slug', $validated)) {
-            $this->roomSlugService->assignManualSlug($room, $validated['slug']);
-            $room->save();
+            $manualSlug = strtolower((string) $validated['slug']);
+            $this->roomSlugService->assertAssignableSlug($manualSlug, null);
+            $payload['slug'] = $manualSlug;
         }
+
+        $room = DB::transaction(
+            fn (): Room => Room::query()->create($payload),
+        );
 
         $room->loadCount('messages');
 

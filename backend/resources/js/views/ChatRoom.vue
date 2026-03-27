@@ -37,6 +37,7 @@
                     :sync-key="feedSyncKey"
                     @inline-private="insertFeedInlinePrivatePrefix"
                     @mention="insertFeedReplyPrefix"
+                    @go-to-room="selectRoom"
                     @edit="startEditMessageFromFeed"
                     @delete="openDeleteMessageConfirm"
                     @feed-bottom-visible="onFeedBottomVisible"

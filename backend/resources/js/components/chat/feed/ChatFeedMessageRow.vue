@@ -255,10 +255,10 @@ export default {
     methods: {
         goToTargetRoom() {
             const id = this.targetRoomIdNum;
-            if (id == null || !this.$router) {
+            if (id == null) {
                 return;
             }
-            this.$router.replace({ path: '/chat', query: { room: String(id) } }).catch(() => {});
+            this.$emit('go-to-room', id);
         },
         onAttachmentLightbox(event) {
             const url = this.message && this.message.image && this.message.image.url;

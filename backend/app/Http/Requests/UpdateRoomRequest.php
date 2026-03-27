@@ -29,7 +29,7 @@ class UpdateRoomRequest extends FormRequest
     {
         return [
             'room_name' => ['sometimes', 'string', 'min:1', 'max:191'],
-            'slug' => ['sometimes', 'string', 'max:191', 'regex:/^[a-zA-Z0-9-]+$/'],
+            'slug' => ['sometimes', 'string', 'max:191', 'regex:/^(?=.*[a-zA-Z])[a-zA-Z0-9-]+$/'],
             'topic' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'access' => ['sometimes', 'integer', Rule::in([Room::ACCESS_PUBLIC, Room::ACCESS_REGISTERED, Room::ACCESS_VIP])],
         ];
