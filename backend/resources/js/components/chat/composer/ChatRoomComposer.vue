@@ -399,14 +399,16 @@ export default {
             }
         },
         /**
-         * T152: після успішного вкладення зображення (paste / file picker) — фокус у textarea, щоб Enter надсилав (T28).
-         * Не забираємо фокус з відкритих модалей композера (T81).
+         * T152: після успішного вкладення (paste / file picker / бібліотека «Мої зображення») — фокус у textarea (T28).
+         * Перевірка модалей у nextTick: при виборі з бібліотеки `select` йде перед `close()`, інакше `myImagesModalOpen` ще true (T81).
          */
         focusComposerAfterPendingImageAttached() {
-            if (this.emojiModalOpen || this.myImagesModalOpen) {
-                return;
-            }
-            this.$nextTick(() => this.focusComposerEnd());
+            this.$nextTick(() => {
+                if (this.emojiModalOpen || this.myImagesModalOpen) {
+                    return;
+                }
+                this.focusComposerEnd();
+            });
         },
         emitSubmit() {
             this.$emit('submit-message');
@@ -594,6 +596,7 @@ export default {
             }
             this.pendingImageId = id;
             this.pendingPreviewUrl = url;
+            this.focusComposerAfterPendingImageAttached();
         },
         async onChatImageSelected(e) {
             const input = e.target;
