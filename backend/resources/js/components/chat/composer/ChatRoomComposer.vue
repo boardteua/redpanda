@@ -398,6 +398,16 @@ export default {
                 /* */
             }
         },
+        /**
+         * T152: після успішного вкладення зображення (paste / file picker) — фокус у textarea, щоб Enter надсилав (T28).
+         * Не забираємо фокус з відкритих модалей композера (T81).
+         */
+        focusComposerAfterPendingImageAttached() {
+            if (this.emojiModalOpen || this.myImagesModalOpen) {
+                return;
+            }
+            this.$nextTick(() => this.focusComposerEnd());
+        },
         emitSubmit() {
             this.$emit('submit-message');
         },
@@ -636,6 +646,7 @@ export default {
                 }
                 this.pendingImageId = row.id;
                 this.pendingPreviewUrl = row.url;
+                this.focusComposerAfterPendingImageAttached();
             } catch (err) {
                 progress.done();
                 showError(this.formatChatImageUploadError(err));
