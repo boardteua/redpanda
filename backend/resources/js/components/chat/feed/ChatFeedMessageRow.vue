@@ -1,6 +1,6 @@
 <template>
     <li
-        class="flex gap-2 px-2 py-1.5 text-[0.9375rem] leading-snug sm:px-3 sm:py-2"
+        class="flex gap-1.5 px-2 py-1 text-[0.9375rem] leading-snug sm:gap-2 sm:px-3 sm:py-2"
         :class="rowClassList"
         :data-rp-post-id="message.post_id"
     >
@@ -26,8 +26,10 @@
             decorative
         />
         <div class="min-w-0 flex-1 flex flex-col gap-0.5">
-            <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
-                <div class="min-w-0 flex-1 leading-snug text-[var(--rp-text)]">
+            <div class="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5 sm:gap-x-3">
+                <div
+                    class="min-w-0 flex-1 leading-snug text-[var(--rp-text)] flex flex-row flex-wrap items-start justify-start gap-x-1.5 gap-y-0.5"
+                >
                     <button
                         v-if="viewerName && !isDeleted && !isSystem"
                         type="button"
@@ -78,7 +80,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="flex shrink-0 items-center gap-1.5">
+                <div class="flex shrink-0 items-center gap-1 sm:gap-1.5">
                     <button
                         v-if="message.can_edit"
                         type="button"
