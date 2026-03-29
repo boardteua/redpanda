@@ -156,7 +156,18 @@ export const chatRoomPrivateMethods = {
             this.privateMessages.sort((a, b) => a.id - b.id);
             await this.loadConversations();
         } catch (e) {
-            this.privateLoadError = e.response?.data?.message || 'Не вдалося завантажити приват.';
+            const st = e.response && e.response.status;
+            if (st === 404) {
+                this.closePrivatePanel();
+                showError(
+                    e.response?.data?.message ||
+                        'Користувача не знайдено — можливо, акаунт видалено.',
+                );
+                void this.loadConversations();
+            } else {
+                this.privateLoadError =
+                    e.response?.data?.message || 'Не вдалося завантажити приват.';
+            }
         } finally {
             this.loadingPrivateMessages = false;
         }

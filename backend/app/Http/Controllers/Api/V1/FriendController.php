@@ -25,12 +25,15 @@ class FriendController extends Controller
 
         $data = $rows->map(function (Friendship $f) use ($uid) {
             $peer = (int) $f->requester_id === (int) $uid ? $f->addressee : $f->requester;
+            if ($peer === null) {
+                return null;
+            }
 
             return [
                 'user' => ['id' => $peer->id, 'user_name' => $peer->user_name],
                 'since' => $f->updated_at?->toIso8601String(),
             ];
-        })->all();
+        })->filter()->values()->all();
 
         return response()->json(['data' => $data]);
     }
@@ -46,10 +49,16 @@ class FriendController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        $data = $rows->map(fn (Friendship $f) => [
-            'user' => ['id' => $f->requester->id, 'user_name' => $f->requester->user_name],
-            'created_at' => $f->created_at?->toIso8601String(),
-        ])->all();
+        $data = $rows->map(function (Friendship $f) {
+            if ($f->requester === null) {
+                return null;
+            }
+
+            return [
+                'user' => ['id' => $f->requester->id, 'user_name' => $f->requester->user_name],
+                'created_at' => $f->created_at?->toIso8601String(),
+            ];
+        })->filter()->values()->all();
 
         return response()->json(['data' => $data]);
     }
@@ -65,10 +74,16 @@ class FriendController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        $data = $rows->map(fn (Friendship $f) => [
-            'user' => ['id' => $f->addressee->id, 'user_name' => $f->addressee->user_name],
-            'created_at' => $f->created_at?->toIso8601String(),
-        ])->all();
+        $data = $rows->map(function (Friendship $f) {
+            if ($f->addressee === null) {
+                return null;
+            }
+
+            return [
+                'user' => ['id' => $f->addressee->id, 'user_name' => $f->addressee->user_name],
+                'created_at' => $f->created_at?->toIso8601String(),
+            ];
+        })->filter()->values()->all();
 
         return response()->json(['data' => $data]);
     }
