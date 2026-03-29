@@ -1,5 +1,6 @@
 /**
- * T164: генерує PWA / Apple Touch / favicon PNG з бренд-асету.
+ * T164: генерує PWA / Apple Touch / favicon PNG з джерельного значка.
+ * Джерело: `public/brand/pwa-icon-source.png` (основний бренд-арт для PWA).
  * Запуск: `npm run pwa:icons` (потрібен devDependency `sharp`).
  */
 import fs from 'node:fs/promises';
@@ -9,15 +10,16 @@ import sharp from 'sharp';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(__dirname, '..');
-const srcPath = path.join(backendRoot, 'public/brand/board-te-ua-orange.png');
+const srcPath = path.join(backendRoot, 'public/brand/pwa-icon-source.png');
 const outDir = path.join(backendRoot, 'public/pwa');
-const BG = '#f1f5f9';
+/** Полотно maskable (зона безпеки): темний фон, щоб збігався з краями 3D-значка. */
+const MASKABLE_CANVAS_BG = '#2a1814';
 
 async function rasterForSize(innerPx) {
     return sharp(srcPath)
         .resize(innerPx, innerPx, {
-            fit: 'contain',
-            background: BG,
+            fit: 'cover',
+            position: 'center',
         })
         .png()
         .toBuffer();
@@ -32,7 +34,7 @@ async function writeMaskable(size, filename) {
             width: size,
             height: size,
             channels: 4,
-            background: BG,
+            background: MASKABLE_CANVAS_BG,
         },
     })
         .composite([{ input: fg, gravity: 'center' }])
