@@ -24,6 +24,12 @@
 </template>
 
 <script>
+import {
+    RP_PUSH_SW_PATH,
+    SW_SCOPE_COVERAGE_USER_ERROR,
+    workerScriptIsOurPushSw,
+} from '../utils/rpWebPushSw.js';
+
 const STORAGE_KEY = 'rp_web_push_prompt_dismissed_session';
 
 /** Обриває завислі Promise (subscribe / мережа без timeout). */
@@ -37,6 +43,87 @@ function withTimeout(promise, ms) {
             window.clearTimeout(timeoutId);
         }
     });
+}
+
+/** Scope має бути `/`, інакше /chat/* поза registration.scope (див. vite-plugin-pwa scope та nginx Service-Worker-Allowed). */
+function registrationScopeIsSiteRoot(registration) {
+    if (!registration || typeof registration.scope !== 'string' || registration.scope === '') {
+        return false;
+    }
+    const pathname = new URL(registration.scope, window.location.origin).pathname;
+
+    return pathname === '/' || pathname === '';
+}
+
+/**
+ * Не покладатися лише на navigator.serviceWorker.ready: при першому встановленні
+ * Workbox precache install може тривати >45s, а без активного SW ready не виконується вчасно.
+ */
+async function obtainRegistrationForPush(maxMs) {
+    let reg = await navigator.serviceWorker.getRegistration();
+    const matchesOurSw = (r) =>
+        workerScriptIsOurPushSw(r.active && r.active.scriptURL)
+        || workerScriptIsOurPushSw(r.waiting && r.waiting.scriptURL)
+        || workerScriptIsOurPushSw(r.installing && r.installing.scriptURL);
+    if (!reg || !matchesOurSw(reg)) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        const ours = regs.find((r) => matchesOurSw(r));
+        if (ours) {
+            reg = ours;
+        }
+    }
+    if (reg && !registrationScopeIsSiteRoot(reg)) {
+        try {
+            await reg.unregister();
+        } catch {
+            /* ignore */
+        }
+        reg = null;
+    }
+    if (!reg) {
+        reg = await navigator.serviceWorker.register(RP_PUSH_SW_PATH, {
+            scope: '/',
+            updateViaCache: 'none',
+        });
+    }
+    await waitForRegistrationActivated(reg, maxMs);
+
+    return reg;
+}
+
+function waitForRegistrationActivated(registration, maxMs) {
+    if (registration.active) {
+        return Promise.resolve();
+    }
+    const worker = registration.installing || registration.waiting;
+    if (worker) {
+        return new Promise((resolve, reject) => {
+            const t = window.setTimeout(() => reject(new Error('rp_timeout')), maxMs);
+            const done = () => {
+                window.clearTimeout(t);
+                resolve();
+            };
+            const onState = () => {
+                if (worker.state === 'redundant') {
+                    worker.removeEventListener('statechange', onState);
+                    window.clearTimeout(t);
+                    reject(new Error('sw_redundant'));
+                    return;
+                }
+                if (registration.active || worker.state === 'activated') {
+                    worker.removeEventListener('statechange', onState);
+                    done();
+                }
+            };
+            worker.addEventListener('statechange', onState);
+            if (registration.active || worker.state === 'activated') {
+                worker.removeEventListener('statechange', onState);
+                done();
+            }
+        });
+    }
+
+    return withTimeout(navigator.serviceWorker.ready, maxMs).then(() => {});
 }
 
 function base64UrlToUint8Array(value) {
@@ -174,14 +261,18 @@ export default {
             this.permission = this.supported ? Notification.permission : 'unsupported';
 
             if (!this.canShow) {
-                this.subscribed = false;
+                if (this.user) {
+                    this.subscribed = false;
+                }
                 return;
             }
 
             try {
-                const registration = await withTimeout(navigator.serviceWorker.ready, 45000);
-                if (!serviceWorkerScopeCoversCurrentPage(registration)) {
+                const registration = await obtainRegistrationForPush(120000);
+                const covers = serviceWorkerScopeCoversCurrentPage(registration);
+                if (!covers) {
                     this.subscribed = false;
+                    this.error = SW_SCOPE_COVERAGE_USER_ERROR;
                     return;
                 }
                 const existing = await registration.pushManager.getSubscription();
@@ -219,16 +310,16 @@ export default {
                 }
 
                 const vapidKey = window.__RP_WEB_PUSH__ && window.__RP_WEB_PUSH__.vapidPublicKey;
-                if (!vapidPublicKeyLooksValid(vapidKey)) {
+                const vapidOk = vapidPublicKeyLooksValid(vapidKey);
+                if (!vapidOk) {
                     this.error =
                         'Ключ VAPID на сервері некоректний (очікується публічний ключ 65 байт). Перевірте WEB_PUSH_VAPID_PUBLIC_KEY у .env.';
                     return;
                 }
 
-                const registration = await withTimeout(navigator.serviceWorker.ready, 45000);
+                const registration = await obtainRegistrationForPush(120000);
                 if (!serviceWorkerScopeCoversCurrentPage(registration)) {
-                    this.error =
-                        'Service worker не охоплює цю сторінку (зазвичай бракує заголовка Service-Worker-Allowed для /build/sw.js у nginx). Оновіть конфіг і перезапустіть nginx, потім жорстке оновлення сторінки.';
+                    this.error = SW_SCOPE_COVERAGE_USER_ERROR;
                     return;
                 }
 
@@ -252,7 +343,7 @@ export default {
                     || (e && e.code === 'ECONNABORTED')
                     || (e && /timeout/i.test(String(e.message || '')));
                 try {
-                    const reg = await withTimeout(navigator.serviceWorker.ready, 10000);
+                    const reg = await obtainRegistrationForPush(30000);
                     const sub = await reg.pushManager.getSubscription();
                     if (sub && Notification.permission === 'granted') {
                         this.subscribed = true;

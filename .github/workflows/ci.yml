@@ -60,6 +60,7 @@ jobs:
         run: |
           npm run test:msg-parse
           npm run test:country-filter
+          npm run test:web-push-sw
 
   # T107: паралельно з test; deploy лишається needs: test — аудит не гейтить реліз.
   dependency-audit:

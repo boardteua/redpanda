@@ -147,6 +147,8 @@ export default defineConfig(({ mode }) => {
                 srcDir: 'resources/js',
                 filename: 'sw.js',
                 buildBase: '/build/',
+                /** Інакше Workbox реєструє SW з scope /build/ і push на /chat/* не працює (потрібен nginx Service-Worker-Allowed). */
+                scope: '/',
                 includeAssets: [
                     'pwa/apple-touch-icon-180.png',
                     'pwa/favicon-32.png',

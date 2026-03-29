@@ -9,6 +9,7 @@
         "test:country-filter": "node --test resources/js/utils/rpCountryComboboxFilter.test.mjs",
         "test:format-chat-time": "node --test resources/js/utils/formatChatMessageTime.test.mjs",
         "test:chat-sidebar-presence": "node --test resources/js/components/chat/sidebar/chatSidebarPresence.test.mjs",
+        "test:web-push-sw": "node --test resources/js/utils/rpWebPushSw.test.mjs",
         "pwa:icons": "node scripts/generate-pwa-icons.mjs"
     },
     "dependencies": {

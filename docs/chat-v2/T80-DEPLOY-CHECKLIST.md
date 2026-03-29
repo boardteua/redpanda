@@ -43,6 +43,12 @@
 
 **Діагностика, коли в браузері `ERR_CONNECTION_RESET`, а `error.log` порожній:** nginx може **закрити з’єднання без рядка в error.log** (наприклад, **Request URI Too Large** / ліміт заголовків). WebSocket-рукостискання несе **Cookie** — при великій сесії додайте в `server` **`large_client_header_buffers 4 32k;`**. Увімкніть **access_log** для vhost і перевірте наявність **`GET /app/`** під час відкриття чату. Порівняйте: **curl Upgrade з іншої машини** vs **браузер**; на сервері **`tcpdump -i lo port 6001`** — чи є пакети до Reverb, коли рветься клієнт.
 
+### Зовнішній nginx і Web Push (service worker)
+
+- У проді часто **два рівні nginx**: зовнішній (TLS, домен) і контейнерний (`docker/nginx/default.conf`). Для **`GET /build/sw.js`** у відповіді має бути **`Service-Worker-Allowed: /`**, інакше SW залишиться з вузьким scope `/build/` і клієнт покаже помилку про охоплення сторінки / push на `/chat/*` не спрацює.
+- Якщо зовнішній vhost **проксує все** на контейнер (як `location /` → `:8080`), заголовок зазвичай уже з внутрішнього конфігу — достатньо **перевірити** після деплою: `curl -sI https://ВАШ_ДОМЕН/build/sw.js` (очікується рядок `Service-Worker-Allowed: /`).
+- Якщо зовнішній nginx **віддає `/build/` статикою з диска** (`root`/`alias`), додайте **`location = /build/sw.js`** з **`add_header Service-Worker-Allowed "/"`** (приклад у коментарях до [host-nginx-reverb-proxy.example.conf](../../docker/nginx/host-nginx-reverb-proxy.example.conf)).
+
 ## Масштабування Reverb
 
 - Кілька інстансів Reverb за балансувальником: `REVERB_SCALING_ENABLED=true` і доступний Redis (див. [Reverb scaling](https://laravel.com/docs/13.x/reverb)).
@@ -72,6 +78,7 @@
 | 503, `checks.redis: fail` | Redis потрібен (кеш/черга або `HEALTH_CHECK_REDIS=true`), але недоступний |
 | Чат без live, polling / помилки Echo | Reverb не запущений або розсинхрон `REVERB_*` / `VITE_REVERB_*` |
 | Повідомлення не розходяться між клієнтами | Не запущений queue worker |
+| Web Push: «SW не охоплює сторінку» / не підписується на `/chat/*` | Для **`/build/sw.js`** немає **`Service-Worker-Allowed: /`** на тому рівні nginx, що формує відповідь клієнту (зовнішній проксі або контейнер); див. підрозділ **«Зовнішній nginx і Web Push»** вище |
 | **503** на `POST /api/v1/images` (multipart) з повідомленням про storage | Каталог **`storage/app/chat-images`** відсутній або **не записуваний** процесом PHP (`chown`/`chmod` на хості або в томі Docker); перевірте також **`client_max_body_size`** (nginx) і **`upload_max_filesize`** / **`post_max_size`** (PHP) — інакше тіло не доходить до Laravel (**T98**). Детальний RCA і команди: **[T137-STORAGE-PERMISSIONS.md](T137-STORAGE-PERMISSIONS.md)** |
 
 ## Регресія real-time після деплою
@@ -126,6 +133,7 @@
 Чекліст після змін nginx, Compose або змінних Reverb/Vite (узгоджено з `docker/README.md` і `docker/deploy.sh`).
 
 - [ ] З хоста: **`127.0.0.1:8080`** відповідає контейнерному nginx (`8080:80` у `docker/compose.yaml`). Напр.: `curl -sI http://127.0.0.1:8080 | head -n1`.
+- [ ] **Web Push:** з публічного URL **`curl -sI https://…/build/sw.js`** містить **`Service-Worker-Allowed: /`** (якщо проксі лише на Docker — зазвичай уже з `docker/nginx/default.conf`; якщо зовнішній nginx віддає `/build/` сам — додати заголовок у vhost, див. T80 → «Зовнішній nginx і Web Push»).
 - [ ] З хоста: **`127.0.0.1:6001`** слухає Reverb (`6001:6001`). Напр.: `ss -lntp | grep 6001` або перевірка після `docker compose ... ps`.
 - [ ] У системному nginx для публічного домену: **`location /app/`** (або ваш шлях WS) узгоджений із **`VITE_REVERB_*`** / **`REVERB_*`** (схема `wss`, хост, шлях); після змін env — повна перезбірка фронту в деплої.
 - [ ] **Vite на проді:** скрипт **`docker/deploy.sh`** перед **`npm run build`** копіює **`docker/production.env`** (або **`compose.deploy.env`**) у **`backend/.env.production`** і після збірки видаляє файл — щоб **`REVERB_APP_KEY`** потрапляв у бандл навіть без робочого symlink **`backend/.env`**. Якщо після деплою знову з’являється банер poll — перевірте, що на сервері актуальний **`deploy.sh`** (`git pull`) і що крок збірки не обходиться вручну без цього env.
