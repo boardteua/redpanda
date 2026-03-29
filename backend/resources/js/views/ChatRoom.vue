@@ -323,6 +323,8 @@ export default {
             optimisticPostSeq: 0,
             /** T162: тимчасові негативні id для optimistic у приватній панелі. */
             privateOptimisticSeq: 0,
+            /** Лічильник для ігнорування застарілих async-відповідей loadPrivateMessages. */
+            privateMessagesLoadEpoch: 0,
         };
     },
     computed: {

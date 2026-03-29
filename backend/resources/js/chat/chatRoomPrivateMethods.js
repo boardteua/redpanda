@@ -111,6 +111,7 @@ export const chatRoomPrivateMethods = {
         this.loadPrivateMessages();
     },
     closePrivatePanel() {
+        this.privateMessagesLoadEpoch += 1;
         this.privatePeer = null;
         this.privateMessages = [];
         this.privateMessageIds = new Set();
@@ -143,6 +144,9 @@ export const chatRoomPrivateMethods = {
         if (!this.privatePeer) {
             return;
         }
+        const targetPeerId = Number(this.privatePeer.id);
+        this.privateMessagesLoadEpoch += 1;
+        const loadEpoch = this.privateMessagesLoadEpoch;
         this.loadingPrivateMessages = true;
         this.privateLoadError = '';
         try {
@@ -150,12 +154,26 @@ export const chatRoomPrivateMethods = {
                 `/api/v1/private/peers/${this.privatePeer.id}/messages`,
                 { params: { limit: 80 } },
             );
+            if (
+                loadEpoch !== this.privateMessagesLoadEpoch
+                || !this.privatePeer
+                || Number(this.privatePeer.id) !== targetPeerId
+            ) {
+                return;
+            }
             this.privateMessageIds = new Set();
             this.privateMessages = [];
             (data.data || []).forEach((row) => this.mergePrivateMessage(row));
             this.privateMessages.sort((a, b) => a.id - b.id);
             await this.loadConversations();
         } catch (e) {
+            if (
+                loadEpoch !== this.privateMessagesLoadEpoch
+                || !this.privatePeer
+                || Number(this.privatePeer.id) !== targetPeerId
+            ) {
+                return;
+            }
             const st = e.response && e.response.status;
             if (st === 404) {
                 this.closePrivatePanel();
@@ -169,7 +187,9 @@ export const chatRoomPrivateMethods = {
                     e.response?.data?.message || 'Не вдалося завантажити приват.';
             }
         } finally {
-            this.loadingPrivateMessages = false;
+            if (loadEpoch === this.privateMessagesLoadEpoch) {
+                this.loadingPrivateMessages = false;
+            }
         }
     },
     mergePrivateMessage(raw) {
