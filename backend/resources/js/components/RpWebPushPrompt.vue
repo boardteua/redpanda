@@ -190,6 +190,8 @@ export default {
             error: '',
             permission: 'default',
             subscribed: false,
+            /** T169: для permission === granted не показувати плашку, доки не завершена перевірка pushManager (уникнути миготіння після F5). */
+            subscriptionSyncDone: false,
         };
     },
     computed: {
@@ -212,7 +214,15 @@ export default {
             return this.supported && this.configured && this.user && !this.user.guest;
         },
         showBar() {
-            return this.canShow && !this.dismissed && this.permission !== 'denied' && (!this.subscribed || this.error !== '');
+            if (!this.canShow || this.dismissed || this.permission === 'denied') {
+                return false;
+            }
+            const needSubscriptionCheck = this.permission === 'granted';
+            if (needSubscriptionCheck && !this.subscriptionSyncDone) {
+                return false;
+            }
+
+            return !this.subscribed || this.error !== '';
         },
         primaryLabel() {
             if (this.busy) {
@@ -240,6 +250,17 @@ export default {
             },
         },
     },
+    created() {
+        if (
+            import.meta.env.PROD
+            && typeof window !== 'undefined'
+            && 'Notification' in window
+            && 'serviceWorker' in navigator
+            && 'PushManager' in window
+        ) {
+            this.permission = Notification.permission;
+        }
+    },
     mounted() {
         try {
             this.dismissed = sessionStorage.getItem(STORAGE_KEY) === '1';
@@ -264,8 +285,11 @@ export default {
                 if (this.user) {
                     this.subscribed = false;
                 }
+                this.subscriptionSyncDone = true;
                 return;
             }
+
+            this.subscriptionSyncDone = this.permission !== 'granted';
 
             try {
                 const registration = await obtainRegistrationForPush(120000);
@@ -294,6 +318,8 @@ export default {
                 this.subscribed = true;
             } catch {
                 this.subscribed = false;
+            } finally {
+                this.subscriptionSyncDone = true;
             }
         },
         async onPrimaryAction() {
