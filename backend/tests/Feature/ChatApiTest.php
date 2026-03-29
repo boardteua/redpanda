@@ -8,6 +8,7 @@ use App\Events\MessageUpdated;
 use App\Events\PresenceStatusUpdated;
 use App\Events\PrivateMessageCreated;
 use App\Events\RoomInlinePrivatePosted;
+use App\Jobs\SendWebPushForRoomMessage;
 use App\Models\ChatMessage;
 use App\Models\ChatSetting;
 use App\Models\Friendship;
@@ -22,6 +23,7 @@ use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -190,6 +192,39 @@ class ChatApiTest extends TestCase
             ->assertOk();
 
         Bus::assertDispatchedTimes(BroadcastEvent::class, 1);
+    }
+
+    public function test_post_public_message_queues_web_push_only_for_new_message(): void
+    {
+        Queue::fake([SendWebPushForRoomMessage::class]);
+
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $clientId = 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a34';
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => 'push me once',
+                'client_message_id' => $clientId,
+            ])
+            ->assertCreated();
+
+        Queue::assertPushed(SendWebPushForRoomMessage::class, function (SendWebPushForRoomMessage $job) {
+            return $job->messageId > 0;
+        });
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => 'duplicate',
+                'client_message_id' => $clientId,
+            ])
+            ->assertOk();
+
+        Queue::assertPushedTimes(SendWebPushForRoomMessage::class, 1);
     }
 
     public function test_post_message_slash_me_and_idempotent_duplicate(): void

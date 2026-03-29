@@ -7,6 +7,8 @@
             :chat-title="chatTitle"
             :chat-topic-line="chatTopicLine"
             :panel-open="panelOpen"
+            :is-narrow-viewport="isNarrowViewport"
+            :private-unread-total="privateUnreadTotal"
             :ws-degraded="wsDegraded"
             @toggle-panel="$emit('toggle-panel')"
         />
@@ -55,6 +57,9 @@ export default {
     props: {
         /** Панель сайдбару відкрита — для кнопки «бургер» у шапці. */
         panelOpen: { type: Boolean, default: false },
+        /** T168: бейдж непрочитаних приватів на мобільній кнопці меню (max-md). */
+        isNarrowViewport: { type: Boolean, default: false },
+        privateUnreadTotal: { type: Number, default: 0 },
         chatTitle: { type: String, default: '' },
         chatTopicLine: { type: String, default: '' },
         wsDegraded: { type: Boolean, default: false },

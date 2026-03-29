@@ -7,6 +7,7 @@ use App\Events\PrivateThreadCleared;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StorePrivateMessageRequest;
 use App\Http\Resources\PrivateMessageResource;
+use App\Jobs\SendWebPushForPrivateMessage;
 use App\Models\PrivateMessage;
 use App\Models\PrivateMessageReadState;
 use App\Models\User;
@@ -56,6 +57,11 @@ class PrivateMessageController extends Controller
             ])
             ->whereIn('id', $sortedIds)
             ->get()
+            ->filter(function (PrivateMessage $m) use ($uid) {
+                $peer = (int) $m->sender_id === $uid ? $m->recipient : $m->sender;
+
+                return $peer !== null;
+            })
             ->sortByDesc('id')
             ->values();
 
@@ -227,6 +233,7 @@ class PrivateMessageController extends Controller
         }
 
         broadcast(new PrivateMessageCreated($message));
+        SendWebPushForPrivateMessage::dispatch((int) $message->id)->afterCommit();
 
         return PrivateMessageResource::make($message)
             ->additional(['meta' => ['duplicate' => false]])

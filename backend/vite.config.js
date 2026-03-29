@@ -141,8 +141,11 @@ export default defineConfig(({ mode }) => {
             tailwindcss(),
             /** T163: PWA — Workbox лише прекешує хешовані JS/CSS/woff2 з `public/build`; HTML лишається з Laravel (свіжий CSRF). */
             VitePWA({
+                strategies: 'injectManifest',
                 registerType: 'autoUpdate',
                 injectRegister: false,
+                srcDir: 'resources/js',
+                filename: 'sw.js',
                 buildBase: '/build/',
                 includeAssets: [
                     'pwa/apple-touch-icon-180.png',
@@ -203,10 +206,8 @@ export default defineConfig(({ mode }) => {
                         },
                     ],
                 },
-                workbox: {
+                injectManifest: {
                     globPatterns: ['**/*.{js,css,woff2}'],
-                    /** Без offline HTML: навігації не перехоплюються; Blade залишається завжди з мережі. */
-                    navigateFallback: null,
                 },
                 devOptions: {
                     enabled: false,

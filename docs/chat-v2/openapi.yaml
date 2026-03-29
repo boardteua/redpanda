@@ -46,6 +46,7 @@ info:
     **Приват і соціальне (T08, T56, T68):** `GET /api/v1/private/conversations` — у кожному елементі `unread_count` (вхідні від peer, ще не «прочитані»), у корені `meta.total_private_unread` (сума).
     `GET|POST /api/v1/private/peers/{userId}/messages`; `POST /api/v1/private/peers/{userId}/read` — позначити вхідні від peer прочитаними (throttle `private-read`, ідемпотентно).
     `DELETE /api/v1/private/peers/{userId}/thread` — видалити всю історію привату між поточним користувачем і peer (throttle `private-post`); **403** при взаємному ігнорі; подія **`.PrivateThreadCleared`** на **`private-user.{userId}`** для **обох** учасників (`peer_one_id`, `peer_two_id`, `cleared_by_user_id`).
+    **Web Push (T165):** `POST|DELETE /api/v1/push/subscriptions` — зберегти / відкликати browser `PushSubscription` для **зареєстрованого** користувача; гість — **403**. Після нових повідомлень створюються чергові job для push-доставки (room / private), VAPID-ключі — лише через `.env`.
     `GET /api/v1/users/lookup` (точний нік), **`GET /api/v1/users/autocomplete?q=`** — префіксний пошук зареєстрованих для привату (T85, throttle `user-autocomplete`); ендпоінти `friends*` та `ignores*` (деталі — [T08-QA.md](T08-QA.md)); непрочитані приватні — [T56-QA.md](T56-QA.md).
     **Друзі (T50):** `GET /api/v1/friends` — усі прийняті друзі (без фільтра онлайн); `DELETE /api/v1/friends/{userId}` — прибрати з друзів або скасувати вихідний запит (throttle `private-post`).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
@@ -1265,6 +1266,92 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/push/subscriptions:
+    post:
+      tags: [Push]
+      summary: Зберегти або оновити browser push subscription
+      description: |
+        Приймає `PushSubscription.toJSON()` з браузера плюс `contentEncoding` (за наявності).
+        Лише **зареєстрований** користувач; гість отримує **403**. Повторна відправка того ж endpoint оновлює ключі/власника.
+        Сервер має бути налаштований через `WEB_PUSH_VAPID_*`; інакше **503**.
+        Throttle: `private-post`.
+      operationId: storePushSubscription
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionStoreRequest"
+      responses:
+        "200":
+          description: Існуючий endpoint оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushSubscriptionResponse"
+        "201":
+          description: Підписку створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushSubscriptionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Гість не може керувати Web Push
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          description: Web Push ще не налаштовано на сервері
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+    delete:
+      tags: [Push]
+      summary: Відкликати browser push subscription
+      description: |
+        Ідемпотентне видалення поточного endpoint для авторизованого користувача.
+        Лише **зареєстрований** користувач; гість отримує **403**. Throttle: `private-post`.
+      operationId: destroyPushSubscription
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionDeleteRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushSubscriptionDeleteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Гість не може керувати Web Push
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -3091,6 +3178,84 @@ components:
         client_message_id:
           type: string
           format: uuid
+
+    PushSubscriptionKeys:
+      type: object
+      required: [p256dh, auth]
+      properties:
+        p256dh:
+          type: string
+          description: Base64URL public key браузерної підписки
+          maxLength: 255
+        auth:
+          type: string
+          description: Base64URL auth secret браузерної підписки
+          maxLength: 255
+
+    PushSubscriptionPayload:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          maxLength: 2000
+        keys:
+          $ref: "#/components/schemas/PushSubscriptionKeys"
+        contentEncoding:
+          type: string
+          nullable: true
+          enum: [aesgcm, aes128gcm]
+          description: |
+            Опційне значення з `PushManager.supportedContentEncodings`; якщо відсутнє, сервер використовує сумісний fallback.
+
+    PushSubscriptionStoreRequest:
+      type: object
+      required: [subscription]
+      properties:
+        subscription:
+          $ref: "#/components/schemas/PushSubscriptionPayload"
+
+    PushSubscriptionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [id, endpoint]
+          properties:
+            id:
+              type: integer
+            endpoint:
+              type: string
+              format: uri
+            content_encoding:
+              type: string
+              nullable: true
+              enum: [aesgcm, aes128gcm]
+
+    PushSubscriptionDeleteRequest:
+      type: object
+      required: [endpoint]
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          maxLength: 2000
+
+    PushSubscriptionDeleteResponse:
+      type: object
+      required: [meta]
+      properties:
+        meta:
+          type: object
+          required: [ok, removed]
+          properties:
+            ok:
+              type: boolean
+            removed:
+              type: integer
+              minimum: 0
 
     PrivateMessageStoredResponse:
       type: object

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\OEmbedController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\PrivateMessageController;
+use App\Http\Controllers\Api\V1\PushSubscriptionController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RoomPeerHintsController;
 use App\Http\Controllers\Api\V1\RoomPresenceStatusController;
@@ -132,6 +133,9 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
 
         Route::middleware('throttle:private-post')->post('private/peers/{peer}/messages', [PrivateMessageController::class, 'store']);
         Route::middleware('throttle:private-post')->delete('private/peers/{peer}/thread', [PrivateMessageController::class, 'destroyThread']);
+
+        Route::middleware('throttle:private-post')->post('push/subscriptions', [PushSubscriptionController::class, 'store']);
+        Route::middleware('throttle:private-post')->delete('push/subscriptions', [PushSubscriptionController::class, 'destroy']);
 
         Route::get('friends', [FriendController::class, 'index']);
         Route::get('friends/requests/incoming', [FriendController::class, 'incoming']);

@@ -12,9 +12,8 @@
             window.__RP_SEO_WELCOME_LEAD__ = @json(__('seo.welcome_lead'));
         </script>
 
-        {{-- Паритет з legacy board.te.ua: .ico + T164 PNG для сучасних табів --}}
+        {{-- Як legacy board.te.ua: лише .ico у вкладці; PWA-іконки лишаються в manifest --}}
         <link rel="icon" href="{{ url('/board-te-ua-favicon.ico') }}" type="image/x-icon">
-        <link rel="icon" href="{{ url('/pwa/favicon-32.png') }}" type="image/png" sizes="32x32">
         <link rel="alternate" type="text/markdown" href="{{ url('/llms.txt') }}" title="LLM context (Тернопільський Анонімний Чат)">
 
         @php
@@ -58,8 +57,14 @@
             <meta name="theme-color" content="#c2410c">
             <link rel="apple-touch-icon" href="{{ url('/pwa/apple-touch-icon-180.png') }}" sizes="180x180">
         @endif
+        @php
+            $rpWebPushPublicKey = trim((string) config('services.web_push.vapid.public_key', ''));
+        @endphp
         <script>
             window.__RP_INITIAL_CSS_ENTRY__ = @json($rpInitialCss);
+            window.__RP_WEB_PUSH__ = {
+                vapidPublicKey: @json($rpWebPushPublicKey !== '' ? $rpWebPushPublicKey : null),
+            };
         </script>
         @vite([
             $useChatCss ? 'resources/css/chat.css' : 'resources/css/welcome.css',

@@ -16,6 +16,8 @@
             <ChatRoomMainColumn
                 ref="chatMainColumn"
                 :panel-open="panelOpen"
+                :is-narrow-viewport="isNarrowViewport"
+                :private-unread-total="totalPrivateUnread"
                 :chat-title="chatTitle"
                 :chat-topic-line="chatTopicLine"
                 :ws-degraded="wsDegraded"
@@ -174,6 +176,7 @@
             @close="closePrivatePanel"
             @send="sendPrivateMessageFromPanel"
         />
+        <RpWebPushPrompt :user="user" :ensure-sanctum="ensureSanctum" />
     </div>
 </template>
 
@@ -184,6 +187,7 @@ import ChatRoomMainColumn from '../components/chat/room/ChatRoomMainColumn.vue';
 import ChatRoomModals from '../components/chat/room/ChatRoomModals.vue';
 import ChatRoomSidebar from '../components/chat/sidebar/ChatRoomSidebar.vue';
 import PrivateChatPanel from '../components/PrivateChatPanel.vue';
+import RpWebPushPrompt from '../components/RpWebPushPrompt.vue';
 import { createEcho } from '../lib/echo';
 import {
     ensureAuth0BootstrapFromLandingApi,
@@ -239,6 +243,7 @@ export default {
         ChatRoomModals,
         ChatRoomSidebar,
         PrivateChatPanel,
+        RpWebPushPrompt,
     },
     data() {
         return {
@@ -528,6 +533,7 @@ export default {
                     return;
                 }
                 this.consumeOpenChatSettingsQuery();
+                this.consumePrivatePeerFromRoute();
                 const slug = this.$route.params.roomSlug;
                 const newQ = this.$route.query || {};
                 let targetId = null;
@@ -978,6 +984,9 @@ export default {
                 await Promise.all([this.loadConversations(), this.loadFriendsAndIgnores()]);
             } finally {
                 this.chatBootstrapDone = true;
+                this.$nextTick(() => {
+                    this.consumePrivatePeerFromRoute();
+                });
                 if (openChatSettingsAfterBootstrap) {
                     this.$nextTick(() => {
                         this.chatSettingsModalOpen = true;
@@ -1009,6 +1018,37 @@ export default {
             delete q.open_chat_settings;
             this.$router.replace(buildChatRoute(this.rooms, this.selectedRoomId, q)).catch(() => {});
             this.chatSettingsModalOpen = true;
+        },
+        /** T166: deep link з Web Push — `?private_peer=&private_peer_name=` (ім’я лише для швидкого UI). */
+        consumePrivatePeerFromRoute() {
+            if (!this.chatBootstrapDone || !this.user || this.user.guest) {
+                return;
+            }
+            const raw = this.$route.query.private_peer;
+            if (raw == null || String(raw).trim() === '') {
+                return;
+            }
+            const id = Number(String(raw).trim());
+            if (!Number.isFinite(id) || id <= 0) {
+                return;
+            }
+            let userName = '';
+            const nameRaw = this.$route.query.private_peer_name;
+            if (nameRaw != null && String(nameRaw).trim() !== '') {
+                try {
+                    userName = decodeURIComponent(String(nameRaw));
+                } catch {
+                    userName = String(nameRaw);
+                }
+            }
+            if (!userName) {
+                userName = 'Користувач';
+            }
+            this.openPrivatePeer({ id, user_name: userName });
+            const q = { ...this.$route.query };
+            delete q.private_peer;
+            delete q.private_peer_name;
+            this.$router.replace(buildChatRoute(this.rooms, this.selectedRoomId, q)).catch(() => {});
         },
         openAddRoomModal() {
             this.addRoomError = '';

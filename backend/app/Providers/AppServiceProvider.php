@@ -46,6 +46,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -132,6 +133,16 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Room::class, RoomPolicy::class);
         Gate::policy(Image::class, ImagePolicy::class);
         Gate::policy(ChatMessage::class, ChatMessagePolicy::class);
+
+        Route::bind('peer', function (string $value): User {
+            $id = filter_var($value, FILTER_VALIDATE_INT);
+            $user = $id !== false ? User::query()->whereKey($id)->first() : null;
+            if ($user === null) {
+                abort(404, 'Користувача не знайдено.');
+            }
+
+            return $user;
+        });
 
         RateLimiter::for('auth-register', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());

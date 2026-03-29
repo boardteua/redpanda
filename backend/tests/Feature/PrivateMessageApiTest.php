@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Events\PrivateMessageCreated;
 use App\Events\PrivateThreadCleared;
+use App\Jobs\SendWebPushForPrivateMessage;
 use App\Models\PrivateMessage;
 use App\Models\PrivateMessageReadState;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Models\UserIgnore;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -50,6 +52,33 @@ class PrivateMessageApiTest extends TestCase
         Event::assertDispatched(PrivateMessageCreated::class);
     }
 
+    public function test_send_private_message_queues_web_push_job_only_once(): void
+    {
+        Queue::fake([SendWebPushForPrivateMessage::class]);
+
+        $a = User::factory()->create(['user_name' => 'alice']);
+        $b = User::factory()->create(['user_name' => 'bob']);
+
+        $clientId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02';
+
+        Sanctum::actingAs($a);
+        $this->postJson('/api/v1/private/peers/'.$b->id.'/messages', [
+            'message' => 'Push once',
+            'client_message_id' => $clientId,
+        ])->assertCreated();
+
+        Queue::assertPushed(SendWebPushForPrivateMessage::class, function (SendWebPushForPrivateMessage $job) {
+            return $job->messageId > 0;
+        });
+
+        $this->postJson('/api/v1/private/peers/'.$b->id.'/messages', [
+            'message' => 'Duplicate ignored',
+            'client_message_id' => $clientId,
+        ])->assertOk();
+
+        Queue::assertPushedTimes(SendWebPushForPrivateMessage::class, 1);
+    }
+
     public function test_cannot_message_self(): void
     {
         $a = User::factory()->create();
@@ -60,6 +89,16 @@ class PrivateMessageApiTest extends TestCase
             'client_message_id' => 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
         ])
             ->assertStatus(422);
+    }
+
+    public function test_private_peer_not_found_returns_404_message(): void
+    {
+        $a = User::factory()->create();
+
+        Sanctum::actingAs($a);
+        $this->getJson('/api/v1/private/peers/999999/messages')
+            ->assertNotFound()
+            ->assertJsonPath('message', 'Користувача не знайдено.');
     }
 
     public function test_ignore_blocks_private_in_both_directions(): void

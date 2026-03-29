@@ -15,6 +15,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StoreChatMessageRequest;
 use App\Http\Requests\Chat\UpdateChatMessageRequest;
 use App\Http\Resources\ChatMessageResource;
+use App\Jobs\SendWebPushForPrivateMessage;
+use App\Jobs\SendWebPushForRoomMessage;
 use App\Models\ChatMessage;
 use App\Models\PrivateMessage;
 use App\Models\Room;
@@ -270,6 +272,7 @@ class ChatMessageController extends Controller
 
             broadcast(new PrivateMessageCreated($privateRow));
             broadcast(new RoomInlinePrivatePosted($message));
+            SendWebPushForPrivateMessage::dispatch((int) $privateRow->id)->afterCommit();
 
             return ChatMessageResource::make($message)
                 ->additional([
@@ -362,6 +365,7 @@ class ChatMessageController extends Controller
             }
 
             broadcast(new MessagePosted($message))->toOthers();
+            SendWebPushForRoomMessage::dispatch((int) $message->post_id)->afterCommit();
         }
 
         return ChatMessageResource::make($message)

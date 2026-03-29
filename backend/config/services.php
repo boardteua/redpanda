@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    'web_push' => [
+        'vapid' => [
+            'subject' => env('WEB_PUSH_VAPID_SUBJECT', env('APP_URL')),
+            'public_key' => env('WEB_PUSH_VAPID_PUBLIC_KEY'),
+            'private_key' => env('WEB_PUSH_VAPID_PRIVATE_KEY'),
+        ],
+        'ttl' => (int) env('WEB_PUSH_TTL', 300),
+        'urgency' => env('WEB_PUSH_URGENCY', 'normal'),
+        'batch_size' => (int) env('WEB_PUSH_BATCH_SIZE', 200),
+    ],
+
 ];

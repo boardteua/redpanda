@@ -27,22 +27,27 @@
                 Реалтайм недоступний — оновлення через опитування
             </span>
             <button
-                v-if="!panelOpen"
+                v-if="!panelOpen && isNarrowViewport"
                 ref="mobilePanelToggle"
                 type="button"
-                class="rp-focusable flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] text-[var(--rp-text-muted)] hover:bg-[var(--rp-chat-composer-bg)] md:hidden"
+                class="rp-focusable relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] text-[var(--rp-text-muted)] hover:bg-[var(--rp-chat-composer-bg)] md:hidden"
                 aria-expanded="false"
                 aria-controls="chat-panel"
+                :aria-label="mobileMenuAriaLabel"
                 title="Меню"
                 @click="$emit('toggle-panel')"
             >
-                <span class="rp-sr-only">Відкрити або сховати меню чату</span>
                 <svg class="h-6 w-6" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
                 </svg>
+                <span
+                    v-if="privateUnreadTotal > 0"
+                    class="pointer-events-none absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-0.5 text-[10px] font-bold leading-none text-white shadow ring-1 ring-black/20"
+                    aria-hidden="true"
+                >{{ privateUnreadBadgeText }}</span>
             </button>
             <button
-                v-if="!panelOpen"
+                v-if="!panelOpen && !isNarrowViewport"
                 ref="desktopPanelToggle"
                 type="button"
                 class="rp-focusable hidden h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--rp-chat-chrome-border)] bg-[var(--rp-chat-toolbar-bg)] text-[var(--rp-text-muted)] hover:bg-[var(--rp-chat-composer-bg)] md:inline-flex"
@@ -69,7 +74,32 @@ export default {
         chatTitle: { type: String, default: '' },
         chatTopicLine: { type: String, default: '' },
         panelOpen: { type: Boolean, default: false },
+        /** T168: збіг з max-width 767px у ChatRoom (мобільний off-canvas). */
+        isNarrowViewport: { type: Boolean, default: false },
+        privateUnreadTotal: { type: Number, default: 0 },
         wsDegraded: { type: Boolean, default: false },
+    },
+    computed: {
+        privateUnreadBadgeText() {
+            const n = this.privateUnreadTotal;
+            if (!n) {
+                return '';
+            }
+
+            return n > 99 ? '99+' : String(n);
+        },
+        mobileMenuAriaLabel() {
+            const n = this.privateUnreadTotal;
+            if (!n) {
+                return 'Відкрити меню чату';
+            }
+            if (n === 1) {
+                return 'Відкрити меню чату, 1 непрочитане приватне повідомлення';
+            }
+            const display = n > 99 ? '99+' : String(n);
+
+            return `Відкрити меню чату, ${display} непрочитаних приватних повідомлень`;
+        },
     },
 };
 </script>
