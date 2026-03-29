@@ -1,4 +1,5 @@
 import './bootstrap';
+import { registerSW } from 'virtual:pwa-register';
 import Vue from 'vue';
 import VuePortal from '@linusborg/vue-simple-portal';
 import App from './App.vue';
@@ -22,6 +23,10 @@ Vue.component('RpButton', RpButton);
 Vue.component('RpCloseButton', RpCloseButton);
 Vue.component('RpPanel', RpPanel);
 Vue.component('RpTextField', RpTextField);
+
+if (import.meta.env.PROD) {
+    registerSW({ immediate: true });
+}
 
 new Vue({
     router,

@@ -11,11 +11,16 @@ class SpaShellTest extends TestCase
 
     public function test_root_returns_spa_shell_with_mount_point(): void
     {
-        $this->get('/')
+        $response = $this->get('/')
             ->assertOk()
             ->assertSee('<div id="app"></div>', false)
             ->assertSee('csrf-token', false)
             ->assertSee('type="module"', false);
+
+        if (is_readable(public_path('build/manifest.webmanifest')) && ! file_exists(public_path('hot'))) {
+            $response->assertSee('rel="manifest"', false)
+                ->assertSee('name="theme-color"', false);
+        }
     }
 
     public function test_chat_route_returns_spa_shell(): void

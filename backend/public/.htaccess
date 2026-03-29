@@ -1,6 +1,10 @@
 # Довгий кеш для статичних файлів (Vite — хеш у імені; PSI / Lighthouse «efficient cache»).
 # На nginx еквівалент: location ~* ^/build/assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; }
 <IfModule mod_headers.c>
+    # T163: SW у /build/ — заголовок для scope PWA на весь origin (див. docs/chat-v2/T163-PWA-OPERATOR.md).
+    <If "%{REQUEST_URI} =~ m#^/build/sw\\.js$#">
+        Header set Service-Worker-Allowed "/"
+    </If>
     <If "%{REQUEST_URI} =~ m#^/build/assets/#">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </If>

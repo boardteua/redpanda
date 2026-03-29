@@ -17,6 +17,10 @@
         <link rel="alternate" type="text/markdown" href="{{ url('/llms.txt') }}" title="LLM context (Тернопільський Анонімний Чат)">
 
         @php
+            $rpPwaManifestHref = null;
+            if (! file_exists(public_path('hot')) && is_readable(public_path('build/manifest.webmanifest'))) {
+                $rpPwaManifestHref = asset('build/manifest.webmanifest');
+            }
             $path = trim(request()->path(), '/');
             $useChatCss =
                 $path === 'chat'
@@ -47,6 +51,12 @@
         @foreach ($rpFontPreloadHrefs as $fontHref)
             <link rel="preload" href="{{ $fontHref }}" as="font" type="font/woff2" crossorigin>
         @endforeach
+        @if ($rpPwaManifestHref)
+            {{-- T163: узгоджено з vite-plugin-pwa manifest (theme_color) --}}
+            <link rel="manifest" href="{{ $rpPwaManifestHref }}">
+            <meta name="theme-color" content="#c2410c">
+            <link rel="apple-touch-icon" href="{{ url('/pwa-icon-192.png') }}" sizes="192x192">
+        @endif
         <script>
             window.__RP_INITIAL_CSS_ENTRY__ = @json($rpInitialCss);
         </script>

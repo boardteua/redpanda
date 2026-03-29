@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue2';
 import tailwindcss from '@tailwindcss/vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 /** Рядок на кшталт "${REVERB_HOST}" з .env без розгортання — не використовувати в клієнті. */
 function isUnresolvedRef(value) {
@@ -138,6 +139,46 @@ export default defineConfig(({ mode }) => {
                 },
             }),
             tailwindcss(),
+            /** T163: PWA — Workbox лише прекешує хешовані JS/CSS/woff2 з `public/build`; HTML лишається з Laravel (свіжий CSRF). */
+            VitePWA({
+                registerType: 'autoUpdate',
+                injectRegister: false,
+                buildBase: '/build/',
+                includeAssets: ['pwa-icon-192.png', 'pwa-icon-512.png'],
+                manifest: {
+                    name: 'Чат Рудої Панди',
+                    short_name: 'Руда Панда',
+                    description: 'Тернопільський анонімний чат',
+                    start_url: '/',
+                    scope: '/',
+                    display: 'standalone',
+                    theme_color: '#c2410c',
+                    background_color: '#f1f5f9',
+                    lang: 'uk',
+                    icons: [
+                        {
+                            src: '/pwa-icon-192.png',
+                            sizes: '192x192',
+                            type: 'image/png',
+                            purpose: 'any',
+                        },
+                        {
+                            src: '/pwa-icon-512.png',
+                            sizes: '512x512',
+                            type: 'image/png',
+                            purpose: 'any',
+                        },
+                    ],
+                },
+                workbox: {
+                    globPatterns: ['**/*.{js,css,woff2}'],
+                    /** Без offline HTML: навігації не перехоплюються; Blade залишається завжди з мережі. */
+                    navigateFallback: null,
+                },
+                devOptions: {
+                    enabled: false,
+                },
+            }),
         ],
         server: {
             watch: {
