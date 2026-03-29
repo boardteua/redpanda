@@ -26,6 +26,19 @@
 <script>
 const STORAGE_KEY = 'rp_web_push_prompt_dismissed_session';
 
+/** Обриває завислі Promise (subscribe / мережа без timeout). */
+function withTimeout(promise, ms) {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => reject(new Error('rp_timeout')), ms);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+        if (timeoutId != null) {
+            window.clearTimeout(timeoutId);
+        }
+    });
+}
+
 function base64UrlToUint8Array(value) {
     const padding = '='.repeat((4 - (value.length % 4 || 4)) % 4);
     const normalized = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -129,7 +142,7 @@ export default {
             }
 
             try {
-                const registration = await navigator.serviceWorker.ready;
+                const registration = await withTimeout(navigator.serviceWorker.ready, 45000);
                 const existing = await registration.pushManager.getSubscription();
                 if (!existing) {
                     this.subscribed = false;
@@ -142,7 +155,7 @@ export default {
                 }
 
                 try {
-                    await this.persistSubscription(existing);
+                    await withTimeout(this.persistSubscription(existing), 60000);
                 } catch {
                     /* Локальна підписка вже є; не лишаємо плашку через тимчасову помилку повторної синхронізації. */
                 }
@@ -157,27 +170,47 @@ export default {
             try {
                 let permission = this.permission;
                 if (permission === 'default') {
-                    permission = await Notification.requestPermission();
+                    permission = await withTimeout(Notification.requestPermission(), 120000);
                     this.permission = permission;
                 }
                 if (permission !== 'granted') {
                     return;
                 }
 
-                const registration = await navigator.serviceWorker.ready;
+                const registration = await withTimeout(navigator.serviceWorker.ready, 45000);
                 const existing = await registration.pushManager.getSubscription();
                 const subscription =
                     existing
-                    || (await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: base64UrlToUint8Array(window.__RP_WEB_PUSH__.vapidPublicKey),
-                    }));
+                    || (await withTimeout(
+                        registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: base64UrlToUint8Array(window.__RP_WEB_PUSH__.vapidPublicKey),
+                        }),
+                        90000,
+                    ));
 
-                await this.persistSubscription(subscription);
+                await withTimeout(this.persistSubscription(subscription), 60000);
                 this.subscribed = true;
                 this.dismissed = false;
-            } catch {
-                this.error = 'Браузер не зміг увімкнути push для цього пристрою.';
+            } catch (e) {
+                const timedOut =
+                    (e && String(e.message || '') === 'rp_timeout')
+                    || (e && e.code === 'ECONNABORTED')
+                    || (e && /timeout/i.test(String(e.message || '')));
+                try {
+                    const reg = await withTimeout(navigator.serviceWorker.ready, 10000);
+                    const sub = await reg.pushManager.getSubscription();
+                    if (sub && Notification.permission === 'granted') {
+                        this.subscribed = true;
+                        this.error = '';
+                        return;
+                    }
+                } catch {
+                    /* ignore */
+                }
+                this.error = timedOut
+                    ? 'Час очікування вичерпано (мережа або браузер). Спробуйте ще раз.'
+                    : 'Браузер не зміг увімкнути push для цього пристрою.';
             } finally {
                 this.busy = false;
             }
@@ -188,18 +221,26 @@ export default {
                 payload.contentEncoding = window.PushManager.supportedContentEncodings[0] || null;
             }
 
-            await this.ensureSanctum();
-            await window.axios.post('/api/v1/push/subscriptions', {
-                subscription: payload,
-            });
+            await withTimeout(this.ensureSanctum(), 20000);
+            await window.axios.post(
+                '/api/v1/push/subscriptions',
+                {
+                    subscription: payload,
+                },
+                { timeout: 45000 },
+            );
         },
         async removeSubscription(subscription, unsubscribe = true) {
-            await this.ensureSanctum();
-            await window.axios.delete('/api/v1/push/subscriptions', {
-                data: {
-                    endpoint: subscription.endpoint,
+            await withTimeout(this.ensureSanctum(), 20000);
+            await window.axios.delete(
+                '/api/v1/push/subscriptions',
+                {
+                    data: {
+                        endpoint: subscription.endpoint,
+                    },
+                    timeout: 45000,
                 },
-            });
+            );
             if (unsubscribe && typeof subscription.unsubscribe === 'function') {
                 await subscription.unsubscribe();
             }
