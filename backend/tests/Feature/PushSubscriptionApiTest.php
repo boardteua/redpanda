@@ -18,8 +18,8 @@ class PushSubscriptionApiTest extends TestCase
         $this->withoutMiddleware(ValidateCsrfToken::class);
         config([
             'services.web_push.vapid.subject' => 'mailto:test@example.com',
-            'services.web_push.vapid.public_key' => 'BEl62iUYgUiv8wJH4e2x9x4f0tMznEtCG2l9VmOAXoJ1Bs8LJIYurx8WcN6iYG3PaY5E9OQj1YxDCEV4VpWw2Xc',
-            'services.web_push.vapid.private_key' => '8L3zVwbD3Y8h9NP7VDaRao7IhiHBpjz2uVH54camz1I',
+            'services.web_push.vapid.public_key' => 'test-vapid-public',
+            'services.web_push.vapid.private_key' => 'test-vapid-private',
         ]);
     }
 
@@ -39,8 +39,8 @@ class PushSubscriptionApiTest extends TestCase
         return [
             'endpoint' => 'https://fcm.googleapis.com/fcm/send/fake-endpoint-123',
             'keys' => [
-                'p256dh' => 'BEl62iUYgUiv8wJH4e2x9x4f0tMznEtCG2l9VmOAXoJ1Bs8LJIYurx8WcN6iYG3PaY5E9OQj1YxDCEV4VpWw2Xc',
-                'auth' => 'abc123def456ghi789jkl012',
+                'p256dh' => 'test-subscription-p256dh',
+                'auth' => 'test-subscription-auth',
             ],
             'contentEncoding' => 'aes128gcm',
         ];
