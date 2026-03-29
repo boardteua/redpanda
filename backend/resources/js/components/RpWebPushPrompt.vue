@@ -47,6 +47,43 @@ function base64UrlToUint8Array(value) {
     return Uint8Array.from(raw, (ch) => ch.charCodeAt(0));
 }
 
+/** Некоректний ключ дає зламаний subscribe() / зависання в окремих браузерах. */
+function vapidPublicKeyLooksValid(base64UrlKey) {
+    if (base64UrlKey == null || typeof base64UrlKey !== 'string') {
+        return false;
+    }
+    const trimmed = base64UrlKey.trim();
+    if (trimmed === '') {
+        return false;
+    }
+    try {
+        const bytes = base64UrlToUint8Array(trimmed);
+
+        return bytes.length === 65 && bytes[0] === 4;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Якщо SW зареєстрований під /build/sw.js без Service-Worker-Allowed, scope = /build/ — сторінки /chat/* поза ним.
+ */
+function serviceWorkerScopeCoversCurrentPage(registration) {
+    if (!registration || typeof registration.scope !== 'string' || registration.scope === '') {
+        return false;
+    }
+    let scopePath = new URL(registration.scope, window.location.origin).pathname;
+    if (!scopePath.endsWith('/')) {
+        scopePath += '/';
+    }
+    let pagePath = window.location.pathname;
+    if (!pagePath.endsWith('/')) {
+        pagePath += '/';
+    }
+
+    return pagePath.startsWith(scopePath);
+}
+
 export default {
     name: 'RpWebPushPrompt',
     props: {
@@ -143,6 +180,10 @@ export default {
 
             try {
                 const registration = await withTimeout(navigator.serviceWorker.ready, 45000);
+                if (!serviceWorkerScopeCoversCurrentPage(registration)) {
+                    this.subscribed = false;
+                    return;
+                }
                 const existing = await registration.pushManager.getSubscription();
                 if (!existing) {
                     this.subscribed = false;
@@ -177,7 +218,20 @@ export default {
                     return;
                 }
 
+                const vapidKey = window.__RP_WEB_PUSH__ && window.__RP_WEB_PUSH__.vapidPublicKey;
+                if (!vapidPublicKeyLooksValid(vapidKey)) {
+                    this.error =
+                        'Ключ VAPID на сервері некоректний (очікується публічний ключ 65 байт). Перевірте WEB_PUSH_VAPID_PUBLIC_KEY у .env.';
+                    return;
+                }
+
                 const registration = await withTimeout(navigator.serviceWorker.ready, 45000);
+                if (!serviceWorkerScopeCoversCurrentPage(registration)) {
+                    this.error =
+                        'Service worker не охоплює цю сторінку (зазвичай бракує заголовка Service-Worker-Allowed для /build/sw.js у nginx). Оновіть конфіг і перезапустіть nginx, потім жорстке оновлення сторінки.';
+                    return;
+                }
+
                 const existing = await registration.pushManager.getSubscription();
                 const subscription =
                     existing
