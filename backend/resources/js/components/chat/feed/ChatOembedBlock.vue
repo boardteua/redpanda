@@ -67,6 +67,7 @@ import {
     parseIframeFromOembedHtml,
 } from '../../../utils/oembedClient';
 
+
 export default {
     name: 'ChatOembedBlock',
     props: {
