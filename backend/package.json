@@ -8,7 +8,8 @@
         "test:msg-parse": "node --test resources/js/utils/chatMessageBodyParse.test.mjs",
         "test:country-filter": "node --test resources/js/utils/rpCountryComboboxFilter.test.mjs",
         "test:format-chat-time": "node --test resources/js/utils/formatChatMessageTime.test.mjs",
-        "test:chat-sidebar-presence": "node --test resources/js/components/chat/sidebar/chatSidebarPresence.test.mjs"
+        "test:chat-sidebar-presence": "node --test resources/js/components/chat/sidebar/chatSidebarPresence.test.mjs",
+        "pwa:icons": "node scripts/generate-pwa-icons.mjs"
     },
     "dependencies": {
         "@auth0/auth0-spa-js": "^2.18.0",
@@ -26,6 +27,7 @@
         "axios": "^1.11.0",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^2.1.0",
+        "sharp": "^0.34.5",
         "tailwindcss": "^4.0.0",
         "vite": "^7.0.0",
         "vite-plugin-pwa": "^1.2.0"

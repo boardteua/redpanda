@@ -35,4 +35,4 @@ location = /build/sw.js {
 
 ## Іконки
 
-Поточні файли **`/pwa-icon-192.png`** та **`/pwa-icon-512.png`** — тимчасові (з бренд-асету) до задачі **T164** (maskable та повний набір).
+Набір **`/pwa/*`** (маніфест, maskable, Apple Touch, favicon-32) генерується скриптом **`npm run pwa:icons`** з `public/brand/board-te-ua-orange.png` — див. **T164** та `docs/chat-v2/T164-QA.md`.

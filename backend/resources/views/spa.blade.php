@@ -12,8 +12,9 @@
             window.__RP_SEO_WELCOME_LEAD__ = @json(__('seo.welcome_lead'));
         </script>
 
-        {{-- Паритет з legacy board.te.ua: favicon з https://www.board.te.ua/favicon.ico (збережено як /board-te-ua-favicon.ico) --}}
+        {{-- Паритет з legacy board.te.ua: .ico + T164 PNG для сучасних табів --}}
         <link rel="icon" href="{{ url('/board-te-ua-favicon.ico') }}" type="image/x-icon">
+        <link rel="icon" href="{{ url('/pwa/favicon-32.png') }}" type="image/png" sizes="32x32">
         <link rel="alternate" type="text/markdown" href="{{ url('/llms.txt') }}" title="LLM context (Тернопільський Анонімний Чат)">
 
         @php
@@ -55,7 +56,7 @@
             {{-- T163: узгоджено з vite-plugin-pwa manifest (theme_color) --}}
             <link rel="manifest" href="{{ $rpPwaManifestHref }}">
             <meta name="theme-color" content="#c2410c">
-            <link rel="apple-touch-icon" href="{{ url('/pwa-icon-192.png') }}" sizes="192x192">
+            <link rel="apple-touch-icon" href="{{ url('/pwa/apple-touch-icon-180.png') }}" sizes="180x180">
         @endif
         <script>
             window.__RP_INITIAL_CSS_ENTRY__ = @json($rpInitialCss);

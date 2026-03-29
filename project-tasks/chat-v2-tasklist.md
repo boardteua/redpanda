@@ -2176,15 +2176,16 @@
 
 ---
 
-### [ ] T164 — **PWA:** набір **іконок** (включно з **maskable**) для маніфесту та пристроїв
+### [x] T164 — **PWA:** набір **іконок** (включно з **maskable**) для маніфесту та пристроїв
 
 - **Delegate:** **Frontend Developer** + **UI Designer** (джерело артворку — за узгодженням з клієнтом)
+- **Статус:** **PASS** (2026-03-29). Каталог `public/pwa/`, maskable + any + Apple 180 + favicon-32; `npm run pwa:icons` (`sharp`); деталі — [`docs/chat-v2/T164-QA.md`](../docs/chat-v2/T164-QA.md).
 - **Залежність:** **T163** (маніфест і шляхи до асетів)
 - **Deliverables:**
   - Набір розмірів під **PWA** / **Apple touch** (мінімум ті, що вимагає маніфест + типові 192/512, **maskable** для Android).
   - Оновлення **`icons`** у маніфесті та за потреби **favicon** у Blade/layout.
   - Джерела файлів — у репозиторії під **`public/`** або **`backend/public/`** (як прийнято в проєкті), без важких бінарників у зайвих дублях.
-- **QA evidence:** перевірка відображення іконки після **Add to Home Screen** / встановлення PWA; скрін **splash**/launcher; **`npm run build`** PASS.
+- **QA evidence:** [`docs/chat-v2/T164-QA.md`](../docs/chat-v2/T164-QA.md) + **`npm run pwa:icons`** / **`npm run build`** + **`composer test`** PASS; ручний скрін launcher (HTTPS) — за можливості.
 
 ---
 
