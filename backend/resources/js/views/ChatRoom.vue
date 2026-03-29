@@ -326,6 +326,8 @@ export default {
             privateOptimisticSeq: 0,
             /** Лічильник для ігнорування застарілих async-відповідей loadPrivateMessages. */
             privateMessagesLoadEpoch: 0,
+            /** T170: debounce REST-синхронізації стрічки після повернення з фону / push. */
+            feedResumeSyncTimer: null,
         };
     },
     computed: {
@@ -611,11 +613,30 @@ export default {
             }
         });
         window.addEventListener('keydown', this.onGlobalKeydown);
+        this.onPageShowForFeedSyncBound = (e) => {
+            if (
+                e
+                && e.persisted
+                && this.chatBootstrapDone
+                && isChatRoute(this.$route)
+            ) {
+                this.scheduleFeedSyncAfterResume();
+            }
+        };
+        window.addEventListener('pageshow', this.onPageShowForFeedSyncBound);
     },
     beforeDestroy() {
         document.removeEventListener('mousedown', this.onSidebarBadgeMenuDocMouseDown, true);
         document.removeEventListener('keydown', this.onSidebarBadgeMenuDocKeydown, true);
         window.removeEventListener('keydown', this.onGlobalKeydown);
+        if (this.onPageShowForFeedSyncBound) {
+            window.removeEventListener('pageshow', this.onPageShowForFeedSyncBound);
+            this.onPageShowForFeedSyncBound = null;
+        }
+        if (this.feedResumeSyncTimer !== null) {
+            clearTimeout(this.feedResumeSyncTimer);
+            this.feedResumeSyncTimer = null;
+        }
         this.teardownMediaQuery();
         document.body.style.overflow = '';
         this.teardownEcho(true);
@@ -1569,8 +1590,16 @@ export default {
                 }
             }, 450);
         },
-        async pollNewMessages() {
-            if (!this.selectedRoomId || !this.selectedRoomApiSegment || !this.wsDegraded) {
+        /**
+         * T170 + T06: підтягнути останню сторінку повідомлень з REST і змерджити (dedupe в mergeMessage).
+         * @param {{ playSoundsForNew?: boolean }} [options]
+         */
+        async fetchLatestRoomMessagesMerged(options = {}) {
+            const playSoundsForNew = options.playSoundsForNew !== false;
+            if (!this.selectedRoomId || !this.selectedRoomApiSegment) {
+                return;
+            }
+            if (this.loadingMessages) {
                 return;
             }
             try {
@@ -1587,7 +1616,7 @@ export default {
                     const m = normalizeMessage(row);
                     const wasNew = Boolean(m && !prevIds.has(m.post_id));
                     this.mergeMessage(row);
-                    if (wasNew && m) {
+                    if (playSoundsForNew && wasNew && m) {
                         this.handleNewRoomMessageSound(m);
                     }
                     if (m) {
@@ -1597,6 +1626,43 @@ export default {
             } catch {
                 /* ignore */
             }
+        },
+        async pollNewMessages() {
+            if (!this.wsDegraded) {
+                return;
+            }
+            await this.fetchLatestRoomMessagesMerged({ playSoundsForNew: true });
+        },
+        /** T170: після кліку по Web Push / повернення вкладки — синхронізувати стрічку з сервером. */
+        scheduleFeedSyncAfterResume() {
+            if (typeof window === 'undefined') {
+                return;
+            }
+            if (this.feedResumeSyncTimer !== null) {
+                clearTimeout(this.feedResumeSyncTimer);
+            }
+            this.feedResumeSyncTimer = window.setTimeout(() => {
+                this.feedResumeSyncTimer = null;
+                void this.runFeedSyncAfterResume();
+            }, 400);
+        },
+        async runFeedSyncAfterResume() {
+            if (!this.chatBootstrapDone || !isChatRoute(this.$route) || !this.user || this.user.guest) {
+                return;
+            }
+            try {
+                await this.ensureSanctum();
+            } catch {
+                return;
+            }
+            if (this.privatePeer) {
+                if (!this.loadingPrivateMessages) {
+                    await this.loadPrivateMessages();
+                }
+
+                return;
+            }
+            await this.fetchLatestRoomMessagesMerged({ playSoundsForNew: false });
         },
         startPollIfDegraded() {
             this.stopPoll();
@@ -1638,9 +1704,20 @@ export default {
             this.presenceLastActivityAt = Date.now();
             this.documentHiddenFlag = document.visibilityState !== 'visible';
             this.onPresenceVisibilityBound = () => {
-                this.documentHiddenFlag = document.visibilityState !== 'visible';
-                if (!this.documentHiddenFlag) {
+                const nowVisible = document.visibilityState === 'visible';
+                const wasHidden = this.documentHiddenFlag;
+                this.documentHiddenFlag = !nowVisible;
+                if (nowVisible) {
                     this.presenceLastActivityAt = Date.now();
+                    if (
+                        wasHidden
+                        && this.chatBootstrapDone
+                        && isChatRoute(this.$route)
+                        && this.user
+                        && !this.user.guest
+                    ) {
+                        this.scheduleFeedSyncAfterResume();
+                    }
                 }
                 this.postSelfPresenceStatusIfNeeded(this.computeLocalPresenceStatus());
             };
