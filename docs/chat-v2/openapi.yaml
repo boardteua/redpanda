@@ -47,12 +47,13 @@ info:
     `GET|POST /api/v1/private/peers/{userId}/messages`; `POST /api/v1/private/peers/{userId}/read` — позначити вхідні від peer прочитаними (throttle `private-read`, ідемпотентно).
     `DELETE /api/v1/private/peers/{userId}/thread` — видалити всю історію привату між поточним користувачем і peer (throttle `private-post`); **403** при взаємному ігнорі; подія **`.PrivateThreadCleared`** на **`private-user.{userId}`** для **обох** учасників (`peer_one_id`, `peer_two_id`, `cleared_by_user_id`).
     **Web Push (T165):** `POST|DELETE /api/v1/push/subscriptions` — зберегти / відкликати browser `PushSubscription` для **зареєстрованого** користувача; гість — **403**. Після нових повідомлень створюються чергові job для push-доставки (room / private), VAPID-ключі — лише через `.env`.
+    **Web Push налаштування (T167):** `GET|PATCH /api/v1/push/notification-settings` — глобальний master `web_push_enabled`, списки `muted_room_ids` / `muted_private_peer_ids` (повна заміна при PATCH); гість — **403**. Відправка push перевіряє ці прапорці перед доставкою.
     `GET /api/v1/users/lookup` (точний нік), **`GET /api/v1/users/autocomplete?q=`** — префіксний пошук зареєстрованих для привату (T85, throttle `user-autocomplete`); ендпоінти `friends*` та `ignores*` (деталі — [T08-QA.md](T08-QA.md)); непрочитані приватні — [T56-QA.md](T56-QA.md).
     **Друзі (T50):** `GET /api/v1/friends` — усі прийняті друзі (без фільтра онлайн); `DELETE /api/v1/friends/{userId}` — прибрати з друзів або скасувати вихідний запит (throttle `private-post`).
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.19.0"
+  version: "0.20.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -72,6 +73,8 @@ tags:
     description: Mute/kick — модератор (`user_rank ≥ 1`); бан IP і фільтр слів — адмін (`user_rank ≥ 2`), T12+T21
   - name: Private
     description: Приватні повідомлення, друзі, ігнор (T08, T50, T56, T68, T85)
+  - name: Push
+    description: Web Push підписки та фільтри доставки (T165, T167)
 
 paths:
   /up:
@@ -1346,6 +1349,72 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           description: Гість не може керувати Web Push
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/push/notification-settings:
+    get:
+      tags: [Push]
+      summary: Поточні фільтри web push (T167)
+      description: |
+        Повертає master-прапорець і списки замучених кімнат / приватних партнерів.
+        Лише **зареєстрований** користувач; гість — **403**. Throttle: `me-profile`.
+      operationId: getPushNotificationSettings
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushNotificationSettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Гість
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiPlainMessageResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    patch:
+      tags: [Push]
+      summary: Оновити фільтри web push (T167)
+      description: |
+        Часткове оновлення: лише передані поля змінюються. Масиви `muted_room_ids` та `muted_private_peer_ids`
+        при наявності ключа **повністю замінюють** відповідні списки (порожній масив — скинути всі мути).
+        `muted_room_ids.*` — існуючі `rooms.room_id`; `muted_private_peer_ids.*` — зареєстровані користувачі (не гість), не сам користувач.
+        Throttle: `me-profile`.
+      operationId: patchPushNotificationSettings
+      security:
+        - sanctumSession: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchPushNotificationSettingsRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushNotificationSettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Гість
           content:
             application/json:
               schema:
@@ -3256,6 +3325,62 @@ components:
             removed:
               type: integer
               minimum: 0
+
+    PushNotificationMutedRoom:
+      type: object
+      required: [room_id, room_name, slug]
+      properties:
+        room_id:
+          type: integer
+        room_name:
+          type: string
+        slug:
+          type: string
+
+    PushNotificationMutedPrivatePeer:
+      type: object
+      required: [user_id, user_name]
+      properties:
+        user_id:
+          type: integer
+        user_name:
+          type: string
+
+    PushNotificationSettingsData:
+      type: object
+      required: [web_push_enabled, muted_rooms, muted_private_peers]
+      properties:
+        web_push_enabled:
+          type: boolean
+        muted_rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/PushNotificationMutedRoom"
+        muted_private_peers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PushNotificationMutedPrivatePeer"
+
+    PushNotificationSettingsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/PushNotificationSettingsData"
+
+    PatchPushNotificationSettingsRequest:
+      type: object
+      properties:
+        web_push_enabled:
+          type: boolean
+        muted_room_ids:
+          type: array
+          items:
+            type: integer
+        muted_private_peer_ids:
+          type: array
+          items:
+            type: integer
 
     PrivateMessageStoredResponse:
       type: object

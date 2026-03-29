@@ -25,6 +25,8 @@
         <UserProfileModal
             :open="profileModalOpen"
             :user="user"
+            :rooms="rooms"
+            :conversations="conversations"
             :theme-label="themeLabel"
             @close="$emit('profile-close')"
             @updated="$emit('profile-updated')"
@@ -103,6 +105,7 @@ export default {
         themeLabel: { type: String, default: '' },
         chatSettingsModalOpen: { type: Boolean, default: false },
         rooms: { type: Array, default: () => [] },
+        conversations: { type: Array, default: () => [] },
         ensureSanctum: { type: Function, required: true },
         profileModalOpen: { type: Boolean, default: false },
         deleteMessageConfirmOpen: { type: Boolean, default: false },

@@ -15,6 +15,10 @@ use Minishlink\WebPush\WebPush;
 
 class WebPushService
 {
+    public function __construct(
+        private readonly WebPushPreferenceEvaluator $preferences,
+    ) {}
+
     public function isConfigured(): bool
     {
         return $this->vapidSubject() !== null
@@ -41,10 +45,11 @@ class WebPushService
         $room = $message->room;
         $authorId = (int) $message->user_id;
         $subscriptions = PushSubscription::query()
-            ->with('user:id,guest,vip,user_rank')
+            ->with('user:id,guest,vip,user_rank,web_push_master_enabled')
             ->where('user_id', '!=', $authorId)
             ->get()
-            ->filter(fn (PushSubscription $subscription): bool => $this->userCanReceiveRoomPush($subscription->user, $room))
+            ->filter(fn (PushSubscription $subscription): bool => $this->userCanReceiveRoomPush($subscription->user, $room)
+                && $this->preferences->shouldDeliverRoomWebPush($subscription->user, $room))
             ->values();
 
         if ($subscriptions->isEmpty()) {
@@ -76,6 +81,10 @@ class WebPushService
 
         $message->loadMissing('sender', 'recipient');
         if ($message->recipient === null || $message->recipient->guest) {
+            return;
+        }
+
+        if (! $this->preferences->shouldDeliverPrivateWebPush($message->recipient, (int) $message->sender_id)) {
             return;
         }
 
@@ -144,6 +153,7 @@ class WebPushService
 
             if ($report->isSubscriptionExpired()) {
                 PushSubscription::query()->where('endpoint_hash', $endpointHash)->delete();
+
                 continue;
             }
 

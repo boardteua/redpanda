@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -77,8 +78,25 @@ class User extends Authenticatable
             'account_disabled_at' => 'datetime',
             'chat_upload_disabled' => 'boolean',
             'presence_invisible' => 'boolean',
+            'web_push_master_enabled' => 'boolean',
             'legacy_imported_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return HasMany<UserWebPushRoomMute, $this>
+     */
+    public function webPushRoomMutes(): HasMany
+    {
+        return $this->hasMany(UserWebPushRoomMute::class, 'user_id');
+    }
+
+    /**
+     * @return HasMany<UserWebPushPrivatePeerMute, $this>
+     */
+    public function webPushPrivatePeerMutes(): HasMany
+    {
+        return $this->hasMany(UserWebPushPrivatePeerMute::class, 'user_id');
     }
 
     public function isChatUploadDisabled(): bool

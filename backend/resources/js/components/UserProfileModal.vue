@@ -312,6 +312,80 @@
                             {{ saving ? 'Збереження…' : 'Зберегти звуки' }}
                         </RpButton>
                     </div>
+
+                    <!-- Web push (T167) -->
+                    <div v-show="activeTab === 'webpush'" class="space-y-4">
+                        <p class="text-sm text-[var(--rp-text-muted)]">
+                            Керування доставкою web push на сервері (окремо від дозволу браузера та кнопки «Увімкнути push» у чаті).
+                        </p>
+                        <p v-if="webPush.loadError" role="alert" class="text-sm text-[var(--rp-error)]">
+                            {{ webPush.loadError }}
+                        </p>
+                        <p v-if="webPush.loading" class="text-sm text-[var(--rp-text-muted)]">Завантаження…</p>
+                        <template v-else>
+                            <label class="flex items-center justify-between gap-3 text-sm text-[var(--rp-text)]">
+                                <span>Дозволити web push з сервера</span>
+                                <input
+                                    v-model="webPush.enabled"
+                                    type="checkbox"
+                                    class="rp-focusable h-5 w-5"
+                                    :disabled="webPush.saving"
+                                />
+                            </label>
+                            <fieldset class="space-y-2 rounded-md border border-[var(--rp-border-subtle)] p-3">
+                                <legend class="px-1 text-xs font-medium text-[var(--rp-text-muted)]">
+                                    Не надсилати push з кімнат
+                                </legend>
+                                <p v-if="!rooms.length" class="text-xs text-[var(--rp-text-muted)]">Немає кімнат у списку.</p>
+                                <label
+                                    v-for="r in rooms"
+                                    v-else
+                                    :key="'wp-r-' + r.room_id"
+                                    class="flex items-center justify-between gap-3 text-sm text-[var(--rp-text)]"
+                                >
+                                    <span class="truncate">{{ r.room_name }}</span>
+                                    <input
+                                        type="checkbox"
+                                        class="rp-focusable h-5 w-5 shrink-0"
+                                        :checked="isRoomPushMuted(r.room_id)"
+                                        :disabled="webPush.saving"
+                                        @change="onRoomMuteChange(r.room_id, $event.target.checked)"
+                                    />
+                                </label>
+                            </fieldset>
+                            <fieldset class="space-y-2 rounded-md border border-[var(--rp-border-subtle)] p-3">
+                                <legend class="px-1 text-xs font-medium text-[var(--rp-text-muted)]">
+                                    Не надсилати push у приватах
+                                </legend>
+                                <p v-if="!conversations.length" class="text-xs text-[var(--rp-text-muted)]">
+                                    Немає розмов у списку.
+                                </p>
+                                <label
+                                    v-for="c in conversations"
+                                    v-else
+                                    :key="'wp-p-' + c.peer.id"
+                                    class="flex items-center justify-between gap-3 text-sm text-[var(--rp-text)]"
+                                >
+                                    <span class="truncate">{{ c.peer.user_name }}</span>
+                                    <input
+                                        type="checkbox"
+                                        class="rp-focusable h-5 w-5 shrink-0"
+                                        :checked="isPeerPushMuted(c.peer.id)"
+                                        :disabled="webPush.saving"
+                                        @change="onPeerMuteChange(c.peer.id, $event.target.checked)"
+                                    />
+                                </label>
+                            </fieldset>
+                            <RpButton
+                                class="w-full sm:w-auto"
+                                :loading="webPush.saving"
+                                :disabled="webPush.saving"
+                                @click="saveWebPush"
+                            >
+                                {{ webPush.saving ? 'Збереження…' : 'Зберегти web push' }}
+                            </RpButton>
+                        </template>
+                    </div>
                 </div>
         </div>
         <p v-else-if="!user" class="px-4 py-4 text-sm text-[var(--rp-text-muted)]">
@@ -345,6 +419,14 @@ export default {
         user: {
             type: Object,
             default: null,
+        },
+        rooms: {
+            type: Array,
+            default: () => [],
+        },
+        conversations: {
+            type: Array,
+            default: () => [],
         },
         themeLabel: {
             type: String,
@@ -397,12 +479,22 @@ export default {
                 private: true,
                 volume_percent: 80,
             },
+            webPush: {
+                loaded: false,
+                loading: false,
+                saving: false,
+                loadError: '',
+                enabled: true,
+                mutedRoomIds: [],
+                mutedPeerIds: [],
+            },
             tabs: [
                 { id: 'personal', label: 'Персональні' },
                 { id: 'appearance', label: 'Оформлення' },
                 { id: 'account', label: 'Акаунт' },
                 { id: 'social', label: 'Соцмережі' },
                 { id: 'sounds', label: 'Звуки' },
+                { id: 'webpush', label: 'Web push' },
             ],
             socialFields: [
                 { key: 'facebook', label: 'Facebook' },
@@ -422,6 +514,13 @@ export default {
                 this.tabError = '';
                 this.activeTab = 'personal';
                 this.syncFromUser();
+                this.webPush.loaded = false;
+                this.webPush.loadError = '';
+            }
+        },
+        activeTab(tab) {
+            if (this.open && tab === 'webpush') {
+                void this.ensureWebPushLoaded();
             }
         },
         user: {
@@ -593,6 +692,81 @@ export default {
                 this.tabError = this.formatValidationMessage(e);
             } finally {
                 this.saving = false;
+            }
+        },
+        isRoomPushMuted(roomId) {
+            const id = Number(roomId);
+
+            return this.webPush.mutedRoomIds.some((x) => Number(x) === id);
+        },
+        onRoomMuteChange(roomId, muted) {
+            const id = Number(roomId);
+            const next = this.webPush.mutedRoomIds.slice().map((x) => Number(x));
+            const ix = next.indexOf(id);
+            if (muted && ix < 0) {
+                next.push(id);
+            }
+            if (!muted && ix >= 0) {
+                next.splice(ix, 1);
+            }
+            this.webPush.mutedRoomIds = next;
+        },
+        isPeerPushMuted(peerId) {
+            const id = Number(peerId);
+
+            return this.webPush.mutedPeerIds.some((x) => Number(x) === id);
+        },
+        onPeerMuteChange(peerId, muted) {
+            const id = Number(peerId);
+            const next = this.webPush.mutedPeerIds.slice().map((x) => Number(x));
+            const ix = next.indexOf(id);
+            if (muted && ix < 0) {
+                next.push(id);
+            }
+            if (!muted && ix >= 0) {
+                next.splice(ix, 1);
+            }
+            this.webPush.mutedPeerIds = next;
+        },
+        async ensureWebPushLoaded() {
+            if (!this.user || this.user.guest || this.webPush.loading || this.webPush.loaded) {
+                return;
+            }
+            this.webPush.loading = true;
+            this.webPush.loadError = '';
+            await this.ensureSanctum();
+            try {
+                const { data } = await window.axios.get('/api/v1/push/notification-settings');
+                const d = data.data || {};
+                this.webPush.enabled = d.web_push_enabled !== false;
+                this.webPush.mutedRoomIds = (d.muted_rooms || []).map((r) => Number(r.room_id));
+                this.webPush.mutedPeerIds = (d.muted_private_peers || []).map((p) => Number(p.user_id));
+                this.webPush.loaded = true;
+            } catch (e) {
+                this.webPush.loadError = this.formatValidationMessage(e);
+            } finally {
+                this.webPush.loading = false;
+            }
+        },
+        async saveWebPush() {
+            this.tabError = '';
+            this.webPush.saving = true;
+            await this.ensureSanctum();
+            try {
+                const { data } = await window.axios.patch('/api/v1/push/notification-settings', {
+                    web_push_enabled: this.webPush.enabled,
+                    muted_room_ids: this.webPush.mutedRoomIds.map((x) => Number(x)),
+                    muted_private_peer_ids: this.webPush.mutedPeerIds.map((x) => Number(x)),
+                });
+                const d = data.data || {};
+                this.webPush.enabled = d.web_push_enabled !== false;
+                this.webPush.mutedRoomIds = (d.muted_rooms || []).map((r) => Number(r.room_id));
+                this.webPush.mutedPeerIds = (d.muted_private_peers || []).map((p) => Number(p.user_id));
+                this.webPush.loaded = true;
+            } catch (e) {
+                this.tabError = this.formatValidationMessage(e);
+            } finally {
+                this.webPush.saving = false;
             }
         },
         async onAvatarFileSelected(e) {

@@ -127,6 +127,7 @@
             :theme-label="themeLabel"
             :chat-settings-modal-open="chatSettingsModalOpen"
             :rooms="rooms"
+            :conversations="conversations"
             :ensure-sanctum="ensureSanctum"
             :profile-modal-open="profileModalOpen"
             :delete-message-confirm-open="deleteConfirmOpen"
