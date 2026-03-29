@@ -227,6 +227,7 @@ import {
     isChatRoute,
     staffContextQuery,
 } from '../utils/chatRoomNavigation';
+import { postWithOneNetworkRetry } from '../utils/requestRetry';
 import { hasXsrfTokenCookie } from '../utils/sanctumCsrf';
 
 export default {
@@ -1189,18 +1190,6 @@ export default {
             }
 
             return 'user';
-        },
-        isLikelyNetworkError(e) {
-            if (!e || e.response) {
-                return false;
-            }
-            const c = e.code;
-            if (c === 'ECONNABORTED' || c === 'ERR_NETWORK') {
-                return true;
-            }
-            const msg = typeof e.message === 'string' ? e.message : '';
-
-            return msg === 'Network Error';
         },
         removePendingRoomMessageByClientId(clientMessageId) {
             if (!clientMessageId) {
@@ -2572,18 +2561,9 @@ export default {
                         this.$nextTick(() => this.scrollToBottom());
                     }
                     const postUrl = `/api/v1/rooms/${this.selectedRoomApiSegment}/messages`;
-                    const postOnce = () => window.axios.post(postUrl, body);
-                    let data;
-                    let status;
-                    try {
-                        ({ data, status } = await postOnce());
-                    } catch (e) {
-                        if (this.isLikelyNetworkError(e)) {
-                            ({ data, status } = await postOnce());
-                        } else {
-                            throw e;
-                        }
-                    }
+                    const { data, status } = await postWithOneNetworkRetry(
+                        () => window.axios.post(postUrl, body),
+                    );
                     if (data && data.data) {
                         this.mergeMessage(data.data);
                     } else if (optimistic) {

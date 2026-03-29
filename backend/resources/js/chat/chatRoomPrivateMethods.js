@@ -1,5 +1,6 @@
 import { maybePlayPrivateMessageSound } from '../utils/chatNotificationSounds';
 import { setFaviconPrivateUnreadBadge } from '../utils/faviconUnreadBadge';
+import { postWithOneNetworkRetry } from '../utils/requestRetry';
 import { showError } from '../utils/rpToastStack';
 
 /**
@@ -270,22 +271,12 @@ export const chatRoomPrivateMethods = {
         this.privateMessages.sort((a, b) => a.id - b.id);
         try {
             const url = `/api/v1/private/peers/${this.privatePeer.id}/messages`;
-            const postOnce = () =>
+            const { data, status } = await postWithOneNetworkRetry(() =>
                 window.axios.post(url, {
                     message: text,
                     client_message_id: clientMessageId,
-                });
-            let data;
-            let status;
-            try {
-                ({ data, status } = await postOnce());
-            } catch (e) {
-                if (this.isLikelyNetworkError(e)) {
-                    ({ data, status } = await postOnce());
-                } else {
-                    throw e;
-                }
-            }
+                }),
+            );
             if (data && data.data) {
                 this.mergePrivateMessage(data.data);
                 this.privateMessages.sort((a, b) => a.id - b.id);
