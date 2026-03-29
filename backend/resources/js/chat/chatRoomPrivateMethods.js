@@ -7,6 +7,19 @@ import { showError } from '../utils/rpToastStack';
  * WS-слухачі лишаються в SFC (`ensureUserPrivateListener`).
  */
 export const chatRoomPrivateMethods = {
+    removePendingPrivateByClientId(clientMessageId) {
+        if (!clientMessageId) {
+            return;
+        }
+        const idx = this.privateMessages.findIndex(
+            (m) => m.client_message_id === clientMessageId && Number(m.id) < 0,
+        );
+        if (idx === -1) {
+            return;
+        }
+        this.privateMessageIds.delete(this.privateMessages[idx].id);
+        this.privateMessages.splice(idx, 1);
+    },
     async markPrivateThreadRead(peerId) {
         if (!peerId || !this.user) {
             return;
@@ -148,7 +161,7 @@ export const chatRoomPrivateMethods = {
         }
     },
     mergePrivateMessage(raw) {
-        if (!raw || typeof raw.id === 'undefined' || this.privateMessageIds.has(raw.id)) {
+        if (!raw || typeof raw.id === 'undefined') {
             return;
         }
         if (!this.privatePeer || !this.user) {
@@ -160,6 +173,38 @@ export const chatRoomPrivateMethods = {
         const rid = Number(raw.recipient_id);
         const inThread = (sid === uid && rid === pid) || (sid === pid && rid === uid);
         if (!inThread) {
+            return;
+        }
+        const cmid = raw.client_message_id;
+        if (cmid) {
+            const pendIdx = this.privateMessages.findIndex(
+                (m) => m.client_message_id === cmid && Number(m.id) < 0,
+            );
+            if (pendIdx !== -1) {
+                const old = this.privateMessages[pendIdx];
+                this.privateMessageIds.delete(old.id);
+                if (this.privateMessageIds.has(raw.id)) {
+                    this.privateMessages.splice(pendIdx, 1);
+
+                    return;
+                }
+                this.privateMessageIds.add(raw.id);
+                this.$set(this.privateMessages, pendIdx, {
+                    id: raw.id,
+                    sender_id: raw.sender_id,
+                    recipient_id: raw.recipient_id,
+                    body: raw.body,
+                    sent_at:
+                        raw.sent_at != null && raw.sent_at !== '' ? Number(raw.sent_at) : raw.sent_at,
+                    sent_time: raw.sent_time,
+                    client_message_id: raw.client_message_id,
+                });
+                this.privateMessages.sort((a, b) => a.id - b.id);
+
+                return;
+            }
+        }
+        if (this.privateMessageIds.has(raw.id)) {
             return;
         }
         this.privateMessageIds.add(raw.id);
@@ -209,24 +254,51 @@ export const chatRoomPrivateMethods = {
         await this.ensureSanctum();
         const clientMessageId = crypto.randomUUID();
         let privateSendOk = false;
+        this.privateOptimisticSeq -= 1;
+        const tempId = this.privateOptimisticSeq;
+        this.privateMessageIds.add(tempId);
+        this.privateMessages.push({
+            id: tempId,
+            sender_id: this.user.id,
+            recipient_id: this.privatePeer.id,
+            body: text,
+            sent_at: Math.floor(Date.now() / 1000),
+            sent_time: null,
+            client_message_id: clientMessageId,
+            rp_send_pending: true,
+        });
+        this.privateMessages.sort((a, b) => a.id - b.id);
         try {
-            const { data, status } = await window.axios.post(
-                `/api/v1/private/peers/${this.privatePeer.id}/messages`,
-                {
+            const url = `/api/v1/private/peers/${this.privatePeer.id}/messages`;
+            const postOnce = () =>
+                window.axios.post(url, {
                     message: text,
                     client_message_id: clientMessageId,
-                },
-            );
-            if (data.data) {
+                });
+            let data;
+            let status;
+            try {
+                ({ data, status } = await postOnce());
+            } catch (e) {
+                if (this.isLikelyNetworkError(e)) {
+                    ({ data, status } = await postOnce());
+                } else {
+                    throw e;
+                }
+            }
+            if (data && data.data) {
                 this.mergePrivateMessage(data.data);
                 this.privateMessages.sort((a, b) => a.id - b.id);
+            } else {
+                this.removePendingPrivateByClientId(clientMessageId);
             }
             if (status === 201 || status === 200) {
                 this.privateComposerText = '';
                 privateSendOk = true;
             }
-            await this.loadConversations();
+            void this.loadConversations();
         } catch (e) {
+            this.removePendingPrivateByClientId(clientMessageId);
             const st = e.response && e.response.status;
             const msg = e.response?.data?.message || 'Не вдалося надіслати.';
             if (st === 429) {

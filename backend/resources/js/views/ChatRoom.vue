@@ -227,6 +227,7 @@ import {
     isChatRoute,
     staffContextQuery,
 } from '../utils/chatRoomNavigation';
+import { hasXsrfTokenCookie } from '../utils/sanctumCsrf';
 
 export default {
     name: 'ChatRoom',
@@ -312,6 +313,10 @@ export default {
             newMsgDividerDismissed: false,
             roomReadSuppressBottomUntil: 0,
             markReadDebounceTimer: null,
+            /** T162: тимчасові негативні post_id для optimistic UI у стрічці кімнати. */
+            optimisticPostSeq: 0,
+            /** T162: тимчасові негативні id для optimistic у приватній панелі. */
+            privateOptimisticSeq: 0,
         };
     },
     computed: {
@@ -814,7 +819,11 @@ export default {
                 this.loggingOut = false;
             }
         },
-        async ensureSanctum() {
+        async ensureSanctum(options = {}) {
+            const force = Boolean(options && options.force);
+            if (!force && hasXsrfTokenCookie()) {
+                return;
+            }
             await window.axios.get('/sanctum/csrf-cookie');
         },
         async fetchUser() {
@@ -1159,6 +1168,91 @@ export default {
             this.messages = [];
             this.messageIds = new Set();
         },
+        /** T162: узгоджено з App\Chat\ChatRole::postColorClass(). */
+        viewerPostColorClass() {
+            const u = this.user;
+            if (!u) {
+                return 'user';
+            }
+            if (u.guest) {
+                return 'guest';
+            }
+            const r = u.chat_role;
+            if (r === 'admin') {
+                return 'admin';
+            }
+            if (r === 'moderator') {
+                return 'mod';
+            }
+            if (r === 'vip') {
+                return 'vip';
+            }
+
+            return 'user';
+        },
+        isLikelyNetworkError(e) {
+            if (!e || e.response) {
+                return false;
+            }
+            const c = e.code;
+            if (c === 'ECONNABORTED' || c === 'ERR_NETWORK') {
+                return true;
+            }
+            const msg = typeof e.message === 'string' ? e.message : '';
+
+            return msg === 'Network Error';
+        },
+        removePendingRoomMessageByClientId(clientMessageId) {
+            if (!clientMessageId) {
+                return;
+            }
+            const idx = this.messages.findIndex(
+                (x) =>
+                    x.client_message_id === clientMessageId && Number(x.post_id) < 0,
+            );
+            if (idx === -1) {
+                return;
+            }
+            this.messages.splice(idx, 1);
+        },
+        buildOptimisticPublicMessage({ text, stylePayload, clientMessageId, imageId, tempPostId }) {
+            if (!this.user || imageId || !clientMessageId || tempPostId == null) {
+                return null;
+            }
+            const trimmed = String(text || '').trim();
+            if (!trimmed || trimmed.startsWith('/')) {
+                return null;
+            }
+            const ts = Math.floor(Date.now() / 1000);
+            const raw = {
+                post_id: tempPostId,
+                post_roomid: this.selectedRoomId,
+                user_id: this.user.id,
+                post_date: ts,
+                post_edited_at: null,
+                post_deleted_at: null,
+                post_time: null,
+                post_user: this.user.user_name,
+                post_message: text,
+                post_style: stylePayload || { bold: false, italic: false, underline: false },
+                post_color: this.viewerPostColorClass(),
+                type: 'public',
+                recipient_user_id: null,
+                client_message_id: clientMessageId,
+                avatar: this.user.avatar_url != null ? String(this.user.avatar_url) : '',
+                file: 0,
+                image: null,
+                can_edit: false,
+                can_delete: false,
+            };
+            const m = normalizeMessage(raw);
+            if (!m) {
+                return null;
+            }
+            m.rp_send_pending = true;
+
+            return m;
+        },
         inferCanDeleteForMessage(m) {
             if (!this.user || this.user.guest) {
                 return false;
@@ -1241,6 +1335,37 @@ export default {
                 && Number(m.post_roomid) !== Number(rid)
             ) {
                 return;
+            }
+            if (m.client_message_id) {
+                const pendIdx = this.messages.findIndex(
+                    (x) =>
+                        x.client_message_id === m.client_message_id
+                        && Number(x.post_id) < 0,
+                );
+                if (pendIdx !== -1) {
+                    const prev = this.messages[pendIdx];
+                    const next = { ...prev, ...m };
+                    delete next.rp_send_pending;
+                    if (!Object.prototype.hasOwnProperty.call(raw || {}, 'can_edit')) {
+                        next.can_edit = prev.can_edit;
+                    }
+                    if (!Object.prototype.hasOwnProperty.call(raw || {}, 'can_delete')) {
+                        next.can_delete = prev.can_delete;
+                    }
+                    if (next.post_deleted_at != null && next.post_deleted_at !== '') {
+                        next.post_message = '';
+                        next.image = null;
+                        next.file = 0;
+                        next.can_edit = false;
+                        next.can_delete = false;
+                    }
+                    this.$set(this.messages, pendIdx, next);
+                    this.messageIds.add(m.post_id);
+                    this.messages.sort((a, b) => Number(a.post_id) - Number(b.post_id));
+                    this.$nextTick(() => this.scrollToBottom());
+
+                    return;
+                }
             }
             const existingIdx = this.messages.findIndex((x) => x.post_id === m.post_id);
             if (existingIdx !== -1) {
@@ -2400,6 +2525,7 @@ export default {
             this.sending = true;
             await this.ensureSanctum();
             let focusComposerAfterSend = false;
+            let pendingClientMessageId = null;
             try {
                 if (editPostId != null) {
                     const patchBody = { message: text };
@@ -2421,6 +2547,7 @@ export default {
                     }
                 } else {
                     const clientMessageId = crypto.randomUUID();
+                    pendingClientMessageId = clientMessageId;
                     const body = {
                         message: text,
                         client_message_id: clientMessageId,
@@ -2431,12 +2558,36 @@ export default {
                     if (stylePayload) {
                         body.style = stylePayload;
                     }
-                    const { data, status } = await window.axios.post(
-                        `/api/v1/rooms/${this.selectedRoomApiSegment}/messages`,
-                        body,
-                    );
-                    if (data.data) {
+                    this.optimisticPostSeq -= 1;
+                    const optimistic = this.buildOptimisticPublicMessage({
+                        text,
+                        stylePayload,
+                        clientMessageId,
+                        imageId,
+                        tempPostId: this.optimisticPostSeq,
+                    });
+                    if (optimistic) {
+                        this.messages.push(optimistic);
+                        this.messages.sort((a, b) => Number(a.post_id) - Number(b.post_id));
+                        this.$nextTick(() => this.scrollToBottom());
+                    }
+                    const postUrl = `/api/v1/rooms/${this.selectedRoomApiSegment}/messages`;
+                    const postOnce = () => window.axios.post(postUrl, body);
+                    let data;
+                    let status;
+                    try {
+                        ({ data, status } = await postOnce());
+                    } catch (e) {
+                        if (this.isLikelyNetworkError(e)) {
+                            ({ data, status } = await postOnce());
+                        } else {
+                            throw e;
+                        }
+                    }
+                    if (data && data.data) {
                         this.mergeMessage(data.data);
+                    } else if (optimistic) {
+                        this.removePendingRoomMessageByClientId(clientMessageId);
                     }
                     if (status === 201 || status === 200) {
                         comp.resetAfterSend();
@@ -2467,6 +2618,7 @@ export default {
                     }
                 }
             } catch (e) {
+                this.removePendingRoomMessageByClientId(pendingClientMessageId);
                 const st = e.response && e.response.status;
                 const msg = e.response?.data?.message || 'Не вдалося надіслати.';
                 if (st === 429) {

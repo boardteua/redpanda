@@ -121,6 +121,12 @@
                     >
                         {{ displayPostTime }}
                     </time>
+                    <span
+                        v-if="message.rp_send_pending"
+                        class="text-[0.625rem] font-medium text-[var(--rp-text-muted)]"
+                    >
+                        · відправка…
+                    </span>
                 </div>
             </div>
             <ChatMessageBody

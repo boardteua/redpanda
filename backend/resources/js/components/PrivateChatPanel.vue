@@ -38,6 +38,12 @@
                         <time :datetime="privateMessageDatetime(m) || undefined">{{
                             privateMessageTimeLabel(m)
                         }}</time>
+                        <span
+                            v-if="m.rp_send_pending"
+                            class="ml-1.5 italic text-[var(--rp-text-muted)]"
+                        >
+                            відправка…
+                        </span>
                         <span class="ml-2 font-medium text-[var(--rp-text)]">{{ labelFor(m) }}</span>
                     </div>
                     <ChatMessageBody
