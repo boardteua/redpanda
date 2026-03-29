@@ -122,9 +122,9 @@ export default {
         async refreshState() {
             this.error = '';
             this.permission = this.supported ? Notification.permission : 'unsupported';
-            this.subscribed = false;
 
             if (!this.canShow) {
+                this.subscribed = false;
                 return;
             }
 
@@ -132,18 +132,23 @@ export default {
                 const registration = await navigator.serviceWorker.ready;
                 const existing = await registration.pushManager.getSubscription();
                 if (!existing) {
+                    this.subscribed = false;
                     return;
                 }
 
-                if (this.permission === 'granted') {
+                if (this.permission !== 'granted') {
+                    await this.removeSubscription(existing, false);
+                    return;
+                }
+
+                try {
                     await this.persistSubscription(existing);
-                    this.subscribed = true;
-                    return;
+                } catch {
+                    /* Локальна підписка вже є; не лишаємо плашку через тимчасову помилку повторної синхронізації. */
                 }
-
-                await this.removeSubscription(existing, false);
+                this.subscribed = true;
             } catch {
-                /* ignore */
+                this.subscribed = false;
             }
         },
         async onPrimaryAction() {
