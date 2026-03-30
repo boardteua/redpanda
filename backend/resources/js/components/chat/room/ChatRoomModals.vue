@@ -29,7 +29,7 @@
             :conversations="conversations"
             :theme-label="themeLabel"
             @close="$emit('profile-close')"
-            @updated="$emit('profile-updated')"
+            @updated="$emit('profile-updated', $event)"
             @cycle-theme="$emit('profile-cycle-theme')"
         />
         <ConfirmDialogModal
