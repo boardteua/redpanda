@@ -26,18 +26,36 @@ self.addEventListener('push', (event) => {
             ? payload.body
             : 'Нове повідомлення';
 
-    event.waitUntil(
-        self.registration.showNotification(title, {
-            body,
-            tag: typeof payload.tag === 'string' ? payload.tag : undefined,
-            icon: typeof payload.icon === 'string' ? payload.icon : '/pwa/icon-192.png',
-            badge: typeof payload.badge === 'string' ? payload.badge : '/pwa/icon-96.png',
-            data: {
-                url: typeof data.url === 'string' && data.url.trim() !== '' ? data.url : '/chat',
-                ...data,
-            },
-        })
-    );
+    const defaultIcon = new URL('/pwa/icon-192.png', self.location.origin).href;
+    const defaultBadge = new URL('/pwa/icon-96.png', self.location.origin).href;
+    const rawAuthor =
+        payload && typeof payload.author_avatar_url === 'string' ? payload.author_avatar_url.trim() : '';
+    const authorAvatarUrl = rawAuthor !== '' ? rawAuthor : null;
+    const icon =
+        authorAvatarUrl ||
+        (payload && typeof payload.icon === 'string' && payload.icon.trim() !== ''
+            ? payload.icon.trim()
+            : defaultIcon);
+    const badge =
+        payload && typeof payload.badge === 'string' && payload.badge.trim() !== ''
+            ? payload.badge.trim()
+            : defaultBadge;
+
+    const notifOptions = {
+        body,
+        tag: typeof payload.tag === 'string' ? payload.tag : undefined,
+        icon,
+        badge,
+        data: {
+            url: typeof data.url === 'string' && data.url.trim() !== '' ? data.url : '/chat',
+            ...data,
+        },
+    };
+    if (authorAvatarUrl) {
+        notifOptions.image = authorAvatarUrl;
+    }
+
+    event.waitUntil(self.registration.showNotification(title, notifOptions));
 });
 
 self.addEventListener('notificationclick', (event) => {

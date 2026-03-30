@@ -44,6 +44,7 @@ return [
         'ttl' => (int) env('WEB_PUSH_TTL', 300),
         'urgency' => env('WEB_PUSH_URGENCY', 'normal'),
         'batch_size' => (int) env('WEB_PUSH_BATCH_SIZE', 200),
+        'public_avatar_url_ttl_seconds' => (int) env('WEB_PUSH_PUBLIC_AVATAR_TTL_SECONDS', 604800),
     ],
 
 ];

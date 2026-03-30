@@ -56,6 +56,10 @@ class WebPushService
             return;
         }
 
+        $author = $message->user;
+        $authorAvatar = $author?->signedPublicAvatarUrlForPush();
+        $fallbackIcon = url('/pwa/icon-192.png');
+
         $payload = [
             'title' => sprintf('%s у кімнаті %s', (string) $message->post_user, (string) $room->room_name),
             'body' => $this->messagePreview((string) $message->post_message, (int) $message->file > 0),
@@ -66,7 +70,8 @@ class WebPushService
                 'room_slug' => (string) ($room->slug ?? ''),
                 'url' => $this->roomUrl($room),
             ],
-            'icon' => url('/pwa/icon-192.png'),
+            'author_avatar_url' => $authorAvatar,
+            'icon' => $authorAvatar ?? $fallbackIcon,
             'badge' => url('/pwa/icon-96.png'),
         ];
 
@@ -96,7 +101,11 @@ class WebPushService
             return;
         }
 
-        $senderName = $message->sender?->user_name ?: 'Чат Рудої Панди';
+        $sender = $message->sender;
+        $senderName = $sender?->user_name ?: 'Чат Рудої Панди';
+        $authorAvatar = $sender?->signedPublicAvatarUrlForPush();
+        $fallbackIcon = url('/pwa/icon-192.png');
+
         $payload = [
             'title' => sprintf('Приват від %s', $senderName),
             'body' => $this->messagePreview((string) $message->body, false),
@@ -107,7 +116,8 @@ class WebPushService
                 'peer_user_name' => $senderName,
                 'url' => $this->privateThreadUrl((int) $message->sender_id, $senderName),
             ],
-            'icon' => url('/pwa/icon-192.png'),
+            'author_avatar_url' => $authorAvatar,
+            'icon' => $authorAvatar ?? $fallbackIcon,
             'badge' => url('/pwa/icon-96.png'),
         ];
 

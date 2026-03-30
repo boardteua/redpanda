@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\OEmbedController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\PrivateMessageController;
+use App\Http\Controllers\Api\V1\PublicUserAvatarController;
 use App\Http\Controllers\Api\V1\PushNotificationSettingsController;
 use App\Http\Controllers\Api\V1\PushSubscriptionController;
 use App\Http\Controllers\Api\V1\RoomController;
@@ -42,6 +43,11 @@ Route::prefix('v1')->middleware([RejectBannedIp::class])->group(function (): voi
     Route::middleware('throttle:auth-reset-password')->post('auth/reset-password', [PasswordResetController::class, 'reset']);
 
     Route::middleware('throttle:landing-read')->get('landing', [LandingController::class, 'show']);
+
+    Route::middleware(['signed', 'throttle:image-read'])->get(
+        'public/users/{user}/avatar',
+        [PublicUserAvatarController::class, 'show'],
+    )->name('api.v1.public-user-avatar');
 
     Route::middleware([ResolveAuth0BearerUser::class, 'auth:sanctum', RejectDisabledAccount::class])->group(function (): void {
         Route::get('auth/user', [AuthController::class, 'user']);

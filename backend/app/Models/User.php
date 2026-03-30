@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
@@ -204,6 +205,24 @@ class User extends Authenticatable
         }
 
         return route('api.v1.chat-images.file', ['image' => $this->avatar_image_id], true);
+    }
+
+    /**
+     * Абсолютний HTTPS-friendly URL для іконки Web Push (без Sanctum — ОС завантажує без cookies).
+     */
+    public function signedPublicAvatarUrlForPush(): ?string
+    {
+        if ($this->avatar_image_id === null) {
+            return null;
+        }
+
+        $ttl = max(3600, (int) config('services.web_push.public_avatar_url_ttl_seconds', 604800));
+
+        return URL::temporarySignedRoute(
+            'api.v1.public-user-avatar',
+            now()->addSeconds($ttl),
+            ['user' => $this->id],
+        );
     }
 
     /**
