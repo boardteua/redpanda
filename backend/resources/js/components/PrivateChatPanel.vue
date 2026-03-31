@@ -22,6 +22,7 @@
             role="log"
             aria-live="polite"
         >
+            <li ref="topSentinel" class="h-1 w-full shrink-0 list-none" aria-hidden="true" />
             <li
                 v-for="m in messages"
                 :key="m.id"
@@ -141,13 +142,30 @@ export default {
     watch: {
         messages: {
             handler() {
-                this.$nextTick(() => this.scrollBottom());
+                const lastId = this.messages.length ? Number(this.messages[this.messages.length - 1].id) : null;
+                const prevLastId = this._prevLastId;
+                this._prevLastId = lastId;
+                if (prevLastId === null) {
+                    this.$nextTick(() => this.scrollBottom());
+
+                    return;
+                }
+                if (lastId !== null && prevLastId !== null && lastId !== prevLastId) {
+                    this.$nextTick(() => this.scrollBottom());
+                }
             },
             deep: true,
         },
         peer() {
+            this._prevLastId = null;
             this.$nextTick(() => this.scrollBottom());
         },
+    },
+    mounted() {
+        this.$nextTick(() => this.setupTopObserver());
+    },
+    beforeDestroy() {
+        this.teardownTopObserver();
     },
     methods: {
         privateMessageTimeLabel(m) {
@@ -176,6 +194,31 @@ export default {
             const el = this.$refs.privateList;
             if (el) {
                 el.scrollTop = el.scrollHeight;
+            }
+        },
+        setupTopObserver() {
+            this.teardownTopObserver();
+            const root = this.$refs.privateList;
+            const target = this.$refs.topSentinel;
+            if (!root || !target || typeof IntersectionObserver === 'undefined') {
+                return;
+            }
+            this._topObs = new IntersectionObserver(
+                (entries) => {
+                    const hit = entries.some((e) => e.isIntersecting);
+                    if (!hit) {
+                        return;
+                    }
+                    this.$emit('top-visible');
+                },
+                { root, rootMargin: '48px 0px 0px 0px', threshold: 0 },
+            );
+            this._topObs.observe(target);
+        },
+        teardownTopObserver() {
+            if (this._topObs) {
+                this._topObs.disconnect();
+                this._topObs = null;
             }
         },
         onSubmit() {

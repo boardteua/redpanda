@@ -7,6 +7,11 @@
             aria-live="polite"
             aria-relevant="additions"
         >
+            <li
+                ref="topSentinel"
+                class="h-2 w-full shrink-0 list-none"
+                aria-hidden="true"
+            />
             <template v-for="item in feedItems">
                 <li
                     v-if="item.kind === 'divider'"
@@ -28,6 +33,7 @@
                     :key="`${item.key}-row`"
                     :message="item.message"
                     :index="item.msgIndex"
+                    :highlight-as-new="Boolean(item.isUnreadSegment)"
                     :viewer-name="viewerName"
                     :current-room-id="currentRoomId"
                     @inline-private="$emit('inline-private', $event)"
@@ -81,7 +87,13 @@ export default {
                 if (divId != null && !dismissed && Number(m.post_id) === Number(divId)) {
                     out.push({ kind: 'divider', key: `div-${m.post_id}` });
                 }
-                out.push({ kind: 'msg', key: `msg-${m.post_id}`, message: m, msgIndex: msgIdx });
+                out.push({
+                    kind: 'msg',
+                    key: `msg-${m.post_id}`,
+                    message: m,
+                    msgIndex: msgIdx,
+                    isUnreadSegment: divId != null && !dismissed && Number(m.post_id) >= Number(divId),
+                });
             });
 
             return out;
@@ -103,9 +115,11 @@ export default {
     },
     mounted() {
         this.$nextTick(() => this.setupBottomObserver());
+        this.$nextTick(() => this.setupTopObserver());
     },
     beforeDestroy() {
         this.teardownBottomObserver();
+        this.teardownTopObserver();
     },
     methods: {
         scrollToBottom() {
@@ -167,6 +181,35 @@ export default {
             if (this._bottomObs) {
                 this._bottomObs.disconnect();
                 this._bottomObs = null;
+            }
+        },
+        setupTopObserver() {
+            this.teardownTopObserver();
+            const root = this.$refs.scrollContainer;
+            const target = this.$refs.topSentinel;
+            if (
+                !root
+                || !target
+                || typeof IntersectionObserver === 'undefined'
+            ) {
+                return;
+            }
+            this._topObs = new IntersectionObserver(
+                (entries) => {
+                    const hit = entries.some((e) => e.isIntersecting);
+                    if (!hit) {
+                        return;
+                    }
+                    this.$emit('feed-top-visible');
+                },
+                { root, rootMargin: '48px 0px 0px 0px', threshold: 0 },
+            );
+            this._topObs.observe(target);
+        },
+        teardownTopObserver() {
+            if (this._topObs) {
+                this._topObs.disconnect();
+                this._topObs = null;
             }
         },
     },

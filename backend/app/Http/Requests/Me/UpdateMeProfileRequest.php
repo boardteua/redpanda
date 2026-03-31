@@ -73,6 +73,10 @@ class UpdateMeProfileRequest extends FormRequest
             'notification_sound_prefs.mentions' => ['sometimes', 'boolean'],
             'notification_sound_prefs.private' => ['sometimes', 'boolean'],
             'notification_sound_prefs.volume_percent' => ['sometimes', 'integer', 'min:0', 'max:100'],
+
+            'chat_history_prefs' => ['sometimes', 'array'],
+            'chat_history_prefs.room_history_chunk_size' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'chat_history_prefs.private_history_chunk_size' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];
     }
 }

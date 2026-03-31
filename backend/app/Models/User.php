@@ -76,6 +76,7 @@ class User extends Authenticatable
             'profile_about_hidden' => 'boolean',
             'social_links' => 'array',
             'notification_sound_prefs' => 'array',
+            'chat_history_prefs' => 'array',
             'account_disabled_at' => 'datetime',
             'chat_upload_disabled' => 'boolean',
             'presence_invisible' => 'boolean',
@@ -252,6 +253,17 @@ class User extends Authenticatable
             'mentions' => true,
             'private' => true,
             'volume_percent' => 80,
+        ];
+    }
+
+    /**
+     * @return array{room_history_chunk_size: int, private_history_chunk_size: int}
+     */
+    public static function defaultChatHistoryPrefs(): array
+    {
+        return [
+            'room_history_chunk_size' => 20,
+            'private_history_chunk_size' => 5,
         ];
     }
 }

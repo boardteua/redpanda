@@ -43,6 +43,10 @@ class UserResource extends JsonResource
             User::defaultNotificationSoundPrefs(),
             $this->notification_sound_prefs ?? []
         );
+        $historyPrefs = array_replace(
+            User::defaultChatHistoryPrefs(),
+            $this->chat_history_prefs ?? []
+        );
 
         $auth = $request->user();
         $uploadFlag = [];
@@ -50,6 +54,7 @@ class UserResource extends JsonResource
             $uploadFlag['chat_upload_disabled'] = (bool) $this->chat_upload_disabled;
             $uploadFlag['presence_invisible'] = (bool) $this->presence_invisible;
             $uploadFlag['requires_password_setup'] = $this->requiresPasswordSetupAfterLegacyImport();
+            $uploadFlag['chat_history_prefs'] = $historyPrefs;
         }
 
         return array_merge($base, $uploadFlag, [

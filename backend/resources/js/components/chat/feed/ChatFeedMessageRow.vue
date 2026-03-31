@@ -183,6 +183,10 @@ export default {
             type: Number,
             default: null,
         },
+        highlightAsNew: {
+            type: Boolean,
+            default: false,
+        },
     },
     computed: {
         isSystem() {
@@ -200,6 +204,7 @@ export default {
                 even ? 'bg-[var(--rp-chat-row-even)]' : 'bg-[var(--rp-chat-row-odd)]',
                 m.type === 'inline_private' ? 'rp-chat-feed-row--inline-private' : '',
                 m.type === 'client_only' ? 'rp-chat-feed-row--client-only' : '',
+                this.highlightAsNew ? 'rp-chat-feed-row--new' : '',
                 this.isDeleted ? 'opacity-90' : '',
             ];
         },

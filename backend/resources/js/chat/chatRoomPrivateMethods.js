@@ -107,6 +107,9 @@ export const chatRoomPrivateMethods = {
         this.privateLoadError = '';
         this.privateMessages = [];
         this.privateMessageIds = new Set();
+        this.olderPrivateCursor = null;
+        this.olderPrivateHasMore = true;
+        this.loadingOlderPrivate = false;
         this.sidebarTab = 'private';
         this.loadPrivateMessages();
     },
@@ -165,6 +168,9 @@ export const chatRoomPrivateMethods = {
             this.privateMessages = [];
             (data.data || []).forEach((row) => this.mergePrivateMessage(row));
             this.privateMessages.sort((a, b) => a.id - b.id);
+            this.olderPrivateCursor = data.meta ? data.meta.next_cursor : null;
+            this.olderPrivateHasMore = Boolean(data.meta && data.meta.has_more_older);
+            this.loadingOlderPrivate = false;
             await this.loadConversations();
         } catch (e) {
             if (

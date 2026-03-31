@@ -69,6 +69,15 @@ class MeProfileController extends Controller
             $model->notification_sound_prefs = $merged;
         }
 
+        if (isset($validated['chat_history_prefs']) && is_array($validated['chat_history_prefs'])) {
+            $merged = array_replace(
+                User::defaultChatHistoryPrefs(),
+                $model->chat_history_prefs ?? [],
+                $validated['chat_history_prefs']
+            );
+            $model->chat_history_prefs = $merged;
+        }
+
         $model->save();
 
         return UserResource::make($model->fresh());

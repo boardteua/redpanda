@@ -42,6 +42,7 @@
                     @go-to-room="selectRoom"
                     @edit="startEditMessageFromFeed"
                     @delete="openDeleteMessageConfirm"
+                    @feed-top-visible="onFeedTopVisible"
                     @feed-bottom-visible="onFeedBottomVisible"
                 />
 
@@ -176,6 +177,7 @@
             :show-slash-docs="user.chat_role === 'admin'"
             @close="closePrivatePanel"
             @send="sendPrivateMessageFromPanel"
+            @top-visible="onPrivateTopVisible"
         />
         <RpWebPushPrompt :user="user" :ensure-sanctum="ensureSanctum" />
     </div>
@@ -253,6 +255,9 @@ export default {
             selectedRoomId: null,
             messages: [],
             messageIds: new Set(),
+            olderRoomCursor: null,
+            olderRoomHasMore: true,
+            loadingOlderRoom: false,
             loadingRooms: true,
             chatSettings: null,
             creatingRoom: false,
@@ -306,6 +311,9 @@ export default {
             onPresenceUserActivityBound: null,
             presenceUserActivityListenerOpts: null,
             ...createChatRoomSidebarState(),
+            olderPrivateCursor: null,
+            olderPrivateHasMore: true,
+            loadingOlderPrivate: false,
             badgeMenu: null,
             commandsHelpOpen: false,
             userInfoModalOpen: false,
@@ -336,6 +344,16 @@ export default {
             const last = n ? this.messages[n - 1].post_id : 0;
 
             return `${n}:${last}`;
+        },
+        roomHistoryChunkSize() {
+            const n = Number(this.user?.chat_history_prefs?.room_history_chunk_size);
+
+            return Number.isFinite(n) ? Math.min(100, Math.max(1, Math.floor(n))) : 20;
+        },
+        privateHistoryChunkSize() {
+            const n = Number(this.user?.chat_history_prefs?.private_history_chunk_size);
+
+            return Number.isFinite(n) ? Math.min(100, Math.max(1, Math.floor(n))) : 5;
         },
         canCreateRoom() {
             return Boolean(this.user && !this.user.guest && this.user.can_create_room);
@@ -1363,7 +1381,8 @@ export default {
 
             return age <= windowSec;
         },
-        mergeMessage(raw) {
+        mergeMessage(raw, options = {}) {
+            const suppressAutoScroll = Boolean(options && options.suppressAutoScroll);
             const m = normalizeMessage(raw);
             if (!m) {
                 return;
@@ -1415,7 +1434,9 @@ export default {
                     this.$set(this.messages, pendIdx, next);
                     this.messageIds.add(m.post_id);
                     this.messages.sort((a, b) => Number(a.post_id) - Number(b.post_id));
-                    this.$nextTick(() => this.scrollToBottom());
+                    if (!suppressAutoScroll) {
+                        this.$nextTick(() => this.scrollToBottom());
+                    }
 
                     return;
                 }
@@ -1438,7 +1459,9 @@ export default {
                     next.can_delete = false;
                 }
                 this.$set(this.messages, existingIdx, next);
-                this.$nextTick(() => this.scrollToBottom());
+                if (!suppressAutoScroll) {
+                    this.$nextTick(() => this.scrollToBottom());
+                }
 
                 return;
             }
@@ -1448,7 +1471,9 @@ export default {
             this.messageIds.add(m.post_id);
             this.messages.push(m);
             this.messages.sort((a, b) => a.post_id - b.post_id);
-            this.$nextTick(() => this.scrollToBottom());
+            if (!suppressAutoScroll) {
+                this.$nextTick(() => this.scrollToBottom());
+            }
         },
         scrollToBottom() {
             const feed = this.$refs.chatFeed;
@@ -1536,6 +1561,9 @@ export default {
                 }
                 this.clearMessages();
                 (data.data || []).forEach((row) => this.mergeMessage(row));
+                this.olderRoomCursor = data.meta ? data.meta.next_cursor : null;
+                this.olderRoomHasMore = Boolean(data.meta && data.meta.has_more_older);
+                this.loadingOlderRoom = false;
 
                 const lr =
                     data.meta && data.meta.last_read_post_id != null
@@ -1555,6 +1583,56 @@ export default {
             } finally {
                 this.loadingMessages = false;
                 this.$nextTick(() => this.afterMessagesLoadedScroll());
+            }
+        },
+        onFeedTopVisible() {
+            void this.loadOlderRoomMessages();
+        },
+        async loadOlderRoomMessages() {
+            if (!this.selectedRoomId || !this.selectedRoomApiSegment) {
+                return;
+            }
+            if (this.loadingMessages || this.loadingOlderRoom) {
+                return;
+            }
+            if (!this.olderRoomHasMore || !this.olderRoomCursor) {
+                return;
+            }
+            const feed = this.$refs.chatFeed;
+            const container = feed && feed.$refs ? feed.$refs.scrollContainer : null;
+            const prevHeight = container ? container.scrollHeight : 0;
+            const prevTop = container ? container.scrollTop : 0;
+
+            this.loadingOlderRoom = true;
+            try {
+                const requestedCursor = this.olderRoomCursor;
+                const { data } = await window.axios.get(
+                    `/api/v1/rooms/${this.selectedRoomApiSegment}/messages`,
+                    { params: { before: requestedCursor, limit: this.roomHistoryChunkSize } },
+                );
+                const rows = Array.isArray(data.data) ? data.data : [];
+                for (const row of rows) {
+                    this.mergeMessage(row, { suppressAutoScroll: true });
+                }
+                const nextCursor = data.meta ? data.meta.next_cursor : null;
+                const hasMoreOlder = Boolean(data.meta && data.meta.has_more_older);
+                const cursorProgressed = nextCursor != null && Number(nextCursor) !== Number(requestedCursor);
+                this.olderRoomCursor = nextCursor;
+                this.olderRoomHasMore = hasMoreOlder && cursorProgressed;
+                this.$nextTick(() => {
+                    if (!container) {
+                        return;
+                    }
+                    const nextHeight = container.scrollHeight;
+                    const delta = nextHeight - prevHeight;
+                    if (delta > 0) {
+                        container.scrollTop = prevTop + delta;
+                    }
+                });
+            } catch {
+                /* ignore */
+            } finally {
+                this.loadingOlderRoom = false;
             }
         },
         onFeedBottomVisible() {
@@ -1663,6 +1741,71 @@ export default {
                 return;
             }
             await this.fetchLatestRoomMessagesMerged({ playSoundsForNew: false });
+        },
+        onPrivateTopVisible() {
+            void this.loadOlderPrivateMessages();
+        },
+        async loadOlderPrivateMessages() {
+            if (!this.privatePeer) {
+                return;
+            }
+            if (this.loadingPrivateMessages || this.loadingOlderPrivate) {
+                return;
+            }
+            if (!this.olderPrivateHasMore || !this.olderPrivateCursor) {
+                return;
+            }
+            const panel = this.$refs.privateChatPanel;
+            const container = panel && panel.$refs ? panel.$refs.privateList : null;
+            const prevHeight = container ? container.scrollHeight : 0;
+            const prevTop = container ? container.scrollTop : 0;
+
+            this.loadingOlderPrivate = true;
+            try {
+                const requestedCursor = this.olderPrivateCursor;
+                const { data } = await window.axios.get(
+                    `/api/v1/private/peers/${this.privatePeer.id}/messages`,
+                    { params: { before: requestedCursor, limit: this.privateHistoryChunkSize } },
+                );
+                const rows = Array.isArray(data.data) ? data.data : [];
+                const newOnes = rows
+                    .filter((r) => r && typeof r.id !== 'undefined' && !this.privateMessageIds.has(r.id))
+                    .map((r) => ({
+                        id: r.id,
+                        sender_id: r.sender_id,
+                        recipient_id: r.recipient_id,
+                        body: r.body,
+                        sent_at: r.sent_at != null && r.sent_at !== '' ? Number(r.sent_at) : r.sent_at,
+                        sent_time: r.sent_time,
+                        client_message_id: r.client_message_id,
+                    }));
+                if (newOnes.length) {
+                    newOnes.sort((a, b) => a.id - b.id);
+                    for (const m of newOnes) {
+                        this.privateMessageIds.add(m.id);
+                    }
+                    this.privateMessages = [...newOnes, ...this.privateMessages];
+                }
+                const nextCursor = data.meta ? data.meta.next_cursor : null;
+                const hasMoreOlder = Boolean(data.meta && data.meta.has_more_older);
+                const cursorProgressed = nextCursor != null && Number(nextCursor) !== Number(requestedCursor);
+                this.olderPrivateCursor = nextCursor;
+                this.olderPrivateHasMore = hasMoreOlder && cursorProgressed;
+                this.$nextTick(() => {
+                    if (!container) {
+                        return;
+                    }
+                    const nextHeight = container.scrollHeight;
+                    const delta = nextHeight - prevHeight;
+                    if (delta > 0) {
+                        container.scrollTop = prevTop + delta;
+                    }
+                });
+            } catch {
+                /* ignore */
+            } finally {
+                this.loadingOlderPrivate = false;
+            }
         },
         startPollIfDegraded() {
             this.stopPoll();

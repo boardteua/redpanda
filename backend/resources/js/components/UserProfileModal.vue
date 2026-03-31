@@ -313,6 +313,47 @@
                         </RpButton>
                     </div>
 
+                    <!-- Історія -->
+                    <div v-show="activeTab === 'history'" class="space-y-4">
+                        <p class="text-sm text-[var(--rp-text-muted)]">
+                            Скільки старіших повідомлень підвантажувати при прокрутці вгору.
+                        </p>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="rp-label" for="pf-room-chunk">Кімнати: розмір чанка (N)</label>
+                                <input
+                                    id="pf-room-chunk"
+                                    v-model.number="history.room_history_chunk_size"
+                                    type="number"
+                                    min="1"
+                                    max="100"
+                                    class="rp-input rp-focusable w-full max-w-xs"
+                                />
+                                <p class="mt-1 text-xs text-[var(--rp-text-muted)]">Дефолт: 20</p>
+                            </div>
+                            <div>
+                                <label class="rp-label" for="pf-private-chunk">Привати: розмір чанка (N)</label>
+                                <input
+                                    id="pf-private-chunk"
+                                    v-model.number="history.private_history_chunk_size"
+                                    type="number"
+                                    min="1"
+                                    max="100"
+                                    class="rp-input rp-focusable w-full max-w-xs"
+                                />
+                                <p class="mt-1 text-xs text-[var(--rp-text-muted)]">Дефолт: 5</p>
+                            </div>
+                        </div>
+                        <RpButton
+                            class="w-full sm:w-auto"
+                            :loading="saving"
+                            :disabled="saving"
+                            @click="saveHistory"
+                        >
+                            {{ saving ? 'Збереження…' : 'Зберегти історію' }}
+                        </RpButton>
+                    </div>
+
                     <!-- Web push (T167) -->
                     <div v-show="activeTab === 'webpush'" class="space-y-4">
                         <p class="text-sm text-[var(--rp-text-muted)]">
@@ -479,6 +520,10 @@ export default {
                 private: true,
                 volume_percent: 80,
             },
+            history: {
+                room_history_chunk_size: 20,
+                private_history_chunk_size: 5,
+            },
             webPush: {
                 loaded: false,
                 loading: false,
@@ -494,6 +539,7 @@ export default {
                 { id: 'account', label: 'Акаунт' },
                 { id: 'social', label: 'Соцмережі' },
                 { id: 'sounds', label: 'Звуки' },
+                { id: 'history', label: 'Історія' },
                 { id: 'webpush', label: 'Web push' },
             ],
             socialFields: [
@@ -574,6 +620,17 @@ export default {
                 private: snd.private !== false,
                 volume_percent:
                     snd.volume_percent != null ? Math.min(100, Math.max(0, Number(snd.volume_percent))) : 80,
+            };
+            const hp = u.chat_history_prefs || {};
+            this.history = {
+                room_history_chunk_size:
+                    hp.room_history_chunk_size != null
+                        ? Math.min(100, Math.max(1, Number(hp.room_history_chunk_size)))
+                        : 20,
+                private_history_chunk_size:
+                    hp.private_history_chunk_size != null
+                        ? Math.min(100, Math.max(1, Number(hp.private_history_chunk_size)))
+                        : 5,
             };
         },
         async ensureSanctum() {
@@ -683,6 +740,28 @@ export default {
                         mentions: this.sounds.mentions,
                         private: this.sounds.private,
                         volume_percent: this.sounds.volume_percent,
+                    },
+                });
+                if (data.data) {
+                    this.$emit('updated', data.data);
+                }
+            } catch (e) {
+                this.tabError = this.formatValidationMessage(e);
+            } finally {
+                this.saving = false;
+            }
+        },
+        async saveHistory() {
+            this.tabError = '';
+            this.saving = true;
+            await this.ensureSanctum();
+            const roomN = Number(this.history.room_history_chunk_size);
+            const privN = Number(this.history.private_history_chunk_size);
+            try {
+                const { data } = await window.axios.patch('/api/v1/me/profile', {
+                    chat_history_prefs: {
+                        room_history_chunk_size: Number.isFinite(roomN) ? roomN : 20,
+                        private_history_chunk_size: Number.isFinite(privN) ? privN : 5,
                     },
                 });
                 if (data.data) {
