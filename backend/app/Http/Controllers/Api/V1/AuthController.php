@@ -10,6 +10,7 @@ use App\Http\Resources\UserResource;
 use App\Models\ChatSetting;
 use App\Models\User;
 use App\Services\Mail\TransactionalMailService;
+use App\Services\Moderation\ProxyCheck\ProxyCheckGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +23,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly TransactionalMailService $transactionalMail,
+        private readonly ProxyCheckGate $proxyCheckGate,
     ) {}
 
     /**
@@ -33,6 +35,10 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request): JsonResponse
     {
+        if ($resp = $this->proxyCheckGate->denyIfNeeded($request, 'auth_register')) {
+            return $resp;
+        }
+
         if (! ChatSetting::current()->resolvedRegistrationFlags()['registration_open']) {
             return response()->json([
                 'message' => 'Реєстрацію тимчасово вимкнено адміністратором.',
@@ -54,8 +60,12 @@ class AuthController extends Controller
         return UserResource::make($user)->response()->setStatusCode(201);
     }
 
-    public function login(LoginRequest $request): UserResource
+    public function login(LoginRequest $request): UserResource|JsonResponse
     {
+        if ($resp = $this->proxyCheckGate->denyIfNeeded($request, 'auth_login')) {
+            return $resp;
+        }
+
         $plain = $request->validated('password');
         $user = User::query()->where('user_name', $request->validated('user_name'))->first();
 
@@ -93,6 +103,10 @@ class AuthController extends Controller
 
     public function guest(GuestRequest $request): JsonResponse
     {
+        if ($resp = $this->proxyCheckGate->denyIfNeeded($request, 'auth_guest')) {
+            return $resp;
+        }
+
         $userName = $request->validated('user_name') ?? $this->uniqueGuestUserName();
 
         $user = User::query()->create([

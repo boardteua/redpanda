@@ -27,6 +27,7 @@ use App\Services\Chat\MessageFloodGate;
 use App\Services\Chat\RedPandaBotRoomOpenTriggers;
 use App\Services\Moderation\ChatAutomoderationService;
 use App\Services\Moderation\ContentWordFilter;
+use App\Services\Moderation\ProxyCheck\ProxyCheckGate;
 use App\Services\Moderation\UserPostingGate;
 use App\Services\PrivateMessageGate;
 use App\Support\ChatMessageBodyStyle;
@@ -48,6 +49,7 @@ class ChatMessageController extends Controller
         private readonly ChatMessageMutationService $messageMutation,
         private readonly MessageFloodGate $messageFloodGate,
         private readonly RedPandaBotRoomOpenTriggers $redPandaBotRoomOpenTriggers,
+        private readonly ProxyCheckGate $proxyCheckGate,
     ) {}
 
     public function index(Request $request, Room $room): AnonymousResourceCollection|JsonResponse
@@ -158,6 +160,10 @@ class ChatMessageController extends Controller
     public function store(StoreChatMessageRequest $request, Room $room): JsonResponse
     {
         $this->authorize('interact', $room);
+
+        if ($resp = $this->proxyCheckGate->denyIfNeeded($request, 'chat_post_room')) {
+            return $resp;
+        }
 
         $user = $request->user();
         $this->postingGate->ensureCanPost($user);

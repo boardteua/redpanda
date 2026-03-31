@@ -12,6 +12,7 @@ use App\Models\PrivateMessage;
 use App\Models\PrivateMessageReadState;
 use App\Models\User;
 use App\Services\Moderation\ContentWordFilter;
+use App\Services\Moderation\ProxyCheck\ProxyCheckGate;
 use App\Services\Moderation\UserPostingGate;
 use App\Services\Chat\MessageFloodGate;
 use App\Services\PrivateMessageGate;
@@ -28,6 +29,7 @@ class PrivateMessageController extends Controller
         private readonly ContentWordFilter $wordFilter,
         private readonly UserPostingGate $postingGate,
         private readonly MessageFloodGate $messageFloodGate,
+        private readonly ProxyCheckGate $proxyCheckGate,
     ) {}
 
     public function conversations(Request $request): JsonResponse
@@ -177,6 +179,10 @@ class PrivateMessageController extends Controller
         $user = $request->user();
         if ((int) $peer->id === (int) $user->id) {
             return response()->json(['message' => 'Неможливо написати собі.'], 422);
+        }
+
+        if ($resp = $this->proxyCheckGate->denyIfNeeded($request, 'chat_post_private')) {
+            return $resp;
         }
 
         if (PrivateMessageGate::isBlocked($user, $peer)) {

@@ -47,4 +47,13 @@ return [
         'public_avatar_url_ttl_seconds' => (int) env('WEB_PUSH_PUBLIC_AVATAR_TTL_SECONDS', 604800),
     ],
 
+    'proxycheck' => [
+        'enabled' => (bool) env('PROXYCHECK_ENABLED', false),
+        'key' => env('PROXYCHECK_API_KEY'),
+        'timeout_ms' => (int) env('PROXYCHECK_TIMEOUT_MS', 1500),
+        'cache_ttl_seconds' => (int) env('PROXYCHECK_CACHE_TTL_SECONDS', 600),
+        'deny_if_proxy_or_vpn' => (bool) env('PROXYCHECK_DENY_IF_PROXY_OR_VPN', true),
+        'deny_risk_threshold' => (int) env('PROXYCHECK_DENY_RISK_THRESHOLD', 67),
+    ],
+
 ];
