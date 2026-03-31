@@ -50,6 +50,7 @@ class ChatSetting extends Model
         'message_flood_enabled',
         'message_flood_max_messages',
         'message_flood_window_seconds',
+        'proxycheck_enabled',
     ];
 
     /**
@@ -74,6 +75,7 @@ class ChatSetting extends Model
             'message_flood_enabled' => 'boolean',
             'message_flood_max_messages' => 'integer',
             'message_flood_window_seconds' => 'integer',
+            'proxycheck_enabled' => 'boolean',
         ];
     }
 

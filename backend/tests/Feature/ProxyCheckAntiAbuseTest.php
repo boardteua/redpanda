@@ -119,6 +119,31 @@ class ProxyCheckAntiAbuseTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_proxycheck_logical_failure_status_does_not_block_register(): void
+    {
+        config()->set('services.proxycheck.enabled', true);
+        config()->set('services.proxycheck.key', 'test-key');
+
+        $ip = '9.9.9.10';
+        Http::fake([
+            "https://proxycheck.io/v2/{$ip}*" => Http::response([
+                'status' => 'denied',
+                'message' => 'quota exceeded',
+            ], 200),
+        ]);
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->withServerVariables(['REMOTE_ADDR' => $ip])
+            ->postJson('/api/v1/auth/register', [
+                'user_name' => 'OkUser2',
+                'email' => 'ok2@example.com',
+                'password' => 'password-secure-1',
+                'password_confirmation' => 'password-secure-1',
+            ])
+            ->assertCreated();
+    }
+
     public function test_banned_ip_request_persists_ban_evasion_event(): void
     {
         config()->set('services.proxycheck.enabled', false);

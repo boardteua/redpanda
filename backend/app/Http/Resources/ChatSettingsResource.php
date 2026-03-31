@@ -40,6 +40,7 @@ class ChatSettingsResource extends JsonResource
         ];
 
         if ($request->user()?->isChatAdmin()) {
+            $base['proxycheck_enabled'] = (bool) ($m->proxycheck_enabled ?? true);
             $base['transactional_mail_from_name'] = $m->transactional_mail_from_name;
             $base['mail_template_overrides'] = $m->resolvedMailTemplateOverrides();
         }

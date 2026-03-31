@@ -41,6 +41,7 @@ class UpdateChatSettingsRequest extends FormRequest
             'message_flood_enabled' => ['sometimes', 'boolean'],
             'message_flood_max_messages' => ['sometimes', 'integer', 'min:1', 'max:65535'],
             'message_flood_window_seconds' => ['sometimes', 'integer', 'min:1', 'max:86400'],
+            'proxycheck_enabled' => ['sometimes', 'boolean'],
             'max_attachment_bytes' => [
                 'sometimes',
                 'integer',

@@ -207,6 +207,23 @@
                     </div>
 
                     <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Anti-spam</h3>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Якщо вимкнути — перевірка proxy/VPN для реєстрації/логіну/постингу не виконується (бекенд працює
+                            у режимі allow). Зручно для інцидентів або false positive.
+                        </p>
+                        <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
+                            <input
+                                id="cs-proxycheck-enabled"
+                                v-model="form.proxycheck_enabled"
+                                type="checkbox"
+                                class="rp-focusable h-4 w-4 rounded border"
+                            />
+                            Увімкнути proxycheck
+                        </label>
+                    </div>
+
+                    <div class="border-t border-[var(--rp-border-subtle)] pt-4">
                         <h3 class="text-sm font-semibold text-[var(--rp-text)]">Модерація (slash)</h3>
                         <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
                             Дефолтні хвилини для <span class="font-mono">/mute</span> та <span class="font-mono">/kick</span>,
@@ -817,6 +834,7 @@ export default {
                 message_flood_enabled: false,
                 message_flood_max_messages: 5,
                 message_flood_window_seconds: 10,
+                proxycheck_enabled: true,
                 landing_settings: {
                     page_title: '',
                     tagline: '',
@@ -1000,6 +1018,7 @@ export default {
                 key.startsWith('slash_command')
                 || key.startsWith('mod_slash')
                 || key.startsWith('message_flood')
+                || key.startsWith('proxycheck')
             ) {
                 return 'slash';
             }
@@ -1028,6 +1047,7 @@ export default {
                 message_flood_enabled: 'cs-flood-enabled',
                 message_flood_max_messages: 'cs-flood-max',
                 message_flood_window_seconds: 'cs-flood-window',
+                proxycheck_enabled: 'cs-proxycheck-enabled',
                 mod_slash_default_mute_minutes: 'cs-mod-mute',
                 mod_slash_default_kick_minutes: 'cs-mod-kick',
                 silent_mode: 'cs-silent-mode',
@@ -1134,6 +1154,7 @@ export default {
                         Number(d.message_flood_window_seconds) >= 1
                             ? Number(d.message_flood_window_seconds)
                             : 10,
+                    proxycheck_enabled: d.proxycheck_enabled === false ? false : true,
                 };
                 const ls = d.landing_settings && typeof d.landing_settings === 'object' ? d.landing_settings : {};
                 const rawLinks = Array.isArray(ls.links) ? ls.links : [];
@@ -1325,6 +1346,7 @@ export default {
                     message_flood_enabled: Boolean(this.form.message_flood_enabled),
                     message_flood_max_messages: Number(this.form.message_flood_max_messages),
                     message_flood_window_seconds: Number(this.form.message_flood_window_seconds),
+                    proxycheck_enabled: Boolean(this.form.proxycheck_enabled),
                     landing_settings: {
                         page_title: (this.form.landing_settings.page_title || '').trim() || null,
                         tagline: (this.form.landing_settings.tagline || '').trim() || null,

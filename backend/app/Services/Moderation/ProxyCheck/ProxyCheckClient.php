@@ -2,6 +2,7 @@
 
 namespace App\Services\Moderation\ProxyCheck;
 
+use App\Models\ChatSetting;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
@@ -16,25 +17,11 @@ final class ProxyCheckClient
     {
         $ip = trim($ip);
         if ($ip === '') {
-            return new ProxyCheckVerdict(
-                ip: $ip,
-                isProxyOrVpn: false,
-                riskScore: null,
-                isDenied: false,
-                reason: null,
-                raw: null,
-            );
+            return $this->allowVerdict($ip);
         }
 
         if (! $this->enabled()) {
-            return new ProxyCheckVerdict(
-                ip: $ip,
-                isProxyOrVpn: false,
-                riskScore: null,
-                isDenied: false,
-                reason: null,
-                raw: null,
-            );
+            return $this->allowVerdict($ip);
         }
 
         $cacheKey = self::CACHE_PREFIX.hash('sha256', $ip);
@@ -50,7 +37,21 @@ final class ProxyCheckClient
 
     private function enabled(): bool
     {
-        return (bool) config('services.proxycheck.enabled', false);
+        if (! (bool) config('services.proxycheck.enabled', false)) {
+            return false;
+        }
+
+        try {
+            return Cache::remember('chat_settings:proxycheck_enabled', 10, function (): bool {
+                $v = ChatSetting::query()->value('proxycheck_enabled');
+
+                return $v === null ? true : (bool) $v;
+            });
+        } catch (\Throwable $e) {
+            Log::warning('proxycheck toggle lookup failed (fail-open)', ['error' => $e->getMessage()]);
+
+            return true;
+        }
     }
 
     private function key(): string
@@ -76,14 +77,7 @@ final class ProxyCheckClient
         if ($key === '') {
             Log::warning('proxycheck disabled: missing key', ['ip' => $ip]);
 
-            return new ProxyCheckVerdict(
-                ip: $ip,
-                isProxyOrVpn: false,
-                riskScore: null,
-                isDenied: false,
-                reason: null,
-                raw: null,
-            );
+            return $this->allowVerdict($ip);
         }
 
         try {
@@ -99,14 +93,7 @@ final class ProxyCheckClient
         } catch (ConnectionException $e) {
             Log::warning('proxycheck connection failed', ['ip' => $ip, 'tag' => $tag, 'error' => $e->getMessage()]);
 
-            return new ProxyCheckVerdict(
-                ip: $ip,
-                isProxyOrVpn: false,
-                riskScore: null,
-                isDenied: false,
-                reason: null,
-                raw: null,
-            );
+            return $this->allowVerdict($ip);
         } catch (RequestException $e) {
             Log::warning('proxycheck request failed', [
                 'ip' => $ip,
@@ -115,23 +102,33 @@ final class ProxyCheckClient
                 'error' => $e->getMessage(),
             ]);
 
-            return new ProxyCheckVerdict(
-                ip: $ip,
-                isProxyOrVpn: false,
-                riskScore: null,
-                isDenied: false,
-                reason: null,
-                raw: null,
-            );
+            return $this->allowVerdict($ip);
         }
 
         /** @var array<string, mixed> $json */
         $json = $resp->json();
-        $ipNode = $json[$ip] ?? null;
+        $status = strtolower((string) ($json['status'] ?? ''));
+        if ($status !== '' && ! in_array($status, ['ok', 'warning'], true)) {
+            Log::warning('proxycheck logical failure status', [
+                'ip' => $ip,
+                'tag' => $tag,
+                'status' => $status,
+                'message' => is_string($json['message'] ?? null) ? $json['message'] : null,
+            ]);
 
-        $proxyYes = is_array($ipNode) && (($ipNode['proxy'] ?? null) === 'yes');
-        $type = is_array($ipNode) ? (string) ($ipNode['type'] ?? '') : '';
-        $riskRaw = is_array($ipNode) ? ($ipNode['risk'] ?? null) : null;
+            return $this->allowVerdict($ip);
+        }
+
+        $ipNode = $json[$ip] ?? null;
+        if (! is_array($ipNode)) {
+            Log::warning('proxycheck missing ip node in response', ['ip' => $ip, 'tag' => $tag, 'status' => $status]);
+
+            return $this->allowVerdict($ip);
+        }
+
+        $proxyYes = (($ipNode['proxy'] ?? null) === 'yes');
+        $type = (string) ($ipNode['type'] ?? '');
+        $riskRaw = $ipNode['risk'] ?? null;
         $riskScore = null;
         if (is_int($riskRaw)) {
             $riskScore = $riskRaw;
@@ -154,15 +151,25 @@ final class ProxyCheckClient
         }
 
         /** @var array<string, mixed>|null $raw */
-        $raw = is_array($ipNode) ? $ipNode : null;
-
         return new ProxyCheckVerdict(
             ip: $ip,
             isProxyOrVpn: $isProxyOrVpn,
             riskScore: $riskScore,
             isDenied: $deny,
             reason: $reason,
-            raw: $raw,
+            raw: $ipNode,
+        );
+    }
+
+    private function allowVerdict(string $ip): ProxyCheckVerdict
+    {
+        return new ProxyCheckVerdict(
+            ip: $ip,
+            isProxyOrVpn: false,
+            riskScore: null,
+            isDenied: false,
+            reason: null,
+            raw: null,
         );
     }
 }
