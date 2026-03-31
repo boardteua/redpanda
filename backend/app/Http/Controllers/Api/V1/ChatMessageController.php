@@ -91,7 +91,17 @@ class ChatMessageController extends Controller
             ChatMessageListAbilityMap::forMessages($request->user(), $page),
         );
 
-        $nextCursor = $page->isNotEmpty() ? $page->first()->post_id : null;
+        $nextCursor = $page->isNotEmpty() ? (int) $page->first()->post_id : null;
+        $hasMoreOlder = false;
+        if ($nextCursor !== null) {
+            if ($page->count() < $limit) {
+                $hasMoreOlder = false;
+            } else {
+                $hasMoreOlder = (clone $query)
+                    ->where('post_id', '<', $nextCursor)
+                    ->exists();
+            }
+        }
 
         $slugSource = $room->slugBindingSource ?? null;
         $slugRedirect = is_string($slugSource)
@@ -100,6 +110,7 @@ class ChatMessageController extends Controller
 
         $meta = [
             'next_cursor' => $nextCursor,
+            'has_more_older' => $hasMoreOlder,
             'last_read_post_id' => $lastReadPostId !== null ? (int) $lastReadPostId : null,
             'slug_redirect' => $slugRedirect,
             'canonical_slug' => (string) $room->slug,

@@ -2331,6 +2331,7 @@ paths:
       description: |
         Повертає до `limit` повідомлень старіших за `before` (якщо задано), у полі `data` — у **хронологічному** порядку (старі → новіші у межах сторінки).
         `meta.next_cursor` — мінімальний `post_id` у сторінці для наступного запиту «старіше».
+        `meta.has_more_older` — чи є ще повідомлення з `post_id` < `meta.next_cursor` (зручно для UI “no more”).
         `meta.last_read_post_id` — збережений маркер прочитаного для цієї кімнати (`null`, якщо ще не зберігали).
         Якщо `since_read=true`, додатково `meta.first_unread_post_id` — перший `post_id` **у межах повернутої сторінки** з `post_id` > `last_read_post_id` (або `null`).
       operationId: listRoomMessages
@@ -2899,12 +2900,15 @@ components:
             $ref: "#/components/schemas/PrivateMessage"
         meta:
           type: object
-          required: [next_cursor]
+          required: [next_cursor, has_more_older]
           properties:
             next_cursor:
               type: integer
               nullable: true
               description: Мінімальний `id` на сторінці для наступного запиту з `before`; `null` якщо порожньо
+            has_more_older:
+              type: boolean
+              description: true, якщо є повідомлення з `id` < `next_cursor`
 
     StorePrivateMessageRequest:
       type: object
@@ -4244,11 +4248,14 @@ components:
             $ref: "#/components/schemas/ChatMessage"
         meta:
           type: object
-          required: [next_cursor, last_read_post_id]
+          required: [next_cursor, has_more_older, last_read_post_id]
           properties:
             next_cursor:
               type: integer
               nullable: true
+            has_more_older:
+              type: boolean
+              description: true, якщо є повідомлення старіші за `next_cursor`
             last_read_post_id:
               type: integer
               nullable: true

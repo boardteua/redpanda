@@ -133,13 +133,24 @@ class PrivateMessageController extends Controller
         }
 
         $page = $query->limit($limit)->get()->sortBy('id')->values();
-        $nextCursor = $page->isNotEmpty() ? $page->first()->id : null;
+        $nextCursor = $page->isNotEmpty() ? (int) $page->first()->id : null;
+        $hasMoreOlder = false;
+        if ($nextCursor !== null) {
+            if ($page->count() < $limit) {
+                $hasMoreOlder = false;
+            } else {
+                $hasMoreOlder = (clone $query)
+                    ->where('id', '<', $nextCursor)
+                    ->exists();
+            }
+        }
 
         $this->markIncomingReadThrough($uid, $peerId);
 
         return PrivateMessageResource::collection($page)->additional([
             'meta' => [
                 'next_cursor' => $nextCursor,
+                'has_more_older' => $hasMoreOlder,
             ],
         ]);
     }

@@ -303,6 +303,54 @@ class PrivateMessageApiTest extends TestCase
             ->assertJsonPath('meta.total_private_unread', 0);
     }
 
+    public function test_private_messages_index_cursor_meta_and_has_more_older(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        $m1 = PrivateMessage::query()->create([
+            'sender_id' => $a->id,
+            'recipient_id' => $b->id,
+            'body' => 'one',
+            'sent_at' => time(),
+            'sent_time' => '12:00',
+            'client_message_id' => '20000000-0000-4000-8000-000000000001',
+        ]);
+        $m2 = PrivateMessage::query()->create([
+            'sender_id' => $b->id,
+            'recipient_id' => $a->id,
+            'body' => 'two',
+            'sent_at' => time() + 1,
+            'sent_time' => '12:01',
+            'client_message_id' => '20000000-0000-4000-8000-000000000002',
+        ]);
+        $m3 = PrivateMessage::query()->create([
+            'sender_id' => $a->id,
+            'recipient_id' => $b->id,
+            'body' => 'three',
+            'sent_at' => time() + 2,
+            'sent_time' => '12:02',
+            'client_message_id' => '20000000-0000-4000-8000-000000000003',
+        ]);
+
+        Sanctum::actingAs($a);
+        $res = $this->getJson('/api/v1/private/peers/'.$b->id.'/messages?limit=2')->assertOk();
+
+        $res->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.body', 'two')
+            ->assertJsonPath('data.1.body', 'three')
+            ->assertJsonPath('meta.next_cursor', (int) $m2->id)
+            ->assertJsonPath('meta.has_more_older', true);
+
+        $res2 = $this->getJson('/api/v1/private/peers/'.$b->id.'/messages?limit=50')->assertOk();
+        $res2->assertJsonPath('meta.has_more_older', false);
+
+        $res3 = $this->getJson('/api/v1/private/peers/'.$b->id.'/messages?limit=2&before='.$m2->id)->assertOk();
+        $res3->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.body', 'one')
+            ->assertJsonPath('meta.has_more_older', false);
+    }
+
     public function test_post_read_marks_incoming_without_full_history_load(): void
     {
         $a = User::factory()->create();
