@@ -17,6 +17,9 @@ use App\Models\Room;
 use App\Models\RoomReadState;
 use App\Models\User;
 use App\Models\UserIgnore;
+use App\Chat\SlashCommands\SlashCommandContext;
+use App\Chat\SlashCommands\SlashCommandOutcome;
+use App\Chat\SlashCommands\SlashCommandRegistry;
 use Illuminate\Broadcasting\BroadcastEvent;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -316,6 +319,36 @@ class ChatApiTest extends TestCase
         $rowsB = collect($respB->json('data'));
         $leak = $rowsB->first(fn (array $row) => (int) ($row['post_id'] ?? 0) === $postId);
         $this->assertNull($leak);
+    }
+
+    public function test_slash_command_can_be_registered_with_callable_handler(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+
+        $registry = new SlashCommandRegistry;
+        $registry->register('testcb', static function (SlashCommandContext $context, string $name, string $args): SlashCommandOutcome {
+            return SlashCommandOutcome::clientOnlyMessage('ok:'.$args, [
+                'name' => $name,
+                'recognized' => true,
+            ]);
+        });
+        $this->app->instance(SlashCommandRegistry::class, $registry);
+
+        $resp = $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/testcb hello',
+                'client_message_id' => 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380acc',
+            ]);
+
+        $resp->assertCreated()
+            ->assertJsonPath('data.type', 'client_only')
+            ->assertJsonPath('data.post_message', 'ok:hello')
+            ->assertJsonPath('meta.slash.name', 'testcb')
+            ->assertJsonPath('meta.slash.recognized', true)
+            ->assertJsonPath('meta.slash.client_only', true);
     }
 
     public function test_slash_unknown_does_not_dispatch_room_broadcast(): void

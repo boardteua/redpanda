@@ -38,7 +38,8 @@ final class SlashCommandProcessor
 
         $name = $parsed['name'];
         $args = $parsed['args'];
-        $handler = $this->registry->get($name) ?? $this->unknownHandler;
+        $definition = $this->registry->getDefinition($name);
+        $handler = $definition?->handler ?? $this->unknownHandler;
         $outcome = $handler->handle($context, $name, $args);
 
         Log::info('chat.slash_command', [
