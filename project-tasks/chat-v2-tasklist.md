@@ -2522,7 +2522,7 @@
 
 ---
 
-### [ ] T187 — **Генерація зображень з чату:** підключити intent=Image → `GenerateRudaPandaVipImageJob`
+### [x] T187 — **Генерація зображень з чату:** підключити intent=Image → `GenerateRudaPandaVipImageJob`
 
 - **Delegate:** Backend Architect (+ Frontend Developer лише якщо потрібні підказки “/img” у UI)
 - **Залежність:** **T181** (job/image pipeline), **T176** (safety/політика), **T184** (налаштування моделей/LLM)
