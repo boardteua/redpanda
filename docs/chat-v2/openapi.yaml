@@ -53,7 +53,7 @@ info:
     Подія **`.PrivateMessagePosted`** на каналі **`private-user.{recipientId}`** (авторизація як для `user.{id}` у `routes/channels.php`).
 
     **Модерація в межах кімнати (T58):** творець кімнати (`rooms.created_by_user_id`) може `PATCH`/`DELETE` **чужі** публічні повідомлення **лише** в цій кімнаті; не діє на пости глобального модератора/адміна. Поля `created_by_me` та `is_room_moderator` у `Room` — для UI. Деталі — [T58-QA.md](T58-QA.md).
-  version: "0.20.0"
+  version: "0.21.0"
   license:
     name: Proprietary
     url: https://example.com/
@@ -1150,11 +1150,11 @@ paths:
       tags: [Private]
       summary: Надіслати приватне повідомлення peer
       description: |
-        Тіло: `message` (plain text, до 4000 символів), `client_message_id` (UUID) для ідемпотентності.
+        Тіло: `client_message_id` (UUID) обов’язково; `message` і/або `image_id` (власне зображення з `POST /api/v1/images`) — як у кімнаті (**T195**).
         **201** — нове повідомлення; **200** з `meta.duplicate: true` — той самий `client_message_id` уже збережений для цього peer.
         **403** — ігнор або мут/кік (**UserPostingGate**). **422** — не себе, або `client_message_id` вже використано для іншого peer.
         **T125:** той самий антифлуд, що й для `POST /api/v1/rooms/{roomId}/messages` (після перевірки дубля `client_message_id`); **`429`** з **`code`: `message_flood_limit`**.
-        Broadcast: `.PrivateMessagePosted` на `private-user.{recipientId}`.
+        Broadcast: `.PrivateMessagePosted` на `private-user.{recipientId}` (у payload може бути `image` з `id`/`url`).
         Throttle: `private-post`.
       operationId: storePrivateMessage
       security:
@@ -3184,6 +3184,16 @@ components:
         body:
           type: string
           description: Plain text (після word-filter на бекенді)
+        image:
+          type: object
+          nullable: true
+          description: Вкладення як у публічному повідомленні (`GET …/images/{id}/file`), T195
+          properties:
+            id:
+              type: integer
+            url:
+              type: string
+              format: uri
         sent_at:
           type: integer
           description: Unix time у секундах (UTC instant); клієнт форматує в локальний час (T121).
@@ -3244,11 +3254,17 @@ components:
 
     StorePrivateMessageRequest:
       type: object
-      required: [message, client_message_id]
+      required: [client_message_id]
+      description: |
+        Потрібен непорожній `message` (після trim) або `image_id` власного зображення (`POST /api/v1/images`), узгоджено з кімнатою (T195).
+        Max довжина `message`: гість 2000, користувач 4000, VIP/модератор/адмін 8000.
       properties:
         message:
           type: string
-          maxLength: 4000
+          maxLength: 8000
+        image_id:
+          type: integer
+          minimum: 1
         client_message_id:
           type: string
           format: uuid

@@ -48,32 +48,115 @@
                         <span class="ml-2 font-medium text-[var(--rp-text)]">{{ labelFor(m) }}</span>
                     </div>
                     <ChatMessageBody
+                        v-if="m.body && !privatePostHasBlockMedia(m)"
                         class="mt-1 text-[var(--rp-text)]"
                         :text="m.body"
                         variant="private"
                     />
+                    <ChatMessageBody
+                        v-if="m.body && privatePostHasBlockMedia(m)"
+                        class="mt-1 block w-full max-w-full min-w-0 text-[var(--rp-text)]"
+                        :text="m.body"
+                        variant="private"
+                    />
+                    <figure v-if="m.image && m.image.url" class="mt-1.5">
+                        <button
+                            type="button"
+                            class="rp-focusable group max-w-full cursor-pointer rounded-md border-0 bg-transparent p-0 text-left"
+                            aria-label="Збільшити вкладене зображення"
+                            @click="onPrivateAttachmentLightbox($event, m)"
+                        >
+                            <img
+                                :src="m.image.url"
+                                alt="Вкладене зображення"
+                                class="pointer-events-none max-h-64 max-w-full rounded-md border border-[var(--rp-chat-chrome-border)] object-contain group-hover:opacity-95"
+                                loading="lazy"
+                            />
+                        </button>
+                    </figure>
                 </div>
             </li>
         </ul>
         <form class="shrink-0 border-t border-[var(--rp-border-subtle)] p-2" @submit.prevent="onSubmit">
             <label class="rp-sr-only" for="private-composer">Текст приватного повідомлення</label>
             <p id="private-composer-keys-hint" class="rp-sr-only">
-                Enter — надіслати повідомлення. Shift+Enter — новий рядок.
+                Enter — надішле повідомлення. Shift+Enter — новий рядок.
             </p>
-            <textarea
-                id="private-composer"
-                ref="privateComposer"
-                :value="composerText"
-                class="rp-input rp-focusable mb-2 min-h-[4rem] resize-y font-sans"
-                maxlength="4000"
-                rows="2"
-                :disabled="sending"
-                :placeholder="privateComposerPlaceholder"
-                aria-describedby="private-composer-keys-hint"
-                @input="$emit('update:composerText', $event.target.value)"
-                @keydown="onComposerKeydown"
+            <div class="mb-2 flex items-end gap-1.5">
+                <div class="min-w-0 flex-1">
+                    <textarea
+                        id="private-composer"
+                        ref="privateComposer"
+                        :value="composerText"
+                        class="rp-input rp-focusable min-h-[4rem] w-full resize-y font-sans"
+                        :maxlength="messageMaxLength"
+                        rows="2"
+                        :disabled="sending || uploadingImage"
+                        :placeholder="privateComposerPlaceholder"
+                        aria-describedby="private-composer-keys-hint"
+                        @input="$emit('update:composerText', $event.target.value)"
+                        @keydown="onComposerKeydown"
+                        @paste="onChatComposerPaste"
+                    />
+                </div>
+                <div class="flex shrink-0 flex-col gap-1">
+                    <button
+                        type="button"
+                        class="rp-focusable rounded-md border border-[var(--rp-border-subtle)] p-2 text-[var(--rp-text)] hover:bg-[var(--rp-surface-elevated)] disabled:opacity-50"
+                        :disabled="sending || uploadingImage || imageUploadBlocked || !imageUploadContextActive"
+                        :title="imageUploadBlocked ? imageUploadBlockedTitle : imageAttachTitle"
+                        :aria-label="imageUploadBlocked ? imageUploadBlockedTitle : 'Додати зображення до повідомлення'"
+                        @click="$refs.imageInput && $refs.imageInput.click()"
+                    >
+                        <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+                            />
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        class="rp-focusable rounded-md border border-[var(--rp-border-subtle)] p-2 text-[var(--rp-text)] hover:bg-[var(--rp-surface-elevated)] disabled:opacity-50"
+                        :disabled="sending || uploadingImage || imageUploadBlocked || !imageUploadContextActive"
+                        title="Мої зображення"
+                        aria-label="Мої зображення"
+                        @click="openMyImagesModal"
+                    >
+                        <svg class="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"
+                            />
+                        </svg>
+                    </button>
+                </div>
+                <input
+                    ref="imageInput"
+                    type="file"
+                    class="hidden"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    @change="onChatImageSelected"
+                />
+            </div>
+            <ChatRoomComposerAttachmentPreviews
+                :edit-post-id="null"
+                edit-existing-image-url=""
+                :pending-image-id="pendingImageId"
+                :pending-preview-url="pendingPreviewUrl"
+                :sending="sending"
+                :uploading-image="uploadingImage"
+                @clear-pending-image="onClearPendingImageClick"
             />
-            <RpButton native-type="submit" class="w-full" :disabled="sending || !composerText.trim()">
+            <ChatMyImagesModal
+                :open="myImagesModalOpen"
+                :ensure-sanctum="ensureSanctum"
+                @close="myImagesModalOpen = false"
+                @select="onLibraryImageSelected"
+            />
+            <RpButton
+                native-type="submit"
+                class="w-full"
+                :disabled="sending || uploadingImage || !canSubmitPrivate"
+            >
                 Надіслати
             </RpButton>
         </form>
@@ -82,11 +165,17 @@
 
 <script>
 import ChatMessageBody from './chat/feed/ChatMessageBody.vue';
+import ChatMyImagesModal from './chat/composer/ChatMyImagesModal.vue';
+import ChatRoomComposerAttachmentPreviews from './chat/composer/ChatRoomComposerAttachmentPreviews.vue';
+import { chatComposerImageUploadMixin } from '../mixins/chatComposerImageUploadMixin';
 import { formatChatMessageTimeLocal, isoUtcFromUnixSeconds } from '../utils/formatChatMessageTime';
+import { messageHasBlockMedia } from '../utils/chatMessageBodyParse';
+import { openImageLightbox } from '../utils/imageLightboxStore';
 
 export default {
     name: 'PrivateChatPanel',
-    components: { ChatMessageBody },
+    mixins: [chatComposerImageUploadMixin],
+    components: { ChatMessageBody, ChatMyImagesModal, ChatRoomComposerAttachmentPreviews },
     props: {
         peer: {
             type: Object,
@@ -129,6 +218,15 @@ export default {
             type: Boolean,
             default: false,
         },
+        messageMaxLength: {
+            type: Number,
+            default: 4000,
+        },
+    },
+    data() {
+        return {
+            composerTextareaRefName: 'privateComposer',
+        };
     },
     computed: {
         privateComposerPlaceholder() {
@@ -137,6 +235,14 @@ export default {
             }
 
             return 'Повідомлення — Enter надішле, Shift+Enter — новий рядок';
+        },
+        imageUploadContextActive() {
+            return Boolean(this.peer);
+        },
+        canSubmitPrivate() {
+            const t = String(this.composerText || '').trim();
+
+            return Boolean(t || this.pendingImageId);
         },
     },
     watch: {
@@ -158,6 +264,7 @@ export default {
         },
         peer() {
             this._prevLastId = null;
+            this.clearPendingChatImage();
             this.$nextTick(() => this.scrollBottom());
         },
     },
@@ -168,6 +275,22 @@ export default {
         this.teardownTopObserver();
     },
     methods: {
+        privatePostHasBlockMedia(m) {
+            return messageHasBlockMedia(m && m.body);
+        },
+        onPrivateAttachmentLightbox(event, m) {
+            const url = m && m.image && m.image.url;
+            if (!url) {
+                return;
+            }
+            const el = event && event.currentTarget;
+
+            openImageLightbox({
+                src: url,
+                alt: 'Вкладене зображення',
+                returnFocusEl: el instanceof HTMLElement ? el : null,
+            });
+        },
         privateMessageTimeLabel(m) {
             const formatted = formatChatMessageTimeLocal(m && m.sent_at);
             if (formatted) {
@@ -222,11 +345,15 @@ export default {
             }
         },
         onSubmit() {
-            const t = this.composerText.trim();
-            if (!t || this.sending) {
+            if (!this.canSubmitPrivate || this.sending || this.uploadingImage) {
                 return;
             }
-            this.$emit('send', t);
+            const t = String(this.composerText || '').trim();
+            this.$emit('send', {
+                message: t,
+                imageId: this.pendingImageId,
+                imagePreviewUrl: this.pendingPreviewUrl || '',
+            });
         },
         /** Enter — відправка; Shift+Enter — перенос рядка (як у месенджерах). */
         onComposerKeydown(e) {
@@ -241,6 +368,13 @@ export default {
             }
             e.preventDefault();
             this.onSubmit();
+        },
+        onClearPendingImageClick() {
+            this.clearPendingChatImage();
+        },
+        /** Після успішної відправки — батько викликає через ref. */
+        clearAfterSuccessfulSend() {
+            this.clearPendingChatImage();
         },
         /** T124: після успішної відправки та `sending=false` у батька. */
         scheduleFocusComposer() {

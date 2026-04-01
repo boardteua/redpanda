@@ -106,9 +106,11 @@ class WebPushService
         $authorAvatar = $sender?->signedPublicAvatarUrlForPush();
         $fallbackIcon = url('/pwa/icon-192.png');
 
+        $hasImage = (int) ($message->image_id ?? 0) > 0;
+
         $payload = [
             'title' => sprintf('Приват від %s', $senderName),
-            'body' => $this->messagePreview((string) $message->body, false),
+            'body' => $this->messagePreview((string) $message->body, $hasImage),
             'tag' => 'private-'.$message->id,
             'data' => [
                 'kind' => 'private',

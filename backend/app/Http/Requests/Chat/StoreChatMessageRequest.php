@@ -3,13 +3,15 @@
 namespace App\Http\Requests\Chat;
 
 use App\Chat\RoomInlinePrivateParser;
-use App\Models\Image;
+use App\Http\Requests\Chat\Concerns\ValidatesOwnedChatImageId;
 use App\Support\ChatMessageBodyStyle;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreChatMessageRequest extends FormRequest
 {
+    use ValidatesOwnedChatImageId;
+
     public function authorize(): bool
     {
         return true;
@@ -46,12 +48,8 @@ class StoreChatMessageRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
-            $user = $this->user();
-            if ($user !== null && $user->guest && $this->filled('image_id')) {
-                $validator->errors()->add('image_id', 'Гості не можуть додавати зображення до повідомлень.');
-            }
-            if ($user !== null && ! $user->guest && $this->filled('image_id') && $user->isChatUploadDisabled()) {
-                $validator->errors()->add('image_id', 'Завантаження зображень для вашого облікового запису вимкнено модератором.');
+            if ($this->filled('image_id')) {
+                $this->assertOwnedChatImageId($validator);
             }
 
             $msg = trim((string) ($this->input('message') ?? ''));
@@ -74,18 +72,6 @@ class StoreChatMessageRequest extends FormRequest
                 }
             }
 
-            if (! $this->filled('image_id')) {
-                return;
-            }
-
-            $uid = (int) $this->user()->id;
-            $owns = Image::query()
-                ->where('id', (int) $this->input('image_id'))
-                ->where('user_id', $uid)
-                ->exists();
-            if (! $owns) {
-                $validator->errors()->add('image_id', 'Невірне зображення.');
-            }
         });
     }
 }

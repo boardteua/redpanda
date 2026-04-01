@@ -13,6 +13,7 @@ class PrivateMessage extends Model
         'sender_id',
         'recipient_id',
         'body',
+        'image_id',
         'sent_at',
         'sent_time',
         'client_message_id',
@@ -32,5 +33,13 @@ class PrivateMessage extends Model
     public function recipient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recipient_id');
+    }
+
+    /**
+     * @return BelongsTo<Image, $this>
+     */
+    public function image(): BelongsTo
+    {
+        return $this->belongsTo(Image::class, 'image_id');
     }
 }

@@ -2637,8 +2637,9 @@
 
 ---
 
-### [ ] T195 — **Приватні повідомлення:** завантаження зображень і **ембеди** як у кімнатах (**DRY**, без копіпасти)
+### [x] T195 — **Приватні повідомлення:** завантаження зображень і **ембеди** як у кімнатах (**DRY**, без копіпасти)
 
+- **Статус:** **PASS** (2026-04-01). `private_messages.image_id` + `StorePrivateMessageRequest` / `PrivateMessageResource` / WS payload; міксин `chatComposerImageUploadMixin.js` для `ChatRoomComposer` і `PrivateChatPanel` (paste, файл, «Мої зображення», прев’ю); стрічка привату — `ChatMessageBody` + блок-медіа + lightbox вкладення як у `ChatFeedMessageRow`. QA: `php artisan test tests/Feature/PrivateMessageApiTest.php` (у т.ч. `test_private_message_with_owned_image_id_persists_and_returns_image`), `npm run build`.
 - **Delegate:** Full stack (Frontend обов’язково; Backend — якщо контракт привату ще не узгоджений з кімнатою для медіа)
 - **Залежність:** **T08** (приват), **T10** / **T98** (upload зображень), **T46** / **T64** / **T118** (рендер тіла: посилання, прев’ю, ембеди), **T34**, **T31**, **T86**, **T87** (композер кімнати)
 - **Контекст (клієнт):** паритет UX/поведінки з кімнатою; спільні примітиви замість дублювання логіки в окремому екрані привату.

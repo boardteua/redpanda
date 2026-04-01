@@ -11,8 +11,10 @@ use App\Models\User;
 use App\Models\UserIgnore;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -24,6 +26,51 @@ class PrivateMessageApiTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(ValidateCsrfToken::class);
+    }
+
+    public function test_private_message_with_owned_image_id_persists_and_returns_image(): void
+    {
+        Storage::fake('chat_images');
+
+        $a = User::factory()->create(['user_name' => 'alice']);
+        $b = User::factory()->create(['user_name' => 'bob']);
+        $file = UploadedFile::fake()->image('pm.jpg', 40, 40);
+
+        Sanctum::actingAs($a);
+        $up = $this->post('/api/v1/images', ['image' => $file]);
+        $up->assertCreated();
+        $imageId = (int) $up->json('data.id');
+        $this->assertGreaterThan(0, $imageId);
+
+        $clientId = 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99';
+        $this->postJson('/api/v1/private/peers/'.$b->id.'/messages', [
+            'message' => '',
+            'image_id' => $imageId,
+            'client_message_id' => $clientId,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.image.id', $imageId);
+
+        $this->assertDatabaseHas('private_messages', [
+            'sender_id' => $a->id,
+            'recipient_id' => $b->id,
+            'image_id' => $imageId,
+            'client_message_id' => $clientId,
+        ]);
+    }
+
+    public function test_private_message_requires_text_or_image(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        Sanctum::actingAs($a);
+        $this->postJson('/api/v1/private/peers/'.$b->id.'/messages', [
+            'message' => '   ',
+            'client_message_id' => 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a88',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['message']);
     }
 
     public function test_send_private_message_dispatches_broadcast_and_persists(): void

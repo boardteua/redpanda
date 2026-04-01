@@ -4,6 +4,23 @@ import { postWithOneNetworkRetry } from '../utils/requestRetry';
 import { showError } from '../utils/rpToastStack';
 
 /**
+ * @param {unknown} img
+ * @returns {{ id: number, url: string }|undefined}
+ */
+function normalizePrivateMessageImage(img) {
+    if (!img || typeof img !== 'object') {
+        return undefined;
+    }
+    const id = Number(img.id);
+    const url = typeof img.url === 'string' ? img.url : '';
+    if (!Number.isFinite(id) || id <= 0 || !url) {
+        return undefined;
+    }
+
+    return { id, url };
+}
+
+/**
  * T103: приватні розмови (REST + стан панелі) — методи для ChatRoom.vue.
  * WS-слухачі лишаються в SFC (`ensureUserPrivateListener`).
  */
@@ -232,6 +249,7 @@ export const chatRoomPrivateMethods = {
                     sender_id: raw.sender_id,
                     recipient_id: raw.recipient_id,
                     body: raw.body,
+                    image: normalizePrivateMessageImage(raw.image),
                     sent_at:
                         raw.sent_at != null && raw.sent_at !== '' ? Number(raw.sent_at) : raw.sent_at,
                     sent_time: raw.sent_time,
@@ -251,6 +269,7 @@ export const chatRoomPrivateMethods = {
             sender_id: raw.sender_id,
             recipient_id: raw.recipient_id,
             body: raw.body,
+            image: normalizePrivateMessageImage(raw.image),
             sent_at: raw.sent_at != null && raw.sent_at !== '' ? Number(raw.sent_at) : raw.sent_at,
             sent_time: raw.sent_time,
             client_message_id: raw.client_message_id,
@@ -280,11 +299,19 @@ export const chatRoomPrivateMethods = {
         if (!this.privatePeer || this.sendingPrivate) {
             return;
         }
-        const text = typeof body === 'string' ? body.trim() : '';
-        if (!text) {
+        const text =
+            typeof body === 'string' ? body.trim() : String(body && body.message != null ? body.message : '').trim();
+        const imageIdRaw = typeof body === 'object' && body !== null ? body.imageId : null;
+        const imagePreviewUrl =
+            typeof body === 'object' && body !== null ? String(body.imagePreviewUrl || '') : '';
+        const imageId =
+            imageIdRaw != null && imageIdRaw !== '' && Number.isFinite(Number(imageIdRaw))
+                ? Number(imageIdRaw)
+                : null;
+        if (!text && !imageId) {
             return;
         }
-        if (/^\/clear$/iu.test(text)) {
+        if (/^\/clear$/iu.test(text) && !imageId) {
             await this.clearPrivateThreadFromPanel();
             return;
         }
@@ -300,6 +327,13 @@ export const chatRoomPrivateMethods = {
             sender_id: this.user.id,
             recipient_id: this.privatePeer.id,
             body: text,
+            image:
+                imageId != null
+                    ? {
+                          id: imageId,
+                          url: imagePreviewUrl || undefined,
+                      }
+                    : undefined,
             sent_at: Math.floor(Date.now() / 1000),
             sent_time: null,
             client_message_id: clientMessageId,
@@ -308,11 +342,15 @@ export const chatRoomPrivateMethods = {
         this.privateMessages.sort((a, b) => a.id - b.id);
         try {
             const url = `/api/v1/private/peers/${this.privatePeer.id}/messages`;
+            const postPayload = {
+                message: text,
+                client_message_id: clientMessageId,
+            };
+            if (imageId != null) {
+                postPayload.image_id = imageId;
+            }
             const { data, status } = await postWithOneNetworkRetry(() =>
-                window.axios.post(url, {
-                    message: text,
-                    client_message_id: clientMessageId,
-                }),
+                window.axios.post(url, postPayload),
             );
             if (data && data.data) {
                 this.mergePrivateMessage(data.data);
@@ -323,6 +361,10 @@ export const chatRoomPrivateMethods = {
             if (status === 201 || status === 200) {
                 this.privateComposerText = '';
                 privateSendOk = true;
+                const panel = this.$refs.privateChatPanel;
+                if (panel && typeof panel.clearAfterSuccessfulSend === 'function') {
+                    panel.clearAfterSuccessfulSend();
+                }
             }
             void this.loadConversations();
         } catch (e) {

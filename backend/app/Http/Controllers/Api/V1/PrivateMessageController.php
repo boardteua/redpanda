@@ -11,10 +11,10 @@ use App\Jobs\SendWebPushForPrivateMessage;
 use App\Models\PrivateMessage;
 use App\Models\PrivateMessageReadState;
 use App\Models\User;
+use App\Services\Chat\MessageFloodGate;
 use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\ProxyCheck\ProxyCheckGate;
 use App\Services\Moderation\UserPostingGate;
-use App\Services\Chat\MessageFloodGate;
 use App\Services\PrivateMessageGate;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -216,13 +216,16 @@ class PrivateMessageController extends Controller
         }
 
         $now = time();
-        $body = $this->wordFilter->filter($request->validated('message'));
+        $rawMsg = (string) ($request->validated('message') ?? '');
+        $body = $this->wordFilter->filter($rawMsg);
+        $imageId = $request->filled('image_id') ? (int) $request->validated('image_id') : null;
 
         try {
             $message = PrivateMessage::query()->create([
                 'sender_id' => $user->id,
                 'recipient_id' => $peer->id,
                 'body' => $body,
+                'image_id' => $imageId,
                 'sent_at' => $now,
                 'sent_time' => date('H:i', $now),
                 'client_message_id' => $clientId,

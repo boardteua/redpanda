@@ -134,13 +134,7 @@ import ChatMyImagesModal from './ChatMyImagesModal.vue';
 import ChatRoomComposerAttachmentPreviews from './ChatRoomComposerAttachmentPreviews.vue';
 import ChatRoomComposerEditBanner from './ChatRoomComposerEditBanner.vue';
 import ChatRoomComposerToolbar from './ChatRoomComposerToolbar.vue';
-import {
-    CHAT_IMAGE_MAX_BYTES,
-    formatChatImageMaxLabel,
-    getFirstClipboardImageFile,
-    validateChatImageFileForUpload,
-} from '../../../utils/chatComposerImageUpload';
-import { showError, showProgress, showWarning } from '../../../utils/rpToastStack';
+import { chatComposerImageUploadMixin } from '../../../mixins/chatComposerImageUploadMixin';
 import {
     COMPOSER_BG_PALETTE,
     COMPOSER_FG_PALETTE,
@@ -160,6 +154,7 @@ export default {
         ChatRoomComposerEditBanner,
         ChatRoomComposerToolbar,
     },
+    mixins: [chatComposerImageUploadMixin],
     props: {
         selectedRoomId: {
             default: null,
@@ -167,30 +162,17 @@ export default {
         },
         sending: { type: Boolean, default: false },
         loggingOut: { type: Boolean, default: false },
-        isGuest: { type: Boolean, default: false },
-        /** Модератор вимкнув завантаження зображень (`chat_upload_disabled` у `auth/user`). */
-        chatUploadDisabled: { type: Boolean, default: false },
-        /** З `GET /api/v1/chat/settings` → `max_chat_image_upload_bytes` (T86). */
-        maxChatImageUploadBytes: {
-            default: null,
-            validator: (v) => v === null || v === undefined || (typeof v === 'number' && Number.isFinite(v)),
-        },
         /** Узгоджено з `StoreChatMessageRequest` / `UpdateChatMessageRequest` (T35). */
         messageMaxLength: {
             type: Number,
             default: 4000,
         },
-        ensureSanctum: { type: Function, required: true },
     },
     data() {
         return {
             composerText: '',
             composerStyle: defaultComposerStyle(),
             formatPanel: null,
-            pendingImageId: null,
-            pendingPreviewUrl: '',
-            uploadingImage: false,
-            myImagesModalOpen: false,
             emojiModalOpen: false,
             editPostId: null,
             editHadFile: false,
@@ -206,15 +188,8 @@ export default {
 
             return Boolean(this.composerText.trim()) || Boolean(this.pendingImageId);
         },
-        effectiveChatImageMaxBytes() {
-            const n = Number(this.maxChatImageUploadBytes);
-
-            return Number.isFinite(n) && n > 0 ? n : CHAT_IMAGE_MAX_BYTES;
-        },
-        imageAttachTitle() {
-            const label = formatChatImageMaxLabel(this.effectiveChatImageMaxBytes);
-
-            return `Додати зображення (JPEG, PNG, GIF, WebP, до ${label})`;
+        imageUploadContextActive() {
+            return Boolean(this.selectedRoomId);
         },
         composerBgPalette() {
             return COMPOSER_BG_PALETTE;
@@ -233,19 +208,6 @@ export default {
             const t = (this.composerText || '').replace(/^\s+/, '');
 
             return t.startsWith('/');
-        },
-        imageUploadBlocked() {
-            return Boolean(this.isGuest || this.chatUploadDisabled);
-        },
-        imageUploadBlockedTitle() {
-            if (this.isGuest) {
-                return 'Завантаження зображень недоступне для гостя';
-            }
-            if (this.chatUploadDisabled) {
-                return 'Модератор вимкнув завантаження зображень для вашого облікового запису';
-            }
-
-            return '';
         },
         composerPlaceholder() {
             return 'Shift+Enter — новий рядок;';
@@ -386,30 +348,12 @@ export default {
             this.$nextTick(() => this.focusComposerEnd());
         },
         focusComposerEnd() {
-            const el = this.$refs.chatComposer;
-            if (!el || typeof el.focus !== 'function') {
-                return;
-            }
-            el.focus();
-            const len = this.composerText.length;
-            try {
-                el.setSelectionRange(len, len);
-            } catch {
-                /* */
-            }
+            this.focusComposerTextareaEnd();
         },
         /**
          * T152: після успішного вкладення (paste / file picker / бібліотека «Мої зображення») — фокус у textarea (T28).
          * Перевірка модалей у nextTick: при виборі з бібліотеки `select` йде перед `close()`, інакше `myImagesModalOpen` ще true (T81).
          */
-        focusComposerAfterPendingImageAttached() {
-            this.$nextTick(() => {
-                if (this.emojiModalOpen || this.myImagesModalOpen) {
-                    return;
-                }
-                this.focusComposerEnd();
-            });
-        },
         emitSubmit() {
             this.$emit('submit-message');
         },
@@ -513,30 +457,6 @@ export default {
             e.preventDefault();
             this.emitSubmit();
         },
-        onChatComposerPaste(e) {
-            if (this.editPostId) {
-                return;
-            }
-            const file = getFirstClipboardImageFile(e.clipboardData);
-            if (!file) {
-                return;
-            }
-            e.preventDefault();
-            if (this.imageUploadBlocked) {
-                showError(`${this.imageUploadBlockedTitle}.`);
-
-                return;
-            }
-            if (!this.selectedRoomId) {
-                return;
-            }
-            if (this.sending || this.uploadingImage) {
-                showWarning('Зачекайте завершення поточної дії перед вставкою зображення.');
-
-                return;
-            }
-            this.uploadChatImageFile(file);
-        },
         syncComposerInputHeight() {
             this.$nextTick(() => {
                 const el = this.$refs.chatComposer;
@@ -554,109 +474,8 @@ export default {
                 el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
             });
         },
-        clearPendingChatImage() {
-            this.pendingImageId = null;
-            this.pendingPreviewUrl = '';
-            if (this.$refs.imageInput) {
-                this.$refs.imageInput.value = '';
-            }
-        },
         onClearPendingImageClick() {
             this.clearPendingChatImage();
-        },
-        formatChatImageUploadError(err) {
-            const d = err && err.response ? err.response.data : null;
-            const bag = d && d.errors && typeof d.errors === 'object' ? d.errors : null;
-            const flat = bag
-                ? Object.values(bag)
-                      .flat()
-                      .filter((x) => typeof x === 'string' && x.trim())
-                : [];
-            if (flat.length) {
-                return flat[0].trim();
-            }
-            if (d && typeof d.message === 'string' && d.message.trim()) {
-                return d.message.trim();
-            }
-            if (!err.response) {
-                return 'Мережа недоступна або сервер не відповів. Перевірте з’єднання і спробуйте знову.';
-            }
-
-            return 'Не вдалося завантажити зображення.';
-        },
-        openMyImagesModal() {
-            if (this.imageUploadBlocked || !this.selectedRoomId || this.uploadingImage) {
-                return;
-            }
-            this.myImagesModalOpen = true;
-        },
-        onLibraryImageSelected({ id, url }) {
-            if (id == null || !url) {
-                return;
-            }
-            this.pendingImageId = id;
-            this.pendingPreviewUrl = url;
-            this.focusComposerAfterPendingImageAttached();
-        },
-        async onChatImageSelected(e) {
-            const input = e.target;
-            const file = input.files && input.files[0];
-            if (input) {
-                input.value = '';
-            }
-            if (!file || !this.selectedRoomId || this.imageUploadBlocked) {
-                return;
-            }
-            await this.uploadChatImageFile(file);
-        },
-        async uploadChatImageFile(file) {
-            if (this.imageUploadBlocked) {
-                showError(`${this.imageUploadBlockedTitle}.`);
-                this.clearPendingChatImage();
-
-                return;
-            }
-            const v = validateChatImageFileForUpload(file, this.effectiveChatImageMaxBytes);
-            if (!v.ok) {
-                if (v.message) {
-                    showError(v.message);
-                }
-                this.clearPendingChatImage();
-
-                return;
-            }
-            const progress = showProgress('Завантаження зображення…');
-            this.uploadingImage = true;
-            try {
-                await this.ensureSanctum();
-                const form = new FormData();
-                form.append('image', file);
-                const { data } = await window.axios.post('/api/v1/images', form, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                    onUploadProgress: (e) => {
-                        if (e.lengthComputable && e.total > 0) {
-                            progress.setPercent(Math.round((100 * e.loaded) / e.total));
-                        }
-                    },
-                });
-                progress.done();
-                const row = data && data.data;
-                if (!row || row.id == null || !row.url) {
-                    showError('Сервер повернув неочікувану відповідь.');
-                    this.clearPendingChatImage();
-
-                    return;
-                }
-                this.pendingImageId = row.id;
-                this.pendingPreviewUrl = row.url;
-                this.focusComposerAfterPendingImageAttached();
-            } catch (err) {
-                progress.done();
-                showError(this.formatChatImageUploadError(err));
-                this.clearPendingChatImage();
-            } finally {
-                this.uploadingImage = false;
-            }
         },
     },
 };

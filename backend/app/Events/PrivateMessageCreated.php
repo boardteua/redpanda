@@ -8,6 +8,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
 
 class PrivateMessageCreated implements ShouldBroadcast
 {
@@ -35,8 +36,9 @@ class PrivateMessageCreated implements ShouldBroadcast
     {
         $this->message->loadMissing('sender');
         $m = $this->message;
+        $imageId = $m->image_id !== null ? (int) $m->image_id : 0;
 
-        return [
+        $payload = [
             'id' => $m->id,
             'sender_id' => (int) $m->sender_id,
             'recipient_id' => (int) $m->recipient_id,
@@ -46,5 +48,13 @@ class PrivateMessageCreated implements ShouldBroadcast
             'sender_user_name' => $m->sender->user_name,
             'client_message_id' => $m->client_message_id,
         ];
+        if ($imageId > 0) {
+            $payload['image'] = [
+                'id' => $imageId,
+                'url' => URL::route('api.v1.chat-images.file', ['image' => $imageId], true),
+            ];
+        }
+
+        return $payload;
     }
 }
