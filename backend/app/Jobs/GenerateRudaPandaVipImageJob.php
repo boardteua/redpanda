@@ -11,6 +11,7 @@ use App\Services\Ai\RudaPanda\RudaPandaGeneratedImageStore;
 use App\Services\Ai\RudaPanda\RudaPandaImageGenerator;
 use App\Services\Ai\RudaPanda\RudaPandaIntent;
 use App\Services\Ai\RudaPanda\RudaPandaModelRouter;
+use App\Support\DatabaseDuplicateKey;
 use App\Support\IdempotencyKey;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,7 +22,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * T181: VIP-only image generation triggered from chat text.
+ * T181: Image generation triggered from chat text (VIP or staff).
  *
  * This job is intentionally independent of the message-ingestion pipeline;
  * it can be called by future "bot listener" tasks.
@@ -65,8 +66,9 @@ final class GenerateRudaPandaVipImageJob implements ShouldQueue
         }
 
         $user = User::query()->whereKey($this->triggerUserId)->first();
-        if ($user === null || $user->guest || ! $user->isVip()) {
-            Log::channel('structured')->info('ruda-panda image denied (not vip)', [
+        $isAllowed = $user !== null && ! $user->guest && ($user->isVip() || $user->canModerate());
+        if (! $isAllowed) {
+            Log::channel('structured')->info('ruda-panda image denied (not vip/staff)', [
                 'room_id' => $room->room_id,
                 'user_id' => $this->triggerUserId,
             ]);
@@ -120,9 +122,7 @@ final class GenerateRudaPandaVipImageJob implements ShouldQueue
             ]);
         } catch (QueryException $e) {
             // Idempotency via unique index (user_id, client_message_id).
-            $sqlState = (string) ($e->errorInfo[0] ?? '');
-            $driverCode = (int) ($e->errorInfo[1] ?? 0);
-            if ($sqlState === '23000' && $driverCode === 1062) {
+            if (DatabaseDuplicateKey::is($e)) {
                 return;
             }
 

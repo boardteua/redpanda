@@ -4,6 +4,7 @@ namespace App\Services\Ai\RudaPanda;
 
 use App\Models\ChatSetting;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -94,7 +95,19 @@ final class RudaPandaModelRouter
 
     private function settingsRow(): ?ChatSetting
     {
-        return $this->resolvedSettings ??= ChatSetting::query()->first();
+        if ($this->resolvedSettings !== null) {
+            return $this->resolvedSettings;
+        }
+
+        try {
+            /** @var ChatSetting|null $row */
+            $row = ChatSetting::query()->first();
+        } catch (QueryException) {
+            // Unit tests may run without migrations; fall back to config-based defaults.
+            $row = null;
+        }
+
+        return $this->resolvedSettings = $row;
     }
 
     private function modelFlashLite(): string

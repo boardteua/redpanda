@@ -53,7 +53,8 @@ final class RudaPandaImageIntentDispatcher
     private function normalizeImagePrompt(string $text): string
     {
         $normalized = trim((string) preg_replace('/\s+/u', ' ', $text));
-        $normalized = preg_replace('/^(руда\s+панда|панда)\b[,:!\.\s-]*/ui', '', $normalized) ?? $normalized;
+        $prefix = '(?:@rudapanda|@ruda_panda|@panda|руда\s+пандо|руда\s+панда|rudapanda|ruda\s+panda|пандо|панда|панад)';
+        $normalized = preg_replace('/^'.$prefix.'\b[,:!\.\s-]*/ui', '', $normalized) ?? $normalized;
 
         return trim($normalized);
     }
