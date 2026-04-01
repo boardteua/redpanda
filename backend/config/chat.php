@@ -76,6 +76,20 @@ return [
         : null,
 
     /*
+    |--------------------------------------------------------------------------
+    | Dev: debug класифікатора «відповідати / ні» у відповіді POST повідомлення
+    |--------------------------------------------------------------------------
+    |
+    | Якщо true — у meta JSON додається `ruda_panda_llm_debug` (лише коли ще й
+    | APP_ENV=local або APP_DEBUG=true). Фронт у dev логує це в console.
+    |
+    */
+    'ruda_panda_llm_debug_console' => filter_var(
+        env('CHAT_RUDA_PANDA_LLM_DEBUG_CONSOLE', false),
+        FILTER_VALIDATE_BOOLEAN
+    ),
+
+    /*
     | Кімната для оголошень про нову публічну кімнату (null = найменший room_id
     | серед access = public).
     */
