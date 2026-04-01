@@ -30,6 +30,7 @@ use App\Services\Moderation\ContentWordFilter;
 use App\Services\Moderation\ProxyCheck\ProxyCheckGate;
 use App\Services\Moderation\UserPostingGate;
 use App\Services\PrivateMessageGate;
+use App\Services\Ai\RudaPanda\RudaPandaRoomResponder;
 use App\Support\ChatMessageBodyStyle;
 use App\Support\ChatMessageListAbilityMap;
 use Illuminate\Database\QueryException;
@@ -50,6 +51,7 @@ class ChatMessageController extends Controller
         private readonly MessageFloodGate $messageFloodGate,
         private readonly RedPandaBotRoomOpenTriggers $redPandaBotRoomOpenTriggers,
         private readonly ProxyCheckGate $proxyCheckGate,
+        private readonly RudaPandaRoomResponder $rudaPandaRoomResponder,
     ) {}
 
     public function index(Request $request, Room $room): AnonymousResourceCollection|JsonResponse
@@ -384,6 +386,9 @@ class ChatMessageController extends Controller
             broadcast(new MessagePosted($message))->toOthers();
             SendWebPushForRoomMessage::dispatch((int) $message->post_id)->afterCommit();
         }
+
+        // MVP: LLM bot reacts asynchronously to a subset of public messages (T176/T182).
+        $this->rudaPandaRoomResponder->maybeDispatchForMessage($message, $room);
 
         return ChatMessageResource::make($message)
             ->additional([

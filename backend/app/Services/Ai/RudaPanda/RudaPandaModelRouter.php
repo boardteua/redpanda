@@ -85,6 +85,13 @@ final class RudaPandaModelRouter
         return $this->routeIntent($intent, $guest, $vip);
     }
 
+    public function routeForTriggerWithRoleFlags(string $triggerText, bool $guest, bool $vip): RudaPandaModelRoute
+    {
+        $intent = $this->classifyIntent($triggerText);
+
+        return $this->routeIntent($intent, $guest, $vip);
+    }
+
     private function settingsRow(): ?ChatSetting
     {
         return $this->resolvedSettings ??= ChatSetting::query()->first();
