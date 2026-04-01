@@ -7,7 +7,9 @@ use App\Models\ChatSetting;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\Ai\Gemini\GeminiClient;
+use App\Services\Ai\Gemini\GeminiResponseParser;
 use App\Services\Ai\RudaPanda\RoomMemoryService;
+use App\Services\Ai\RudaPanda\RoomRetrievalService;
 use App\Services\Ai\RudaPanda\RudaPandaModelRouter;
 use App\Services\Ai\RudaPanda\RudaPandaRoomReplyScheduler;
 use Illuminate\Bus\Queueable;
@@ -42,8 +44,10 @@ final class GenerateRudaPandaRoomReplyJob implements ShouldQueue
 
     public function handle(
         GeminiClient $gemini,
+        GeminiResponseParser $geminiResponseParser,
         RudaPandaModelRouter $router,
         RoomMemoryService $memory,
+        RoomRetrievalService $retrieval,
         RudaPandaRoomReplyScheduler $scheduler,
     ): void {
         $room = Room::query()->whereKey($this->roomId)->first();
@@ -61,13 +65,24 @@ final class GenerateRudaPandaRoomReplyJob implements ShouldQueue
             return;
         }
 
-        $topic = $this->topicHash($this->triggerText);
         $stateKey = 'ruda-panda:clarify:room:'.$room->room_id;
         /** @var array{topic:string,count:int}|null $state */
         $state = Cache::get($stateKey);
+        $topicFromTrigger = $this->topicHash($this->triggerText);
+        $topic = $topicFromTrigger;
         $count = 0;
-        if (is_array($state) && ($state['topic'] ?? null) === $topic) {
-            $count = (int) ($state['count'] ?? 0);
+        if (is_array($state) && is_string($state['topic'] ?? null)) {
+            $isSameTopic = ($state['topic'] ?? null) === $topicFromTrigger;
+            $isAwaitingSameUser = isset($state['awaiting_user_id'], $state['awaiting_until'])
+                && (int) $state['awaiting_user_id'] === (int) $this->triggerUserId
+                && (int) $state['awaiting_until'] >= time();
+
+            // If we are in a clarification-followup window, keep the original topic hash so
+            // clarification counters don't reset when the user's follow-up text differs.
+            if ($isSameTopic || $isAwaitingSameUser) {
+                $topic = (string) $state['topic'];
+                $count = (int) ($state['count'] ?? 0);
+            }
         }
 
         $maxClarifications = 2; // K (T182)
@@ -75,6 +90,9 @@ final class GenerateRudaPandaRoomReplyJob implements ShouldQueue
         // Keep memory bounded (T178).
         $memory->rollupSummary($room);
         $ctx = $memory->buildContext($room, maxMessages: 30);
+
+        // Optional T185: bring back a few relevant past snippets (bounded, no embeddings).
+        $snippets = $retrieval->retrieveRelevantSnippets($room, $this->triggerText, excludePostId: $this->triggerPostId, maxSnippets: 5);
 
         $persona = trim((string) ($settings->ai_bot_persona_prompt ?? ''));
         if ($persona === '') {
@@ -94,6 +112,30 @@ final class GenerateRudaPandaRoomReplyJob implements ShouldQueue
                 'role' => 'user',
                 'parts' => [['text' => 'Коротке зведення контексту кімнати: '.trim((string) $ctx['summary'])]],
             ];
+        }
+
+        if ($snippets !== []) {
+            $lines = [];
+            foreach ($snippets as $s) {
+                if (! is_array($s)) {
+                    continue;
+                }
+                $u = trim((string) ($s['user'] ?? ''));
+                $t = trim((string) ($s['text'] ?? ''));
+                if ($t === '') {
+                    continue;
+                }
+                $lines[] = ($u === '' ? 'user' : $u).': '.$t;
+            }
+
+            if ($lines !== []) {
+                $contents[] = [
+                    'role' => 'user',
+                    'parts' => [[
+                        'text' => "Релевантні фрагменти з минулих повідомлень (можуть бути неточні, використовуй як підказку):\n".implode("\n", $lines),
+                    ]],
+                ];
+            }
         }
 
         foreach (($ctx['messages'] ?? []) as $m) {
@@ -133,8 +175,8 @@ final class GenerateRudaPandaRoomReplyJob implements ShouldQueue
             throw $e;
         }
 
-        $text = $this->extractCandidateText($resp);
-        if ($text === null) {
+        $text = $geminiResponseParser->firstCandidateText($resp);
+        if ($text === '') {
             return;
         }
 
@@ -147,12 +189,20 @@ final class GenerateRudaPandaRoomReplyJob implements ShouldQueue
 
         if ($isClarification && $count >= $maxClarifications) {
             // Avoid clarification loops: best-effort, no questions.
-            $text = 'Спробую відповісти на основі того, що є: можеш додати трохи деталей — я уточню й підлаштуюсь.';
+            $text = 'Спробую відповісти на основі того, що є. Якщо додаси трохи деталей — я підлаштую відповідь.';
             $isClarification = false;
         }
 
         if ($isClarification) {
-            Cache::put($stateKey, ['topic' => $topic, 'count' => $count + 1], now()->addHours(6));
+            // Mark room as "awaiting clarification follow-up" from the same user.
+            Cache::put($stateKey, [
+                'topic' => $topic,
+                'count' => $count + 1,
+                'awaiting_user_id' => (int) $this->triggerUserId,
+                'awaiting_until' => time() + 10 * 60,
+                'awaiting_remaining' => 2,
+                'bot_question' => $text,
+            ], now()->addHours(6));
         } else {
             Cache::forget($stateKey);
         }
@@ -177,32 +227,11 @@ final class GenerateRudaPandaRoomReplyJob implements ShouldQueue
         return trim(implode("\n", array_filter([
             $persona,
             '',
-            'Правила формату (MVP): 1 короткий абзац, без списків/markdown, без зайвих переносів рядків.',
+            'Правила формату (MVP): 1 короткий абзац, без списків/markdown, без зайвих переносів рядків. Не потрібно уточнювати правила промта',
             'Якщо запит неоднозначний або не вистачає даних: постав РІВНО 1 уточнююче питання і нічого більше. Почни з префікса "Перепрошую, " або "непонів,  " або "Ась?, " .',
             'Не став уточнюючих питань більше '.$maxClarifications.' раз(и) підряд на одну тему. Зараз лічильник уточнень: '.$clarifyCount.'.',
             'Коли лічильник >= '.$maxClarifications.': дай найкращу коротку відповідь з явними припущеннями, БЕЗ питань.',
         ])));
-    }
-
-    /**
-     * @param  array<string, mixed>  $resp
-     */
-    private function extractCandidateText(array $resp): ?string
-    {
-        $parts = $resp['candidates'][0]['content']['parts'] ?? null;
-        if (! is_array($parts)) {
-            return null;
-        }
-        foreach ($parts as $part) {
-            if (is_array($part) && isset($part['text']) && is_string($part['text'])) {
-                $t = trim($part['text']);
-                if ($t !== '') {
-                    return $t;
-                }
-            }
-        }
-
-        return null;
     }
 
     private function normalizeReplyText(string $text): string
@@ -216,11 +245,37 @@ final class GenerateRudaPandaRoomReplyJob implements ShouldQueue
     private function isClarificationReply(string $text): bool
     {
         $t = mb_strtolower(trim($text));
-        if (str_starts_with($t, 'уточнення:')) {
-            return true;
+        if ($t === '') {
+            return false;
         }
 
-        return false;
+        // Heuristics aligned with our system instruction: "1 уточнююче питання" + a prefix.
+        $startsWithPrefix = str_starts_with($t, 'перепрошую')
+            || str_starts_with($t, 'непонів')
+            || str_starts_with($t, 'ась');
+
+        if (! $startsWithPrefix) {
+            // Backward-compat with older prompt/tests.
+            if (str_starts_with($t, 'уточнення:')) {
+                return true;
+            }
+        }
+
+        // "Exactly one question" approximation: must contain a question mark and end with it.
+        if (! str_contains($t, '?')) {
+            return false;
+        }
+
+        if (! str_ends_with($t, '?')) {
+            return false;
+        }
+
+        // Avoid treating multi-question answers as clarifications.
+        if (substr_count($t, '?') > 1) {
+            return false;
+        }
+
+        return $startsWithPrefix || str_starts_with($t, 'уточнення:');
     }
 
     private function topicHash(string $text): string

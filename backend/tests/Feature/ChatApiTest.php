@@ -230,6 +230,40 @@ class ChatApiTest extends TestCase
         Queue::assertPushedTimes(SendWebPushForRoomMessage::class, 1);
     }
 
+    public function test_post_public_message_with_duplicate_client_id_returns_existing_message(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $clientId = 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a35';
+
+        $first = $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => 'first body',
+                'client_message_id' => $clientId,
+            ]);
+
+        $first->assertCreated()
+            ->assertJsonPath('meta.duplicate', false);
+
+        $postId = (int) $first->json('data.post_id');
+
+        $second = $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => 'new body should be ignored',
+                'client_message_id' => $clientId,
+            ]);
+
+        $second->assertOk()
+            ->assertJsonPath('data.post_id', $postId)
+            ->assertJsonPath('meta.duplicate', true);
+
+        $this->assertSame(1, ChatMessage::query()->where('client_message_id', $clientId)->count());
+    }
+
     public function test_post_message_slash_me_and_idempotent_duplicate(): void
     {
         [$public] = $this->seedRooms();

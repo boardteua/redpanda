@@ -2558,3 +2558,67 @@
     - `панда, намалюй мені ...` → (VIP/staff) картинка; (non‑VIP) відмова.
     - `панда, ти жива?` → текстова відповідь бота.
 
+---
+
+### [x] T189 — Backend: **єдине місце створення** рядків `chat` у кімнаті + **duplicate `client_message_id`** (глибша хвиля після T106)
+
+- **Delegate:** Backend Architect / senior Laravel
+- **Залежність:** **T04** / **T08** / **T66** (контракти вже зафіксовані); **T106** (легке винесення вже могло бути — це **друга хвиля** без зміни JSON-відповідей)
+- **Контекст (code review):** у `ChatMessageController::store()` тричі дублюються атрибути `ChatMessage::create` і обробка `QueryException` / перевірка `post_roomid` при колізії ключа.
+- **Deliverables:**
+  - Сервіс або фабрика в `App\Services\Chat` (назва на розсуд, напр. `RoomChatMessageCreator`): методи або явні DTO для **public**, **inline_private** (узгоджено з транзакцією + `PrivateMessage`), **client_only** — без зміни семантики broadcast / web push / automod.
+  - Спільний хелпер **«duplicate client_message_id»** → повернення існуючого повідомлення або JSON 422 з тими самими текстами, що зараз.
+  - Контролер лишається тонким: авторизація, ранні gates (`ProxyCheckGate`, `UserPostingGate`, flood), виклик сервісу.
+- **QA evidence:** `php artisan test` — усі існуючі тести зелені; додати або розширити **один** тест на колізію `client_message_id` (якщо ще не покрито) після рефакторингу.
+
+---
+
+### [x] T190 — Backend: **оркестратор `POST` повідомлення кімнати** (хендлери за сценаріями; розширюваність)
+
+- **Delegate:** Backend Architect / senior Laravel
+- **Залежність:** **T189** (бажано спочатку, щоб не розносити дубль двічі); **T25** / **T66** (інлайн-приват і slash залишаються окремими гілками)
+- **Контекст:** плануються **нові сценарії** в `store()` — монолітний метод ускладнює супровід і регресії.
+- **Deliverables:**
+  - Один вхідний **координатор** (клас або invokable), що послідовно вирішує: idempotency → inline `/msg` → взаємовиключність image+slash → `SlashCommandProcessor` → публічне збереження → виклик `RudaPandaRoomResponder` / meta.
+  - Окремі **вузькі хендлери** (або приватні класи) для гілок: інлайн-приват, client-only slash, «звичайне» публічне повідомлення — з чіткими входами/виходами (`JsonResponse` або доменний результат).
+  - HTTP-контракт **без змін** (коди, `meta`, поля ресурсу).
+- **QA evidence:** повний `php artisan test` по модулях чату / AI; короткий чекліст ручних сценаріїв (відправка в кімнату, `/msg`, slash client-only, дубль `client_message_id`) — у коментарі до PR або в `docs/chat-v2/T190-QA.md` за звичкою команди.
+
+---
+
+### [x] T191 — (Опційно) Backend: винести **`GET` історії кімнати** (`ChatMessageController::index`) у query/service
+
+- **Delegate:** Backend Architect / senior Laravel
+- **Залежність:** **T04**, **T47** (cursor / `since_read` / unread meta)
+- **Контекст:** зменшити «товщину» контролера; спростити unit-тестування пагінації без повного HTTP.
+- **Deliverables:**
+  - Клас на кшталт `RoomMessageHistoryQuery` або `ListRoomChatMessages`: валідаційні параметри → колекція повідомлень + масив `meta` (`next_cursor`, `has_more_older`, `slug_redirect`, `first_unread_post_id`, …).
+  - Контролер: `authorize` + виклик сервісу + `ChatMessageResource::collection`.
+- **QA evidence:** існуючі feature-тести на історію зелені; за відсутності — мінімум один тест на cursor / `since_read`.
+
+---
+
+### [x] T192 — Backend: декомпозиція **`RudaPandaRoomResponder`** (follow-up, image, парсинг Gemini)
+
+- **Delegate:** Backend Architect / senior Laravel
+- **Залежність:** **T176**–**T188** (поточна поведінка бота); узгоджено з **T179** / **T182** (rate limit, clarification)
+- **Контекст (code review):** у одному класі змішано кеш-кларифікацію, LLM yes/no follow-up, VIP image dispatch, rate limit і dispatch reply job.
+- **Deliverables:**
+  - Винести **оцінку follow-up без згадки** (clarification window + last-bot + виклик Gemini) у окремий клас (напр. `RudaPandaFollowupEvaluator`).
+  - Винести **image intent** (VIP/staff, deny reply, `GenerateRudaPandaVipImageJob`) у `RudaPandaImageIntentDispatcher` або аналог.
+  - Парсинг першого текстового кандидата з відповіді Gemini (`firstCandidateText`) — спільний хелпер поруч з `GeminiClient` або в малому `GeminiResponseParser`, якщо дублюється в job’ах.
+  - `RudaPandaRoomResponder` — тонкий координатор; публічний метод `maybeDispatchForMessage` зберігає контракт для контролера.
+- **QA evidence:** `php artisan test` — `RudaPandaClarificationTest`, `RudaPandaVipImageGenerationTest`, `RudaPandaImageIntentDispatchTest` та суміжні зелені; без зміни зовнішньої поведінки (регресійний прогін).
+
+---
+
+### [x] T193 — Backend QA: **інвентаризація feature-тестів** для `POST /api/v1/rooms/{room}/messages` (усі критичні гілки)
+
+- **Delegate:** Backend Architect + api-tester (за workflow оркестратора)
+- **Залежність:** може виконуватись **до або після** **T189**–**T190** (як база «що має лишитись зеленим»)
+- **Контекст:** невизначеність покриття гілок `store()`; перед/після рефакторингу потрібна явна матриця.
+- **Deliverables:**
+  - Таблиця або список у `docs/chat-v2/` (короткий документ): гілка → наявний тест (файл/метод) → статус (є / немає).
+  - Для прогалин — додати **мінімальні** PHPUnit feature-тести: дубль `client_message_id`, конфлікт кімнати, інлайн-приват (успіх + помилки), публічне + automod reject, client-only slash (якщо не покрито).
+- **QA evidence:** `php artisan test` з іменами нових/оновлених тестів; посилання на документ інвентаризації.
+
