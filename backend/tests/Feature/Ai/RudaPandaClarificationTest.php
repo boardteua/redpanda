@@ -29,6 +29,15 @@ class RudaPandaClarificationTest extends TestCase
         }
     }
 
+    /**
+     * RudaPandaFollowupEvaluator викликає GeminiClient до dispatch; без цього Http::fake не спрацьовує.
+     */
+    private function enableGeminiWithFakeApiKeyForHttpFake(): void
+    {
+        config()->set('services.gemini.enabled', true);
+        config()->set('services.gemini.api_key', 'test-http-fake-key');
+    }
+
     public function test_payload_includes_retrieved_room_snippets_before_llm_call(): void
     {
         $this->skipUnlessGeminiEnabled();
@@ -388,6 +397,8 @@ class RudaPandaClarificationTest extends TestCase
 
     public function test_after_recent_bot_message_question_without_mention_can_trigger_via_llm(): void
     {
+        $this->enableGeminiWithFakeApiKeyForHttpFake();
+
         $room = Room::query()->create([
             'room_name' => 'Public',
             'topic' => null,
