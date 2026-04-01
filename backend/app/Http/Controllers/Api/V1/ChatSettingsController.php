@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateChatSettingsRequest;
 use App\Http\Resources\ChatSettingsResource;
 use App\Models\ChatSetting;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class ChatSettingsController extends Controller
 {
@@ -62,6 +63,10 @@ class ChatSettingsController extends Controller
             $row->mail_template_overrides = $mailTemplatesNormalized;
         }
         $row->save();
+
+        if (array_key_exists('proxycheck_enabled', $validated)) {
+            Cache::forget('chat_settings:proxycheck_enabled');
+        }
 
         $fresh = $row->fresh();
         if (array_key_exists('silent_mode', $validated)) {

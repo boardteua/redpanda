@@ -48,7 +48,9 @@ final class ProxyCheckClient
                 return $v === null ? true : (bool) $v;
             });
         } catch (\Throwable $e) {
-            Log::warning('proxycheck toggle lookup failed (fail-open)', ['error' => $e->getMessage()]);
+            // Якщо БД недоступна — вважаємо тогл «увімкнено» (true): proxycheck лишається під контролем env;
+            // збої самого API proxycheck і далі обробляються fail-open у fetchVerdict().
+            Log::warning('proxycheck toggle lookup failed; assume enabled (see catch → true policy)', ['error' => $e->getMessage()]);
 
             return true;
         }

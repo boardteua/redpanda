@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\BannedIp;
+use App\Models\ChatSetting;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -142,6 +144,43 @@ class ProxyCheckAntiAbuseTest extends TestCase
                 'password_confirmation' => 'password-secure-1',
             ])
             ->assertCreated();
+    }
+
+    public function test_register_allowed_when_chat_setting_disables_proxycheck(): void
+    {
+        config()->set('services.proxycheck.enabled', true);
+        config()->set('services.proxycheck.key', 'test-key');
+
+        ChatSetting::current()->forceFill(['proxycheck_enabled' => false])->save();
+        Cache::forget('chat_settings:proxycheck_enabled');
+
+        $ip = '2.2.2.2';
+        Http::fake([
+            "https://proxycheck.io/v2/{$ip}*" => Http::response([
+                'status' => 'ok',
+                $ip => [
+                    'proxy' => 'yes',
+                    'type' => 'VPN',
+                    'risk' => '99',
+                ],
+            ], 200),
+        ]);
+
+        $this->from(config('app.url'))
+            ->withHeaders($this->statefulHeaders())
+            ->withServerVariables(['REMOTE_ADDR' => $ip])
+            ->postJson('/api/v1/auth/register', [
+                'user_name' => 'ViaDbOff',
+                'email' => 'viadboff@example.com',
+                'password' => 'password-secure-1',
+                'password_confirmation' => 'password-secure-1',
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseMissing('ban_evasion_events', [
+            'ip' => $ip,
+            'action' => 'proxycheck_denied',
+        ]);
     }
 
     public function test_banned_ip_request_persists_ban_evasion_event(): void

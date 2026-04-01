@@ -207,7 +207,7 @@
                     </div>
 
                     <div class="border-t border-[var(--rp-border-subtle)] pt-4">
-                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Anti-spam</h3>
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Антиспам (proxycheck)</h3>
                         <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
                             Якщо вимкнути — перевірка proxy/VPN для реєстрації/логіну/постингу не виконується (бекенд працює
                             у режимі allow). Зручно для інцидентів або false positive.

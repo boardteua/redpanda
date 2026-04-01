@@ -305,4 +305,31 @@ class ChatSettingsApiTest extends TestCase
         $this->assertSame(3, (int) $row->message_flood_max_messages);
         $this->assertSame(120, (int) $row->message_flood_window_seconds);
     }
+
+    public function test_admin_can_patch_proxycheck_enabled(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'proxycheck_enabled' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.proxycheck_enabled', false);
+
+        $this->assertFalse((bool) ChatSetting::current()->proxycheck_enabled);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'proxycheck_enabled' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.proxycheck_enabled', true);
+
+        $this->assertTrue((bool) ChatSetting::current()->proxycheck_enabled);
+    }
 }
