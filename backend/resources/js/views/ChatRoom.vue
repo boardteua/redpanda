@@ -146,8 +146,8 @@
             @commands-help-close="commandsHelpOpen = false"
             @user-info-close="closeUserInfoModal"
             @user-info-cycle-theme="cycleTheme"
-            @chat-settings-close="chatSettingsModalOpen = false"
-            @chat-settings-saved="loadChatSettings"
+            @chat-settings-close="onChatSettingsModalClose"
+            @chat-settings-saved="onChatSettingsModalSaved"
             @profile-close="profileModalOpen = false"
             @profile-updated="onProfileModalUpdated"
             @profile-cycle-theme="cycleTheme"
@@ -236,6 +236,7 @@ import {
 } from '../utils/chatRoomNavigation';
 import { postWithOneNetworkRetry } from '../utils/requestRetry';
 import { hasXsrfTokenCookie } from '../utils/sanctumCsrf';
+import { logRudaPandaLlmDebugFromApiResponse } from '../dev/rudaPandaLlmConsole';
 
 export default {
     name: 'ChatRoom',
@@ -983,7 +984,6 @@ export default {
             await this.applyRoomSelection();
         },
         async bootstrap() {
-            let openChatSettingsAfterBootstrap = false;
             try {
                 await ensureAuth0BootstrapFromLandingApi();
                 let user = await this.fetchUser();
@@ -1012,14 +1012,6 @@ export default {
                     return;
                 }
 
-                if (this.user.chat_role === 'admin') {
-                    const raw = this.$route.query.open_chat_settings;
-                    openChatSettingsAfterBootstrap =
-                        raw != null &&
-                        String(raw).trim() !== '' &&
-                        !['0', 'false', 'no', 'off'].includes(String(raw).trim().toLowerCase());
-                }
-
                 await Promise.all([this.loadRooms(), this.loadChatSettings(), loadChatEmoticonsCatalog()]);
                 await this.resolveInitialRoomFromRoute();
 
@@ -1028,12 +1020,8 @@ export default {
                 this.chatBootstrapDone = true;
                 this.$nextTick(() => {
                     this.consumePrivatePeerFromRoute();
+                    this.consumeOpenChatSettingsQuery();
                 });
-                if (openChatSettingsAfterBootstrap) {
-                    this.$nextTick(() => {
-                        this.chatSettingsModalOpen = true;
-                    });
-                }
             }
         },
         async loadChatSettings() {
@@ -1044,7 +1032,10 @@ export default {
                 this.chatSettings = null;
             }
         },
-        /** T75: відкрити модал налаштувань з `?open_chat_settings=1` (хаб адміна) і прибрати параметр з URL. */
+        /**
+         * T75 / T194: deep link `?open_chat_settings=1` — відкрити модал (адмін) і прибрати параметр з URL.
+         * Під час bootstrap `$route`-watcher ще не встигає (chatBootstrapDone), тому виклик також з `bootstrap()`.
+         */
         consumeOpenChatSettingsQuery() {
             if (!this.user || this.user.chat_role !== 'admin') {
                 return;
@@ -1060,6 +1051,27 @@ export default {
             delete q.open_chat_settings;
             this.$router.replace(buildChatRoute(this.rooms, this.selectedRoomId, q)).catch(() => {});
             this.chatSettingsModalOpen = true;
+        },
+        /** T194: прибрати `open_chat_settings` з адресного рядка (закриття / збереження без F5-реопену). */
+        stripOpenChatSettingsFromRouteIfPresent() {
+            if (!isChatRoute(this.$route)) {
+                return;
+            }
+            const raw = this.$route.query.open_chat_settings;
+            if (raw == null || String(raw).trim() === '') {
+                return;
+            }
+            const q = { ...this.$route.query };
+            delete q.open_chat_settings;
+            this.$router.replace(buildChatRoute(this.rooms, this.selectedRoomId, q)).catch(() => {});
+        },
+        onChatSettingsModalClose() {
+            this.chatSettingsModalOpen = false;
+            this.stripOpenChatSettingsFromRouteIfPresent();
+        },
+        async onChatSettingsModalSaved() {
+            await this.loadChatSettings();
+            this.stripOpenChatSettingsFromRouteIfPresent();
         },
         /** T166: deep link з Web Push — `?private_peer=&private_peer_name=` (ім’я лише для швидкого UI). */
         consumePrivatePeerFromRoute() {
@@ -2827,6 +2839,7 @@ export default {
                     const { data, status } = await postWithOneNetworkRetry(
                         () => window.axios.post(postUrl, body),
                     );
+                    logRudaPandaLlmDebugFromApiResponse(data);
                     if (data && data.data) {
                         this.mergeMessage(data.data);
                     } else if (optimistic) {
