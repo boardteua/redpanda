@@ -10,6 +10,7 @@ use App\Models\ChatMessage;
 use App\Models\Room;
 use App\Services\Chat\ChatMessageMutationService;
 use App\Services\Chat\MessageFloodGate;
+use App\Services\Chat\RoomClientMessageIdempotency;
 use App\Services\Chat\RoomMessageHistoryQuery;
 use App\Services\Chat\RoomMessagePostOrchestrator;
 use App\Services\Moderation\ProxyCheck\ProxyCheckGate;
@@ -26,6 +27,7 @@ class ChatMessageController extends Controller
         private readonly ChatMessageMutationService $messageMutation,
         private readonly MessageFloodGate $messageFloodGate,
         private readonly ProxyCheckGate $proxyCheckGate,
+        private readonly RoomClientMessageIdempotency $roomClientMessageIdempotency,
         private readonly RoomMessageHistoryQuery $roomMessageHistoryQuery,
         private readonly RoomMessagePostOrchestrator $roomMessagePostOrchestrator,
     ) {}
@@ -83,6 +85,11 @@ class ChatMessageController extends Controller
 
         $user = $request->user();
         $this->postingGate->ensureCanPost($user);
+
+        $clientId = (string) $request->validated('client_message_id');
+        if ($duplicate = $this->roomClientMessageIdempotency->findDuplicateResponse($user, $room, $clientId)) {
+            return $duplicate;
+        }
 
         if ($resp = $this->messageFloodGate->ensureWithinLimit($user)) {
             return $resp;
