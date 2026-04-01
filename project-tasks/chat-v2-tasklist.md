@@ -2449,10 +2449,11 @@
 
 ---
 
-### [ ] T181 — **VIP: генерація зображень** за текстовим запитом (Gemini image та/або Imagen) + виклад через **T10**
+### [x] T181 — **VIP: генерація зображень** за текстовим запитом (Gemini image та/або Imagen) + виклад через **T10**
 
 - **Delegate:** Backend Architect + Frontend Developer (відображення в стрічці — якщо не покриває існуючий рендер)
 - **Залежність:** **T180**; **T10** (upload / `images`); **T21** (VIP); **T176** (політика контенту + safety)
+- **Статус:** **PASS** (2026-04-01). Додано `GenerateRudaPandaVipImageJob` (VIP-only, Gemini `responseModalities: ["TEXT","IMAGE"]`), збереження в `images`/disk `chat_images` та пост у `chat.file`; QA — [`docs/chat-v2/T181-QA.md`](../docs/chat-v2/T181-QA.md).
 - **Deliverables:**
   - Детекція фраз на кшталт «згенеруй картинку / зображення» **лише для VIP** (і заборона для гостя/не-VIP з зрозумілим повідомленням у стрічці або тихим ігнором — за T176).
   - Виклик **image-capable** моделі ([image generation](https://ai.google.dev/gemini-api/docs/image-generation)) або **Imagen** `predict` ([Imagen](https://ai.google.dev/gemini-api/docs/imagen)) — вибір за узгодженням бюджету/якості; збереження файлу через існуючий шлях **T10**; пост бота з вкладенням.
