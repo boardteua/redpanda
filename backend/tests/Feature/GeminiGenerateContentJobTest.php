@@ -3,15 +3,12 @@
 namespace Tests\Feature;
 
 use App\Jobs\GeminiGenerateContentJob;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class GeminiGenerateContentJobTest extends TestCase
 {
-    use RefreshDatabase;
-
     public function test_job_throws_on_429_so_queue_backoff_can_retry(): void
     {
         config()->set('services.gemini.enabled', true);

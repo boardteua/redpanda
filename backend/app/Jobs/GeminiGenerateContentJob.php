@@ -58,6 +58,8 @@ final class GeminiGenerateContentJob implements ShouldQueue
                     'model' => $this->model,
                     'meta' => $this->meta,
                 ]);
+
+                throw $e;
             }
 
             Log::channel('structured')->warning('gemini job failed (request)', [

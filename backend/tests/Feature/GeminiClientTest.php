@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Services\Ai\Gemini\GeminiClient;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -11,8 +10,6 @@ use Tests\TestCase;
 
 class GeminiClientTest extends TestCase
 {
-    use RefreshDatabase;
-
     public function test_generate_content_posts_to_expected_endpoint_with_api_key_header(): void
     {
         config()->set('services.gemini.enabled', true);
