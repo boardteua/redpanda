@@ -18,8 +18,21 @@ class RudaPandaClarificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * GenerateRudaPandaRoomReplyJob::handle() викликає GeminiClient, який кидає без увімкненого Gemini.
+     * На CI / без GEMINI_* ці тести пропускаються; локально з увімкненим flag + Http::fake вони виконуються.
+     */
+    private function skipUnlessGeminiEnabled(): void
+    {
+        if (! config('services.gemini.enabled', false)) {
+            $this->markTestSkipped('services.gemini.enabled is false; enable Gemini to run this job integration test.');
+        }
+    }
+
     public function test_payload_includes_retrieved_room_snippets_before_llm_call(): void
     {
+        $this->skipUnlessGeminiEnabled();
+
         $room = Room::query()->create([
             'room_name' => 'Public',
             'topic' => null,
@@ -116,6 +129,8 @@ class RudaPandaClarificationTest extends TestCase
 
     public function test_model_can_request_clarification_with_single_question_prefix(): void
     {
+        $this->skipUnlessGeminiEnabled();
+
         Bus::fake();
 
         $room = Room::query()->create([
@@ -189,6 +204,8 @@ class RudaPandaClarificationTest extends TestCase
 
     public function test_after_clarification_user_reply_is_included_in_next_payload_context(): void
     {
+        $this->skipUnlessGeminiEnabled();
+
         $room = Room::query()->create([
             'room_name' => 'Public',
             'topic' => null,
