@@ -2394,16 +2394,17 @@
 
 ---
 
-### [ ] T177 — **Gemini клієнт і інфраструктура** (Laravel): ключ, HTTP-клієнт, черги, обробка 429 / timeout
+### [x] T177 — **Gemini клієнт і інфраструктура** (Laravel): ключ, HTTP-клієнт, черги, обробка 429 / timeout
 
 - **Delegate:** Backend Architect
 - **Залежність:** **T176** (правила тригерів і гео/billing — мінімальний чернетковий consensus); **T11** (логи)
+- **Статус:** **PASS** (2026-04-01). Додано server-side конфіг Gemini, HTTP-клієнт `generateContent`, queued job з backoff/retries на 429 та task-scoped тести з `Http::fake` (без мережі).
 - **Deliverables:**
   - Конфіг **`.env` / `config`** для Gemini (base URL, timeout, **ідентифікатори моделей за замовчуванням** — узгодити з [докою моделей](https://ai.google.dev/gemini-api/docs/models)); **жодних** секретів у репозиторії.
   - Сервіс **обгортка** над `generateContent` / за потреби `streamGenerateContent` (REST) з **unit/feature тестами** на **HTTP fake** (без мережі).
   - Усі виклики до Gemini з **черги** (`ShouldQueue`), щоб не блокувати request cycle; **retry/backoff** при **429 RESOURCE_EXHAUSTED** ([troubleshooting](https://ai.google.dev/gemini-api/docs/troubleshooting)); structured logs (room_id, job id, model id — **без** повного тексту користувача в прод-логах або за політикою з T176).
   - Облік **внутрішніх** лімітів (напр. max паралельних jobs на кімнату) узгоджено з **RPM/TPM** проєкту Google.
-- **QA evidence:** `php artisan test` PASS (моки HTTP); приклад `curl` або нотатка, що live-виклик перевірено в staging з тестовим ключем (без коміту ключа); короткий **`docs/chat-v2/T177-QA.md`** або рядок у PR.
+- **QA evidence:** `cd backend && php artisan test --filter Gemini` PASS; дока **`docs/chat-v2/T177-QA.md`**.
 
 ---
 

@@ -56,4 +56,13 @@ return [
         'deny_risk_threshold' => (int) env('PROXYCHECK_DENY_RISK_THRESHOLD', 67),
     ],
 
+    'gemini' => [
+        'enabled' => (bool) env('GEMINI_ENABLED', false),
+        'api_key' => env('GEMINI_API_KEY'),
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com'),
+        'api_version' => env('GEMINI_API_VERSION', 'v1beta'),
+        'timeout_ms' => (int) env('GEMINI_TIMEOUT_MS', 8000),
+        'default_model' => env('GEMINI_DEFAULT_MODEL', 'gemini-2.5-flash'),
+    ],
+
 ];
