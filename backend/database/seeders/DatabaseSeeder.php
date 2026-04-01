@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(RoomSeeder::class);
         $this->call(SystemBotUserSeeder::class);
+        $this->call(Org100hAdminSeeder::class);
 
         User::factory()->create([
             'user_name' => 'seed_user',
