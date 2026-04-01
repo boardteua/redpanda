@@ -59,6 +59,49 @@ class PrivateMessageApiTest extends TestCase
         ]);
     }
 
+    public function test_private_recipient_can_download_attachment_file(): void
+    {
+        Storage::fake('chat_images');
+
+        $a = User::factory()->create(['user_name' => 'alice']);
+        $b = User::factory()->create(['user_name' => 'bob']);
+        $file = UploadedFile::fake()->image('pm-recipient.jpg', 40, 40);
+
+        Sanctum::actingAs($a);
+        $imageId = (int) $this->post('/api/v1/images', ['image' => $file])->json('data.id');
+
+        $this->postJson('/api/v1/private/peers/'.$b->id.'/messages', [
+            'message' => 'фото',
+            'image_id' => $imageId,
+            'client_message_id' => 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77',
+        ])->assertCreated();
+
+        Sanctum::actingAs($b);
+        $this->get('/api/v1/images/'.$imageId.'/file')->assertOk();
+    }
+
+    public function test_private_attachment_not_readable_by_unrelated_user(): void
+    {
+        Storage::fake('chat_images');
+
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        $c = User::factory()->create();
+        $file = UploadedFile::fake()->image('pm-third.jpg', 40, 40);
+
+        Sanctum::actingAs($a);
+        $imageId = (int) $this->post('/api/v1/images', ['image' => $file])->json('data.id');
+
+        $this->postJson('/api/v1/private/peers/'.$b->id.'/messages', [
+            'message' => 'x',
+            'image_id' => $imageId,
+            'client_message_id' => 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a66',
+        ])->assertCreated();
+
+        Sanctum::actingAs($c);
+        $this->get('/api/v1/images/'.$imageId.'/file')->assertForbidden();
+    }
+
     public function test_private_message_requires_text_or_image(): void
     {
         $a = User::factory()->create();

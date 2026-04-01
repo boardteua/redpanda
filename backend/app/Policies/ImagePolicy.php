@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\ChatMessage;
 use App\Models\Image;
+use App\Models\PrivateMessage;
 use App\Models\Room;
 use App\Models\User;
 
@@ -16,6 +17,17 @@ class ImagePolicy
         }
 
         if (User::query()->where('avatar_image_id', $image->id)->exists()) {
+            return true;
+        }
+
+        /** Вкладення в приваті: перегляд мають відправник і отримувач (T195). */
+        if (PrivateMessage::query()
+            ->where('image_id', $image->id)
+            ->where(function ($q) use ($user): void {
+                $q->where('sender_id', $user->id)
+                    ->orWhere('recipient_id', $user->id);
+            })
+            ->exists()) {
             return true;
         }
 
