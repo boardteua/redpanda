@@ -217,6 +217,10 @@ export default defineConfig(({ mode }) => {
             }),
         ],
         server: {
+            // Явний IPv4: на macOS «localhost» інколи йде на ::1, а відповідь з 127.0.0.1 дає «invalid response» у Chrome.
+            host: '127.0.0.1',
+            port: 5173,
+            strictPort: true,
             watch: {
                 ignored: ['**/storage/framework/views/**'],
             },
