@@ -4,6 +4,7 @@ namespace Tests\Feature\Ai;
 
 use App\Models\ChatAiRoomSummary;
 use App\Models\ChatMessage;
+use App\Models\ChatSetting;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\Ai\RudaPanda\RoomMemoryService;
@@ -23,13 +24,22 @@ class RoomMemoryServiceTest extends TestCase
             'access' => 0,
         ]);
 
+        ChatSetting::query()->firstOrFail()->update([
+            'ai_summary_window_hours' => 3,
+            'ai_summary_rollup_chunk_size' => 20,
+            'ai_summary_max_chars' => 8000,
+        ]);
+
         $author = User::factory()->create(['user_name' => 'Alice']);
+
+        $now = time();
+        $old = $now - (4 * 3600);
 
         for ($i = 1; $i <= 55; $i++) {
             ChatMessage::query()->create([
                 'user_id' => $author->id,
-                'post_date' => time(),
-                'post_time' => date('H:i'),
+                'post_date' => $i <= 30 ? $old : $now,
+                'post_time' => date('H:i', $i <= 30 ? $old : $now),
                 'post_user' => $author->user_name,
                 'post_message' => 'm'.$i,
                 'post_style' => null,
@@ -44,7 +54,7 @@ class RoomMemoryServiceTest extends TestCase
         }
 
         $svc = $this->app->make(RoomMemoryService::class);
-        $svc->rollupSummary($room, maxMessagesAfterSummary: 10, rollupChunkSize: 20);
+        $svc->rollupSummary($room);
 
         $summary = ChatAiRoomSummary::query()->where('room_id', $room->room_id)->first();
         $this->assertNotNull($summary);

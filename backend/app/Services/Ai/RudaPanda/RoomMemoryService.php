@@ -4,6 +4,7 @@ namespace App\Services\Ai\RudaPanda;
 
 use App\Models\ChatAiRoomSummary;
 use App\Models\ChatMessage;
+use App\Models\ChatSetting;
 use App\Models\Room;
 use Illuminate\Support\Collection;
 
@@ -50,27 +51,33 @@ final class RoomMemoryService
     /**
      * Ensure we have a rolling summary so context window stays bounded.
      *
-     * Strategy: when the count of messages after the current summary pointer exceeds
-     * the budget, we move the oldest chunk into summary_text as a compact transcript.
+     * Strategy: when room history goes beyond the configured time window, we move
+     * older messages into summary_text as a compact transcript, advancing the pointer.
      */
-    public function rollupSummary(Room $room, int $maxMessagesAfterSummary = 60, int $rollupChunkSize = 30): ChatAiRoomSummary
+    public function rollupSummary(Room $room): ChatAiRoomSummary
     {
-        $maxMessagesAfterSummary = max(10, min(500, $maxMessagesAfterSummary));
-        $rollupChunkSize = max(5, min(200, $rollupChunkSize));
+        $settings = ChatSetting::current();
+        $windowHours = max(1, min(168, (int) ($settings->ai_summary_window_hours ?: 3)));
+        $rollupChunkSize = max(5, min(200, (int) ($settings->ai_summary_rollup_chunk_size ?: 30)));
+        $maxChars = max(200, min(32000, (int) ($settings->ai_summary_max_chars ?: 8000)));
 
         $summary = ChatAiRoomSummary::query()->firstOrCreate(
             ['room_id' => $room->room_id],
             ['summary_until_post_id' => 0, 'summary_text' => null],
         );
 
-        $countAfter = ChatMessage::query()
+        $cutoffTs = time() - ($windowHours * 3600);
+
+        // If there is nothing older than the window after the current pointer — nothing to do.
+        $hasOld = ChatMessage::query()
             ->where('post_roomid', $room->room_id)
             ->whereNull('post_deleted_at')
             ->where('post_id', '>', $summary->summary_until_post_id)
             ->whereIn('type', ['public', 'system'])
-            ->count();
+            ->where('post_date', '<=', $cutoffTs)
+            ->exists();
 
-        if ($countAfter <= $maxMessagesAfterSummary) {
+        if (! $hasOld) {
             return $summary;
         }
 
@@ -80,6 +87,7 @@ final class RoomMemoryService
             ->whereNull('post_deleted_at')
             ->where('post_id', '>', $summary->summary_until_post_id)
             ->whereIn('type', ['public', 'system'])
+            ->where('post_date', '<=', $cutoffTs)
             ->orderBy('post_id')
             ->limit($rollupChunkSize)
             ->get(['post_id', 'post_user', 'post_message']);
@@ -100,7 +108,7 @@ final class RoomMemoryService
         $summary->summary_until_post_id = (int) $chunk->last()->post_id;
 
         // Keep summary reasonably bounded even with long rooms.
-        $summary->summary_text = $this->trimSummary($summary->summary_text, 8000);
+        $summary->summary_text = $this->trimSummary($summary->summary_text, $maxChars);
 
         $summary->save();
 

@@ -51,6 +51,9 @@ class ChatSetting extends Model
         'message_flood_max_messages',
         'message_flood_window_seconds',
         'proxycheck_enabled',
+        'ai_summary_window_hours',
+        'ai_summary_rollup_chunk_size',
+        'ai_summary_max_chars',
     ];
 
     /**
@@ -76,6 +79,9 @@ class ChatSetting extends Model
             'message_flood_max_messages' => 'integer',
             'message_flood_window_seconds' => 'integer',
             'proxycheck_enabled' => 'boolean',
+            'ai_summary_window_hours' => 'integer',
+            'ai_summary_rollup_chunk_size' => 'integer',
+            'ai_summary_max_chars' => 'integer',
         ];
     }
 
