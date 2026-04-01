@@ -40,8 +40,19 @@ class Room extends Model
         'slug',
         'topic',
         'access',
+        'ai_bot_enabled',
         'created_by_user_id',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'ai_bot_enabled' => 'boolean',
+        ];
+    }
 
     protected static function booted(): void
     {

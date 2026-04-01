@@ -4,6 +4,7 @@ namespace Tests\Feature\Ai;
 
 use App\Jobs\GenerateRudaPandaVipImageJob;
 use App\Models\ChatMessage;
+use App\Models\ChatSetting;
 use App\Models\Image;
 use App\Models\Room;
 use App\Models\User;
@@ -77,6 +78,7 @@ class RudaPandaVipImageGenerationTest extends TestCase
             'topic' => null,
             'access' => 0,
         ]);
+        ChatSetting::query()->firstOrFail()->update(['ai_llm_enabled' => true]);
         $vip = User::factory()->create(['guest' => false, 'vip' => true]);
         $bot = User::factory()->create(['guest' => false, 'vip' => false, 'is_system_bot' => true]);
 

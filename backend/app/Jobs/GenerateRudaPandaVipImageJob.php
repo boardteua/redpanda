@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\MessagePosted;
 use App\Models\ChatMessage;
+use App\Models\ChatSetting;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\Ai\RudaPanda\RudaPandaGeneratedImageStore;
@@ -50,6 +51,16 @@ final class GenerateRudaPandaVipImageJob implements ShouldQueue
     ): void {
         $room = Room::query()->whereKey($this->roomId)->first();
         if ($room === null) {
+            return;
+        }
+
+        $settings = ChatSetting::current();
+        if (! $settings->ai_llm_enabled || ! ($room->ai_bot_enabled ?? true)) {
+            Log::channel('structured')->info('ruda-panda image denied (llm or room off)', [
+                'room_id' => $room->room_id,
+                'user_id' => $this->triggerUserId,
+            ]);
+
             return;
         }
 

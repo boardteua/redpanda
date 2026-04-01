@@ -29,6 +29,9 @@ class ChatSettingsController extends Controller
         $row = ChatSetting::current();
         $validated = $request->validated();
 
+        $oldPersona = trim((string) ($row->ai_bot_persona_prompt ?? ''));
+        $oldPersonaRevision = max(1, (int) ($row->ai_bot_persona_revision ?? 1));
+
         $landingNormalized = null;
         if (array_key_exists('landing_settings', $validated)) {
             $landingNormalized = ChatSetting::normalizeLandingSettings($validated['landing_settings']);
@@ -53,6 +56,12 @@ class ChatSettingsController extends Controller
         }
 
         $row->fill($validated);
+        if (array_key_exists('ai_bot_persona_prompt', $validated)) {
+            $newPersona = trim((string) ($row->ai_bot_persona_prompt ?? ''));
+            if ($newPersona !== $oldPersona) {
+                $row->ai_bot_persona_revision = $oldPersonaRevision + 1;
+            }
+        }
         if ($landingNormalized !== null) {
             $row->landing_settings = $landingNormalized;
         }

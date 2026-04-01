@@ -18,6 +18,7 @@
         <ChatSettingsModal
             :open="chatSettingsModalOpen"
             :rooms="rooms"
+            :user="user"
             :ensure-sanctum="ensureSanctum"
             @close="$emit('chat-settings-close')"
             @saved="$emit('chat-settings-saved')"
@@ -104,6 +105,7 @@ export default {
         user: { type: Object, default: null },
         themeLabel: { type: String, default: '' },
         chatSettingsModalOpen: { type: Boolean, default: false },
+        user: { type: Object, default: null },
         rooms: { type: Array, default: () => [] },
         conversations: { type: Array, default: () => [] },
         ensureSanctum: { type: Function, required: true },

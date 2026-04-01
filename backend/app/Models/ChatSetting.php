@@ -65,6 +65,13 @@ class ChatSetting extends Model
         'ai_icebreaker_idle_minutes',
         'ai_icebreaker_cooldown_minutes',
         'ai_icebreaker_jitter_minutes',
+        'ai_llm_enabled',
+        'ai_gemini_model_flash',
+        'ai_gemini_model_flash_lite',
+        'ai_gemini_model_pro',
+        'ai_gemini_model_image',
+        'ai_bot_persona_prompt',
+        'ai_bot_persona_revision',
     ];
 
     /**
@@ -104,7 +111,62 @@ class ChatSetting extends Model
             'ai_icebreaker_idle_minutes' => 'integer',
             'ai_icebreaker_cooldown_minutes' => 'integer',
             'ai_icebreaker_jitter_minutes' => 'integer',
+            'ai_llm_enabled' => 'boolean',
+            'ai_bot_persona_revision' => 'integer',
         ];
+    }
+
+    public static function defaultPersonaPromptFromConfig(): string
+    {
+        return (string) config('chat.ruda_panda_default_persona_prompt', '');
+    }
+
+    public function effectiveGeminiModelFlash(): string
+    {
+        $o = trim((string) ($this->ai_gemini_model_flash ?? ''));
+        if ($o !== '') {
+            return $o;
+        }
+
+        return trim((string) config('services.gemini.model_flash', '')) !== ''
+            ? (string) config('services.gemini.model_flash')
+            : (string) config('services.gemini.default_model', 'gemini-2.5-flash');
+    }
+
+    public function effectiveGeminiModelFlashLite(): string
+    {
+        $o = trim((string) ($this->ai_gemini_model_flash_lite ?? ''));
+        if ($o !== '') {
+            return $o;
+        }
+
+        $cfg = trim((string) config('services.gemini.model_flash_lite', ''));
+
+        return $cfg !== '' ? $cfg : $this->effectiveGeminiModelFlash();
+    }
+
+    public function effectiveGeminiModelPro(): string
+    {
+        $o = trim((string) ($this->ai_gemini_model_pro ?? ''));
+        if ($o !== '') {
+            return $o;
+        }
+
+        return trim((string) config('services.gemini.model_pro', '')) !== ''
+            ? (string) config('services.gemini.model_pro')
+            : 'gemini-2.5-pro';
+    }
+
+    public function effectiveGeminiModelImage(): string
+    {
+        $o = trim((string) ($this->ai_gemini_model_image ?? ''));
+        if ($o !== '') {
+            return $o;
+        }
+
+        return trim((string) config('services.gemini.model_image', '')) !== ''
+            ? (string) config('services.gemini.model_image')
+            : $this->effectiveGeminiModelFlash();
     }
 
     /**

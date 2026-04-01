@@ -32,6 +32,7 @@ class UpdateRoomRequest extends FormRequest
             'slug' => ['sometimes', 'string', 'max:191', 'regex:/^(?=.*[a-zA-Z])[a-zA-Z0-9-]+$/'],
             'topic' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'access' => ['sometimes', 'integer', Rule::in([Room::ACCESS_PUBLIC, Room::ACCESS_REGISTERED, Room::ACCESS_VIP])],
+            'ai_bot_enabled' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -42,7 +43,8 @@ class UpdateRoomRequest extends FormRequest
             $has = array_key_exists('room_name', $data)
                 || array_key_exists('slug', $data)
                 || array_key_exists('topic', $data)
-                || array_key_exists('access', $data);
+                || array_key_exists('access', $data)
+                || array_key_exists('ai_bot_enabled', $data);
             if (! $has) {
                 $v->errors()->add('room_name', 'Надайте хоча б одне поле для оновлення.');
             }

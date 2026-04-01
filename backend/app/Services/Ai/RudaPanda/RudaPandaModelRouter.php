@@ -2,6 +2,7 @@
 
 namespace App\Services\Ai\RudaPanda;
 
+use App\Models\ChatSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Log;
  */
 final class RudaPandaModelRouter
 {
+    private ?ChatSetting $resolvedSettings = null;
+
     public function __construct(
         private readonly RudaPandaIntentClassifier $classifier,
     ) {}
@@ -82,8 +85,18 @@ final class RudaPandaModelRouter
         return $this->routeIntent($intent, $guest, $vip);
     }
 
+    private function settingsRow(): ?ChatSetting
+    {
+        return $this->resolvedSettings ??= ChatSetting::query()->first();
+    }
+
     private function modelFlashLite(): string
     {
+        $row = $this->settingsRow();
+        if ($row !== null) {
+            return $row->effectiveGeminiModelFlashLite();
+        }
+
         $id = trim((string) config('services.gemini.model_flash_lite', ''));
 
         return $id !== '' ? $id : (string) config('services.gemini.model_flash', 'gemini-2.5-flash');
@@ -91,6 +104,11 @@ final class RudaPandaModelRouter
 
     private function modelFlash(): string
     {
+        $row = $this->settingsRow();
+        if ($row !== null) {
+            return $row->effectiveGeminiModelFlash();
+        }
+
         return trim((string) config('services.gemini.model_flash', '')) !== ''
             ? (string) config('services.gemini.model_flash')
             : (string) config('services.gemini.default_model', 'gemini-2.5-flash');
@@ -98,6 +116,11 @@ final class RudaPandaModelRouter
 
     private function modelPro(): string
     {
+        $row = $this->settingsRow();
+        if ($row !== null) {
+            return $row->effectiveGeminiModelPro();
+        }
+
         $id = trim((string) config('services.gemini.model_pro', ''));
 
         return $id !== '' ? $id : 'gemini-2.5-pro';
@@ -105,6 +128,11 @@ final class RudaPandaModelRouter
 
     private function modelImage(): string
     {
+        $row = $this->settingsRow();
+        if ($row !== null) {
+            return $row->effectiveGeminiModelImage();
+        }
+
         $id = trim((string) config('services.gemini.model_image', ''));
 
         return $id !== '' ? $id : $this->modelFlash();

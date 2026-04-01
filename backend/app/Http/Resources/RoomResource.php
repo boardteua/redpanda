@@ -30,6 +30,7 @@ class RoomResource extends JsonResource
             'slug_redirect' => $slugRedirect,
             'topic' => $this->topic,
             'access' => (int) $this->access,
+            'ai_bot_enabled' => (bool) ($this->ai_bot_enabled ?? true),
             'created_by_user_id' => $creatorId !== null ? (int) $creatorId : null,
             'created_by_me' => $isCreator,
             'is_room_moderator' => $isCreator,

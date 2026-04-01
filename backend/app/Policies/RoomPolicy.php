@@ -82,6 +82,14 @@ class RoomPolicy
     }
 
     /**
+     * Увімкнення LLM «Рудої Панди» у кімнаті (**T184**) — лише адміністратор чату.
+     */
+    public function updateChatAiBot(User $user, Room $room): bool
+    {
+        return $user->isChatAdmin();
+    }
+
+    /**
      * Видалення порожньої кімнати: творець або staff (**T54**); наявність повідомлень перевіряється в контролері (422).
      */
     public function delete(User $user, Room $room): bool

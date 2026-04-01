@@ -43,6 +43,10 @@ final class PostRudaPandaRoomIcebreakerJob implements ShouldQueue
             return;
         }
 
+        if (! ($room->ai_bot_enabled ?? true)) {
+            return;
+        }
+
         $idleMin = max(5, min(1440, (int) ($settings->ai_icebreaker_idle_minutes ?: 60)));
         $cooldownMin = max(5, min(10080, (int) ($settings->ai_icebreaker_cooldown_minutes ?: 180)));
         $jitterMin = max(0, min(120, (int) ($settings->ai_icebreaker_jitter_minutes ?: 10)));

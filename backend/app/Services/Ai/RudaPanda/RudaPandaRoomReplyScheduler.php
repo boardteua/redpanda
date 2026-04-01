@@ -22,6 +22,10 @@ final class RudaPandaRoomReplyScheduler
     {
         $settings = ChatSetting::current();
 
+        if (! $settings->ai_llm_enabled || ! ($room->ai_bot_enabled ?? true)) {
+            return false;
+        }
+
         $maxChars = max(80, min(2000, (int) ($settings->ai_bot_max_reply_chars ?: 500)));
         $text = $this->formatter->format($rawReplyText, $maxChars);
         if ($text === '') {

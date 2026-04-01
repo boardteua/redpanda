@@ -356,4 +356,42 @@ class RoomCrudApiTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame(1, $row['messages_count']);
     }
+
+    public function test_chat_admin_can_patch_ai_bot_enabled(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $room = Room::query()->create([
+            'room_name' => 'R',
+            'topic' => null,
+            'access' => Room::ACCESS_PUBLIC,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$room->room_id, ['ai_bot_enabled' => false])
+            ->assertOk()
+            ->assertJsonPath('data.ai_bot_enabled', false);
+
+        $this->assertDatabaseHas('rooms', [
+            'room_id' => $room->room_id,
+            'ai_bot_enabled' => 0,
+        ]);
+    }
+
+    public function test_moderator_cannot_patch_ai_bot_enabled(): void
+    {
+        $mod = User::factory()->moderator()->create();
+        $room = Room::query()->create([
+            'room_name' => 'R',
+            'topic' => null,
+            'access' => Room::ACCESS_PUBLIC,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$room->room_id, ['ai_bot_enabled' => false])
+            ->assertForbidden();
+    }
 }

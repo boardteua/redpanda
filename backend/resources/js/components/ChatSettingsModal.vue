@@ -518,6 +518,277 @@
                 </div>
 
                 <div
+                    v-show="activeSettingsTab === 'llm'"
+                    :id="tabPanelId('llm')"
+                    role="tabpanel"
+                    :aria-labelledby="tabElementId('llm')"
+                    :aria-hidden="activeSettingsTab === 'llm' ? 'false' : 'true'"
+                    class="space-y-6"
+                >
+                    <div>
+                        <h3 class="text-sm font-semibold text-[var(--rp-text)]">Розумна панда (Gemini, T184)</h3>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Глобальний master switch для LLM-відповідей і генерації зображень; пер-кімнатне вимкнення — у модалі
+                            «Редагувати кімнату» (лише адмін чату). Порожні поля моделей = брати з
+                            <span class="font-mono">.env</span> / <span class="font-mono">config/services.php</span>.
+                        </p>
+                    </div>
+                    <label class="flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
+                        <input
+                            id="cs-ai-llm-enabled"
+                            v-model="form.ai_llm_enabled"
+                            type="checkbox"
+                            class="rp-focusable h-4 w-4 rounded border"
+                        />
+                        Увімкнути LLM для чату (відповіді бота, VIP-зображення)
+                    </label>
+                    <div
+                        v-if="aiGeminiEffective"
+                        class="rounded-md border border-[var(--rp-border-subtle)] bg-[var(--rp-bg-subtle)] px-2 py-1.5 text-xs text-[var(--rp-text-muted)]"
+                    >
+                        <span class="font-medium text-[var(--rp-text)]">Ефективні model id:</span>
+                        flash_lite <span class="font-mono">{{ aiGeminiEffective.flash_lite }}</span> · flash
+                        <span class="font-mono">{{ aiGeminiEffective.flash }}</span> · pro
+                        <span class="font-mono">{{ aiGeminiEffective.pro }}</span> · image
+                        <span class="font-mono">{{ aiGeminiEffective.image }}</span>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="rp-label" for="cs-ai-m-flash">Model flash (опційно)</label>
+                            <input
+                                id="cs-ai-m-flash"
+                                v-model.trim="form.ai_gemini_model_flash"
+                                type="text"
+                                maxlength="100"
+                                class="rp-input rp-focusable mt-1 w-full font-mono text-sm"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div>
+                            <label class="rp-label" for="cs-ai-m-flash-lite">Model flash-lite (опційно)</label>
+                            <input
+                                id="cs-ai-m-flash-lite"
+                                v-model.trim="form.ai_gemini_model_flash_lite"
+                                type="text"
+                                maxlength="100"
+                                class="rp-input rp-focusable mt-1 w-full font-mono text-sm"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div>
+                            <label class="rp-label" for="cs-ai-m-pro">Model pro (опційно)</label>
+                            <input
+                                id="cs-ai-m-pro"
+                                v-model.trim="form.ai_gemini_model_pro"
+                                type="text"
+                                maxlength="100"
+                                class="rp-input rp-focusable mt-1 w-full font-mono text-sm"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div>
+                            <label class="rp-label" for="cs-ai-m-image">Model image (опційно)</label>
+                            <input
+                                id="cs-ai-m-image"
+                                v-model.trim="form.ai_gemini_model_image"
+                                type="text"
+                                maxlength="100"
+                                class="rp-input rp-focusable mt-1 w-full font-mono text-sm"
+                                autocomplete="off"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-end gap-2">
+                            <div class="min-w-0 flex-1">
+                                <label class="rp-label" for="cs-ai-persona">Персона (system prompt)</label>
+                                <textarea
+                                    id="cs-ai-persona"
+                                    v-model="form.ai_bot_persona_prompt"
+                                    rows="5"
+                                    maxlength="12000"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-3xl font-sans text-sm"
+                                />
+                            </div>
+                            <RpButton variant="secondary" class="text-sm" type="button" @click="resetPersonaPrompt">
+                                Скинути до дефолту
+                            </RpButton>
+                        </div>
+                        <p class="mt-1 text-xs text-[var(--rp-text-muted)]">
+                            Ревізія (для кешу / аудиту): <span class="font-mono">{{ form.ai_bot_persona_revision }}</span> —
+                            збільшується автоматично при зміні тексту персони.
+                        </p>
+                    </div>
+                    <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                        <h4 class="text-sm font-semibold text-[var(--rp-text)]">Пам’ять і зведення (T178)</h4>
+                        <div class="mt-3 grid gap-3 sm:grid-cols-3">
+                            <div>
+                                <label class="rp-label" for="cs-ai-sum-h">Вікно зведення (годин)</label>
+                                <input
+                                    id="cs-ai-sum-h"
+                                    v-model.number="form.ai_summary_window_hours"
+                                    type="number"
+                                    min="1"
+                                    max="168"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-sum-chunk">Розмір чанку rollup</label>
+                                <input
+                                    id="cs-ai-sum-chunk"
+                                    v-model.number="form.ai_summary_rollup_chunk_size"
+                                    type="number"
+                                    min="1"
+                                    max="500"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-sum-max">Макс. символів summary</label>
+                                <input
+                                    id="cs-ai-sum-max"
+                                    v-model.number="form.ai_summary_max_chars"
+                                    type="number"
+                                    min="256"
+                                    max="32000"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                        <h4 class="text-sm font-semibold text-[var(--rp-text)]">Природна поведінка бота (T179)</h4>
+                        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="rp-label" for="cs-ai-dly-min">Затримка мін (мс)</label>
+                                <input
+                                    id="cs-ai-dly-min"
+                                    v-model.number="form.ai_bot_reply_delay_min_ms"
+                                    type="number"
+                                    min="0"
+                                    max="60000"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-dly-max">Затримка макс (мс)</label>
+                                <input
+                                    id="cs-ai-dly-max"
+                                    v-model.number="form.ai_bot_reply_delay_max_ms"
+                                    type="number"
+                                    min="0"
+                                    max="120000"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-room-n">Макс. відповідей бота / кімнату / вікно</label>
+                                <input
+                                    id="cs-ai-room-n"
+                                    v-model.number="form.ai_bot_room_max_replies_per_window"
+                                    type="number"
+                                    min="1"
+                                    max="1000"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-room-w">Вікно (сек)</label>
+                                <input
+                                    id="cs-ai-room-w"
+                                    v-model.number="form.ai_bot_room_window_seconds"
+                                    type="number"
+                                    min="5"
+                                    max="86400"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-glob-n">Глобально: макс. відповідей / вікно</label>
+                                <input
+                                    id="cs-ai-glob-n"
+                                    v-model.number="form.ai_bot_global_max_replies_per_window"
+                                    type="number"
+                                    min="1"
+                                    max="10000"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-glob-w">Глобальне вікно (сек)</label>
+                                <input
+                                    id="cs-ai-glob-w"
+                                    v-model.number="form.ai_bot_global_window_seconds"
+                                    type="number"
+                                    min="5"
+                                    max="86400"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-max-ch">Макс. довжина відповіді (симв.)</label>
+                                <input
+                                    id="cs-ai-max-ch"
+                                    v-model.number="form.ai_bot_max_reply_chars"
+                                    type="number"
+                                    min="80"
+                                    max="2000"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-t border-[var(--rp-border-subtle)] pt-4">
+                        <h4 class="text-sm font-semibold text-[var(--rp-text)]">Простій у кімнаті — icebreaker (T183)</h4>
+                        <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
+                            <input
+                                id="cs-ai-ice-on"
+                                v-model="form.ai_icebreaker_enabled"
+                                type="checkbox"
+                                class="rp-focusable h-4 w-4 rounded border"
+                            />
+                            Увімкнути icebreaker при тиші
+                        </label>
+                        <div class="mt-3 grid gap-3 sm:grid-cols-3">
+                            <div>
+                                <label class="rp-label" for="cs-ai-ice-idle">Тиша (хв) до теми</label>
+                                <input
+                                    id="cs-ai-ice-idle"
+                                    v-model.number="form.ai_icebreaker_idle_minutes"
+                                    type="number"
+                                    min="5"
+                                    max="1440"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-ice-cd">Cooldown (хв) на кімнату</label>
+                                <input
+                                    id="cs-ai-ice-cd"
+                                    v-model.number="form.ai_icebreaker_cooldown_minutes"
+                                    type="number"
+                                    min="5"
+                                    max="10080"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label class="rp-label" for="cs-ai-ice-jit">Jitter (хв, 0 = вимк.)</label>
+                                <input
+                                    id="cs-ai-ice-jit"
+                                    v-model.number="form.ai_icebreaker_jitter_minutes"
+                                    type="number"
+                                    min="0"
+                                    max="120"
+                                    class="rp-input rp-focusable mt-1 w-full max-w-xs text-sm"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
                     v-show="activeSettingsTab === 'system_bot'"
                     :id="tabPanelId('system_bot')"
                     role="tabpanel"
@@ -808,6 +1079,7 @@ export default {
     props: {
         open: { type: Boolean, default: false },
         rooms: { type: Array, default: () => [] },
+        user: { type: Object, default: null },
         ensureSanctum: { type: Function, required: true },
     },
     data() {
@@ -859,7 +1131,30 @@ export default {
                     account_security_notice: { subject: '', html_body: '', text_body: '' },
                 },
                 max_attachment_mb: 4,
+                ai_llm_enabled: false,
+                ai_gemini_model_flash: '',
+                ai_gemini_model_flash_lite: '',
+                ai_gemini_model_pro: '',
+                ai_gemini_model_image: '',
+                ai_bot_persona_prompt: '',
+                ai_bot_persona_revision: 1,
+                ai_summary_window_hours: 24,
+                ai_summary_rollup_chunk_size: 20,
+                ai_summary_max_chars: 4000,
+                ai_bot_reply_delay_min_ms: 1200,
+                ai_bot_reply_delay_max_ms: 3000,
+                ai_bot_room_max_replies_per_window: 3,
+                ai_bot_room_window_seconds: 300,
+                ai_bot_global_max_replies_per_window: 30,
+                ai_bot_global_window_seconds: 300,
+                ai_bot_max_reply_chars: 500,
+                ai_icebreaker_enabled: false,
+                ai_icebreaker_idle_minutes: 60,
+                ai_icebreaker_cooldown_minutes: 180,
+                ai_icebreaker_jitter_minutes: 10,
             },
+            aiBotPersonaDefault: '',
+            aiGeminiEffective: null,
             mailTemplateSections: [
                 {
                     id: 'password_reset',
@@ -906,17 +1201,26 @@ export default {
         };
     },
     computed: {
+        isChatAdmin() {
+            return Boolean(this.user && this.user.chat_role === 'admin');
+        },
         settingsTabs() {
-            return [
+            const tabs = [
                 { id: 'rooms', label: 'Кімнати' },
                 { id: 'slash', label: 'Команди й модерація' },
                 { id: 'media', label: 'Звуки та файли' },
                 { id: 'landing', label: 'Вітальня' },
                 { id: 'registration', label: 'Реєстрація' },
                 { id: 'mail', label: 'Листи' },
+                { id: 'llm', label: 'Розумна панда' },
                 { id: 'system_bot', label: 'Руда панда' },
                 { id: 'emoticons', label: 'Смайли' },
             ];
+            if (!this.isChatAdmin) {
+                return tabs.filter((t) => t.id !== 'llm');
+            }
+
+            return tabs;
         },
         publicRooms() {
             const list = this.rooms || [];
@@ -1033,6 +1337,12 @@ export default {
             ) {
                 return 'rooms';
             }
+            if (
+                key.startsWith('ai_')
+                || key === 'ai_llm_enabled'
+            ) {
+                return 'llm';
+            }
 
             return 'rooms';
         },
@@ -1058,6 +1368,26 @@ export default {
                 'landing_settings.news_title': 'cs-lp-news-t',
                 'landing_settings.news_body': 'cs-lp-news-b',
                 'registration_flags.min_age': 'cs-reg-min-age',
+                ai_llm_enabled: 'cs-ai-llm-enabled',
+                ai_gemini_model_flash: 'cs-ai-m-flash',
+                ai_gemini_model_flash_lite: 'cs-ai-m-flash-lite',
+                ai_gemini_model_pro: 'cs-ai-m-pro',
+                ai_gemini_model_image: 'cs-ai-m-image',
+                ai_bot_persona_prompt: 'cs-ai-persona',
+                ai_summary_window_hours: 'cs-ai-sum-h',
+                ai_summary_rollup_chunk_size: 'cs-ai-sum-chunk',
+                ai_summary_max_chars: 'cs-ai-sum-max',
+                ai_bot_reply_delay_min_ms: 'cs-ai-dly-min',
+                ai_bot_reply_delay_max_ms: 'cs-ai-dly-max',
+                ai_bot_room_max_replies_per_window: 'cs-ai-room-n',
+                ai_bot_room_window_seconds: 'cs-ai-room-w',
+                ai_bot_global_max_replies_per_window: 'cs-ai-glob-n',
+                ai_bot_global_window_seconds: 'cs-ai-glob-w',
+                ai_bot_max_reply_chars: 'cs-ai-max-ch',
+                ai_icebreaker_enabled: 'cs-ai-ice-on',
+                ai_icebreaker_idle_minutes: 'cs-ai-ice-idle',
+                ai_icebreaker_cooldown_minutes: 'cs-ai-ice-cd',
+                ai_icebreaker_jitter_minutes: 'cs-ai-ice-jit',
             };
             let fieldId = idMap[key];
             if (!fieldId && key.startsWith('landing_settings.links.')) {
@@ -1084,6 +1414,62 @@ export default {
             if (panel && typeof panel.scrollIntoView === 'function') {
                 panel.scrollIntoView({ block: 'nearest' });
             }
+        },
+        applyAiSettingsFromResponse(d) {
+            if (!this.isChatAdmin || d.ai_llm_enabled === undefined) {
+                this.aiGeminiEffective = null;
+                this.aiBotPersonaDefault = '';
+
+                return;
+            }
+            this.aiBotPersonaDefault =
+                d.ai_bot_persona_prompt_default != null ? String(d.ai_bot_persona_prompt_default) : '';
+            this.aiGeminiEffective =
+                d.ai_gemini_model_effective && typeof d.ai_gemini_model_effective === 'object'
+                    ? d.ai_gemini_model_effective
+                    : null;
+            const num = (v, fallback) => {
+                const n = Number(v);
+
+                return Number.isFinite(n) ? n : fallback;
+            };
+            this.form.ai_llm_enabled = Boolean(d.ai_llm_enabled);
+            this.form.ai_gemini_model_flash = d.ai_gemini_model_flash != null ? String(d.ai_gemini_model_flash) : '';
+            this.form.ai_gemini_model_flash_lite =
+                d.ai_gemini_model_flash_lite != null ? String(d.ai_gemini_model_flash_lite) : '';
+            this.form.ai_gemini_model_pro = d.ai_gemini_model_pro != null ? String(d.ai_gemini_model_pro) : '';
+            this.form.ai_gemini_model_image = d.ai_gemini_model_image != null ? String(d.ai_gemini_model_image) : '';
+            this.form.ai_bot_persona_prompt =
+                d.ai_bot_persona_prompt != null ? String(d.ai_bot_persona_prompt) : '';
+            this.form.ai_bot_persona_revision = Math.max(1, num(d.ai_bot_persona_revision, 1));
+            this.form.ai_summary_window_hours = Math.max(1, num(d.ai_summary_window_hours, 24));
+            this.form.ai_summary_rollup_chunk_size = Math.max(1, num(d.ai_summary_rollup_chunk_size, 20));
+            this.form.ai_summary_max_chars = Math.max(256, num(d.ai_summary_max_chars, 4000));
+            this.form.ai_bot_reply_delay_min_ms = Math.max(0, num(d.ai_bot_reply_delay_min_ms, 1200));
+            this.form.ai_bot_reply_delay_max_ms = Math.max(0, num(d.ai_bot_reply_delay_max_ms, 3000));
+            this.form.ai_bot_room_max_replies_per_window = Math.max(
+                1,
+                num(d.ai_bot_room_max_replies_per_window, 3),
+            );
+            this.form.ai_bot_room_window_seconds = Math.max(5, num(d.ai_bot_room_window_seconds, 300));
+            this.form.ai_bot_global_max_replies_per_window = Math.max(
+                1,
+                num(d.ai_bot_global_max_replies_per_window, 30),
+            );
+            this.form.ai_bot_global_window_seconds = Math.max(5, num(d.ai_bot_global_window_seconds, 300));
+            this.form.ai_bot_max_reply_chars = Math.max(80, num(d.ai_bot_max_reply_chars, 500));
+            this.form.ai_icebreaker_enabled = Boolean(d.ai_icebreaker_enabled);
+            this.form.ai_icebreaker_idle_minutes = Math.max(5, num(d.ai_icebreaker_idle_minutes, 60));
+            this.form.ai_icebreaker_cooldown_minutes = Math.max(5, num(d.ai_icebreaker_cooldown_minutes, 180));
+            this.form.ai_icebreaker_jitter_minutes = Math.max(0, num(d.ai_icebreaker_jitter_minutes, 10));
+        },
+        trimOrNullForAi(v) {
+            const t = v != null ? String(v).trim() : '';
+
+            return t === '' ? null : t;
+        },
+        resetPersonaPrompt() {
+            this.form.ai_bot_persona_prompt = this.aiBotPersonaDefault || '';
         },
         mailPreviewHtml(sectionId) {
             const raw = (this.form.mail_template_overrides[sectionId] || {}).html_body || '';
@@ -1203,6 +1589,7 @@ export default {
                 const effHint = Number(d.max_chat_image_upload_bytes);
                 this.attachmentEffectiveBytesHint =
                     Number.isFinite(effHint) && effHint > 0 ? effHint : null;
+                this.applyAiSettingsFromResponse(d);
             } catch {
                 this.loadError = 'Не вдалося завантажити налаштування.';
             } finally {
@@ -1417,6 +1804,32 @@ export default {
                     100 * 1024 * 1024,
                     Math.max(1024, Math.round(mb * 1024 * 1024)),
                 );
+                if (this.isChatAdmin) {
+                    Object.assign(body, {
+                        ai_llm_enabled: Boolean(this.form.ai_llm_enabled),
+                        ai_gemini_model_flash: this.trimOrNullForAi(this.form.ai_gemini_model_flash),
+                        ai_gemini_model_flash_lite: this.trimOrNullForAi(this.form.ai_gemini_model_flash_lite),
+                        ai_gemini_model_pro: this.trimOrNullForAi(this.form.ai_gemini_model_pro),
+                        ai_gemini_model_image: this.trimOrNullForAi(this.form.ai_gemini_model_image),
+                        ai_bot_persona_prompt: this.trimOrNullForAi(this.form.ai_bot_persona_prompt),
+                        ai_summary_window_hours: Number(this.form.ai_summary_window_hours),
+                        ai_summary_rollup_chunk_size: Number(this.form.ai_summary_rollup_chunk_size),
+                        ai_summary_max_chars: Number(this.form.ai_summary_max_chars),
+                        ai_bot_reply_delay_min_ms: Number(this.form.ai_bot_reply_delay_min_ms),
+                        ai_bot_reply_delay_max_ms: Number(this.form.ai_bot_reply_delay_max_ms),
+                        ai_bot_room_max_replies_per_window: Number(this.form.ai_bot_room_max_replies_per_window),
+                        ai_bot_room_window_seconds: Number(this.form.ai_bot_room_window_seconds),
+                        ai_bot_global_max_replies_per_window: Number(
+                            this.form.ai_bot_global_max_replies_per_window,
+                        ),
+                        ai_bot_global_window_seconds: Number(this.form.ai_bot_global_window_seconds),
+                        ai_bot_max_reply_chars: Number(this.form.ai_bot_max_reply_chars),
+                        ai_icebreaker_enabled: Boolean(this.form.ai_icebreaker_enabled),
+                        ai_icebreaker_idle_minutes: Number(this.form.ai_icebreaker_idle_minutes),
+                        ai_icebreaker_cooldown_minutes: Number(this.form.ai_icebreaker_cooldown_minutes),
+                        ai_icebreaker_jitter_minutes: Number(this.form.ai_icebreaker_jitter_minutes),
+                    });
+                }
                 await window.axios.patch('/api/v1/chat/settings', body);
                 this.$emit('saved');
                 this.close();

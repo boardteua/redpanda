@@ -24,6 +24,7 @@ class RudaPandaRoomReplySchedulerTest extends TestCase
         ]);
 
         ChatSetting::query()->firstOrFail()->update([
+            'ai_llm_enabled' => true,
             'ai_bot_room_max_replies_per_window' => 1,
             'ai_bot_room_window_seconds' => 60,
             'ai_bot_global_max_replies_per_window' => 100,
@@ -53,6 +54,34 @@ class RudaPandaRoomReplySchedulerTest extends TestCase
         $this->assertFalse($ok2);
 
         Queue::assertPushed(PostRudaPandaRoomReplyJob::class, 1);
+    }
+
+    public function test_scheduler_noops_when_llm_master_disabled(): void
+    {
+        $room = Room::query()->create([
+            'room_name' => 'Public',
+            'topic' => null,
+            'access' => 0,
+        ]);
+
+        ChatSetting::query()->firstOrFail()->update([
+            'ai_llm_enabled' => false,
+            'ai_bot_room_max_replies_per_window' => 10,
+            'ai_bot_room_window_seconds' => 60,
+            'ai_bot_global_max_replies_per_window' => 100,
+            'ai_bot_global_window_seconds' => 60,
+            'ai_bot_reply_delay_min_ms' => 0,
+            'ai_bot_reply_delay_max_ms' => 0,
+            'ai_bot_max_reply_chars' => 200,
+        ]);
+
+        Queue::fake([PostRudaPandaRoomReplyJob::class]);
+
+        $svc = $this->app->make(RudaPandaRoomReplyScheduler::class);
+        $ok = $svc->schedule($room, 'hello', 'k-off');
+
+        $this->assertFalse($ok);
+        Queue::assertNothingPushed();
     }
 }
 

@@ -62,6 +62,7 @@ class ChatSettingsApiTest extends TestCase
         $this->assertIsArray($data);
         $this->assertArrayNotHasKey('transactional_mail_from_name', $data);
         $this->assertArrayNotHasKey('mail_template_overrides', $data);
+        $this->assertArrayNotHasKey('ai_llm_enabled', $data);
     }
 
     public function test_non_admin_patch_returns_403(): void
@@ -233,8 +234,41 @@ class ChatSettingsApiTest extends TestCase
                         'welcome_registered',
                         'account_security_notice',
                     ],
+                    'ai_llm_enabled',
+                    'ai_bot_persona_revision',
+                    'ai_gemini_model_effective' => [
+                        'flash',
+                        'flash_lite',
+                        'pro',
+                        'image',
+                    ],
                 ],
             ]);
+    }
+
+    public function test_admin_patch_ai_llm_and_persona_bumps_revision(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $row = ChatSetting::current();
+        $this->assertSame(1, (int) $row->ai_bot_persona_revision);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/chat/settings', [
+                'ai_llm_enabled' => true,
+                'ai_bot_persona_prompt' => 'Нова персона для тесту.',
+                'ai_gemini_model_flash' => 'custom-flash-model',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.ai_llm_enabled', true)
+            ->assertJsonPath('data.ai_bot_persona_revision', 2)
+            ->assertJsonPath('data.ai_gemini_model_effective.flash', 'custom-flash-model');
+
+        $fresh = ChatSetting::current();
+        $this->assertTrue((bool) $fresh->ai_llm_enabled);
+        $this->assertSame(2, (int) $fresh->ai_bot_persona_revision);
+        $this->assertSame('custom-flash-model', trim((string) $fresh->ai_gemini_model_flash));
     }
 
     public function test_admin_can_patch_transactional_mail_from_name_and_templates(): void

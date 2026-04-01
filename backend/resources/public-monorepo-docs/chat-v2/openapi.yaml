@@ -1738,7 +1738,7 @@ paths:
       summary: Оновити кімнату (T54)
       description: |
         Лише **не гість**. Потрібен доступ `interact` до кімнати. Поля `room_name` та `topic` — **творець** (`created_by_user_id`) або **модератор/адмін**; legacy-кімнати без творця редагують лише staff.
-        Поле `access` (0 / 1 / 2) — **лише модератор або адмін**. Хоча б одне поле в тілі. Throttle `room-manage`.
+        Поле `access` (0 / 1 / 2) — **лише модератор або адмін**. Поле `ai_bot_enabled` — **лише адміністратор чату** (**T184**). Хоча б одне поле в тілі. Throttle `room-manage`.
       operationId: patchRoom
       security:
         - sanctumSession: []
@@ -1811,7 +1811,7 @@ paths:
         Поріг **N** і область лічби публічних повідомлень для права створення кімнат (**T51** / **T44**).
         Ліміт **slash-команд** на користувача: `slash_command_max_per_window` / `slash_command_window_seconds` (див. схему `ChatSettingsData`).
         Доступно будь-якому авторизованому користувачу (у т.ч. гостю); без PII.
-        **Адміністратор чату** додатково отримує `transactional_mail_from_name` та `mail_template_overrides` (**T110**); іншим ці поля **не** повертаються.
+        **Адміністратор чату** додатково отримує `transactional_mail_from_name` та `mail_template_overrides` (**T110**), а також поля **Руда Панда LLM** (`ai_llm_enabled`, overrides моделей, персона, ліміти, icebreaker — **T184**); іншим ці поля **не** повертаються.
       operationId: getChatSettings
       security:
         - sanctumSession: []
@@ -1832,6 +1832,7 @@ paths:
       description: |
         Лише **адміністратор чату** (`chat-admin`).
         Опційно — **транзакційні листи** (`transactional_mail_from_name`, `mail_template_overrides`, **T110**); плейсхолдери — `docs/chat-v2/T110-MAIL-PLACEHOLDERS.md`.
+        Опційно — **LLM / Руда Панда** (**T184**): `ai_llm_enabled`, overrides моделей Gemini, `ai_bot_persona_prompt` (ревізія збільшується на бекенді при зміні тексту), пам’ять/summary, антифлуд бота, icebreaker.
       operationId: patchChatSettings
       security:
         - sanctumSession: []
@@ -3036,6 +3037,10 @@ components:
         access:
           type: integer
           description: "0 — усі авторизовані (гості дозволені); 1 — лише зареєстровані; ≥2 — VIP-кімната (VIP або модератор/адмін)"
+        ai_bot_enabled:
+          type: boolean
+          description: |
+            Чи дозволено в цій кімнаті активність «розумної панди» (LLM-відповіді, icebreaker, VIP-зображення) за наявності глобального `ai_llm_enabled` (**T184**). За замовчуванням `true` для існуючих кімнат.
         created_by_user_id:
           type: integer
           nullable: true
@@ -3543,6 +3548,9 @@ components:
           type: integer
           enum: [0, 1, 2]
           description: Лише staff (**T54**)
+        ai_bot_enabled:
+          type: boolean
+          description: Лише **адміністратор чату** (**T184**).
 
     RoomSingleResponse:
       type: object

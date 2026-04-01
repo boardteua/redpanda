@@ -16,6 +16,29 @@ class RudaPandaRoomIcebreakerTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_room_ai_disabled_noops(): void
+    {
+        $room = Room::query()->create([
+            'room_name' => 'Public',
+            'topic' => null,
+            'access' => 0,
+            'ai_bot_enabled' => false,
+        ]);
+        User::factory()->create(['is_system_bot' => true, 'guest' => false]);
+
+        ChatSetting::current()->update([
+            'ai_icebreaker_enabled' => true,
+            'ai_icebreaker_idle_minutes' => 60,
+            'ai_icebreaker_cooldown_minutes' => 180,
+            'ai_icebreaker_jitter_minutes' => 0,
+        ]);
+
+        $job = new PostRudaPandaRoomIcebreakerJob((int) $room->room_id, 'k-off');
+        $job->handle(app(SystemBotMessageService::class));
+
+        $this->assertDatabaseCount('chat', 0);
+    }
+
     public function test_disabled_setting_noops(): void
     {
         $room = Room::query()->create(['room_name' => 'Public', 'topic' => null, 'access' => 0]);

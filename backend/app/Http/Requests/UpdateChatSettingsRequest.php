@@ -74,12 +74,41 @@ class UpdateChatSettingsRequest extends FormRequest
             'mail_template_overrides.account_security_notice.subject' => ['nullable', 'string', 'max:200'],
             'mail_template_overrides.account_security_notice.html_body' => ['nullable', 'string', 'max:32000'],
             'mail_template_overrides.account_security_notice.text_body' => ['nullable', 'string', 'max:32000'],
+            'ai_llm_enabled' => ['sometimes', 'boolean'],
+            'ai_gemini_model_flash' => ['sometimes', 'nullable', 'string', 'max:100', 'regex:/^[a-zA-Z0-9_.\-]+$/'],
+            'ai_gemini_model_flash_lite' => ['sometimes', 'nullable', 'string', 'max:100', 'regex:/^[a-zA-Z0-9_.\-]+$/'],
+            'ai_gemini_model_pro' => ['sometimes', 'nullable', 'string', 'max:100', 'regex:/^[a-zA-Z0-9_.\-]+$/'],
+            'ai_gemini_model_image' => ['sometimes', 'nullable', 'string', 'max:100', 'regex:/^[a-zA-Z0-9_.\-]+$/'],
+            'ai_bot_persona_prompt' => ['sometimes', 'nullable', 'string', 'max:12000'],
+            'ai_summary_window_hours' => ['sometimes', 'integer', 'min:1', 'max:168'],
+            'ai_summary_rollup_chunk_size' => ['sometimes', 'integer', 'min:1', 'max:500'],
+            'ai_summary_max_chars' => ['sometimes', 'integer', 'min:256', 'max:32000'],
+            'ai_bot_reply_delay_min_ms' => ['sometimes', 'integer', 'min:0', 'max:60000'],
+            'ai_bot_reply_delay_max_ms' => ['sometimes', 'integer', 'min:0', 'max:120000'],
+            'ai_bot_room_max_replies_per_window' => ['sometimes', 'integer', 'min:1', 'max:1000'],
+            'ai_bot_room_window_seconds' => ['sometimes', 'integer', 'min:5', 'max:86400'],
+            'ai_bot_global_max_replies_per_window' => ['sometimes', 'integer', 'min:1', 'max:10000'],
+            'ai_bot_global_window_seconds' => ['sometimes', 'integer', 'min:5', 'max:86400'],
+            'ai_bot_max_reply_chars' => ['sometimes', 'integer', 'min:80', 'max:2000'],
+            'ai_icebreaker_enabled' => ['sometimes', 'boolean'],
+            'ai_icebreaker_idle_minutes' => ['sometimes', 'integer', 'min:5', 'max:1440'],
+            'ai_icebreaker_cooldown_minutes' => ['sometimes', 'integer', 'min:5', 'max:10080'],
+            'ai_icebreaker_jitter_minutes' => ['sometimes', 'integer', 'min:0', 'max:120'],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v): void {
+            $min = $this->input('ai_bot_reply_delay_min_ms');
+            $max = $this->input('ai_bot_reply_delay_max_ms');
+            if ($min !== null && $max !== null && (int) $max < (int) $min) {
+                $v->errors()->add(
+                    'ai_bot_reply_delay_max_ms',
+                    'Максимальна затримка має бути не менша за мінімальну.',
+                );
+            }
+
             $landing = $this->input('landing_settings');
             if (! is_array($landing) || ! isset($landing['links']) || ! is_array($landing['links'])) {
                 return;

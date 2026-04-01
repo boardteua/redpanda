@@ -2487,10 +2487,11 @@
 
 ---
 
-### [ ] T184 — **Адмін UI + контракт:** увімкнення LLM, моделі, ліміти, персона «Руда Панда», secrets
+### [x] T184 — **Адмін UI + контракт:** увімкнення LLM, моделі, ліміти, персона «Руда Панда», secrets
 
 - **Delegate:** Full stack
 - **Залежність:** **T176**–**T183** (функції можуть іти інкрементально, але UI завершує керованість)
+- **Статус:** **PASS** (2026-04-01). Міграції `chat_settings` (LLM, overrides моделей, persona+revision) та `rooms.ai_bot_enabled`; `GET/PATCH /api/v1/chat/settings` (адмін-зріз); `PATCH /api/v1/rooms/{room}` (`ai_bot_enabled` лише для chat-admin); гейти в scheduler / VIP image / icebreaker; вкладка «Розумна панда» у `ChatSettingsModal` + тумблер у `RoomEditModal`; QA — [`docs/chat-v2/T184-QA.md`](../docs/chat-v2/T184-QA.md).
 - **Deliverables:**
   - Розділ у **налаштуваннях чату** (адмін): master switch **LLM**, поля для **ідентифікаторів моделей** (flash/pro/image), ліміти **N/T** з T179, затримки, **N** хвилин тиші з T183, temperature/topP за потреби.
   - Поле(я) для **початкового промпта** «Руда Панда» (persona): текстова область з лімітом довжини, **preview** (опційно) і кнопкою “скинути до дефолту”; збереження **revision/updated_at** для аудиту; застосування промпта лише на бекенді при викликах Gemini.

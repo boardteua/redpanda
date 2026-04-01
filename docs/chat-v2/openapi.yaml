@@ -1896,7 +1896,7 @@ paths:
       summary: Оновити кімнату (T54)
       description: |
         Лише **не гість**. Потрібен доступ `interact` до кімнати. Поля `room_name` та `topic` — **творець** (`created_by_user_id`) або **модератор/адмін**; legacy-кімнати без творця редагують лише staff.
-        Поле `access` (0 / 1 / 2) — **лише модератор або адмін**. Хоча б одне поле в тілі. Throttle `room-manage`.
+        Поле `access` (0 / 1 / 2) — **лише модератор або адмін**. Поле `ai_bot_enabled` — **лише адміністратор чату** (**T184**). Хоча б одне поле в тілі. Throttle `room-manage`.
       operationId: patchRoom
       security:
         - sanctumSession: []
@@ -1969,7 +1969,7 @@ paths:
         Поріг **N** і область лічби публічних повідомлень для права створення кімнат (**T51** / **T44**).
         Ліміт **slash-команд** на користувача: `slash_command_max_per_window` / `slash_command_window_seconds` (див. схему `ChatSettingsData`).
         Доступно будь-якому авторизованому користувачу (у т.ч. гостю); без PII.
-        **Адміністратор чату** додатково отримує `transactional_mail_from_name` та `mail_template_overrides` (**T110**); іншим ці поля **не** повертаються.
+        **Адміністратор чату** додатково отримує `transactional_mail_from_name` та `mail_template_overrides` (**T110**), а також поля **Руда Панда LLM** (`ai_llm_enabled`, overrides моделей, персона, ліміти, icebreaker — **T184**); іншим ці поля **не** повертаються.
       operationId: getChatSettings
       security:
         - sanctumSession: []
@@ -1990,6 +1990,7 @@ paths:
       description: |
         Лише **адміністратор чату** (`chat-admin`).
         Опційно — **транзакційні листи** (`transactional_mail_from_name`, `mail_template_overrides`, **T110**); плейсхолдери — `docs/chat-v2/T110-MAIL-PLACEHOLDERS.md`.
+        Опційно — **LLM / Руда Панда** (**T184**): `ai_llm_enabled`, overrides моделей Gemini, `ai_bot_persona_prompt` (ревізія збільшується на бекенді при зміні тексту), пам’ять/summary, антифлуд бота, icebreaker.
       operationId: patchChatSettings
       security:
         - sanctumSession: []
@@ -3507,6 +3508,10 @@ components:
         access:
           type: integer
           description: "0 — усі авторизовані (гості дозволені); 1 — лише зареєстровані; ≥2 — VIP-кімната (VIP або модератор/адмін)"
+        ai_bot_enabled:
+          type: boolean
+          description: |
+            Чи дозволено в цій кімнаті активність «розумної панди» (LLM-відповіді, icebreaker, VIP-зображення) за наявності глобального `ai_llm_enabled` (**T184**). За замовчуванням `true` для існуючих кімнат.
         created_by_user_id:
           type: integer
           nullable: true
@@ -4024,6 +4029,9 @@ components:
           type: integer
           enum: [0, 1, 2]
           description: Лише staff (**T54**)
+        ai_bot_enabled:
+          type: boolean
+          description: Лише **адміністратор чату** (**T184**).
 
     RoomSingleResponse:
       type: object
@@ -4235,6 +4243,102 @@ components:
               $ref: "#/components/schemas/MailTemplateOverrideBlock"
             account_security_notice:
               $ref: "#/components/schemas/MailTemplateOverrideBlock"
+        ai_llm_enabled:
+          type: boolean
+          description: |
+            Лише **адмін чату** у відповіді (**T184**). Глобальний master switch для LLM-відповідей і VIP-генерації зображень;
+            пер-кімнатний прапорець — `ai_bot_enabled` у `Room` / `PATCH /api/v1/rooms/{roomId}` (лише адмін).
+        ai_gemini_model_flash:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: Опційний override ідентифікатора моделі; порожньо/null — з `config` / `.env`.
+        ai_gemini_model_flash_lite:
+          type: string
+          nullable: true
+          maxLength: 100
+        ai_gemini_model_pro:
+          type: string
+          nullable: true
+          maxLength: 100
+        ai_gemini_model_image:
+          type: string
+          nullable: true
+          maxLength: 100
+        ai_gemini_model_effective:
+          type: object
+          description: Обчислені model id після застосування overrides (**T184**).
+          properties:
+            flash: { type: string }
+            flash_lite: { type: string }
+            pro: { type: string }
+            image: { type: string }
+        ai_bot_persona_prompt:
+          type: string
+          nullable: true
+          maxLength: 12000
+          description: Текст персони (system prompt) для Gemini; зміни інкрементують `ai_bot_persona_revision`.
+        ai_bot_persona_revision:
+          type: integer
+          minimum: 1
+          description: Ревізія персони (аудит / ключ кешу).
+        ai_bot_persona_prompt_default:
+          type: string
+          description: Дефолтний текст з `config/chat.php` для UI «скинути».
+        ai_summary_window_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+        ai_summary_rollup_chunk_size:
+          type: integer
+          minimum: 1
+          maximum: 500
+        ai_summary_max_chars:
+          type: integer
+          minimum: 256
+          maximum: 32000
+        ai_bot_reply_delay_min_ms:
+          type: integer
+          minimum: 0
+          maximum: 60000
+        ai_bot_reply_delay_max_ms:
+          type: integer
+          minimum: 0
+          maximum: 120000
+        ai_bot_room_max_replies_per_window:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        ai_bot_room_window_seconds:
+          type: integer
+          minimum: 5
+          maximum: 86400
+        ai_bot_global_max_replies_per_window:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        ai_bot_global_window_seconds:
+          type: integer
+          minimum: 5
+          maximum: 86400
+        ai_bot_max_reply_chars:
+          type: integer
+          minimum: 80
+          maximum: 2000
+        ai_icebreaker_enabled:
+          type: boolean
+        ai_icebreaker_idle_minutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+        ai_icebreaker_cooldown_minutes:
+          type: integer
+          minimum: 5
+          maximum: 10080
+        ai_icebreaker_jitter_minutes:
+          type: integer
+          minimum: 0
+          maximum: 120
 
     ChatSettingsResponse:
       type: object
@@ -4471,6 +4575,87 @@ components:
               $ref: "#/components/schemas/MailTemplateOverrideBlock"
             account_security_notice:
               $ref: "#/components/schemas/MailTemplateOverrideBlock"
+        ai_llm_enabled:
+          type: boolean
+          description: "**T184** — глобальний LLM master switch."
+        ai_gemini_model_flash:
+          type: string
+          nullable: true
+          maxLength: 100
+          pattern: '^[a-zA-Z0-9_.\-]+$'
+        ai_gemini_model_flash_lite:
+          type: string
+          nullable: true
+          maxLength: 100
+          pattern: '^[a-zA-Z0-9_.\-]+$'
+        ai_gemini_model_pro:
+          type: string
+          nullable: true
+          maxLength: 100
+          pattern: '^[a-zA-Z0-9_.\-]+$'
+        ai_gemini_model_image:
+          type: string
+          nullable: true
+          maxLength: 100
+          pattern: '^[a-zA-Z0-9_.\-]+$'
+        ai_bot_persona_prompt:
+          type: string
+          nullable: true
+          maxLength: 12000
+        ai_summary_window_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+        ai_summary_rollup_chunk_size:
+          type: integer
+          minimum: 1
+          maximum: 500
+        ai_summary_max_chars:
+          type: integer
+          minimum: 256
+          maximum: 32000
+        ai_bot_reply_delay_min_ms:
+          type: integer
+          minimum: 0
+          maximum: 60000
+        ai_bot_reply_delay_max_ms:
+          type: integer
+          minimum: 0
+          maximum: 120000
+        ai_bot_room_max_replies_per_window:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        ai_bot_room_window_seconds:
+          type: integer
+          minimum: 5
+          maximum: 86400
+        ai_bot_global_max_replies_per_window:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        ai_bot_global_window_seconds:
+          type: integer
+          minimum: 5
+          maximum: 86400
+        ai_bot_max_reply_chars:
+          type: integer
+          minimum: 80
+          maximum: 2000
+        ai_icebreaker_enabled:
+          type: boolean
+        ai_icebreaker_idle_minutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+        ai_icebreaker_cooldown_minutes:
+          type: integer
+          minimum: 5
+          maximum: 10080
+        ai_icebreaker_jitter_minutes:
+          type: integer
+          minimum: 0
+          maximum: 120
 
     PatchChatMessageRequest:
       type: object

@@ -116,6 +116,11 @@ class RoomController extends Controller
             $room->access = (int) $validated['access'];
         }
 
+        if (array_key_exists('ai_bot_enabled', $validated)) {
+            Gate::forUser($user)->authorize('updateChatAiBot', $room);
+            $room->ai_bot_enabled = (bool) $validated['ai_bot_enabled'];
+        }
+
         $room->save();
         $room->refresh();
         $room->loadCount('messages');

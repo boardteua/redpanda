@@ -61,6 +61,22 @@
                         <option :value="2">VIP-зона</option>
                     </select>
                 </div>
+                <div v-if="isChatAdmin" class="rounded-md border border-[var(--rp-border-subtle)] p-3">
+                    <p class="text-xs text-[var(--rp-text-muted)]">
+                        <strong class="text-[var(--rp-text)]">Розумна панда (T184):</strong> дозволити в цій кімнаті відповіді
+                        бота, icebreaker та VIP-зображення (якщо глобально увімкнено LLM у налаштуваннях чату).
+                    </p>
+                    <label class="mt-2 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
+                        <input
+                            id="rp-edit-room-ai-bot"
+                            v-model="editAiBotEnabled"
+                            type="checkbox"
+                            class="rp-focusable h-4 w-4 rounded border"
+                            :disabled="savingRoom || deletingRoom"
+                        />
+                        Увімкнути LLM-панду в цій кімнаті
+                    </label>
+                </div>
                 <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <RpButton
                         native-type="submit"
@@ -108,6 +124,7 @@ export default {
             editName: '',
             editTopic: '',
             editAccess: 0,
+            editAiBotEnabled: true,
         };
     },
     computed: {
@@ -130,6 +147,11 @@ export default {
         },
         canChangeAccess() {
             return this.isStaff && this.room;
+        },
+        isChatAdmin() {
+            const r = this.user && this.user.chat_role;
+
+            return r === 'admin';
         },
         messagesCount() {
             if (!this.room || this.room.messages_count == null) {
@@ -173,6 +195,12 @@ export default {
                     return true;
                 }
             }
+            if (this.isChatAdmin) {
+                const aiOrig = r.ai_bot_enabled !== false;
+                if (Boolean(this.editAiBotEnabled) !== aiOrig) {
+                    return true;
+                }
+            }
             return false;
         },
         saveDisabled() {
@@ -198,12 +226,14 @@ export default {
                 this.editName = '';
                 this.editTopic = '';
                 this.editAccess = 0;
+                this.editAiBotEnabled = true;
 
                 return;
             }
             this.editName = r.room_name || '';
             this.editTopic = r.topic != null ? String(r.topic) : '';
             this.editAccess = Number(r.access) || 0;
+            this.editAiBotEnabled = r.ai_bot_enabled !== false;
         },
         onClose() {
             this.$emit('close');
@@ -220,6 +250,9 @@ export default {
             }
             if (this.canChangeAccess) {
                 payload.access = this.editAccess;
+            }
+            if (this.isChatAdmin) {
+                payload.ai_bot_enabled = Boolean(this.editAiBotEnabled);
             }
             const keys = Object.keys(payload).filter((k) => k !== 'room_id');
             if (keys.length === 0) {
