@@ -19,7 +19,90 @@ class RudaPandaImageIntentDispatchTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_vip_img_message_dispatches_image_job_and_not_text_job(): void
+    public function test_vip_mention_with_image_intent_dispatches_image_job_and_not_text_job(): void
+    {
+        Bus::fake();
+
+        $room = Room::query()->create([
+            'room_name' => 'Public',
+            'topic' => null,
+            'access' => 0,
+            'ai_bot_enabled' => true,
+        ]);
+
+        ChatSetting::query()->firstOrFail()->update(['ai_llm_enabled' => true]);
+
+        $vip = User::factory()->create(['guest' => false, 'vip' => true, 'user_name' => 'Alice']);
+
+        $msg = ChatMessage::query()->create([
+            'user_id' => $vip->id,
+            'post_date' => time(),
+            'post_time' => date('H:i'),
+            'post_user' => $vip->user_name,
+            'post_message' => 'панда, намалюй руду панду на велосипеді',
+            'post_style' => null,
+            'post_color' => 'user',
+            'post_roomid' => $room->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => null,
+            'file' => 0,
+            'client_message_id' => (string) Str::uuid(),
+            'moderation_flag_at' => null,
+        ]);
+
+        $this->app->make(RudaPandaRoomResponder::class)->maybeDispatchForMessage($msg, $room);
+
+        Bus::assertDispatched(GenerateRudaPandaVipImageJob::class);
+        Bus::assertNotDispatched(GenerateRudaPandaRoomReplyJob::class);
+    }
+
+    public function test_non_vip_mention_with_image_intent_dispatches_denial_post_job(): void
+    {
+        Bus::fake();
+
+        $room = Room::query()->create([
+            'room_name' => 'Public',
+            'topic' => null,
+            'access' => 0,
+            'ai_bot_enabled' => true,
+        ]);
+
+        ChatSetting::query()->firstOrFail()->update(['ai_llm_enabled' => true]);
+
+        $user = User::factory()->create(['guest' => false, 'user_name' => 'Bob']);
+        // Ensure this is truly a regular user (vip/user_rank aren't fillable).
+        $user->forceFill(['vip' => false, 'user_rank' => User::RANK_USER])->save();
+        $this->assertFalse($user->fresh()->isVip());
+        $this->assertFalse($user->fresh()->canModerate());
+
+        $msg = ChatMessage::query()->create([
+            'user_id' => $user->id,
+            'post_date' => time(),
+            'post_time' => date('H:i'),
+            'post_user' => $user->user_name,
+            'post_message' => 'руда панда, згенеруй кота у стилі піксель-арт',
+            'post_style' => null,
+            'post_color' => 'user',
+            'post_roomid' => $room->room_id,
+            'type' => 'public',
+            'post_target' => null,
+            'avatar' => null,
+            'file' => 0,
+            'client_message_id' => (string) Str::uuid(),
+            'moderation_flag_at' => null,
+        ]);
+
+        $this->app->make(RudaPandaRoomResponder::class)->maybeDispatchForMessage($msg, $room);
+
+        Bus::assertDispatched(PostRudaPandaRoomReplyJob::class, function (PostRudaPandaRoomReplyJob $job) use ($room): bool {
+            return (int) $job->roomId === (int) $room->room_id
+                && (str_contains($job->replyText, 'VIP') || str_contains($job->replyText, 'ВІП'));
+        });
+        Bus::assertNotDispatched(GenerateRudaPandaVipImageJob::class);
+    }
+
+    public function test_slash_img_is_not_a_special_trigger_anymore(): void
     {
         Bus::fake();
 
@@ -53,53 +136,9 @@ class RudaPandaImageIntentDispatchTest extends TestCase
 
         $this->app->make(RudaPandaRoomResponder::class)->maybeDispatchForMessage($msg, $room);
 
-        Bus::assertDispatched(GenerateRudaPandaVipImageJob::class);
-        Bus::assertNotDispatched(GenerateRudaPandaRoomReplyJob::class);
-    }
-
-    public function test_non_vip_img_message_dispatches_denial_post_job(): void
-    {
-        Bus::fake();
-
-        $room = Room::query()->create([
-            'room_name' => 'Public',
-            'topic' => null,
-            'access' => 0,
-            'ai_bot_enabled' => true,
-        ]);
-
-        ChatSetting::query()->firstOrFail()->update(['ai_llm_enabled' => true]);
-
-        $user = User::factory()->create(['guest' => false, 'user_name' => 'Bob']);
-        // Ensure this is truly a regular user (vip/user_rank aren't fillable).
-        $user->forceFill(['vip' => false, 'user_rank' => User::RANK_USER])->save();
-        $this->assertFalse($user->fresh()->isVip());
-        $this->assertFalse($user->fresh()->canModerate());
-
-        $msg = ChatMessage::query()->create([
-            'user_id' => $user->id,
-            'post_date' => time(),
-            'post_time' => date('H:i'),
-            'post_user' => $user->user_name,
-            'post_message' => '/img кота у стилі піксель-арт',
-            'post_style' => null,
-            'post_color' => 'user',
-            'post_roomid' => $room->room_id,
-            'type' => 'public',
-            'post_target' => null,
-            'avatar' => null,
-            'file' => 0,
-            'client_message_id' => (string) Str::uuid(),
-            'moderation_flag_at' => null,
-        ]);
-
-        $this->app->make(RudaPandaRoomResponder::class)->maybeDispatchForMessage($msg, $room);
-
-        Bus::assertDispatched(PostRudaPandaRoomReplyJob::class, function (PostRudaPandaRoomReplyJob $job) use ($room): bool {
-            return (int) $job->roomId === (int) $room->room_id
-                && (str_contains($job->replyText, 'VIP') || str_contains($job->replyText, 'ВІП'));
-        });
         Bus::assertNotDispatched(GenerateRudaPandaVipImageJob::class);
+        Bus::assertNotDispatched(GenerateRudaPandaRoomReplyJob::class);
+        Bus::assertNotDispatched(PostRudaPandaRoomReplyJob::class);
     }
 }
 

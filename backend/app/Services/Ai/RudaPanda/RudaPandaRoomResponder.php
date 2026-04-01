@@ -9,6 +9,8 @@ use App\Models\ChatMessage;
 use App\Models\ChatSetting;
 use App\Models\Room;
 use App\Models\User;
+use App\Services\Ai\Gemini\GeminiClient;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
@@ -17,6 +19,7 @@ final class RudaPandaRoomResponder
     public function __construct(
         private readonly RudaPandaTriggerDetector $triggers,
         private readonly RudaPandaModelRouter $router,
+        private readonly GeminiClient $gemini,
     ) {}
 
     public function maybeDispatchForMessage(ChatMessage $message, Room $room): void
@@ -36,7 +39,9 @@ final class RudaPandaRoomResponder
 
         $text = (string) $message->post_message;
         if (! $this->triggers->shouldRespond($text)) {
-            return;
+            if (! $this->shouldRespondAsFollowupWithoutMention($room, $message, $text)) {
+                return;
+            }
         }
 
         $intent = $this->router->classifyIntent($text);
@@ -72,7 +77,7 @@ final class RudaPandaRoomResponder
         $prompt = $this->normalizeImagePrompt($text);
 
         if (! $isAllowed) {
-            $deny = 'Генерація зображень доступна лише VIP або staff. Якщо потрібно — оформи VIP і спробуй ще раз.';
+            $deny = 'Я картинки тільки своїм малюю. Наний на ВІП і спробуй ще раз.';
 
             PostRudaPandaRoomReplyJob::dispatch(
                 roomId: (int) $room->room_id,
@@ -94,10 +99,71 @@ final class RudaPandaRoomResponder
     private function normalizeImagePrompt(string $text): string
     {
         $t = trim((string) preg_replace('/\s+/u', ' ', $text));
-        $t = preg_replace('/^\/img\b\s*/ui', '', $t) ?? $t;
         $t = preg_replace('/^(руда\s+панда|панда)\b[,:!\.\s-]*/ui', '', $t) ?? $t;
 
         return trim($t);
+    }
+
+    private function shouldRespondAsFollowupWithoutMention(Room $room, ChatMessage $message, string $text): bool
+    {
+        // T182: after bot asked a clarification, allow a short follow-up from the same user without re-mention.
+        $stateKey = 'ruda-panda:clarify:room:'.$room->room_id;
+        /** @var array<string, mixed>|null $state */
+        $state = Cache::get($stateKey);
+        if (is_array($state)) {
+            $awaitingUserId = (int) ($state['awaiting_user_id'] ?? 0);
+            $awaitingUntil = (int) ($state['awaiting_until'] ?? 0);
+            if ($awaitingUserId > 0 && $awaitingUntil >= time() && (int) $message->user_id === $awaitingUserId) {
+                return true;
+            }
+        }
+
+        // Also allow a follow-up to a recent bot question, gated by a tiny yes/no LLM check.
+        /** @var array<string, mixed>|null $lastBot */
+        $lastBot = Cache::get('ruda-panda:last-bot:room:'.$room->room_id);
+        if (! is_array($lastBot)) {
+            return false;
+        }
+
+        $ts = (int) ($lastBot['ts'] ?? 0);
+        $botText = trim((string) ($lastBot['text'] ?? ''));
+        if ($ts <= 0 || $botText === '' || ! str_ends_with($botText, '?')) {
+            return false;
+        }
+
+        // 10 minutes window to avoid accidental triggers.
+        if ($ts < (time() - 10 * 60)) {
+            return false;
+        }
+
+        $prompt = trim((string) preg_replace('/\s+/u', ' ', $text));
+        if ($prompt === '') {
+            return false;
+        }
+
+        $payload = [
+            'contents' => [[
+                'role' => 'user',
+                'parts' => [[
+                    'text' => "Ти модератор-класифікатор. Відповідай РІВНО одним словом: YES або NO.\n".
+                        "Чи є це повідомлення логічною відповіддю/уточненням на попереднє питання бота?\n\n".
+                        "Питання бота: {$botText}\n".
+                        "Повідомлення користувача: {$prompt}\n",
+                ]],
+            ]],
+        ];
+
+        $route = $this->router->routeForTriggerWithRoleFlags($prompt, guest: false, vip: false);
+
+        try {
+            $resp = $this->gemini->generateContent($payload, $route->modelId);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        $ans = mb_strtoupper(trim((string) ($resp['candidates'][0]['content']['parts'][0]['text'] ?? '')));
+
+        return $ans === 'YES';
     }
 }
 

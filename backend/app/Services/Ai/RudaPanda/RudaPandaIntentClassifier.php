@@ -17,7 +17,7 @@ final class RudaPandaIntentClassifier
     private const IMAGE_PHRASES = [
         'згенеруй', 'згенерувати', 'намалюй', 'намалювати', 'картинк', 'зображен',
         'ілюстраці', 'фото з', 'generate image', 'draw me', 'draw a', 'image of',
-        'picture of', 'make an image', '/img',
+        'picture of', 'make an image',
     ];
 
     /**
