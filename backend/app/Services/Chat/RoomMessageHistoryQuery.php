@@ -5,7 +5,6 @@ namespace App\Services\Chat;
 use App\Models\ChatMessage;
 use App\Models\Room;
 use App\Models\RoomReadState;
-use App\Services\Chat\RedPandaBotRoomOpenTriggers;
 use Illuminate\Http\Request;
 
 final class RoomMessageHistoryQuery
@@ -36,8 +35,9 @@ final class RoomMessageHistoryQuery
             ->value('last_read_post_id');
 
         $query = ChatMessage::query()
-            ->visibleInRoomForUser($room, $uid)
-            ->orderByDesc('post_id');
+            ->visibleInRoomForUser($room, $uid);
+        IgnoredRoomMessageVisibility::scopeExcludeIgnoredAuthors($query, $request->user());
+        $query->orderByDesc('post_id');
 
         if ($before !== null) {
             $query->where('post_id', '<', $before);

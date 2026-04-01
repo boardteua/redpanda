@@ -477,6 +477,23 @@ export default {
                 menuPeer: peerTargetFromFriendUserPayload(row.user),
             }));
         },
+        /** T196: локальний список ігнору для WS / merge (паралельно до фільтра в API). */
+        ignoredUserIdsSet() {
+            const s = new Set();
+            for (const row of this.ignores || []) {
+                const u = row && row.user;
+                const id = u && u.id;
+                if (id == null) {
+                    continue;
+                }
+                const n = Number(id);
+                if (Number.isFinite(n)) {
+                    s.add(n);
+                }
+            }
+
+            return s;
+        },
         /** T85: випадаючий список підказок (debounce + мін. 2 символи на бекенді). */
         peerAutocompletePanelOpen() {
             const q = String(this.peerLookupName || '').trim();
@@ -674,6 +691,18 @@ export default {
     methods: {
         ...chatRoomPrivateMethods,
         ...chatRoomFriendsIgnoresMethods,
+        /** T196: після зняття ігнору перезавантажити стрічку (API знову віддає рядки автора). */
+        async removeIgnore(userId) {
+            await this.ensureSanctum();
+            try {
+                await window.axios.delete(`/api/v1/ignores/${userId}`);
+                this.loadError = '';
+                await this.loadFriendsAndIgnores();
+                await this.loadMessages();
+            } catch (e) {
+                this.loadError = e.response?.data?.message || 'Не вдалося зняти ігнор.';
+            }
+        },
         ...chatRoomPeerAutocompleteMethods,
         /** T93 */
         syncChatDocumentTitle() {
@@ -1016,6 +1045,7 @@ export default {
                 await this.resolveInitialRoomFromRoute();
 
                 await Promise.all([this.loadConversations(), this.loadFriendsAndIgnores()]);
+                this.pruneIgnoredMessagesFromFeed();
             } finally {
                 this.chatBootstrapDone = true;
                 this.$nextTick(() => {
@@ -1393,6 +1423,39 @@ export default {
 
             return age <= windowSec;
         },
+        shouldHideRoomMessageDueToIgnore(m) {
+            if (!this.user || this.user.guest || !m) {
+                return false;
+            }
+            const t = m.type;
+            if (t !== 'public' && t !== 'inline_private') {
+                return false;
+            }
+            const uid = Number(m.user_id);
+            if (!Number.isFinite(uid)) {
+                return false;
+            }
+            if (uid === Number(this.user.id)) {
+                return false;
+            }
+
+            return this.ignoredUserIdsSet.has(uid);
+        },
+        pruneIgnoredMessagesFromFeed() {
+            const next = [];
+            const nextIds = new Set();
+            for (const m of this.messages || []) {
+                if (this.shouldHideRoomMessageDueToIgnore(m)) {
+                    continue;
+                }
+                next.push(m);
+                if (m && m.post_id != null) {
+                    nextIds.add(m.post_id);
+                }
+            }
+            this.messages = next;
+            this.messageIds = nextIds;
+        },
         mergeMessage(raw, options = {}) {
             const suppressAutoScroll = Boolean(options && options.suppressAutoScroll);
             const m = normalizeMessage(raw);
@@ -1418,6 +1481,9 @@ export default {
                 && m.post_roomid != null
                 && Number(m.post_roomid) !== Number(rid)
             ) {
+                return;
+            }
+            if (this.shouldHideRoomMessageDueToIgnore(m)) {
                 return;
             }
             if (m.client_message_id) {
@@ -2652,6 +2718,7 @@ export default {
                 await window.axios.post(`/api/v1/ignores/${t.id}`);
                 this.loadError = '';
                 await this.loadFriendsAndIgnores();
+                this.pruneIgnoredMessagesFromFeed();
             } catch (e) {
                 this.loadError = e.response?.data?.message || 'Не вдалося додати до ігнору.';
             }
@@ -2851,6 +2918,11 @@ export default {
                         const slashName = data.meta && data.meta.slash && data.meta.slash.name;
                         if (slashName === 'ignore' || slashName === 'ignoreclear') {
                             await this.loadFriendsAndIgnores();
+                            if (slashName === 'ignoreclear') {
+                                await this.loadMessages();
+                            } else {
+                                this.pruneIgnoredMessagesFromFeed();
+                            }
                         }
                         if (slashName === 'clear') {
                             this.applyRoomJournalCleared(this.selectedRoomId);

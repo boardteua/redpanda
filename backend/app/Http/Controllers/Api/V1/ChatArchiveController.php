@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ChatMessageResource;
 use App\Models\ChatMessage;
 use App\Models\Room;
+use App\Services\Chat\IgnoredRoomMessageVisibility;
 use App\Support\ChatMessageListAbilityMap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -64,8 +65,9 @@ class ChatArchiveController extends Controller
         $query = ChatMessage::query()
             ->whereIn('post_roomid', $accessibleIds)
             ->whereIn('type', ['public', 'system'])
-            ->whereNull('post_deleted_at')
-            ->orderByDesc('post_id');
+            ->whereNull('post_deleted_at');
+        IgnoredRoomMessageVisibility::scopeExcludeIgnoredAuthors($query, $user);
+        $query->orderByDesc('post_id');
 
         $search = isset($validated['q']) ? trim($validated['q']) : '';
         if ($search !== '') {

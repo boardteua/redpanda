@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ChatMessage;
 use App\Models\Room;
 use App\Models\User;
+use App\Models\UserIgnore;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -125,6 +126,33 @@ class ChatArchiveApiTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.post_message', 'still here');
+    }
+
+    public function test_archive_excludes_public_messages_from_ignored_authors(): void
+    {
+        [$public] = $this->seedRooms();
+        $viewer = User::factory()->create();
+        $ignored = User::factory()->create();
+
+        $this->seedMessage($public, $viewer, 'mine', 1_700_000_060);
+        $hidden = $this->seedMessage($public, $ignored, 'from blocked', 1_700_000_061);
+
+        UserIgnore::query()->create([
+            'user_id' => $viewer->id,
+            'ignored_user_id' => $ignored->id,
+        ]);
+
+        $ids = collect(
+            $this->from(config('app.url'))
+                ->actingAs($viewer, 'web')
+                ->withHeaders($this->statefulHeaders())
+                ->getJson('/api/v1/archive/messages?per_page=10')
+                ->assertOk()
+                ->json('data'),
+        )->pluck('post_id')->map(fn ($id) => (int) $id)->all();
+
+        $this->assertNotContains($hidden->post_id, $ids);
+        $this->assertGreaterThanOrEqual(1, count($ids));
     }
 
     public function test_unauthenticated_archive_returns_401(): void
