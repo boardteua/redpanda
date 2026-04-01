@@ -1776,7 +1776,7 @@ paths:
     post:
       tags: [Private]
       summary: Додати користувача в ігнор
-      description: Ідемпотентне `firstOrCreate`. **422** — спроба ігнорувати себе.
+      description: Ідемпотентне `firstOrCreate`. **422** — спроба ігнорувати себе або модератора/адміністратора звичайним користувачем (не персонал модерації).
       operationId: storeIgnore
       security:
         - sanctumSession: []

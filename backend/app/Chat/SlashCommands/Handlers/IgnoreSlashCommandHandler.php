@@ -38,6 +38,10 @@ final class IgnoreSlashCommandHandler implements SlashCommandHandlerContract
             return SlashCommandOutcome::httpError(422, 'Неможливо ігнорувати себе.');
         }
 
+        if (! $context->user->mayIgnoreChatUser($target)) {
+            return SlashCommandOutcome::httpError(422, 'Неможливо ігнорувати модератора або адміністратора.');
+        }
+
         UserIgnore::query()->firstOrCreate([
             'user_id' => $context->user->id,
             'ignored_user_id' => $target->id,

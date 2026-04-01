@@ -131,6 +131,18 @@ class User extends Authenticatable
         return (int) $this->user_rank >= self::RANK_MODERATOR;
     }
 
+    /**
+     * Звичайні користувачі (не персонал модерації) не можуть додавати в ігнор модераторів/адмінів.
+     */
+    public function mayIgnoreChatUser(User $target): bool
+    {
+        if ($target->canModerate() && ! $this->canModerate()) {
+            return false;
+        }
+
+        return true;
+    }
+
     public function isChatAdmin(): bool
     {
         if ($this->guest) {

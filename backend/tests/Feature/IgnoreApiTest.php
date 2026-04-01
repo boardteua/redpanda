@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Models\UserIgnore;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class IgnoreApiTest extends TestCase
@@ -24,7 +23,7 @@ class IgnoreApiTest extends TestCase
         $a = User::factory()->create();
         $b = User::factory()->create();
 
-        Sanctum::actingAs($a);
+        $this->actingAs($a, 'web');
         $this->postJson('/api/v1/ignores/'.$b->id)
             ->assertStatus(201);
 
@@ -36,5 +35,39 @@ class IgnoreApiTest extends TestCase
             ->assertOk();
 
         $this->assertSame(0, UserIgnore::query()->where('user_id', $a->id)->count());
+    }
+
+    public function test_plain_user_cannot_ignore_moderator(): void
+    {
+        $plain = User::factory()->create();
+        $mod = User::factory()->moderator()->create();
+
+        $this->actingAs($plain, 'web');
+        $this->postJson('/api/v1/ignores/'.$mod->id)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Неможливо ігнорувати модератора або адміністратора.');
+
+        $this->assertSame(0, UserIgnore::query()->where('user_id', $plain->id)->count());
+    }
+
+    public function test_plain_user_cannot_ignore_admin(): void
+    {
+        $plain = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($plain, 'web');
+        $this->postJson('/api/v1/ignores/'.$admin->id)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Неможливо ігнорувати модератора або адміністратора.');
+    }
+
+    public function test_moderator_can_ignore_plain_user(): void
+    {
+        $mod = User::factory()->moderator()->create();
+        $plain = User::factory()->create();
+
+        $this->actingAs($mod, 'web');
+        $this->postJson('/api/v1/ignores/'.$plain->id)
+            ->assertStatus(201);
     }
 }

@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Chat\SlashCommands\SlashCommandContext;
+use App\Chat\SlashCommands\SlashCommandOutcome;
+use App\Chat\SlashCommands\SlashCommandRegistry;
 use App\Events\MessageDeleted;
 use App\Events\MessagePosted;
 use App\Events\MessageUpdated;
@@ -17,9 +20,6 @@ use App\Models\Room;
 use App\Models\RoomReadState;
 use App\Models\User;
 use App\Models\UserIgnore;
-use App\Chat\SlashCommands\SlashCommandContext;
-use App\Chat\SlashCommands\SlashCommandOutcome;
-use App\Chat\SlashCommands\SlashCommandRegistry;
 use Illuminate\Broadcasting\BroadcastEvent;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -1715,6 +1715,25 @@ class ChatApiTest extends TestCase
             'user_id' => $alice->id,
             'ignored_user_id' => $bob->id,
         ]);
+    }
+
+    public function test_slash_ignore_rejects_moderator_target_for_plain_user(): void
+    {
+        [$public] = $this->seedRooms();
+        $alice = User::factory()->create(['user_name' => 'alice_ign_mod']);
+        $mod = User::factory()->moderator()->create(['user_name' => 'mod_ign_tgt']);
+
+        $this->from(config('app.url'))
+            ->actingAs($alice, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->postJson('/api/v1/rooms/'.$public->room_id.'/messages', [
+                'message' => '/ignore mod_ign_tgt',
+                'client_message_id' => 'e2a7ebc9-9c0b-4ef8-bb6d-6bb9bd3802aa',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Неможливо ігнорувати модератора або адміністратора.');
+
+        $this->assertSame(0, UserIgnore::query()->where('user_id', $alice->id)->count());
     }
 
     public function test_slash_ignoreclear_removes_all_ignores_for_user(): void

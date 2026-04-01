@@ -36,7 +36,10 @@ export function buildUserBadgeMenuItems(mode, viewer, target) {
     } else if (t) {
         add('info', 'Інформація');
         add('private', 'Приватний чат');
-        add('ignore', 'Ігнор');
+        const hideIgnoreStaffTarget = isStaffRole(t.chat_role) && v && !isStaffRole(v.chat_role);
+        if (!hideIgnoreStaffTarget) {
+            add('ignore', 'Ігнор');
+        }
         if (v && !t.guest) {
             const rel = t.friendship;
             if (rel === 'accepted') {

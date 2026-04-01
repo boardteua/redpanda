@@ -37,6 +37,10 @@ class IgnoreController extends Controller
             return response()->json(['message' => 'Неможливо ігнорувати себе.'], 422);
         }
 
+        if (! $self->mayIgnoreChatUser($user)) {
+            return response()->json(['message' => 'Неможливо ігнорувати модератора або адміністратора.'], 422);
+        }
+
         UserIgnore::query()->firstOrCreate([
             'user_id' => $self->id,
             'ignored_user_id' => $user->id,
