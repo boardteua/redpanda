@@ -61,6 +61,10 @@ class ChatSetting extends Model
         'ai_bot_global_max_replies_per_window',
         'ai_bot_global_window_seconds',
         'ai_bot_max_reply_chars',
+        'ai_icebreaker_enabled',
+        'ai_icebreaker_idle_minutes',
+        'ai_icebreaker_cooldown_minutes',
+        'ai_icebreaker_jitter_minutes',
     ];
 
     /**
@@ -96,6 +100,10 @@ class ChatSetting extends Model
             'ai_bot_global_max_replies_per_window' => 'integer',
             'ai_bot_global_window_seconds' => 'integer',
             'ai_bot_max_reply_chars' => 'integer',
+            'ai_icebreaker_enabled' => 'boolean',
+            'ai_icebreaker_idle_minutes' => 'integer',
+            'ai_icebreaker_cooldown_minutes' => 'integer',
+            'ai_icebreaker_jitter_minutes' => 'integer',
         ];
     }
 
