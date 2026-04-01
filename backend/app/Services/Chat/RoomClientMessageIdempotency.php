@@ -7,6 +7,7 @@ use App\Models\ChatMessage;
 use App\Models\PrivateMessage;
 use App\Models\Room;
 use App\Models\User;
+use App\Support\DatabaseDuplicateKey;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 
@@ -33,7 +34,7 @@ final class RoomClientMessageIdempotency
         string $clientId,
         bool $checkPrivateMessageConflict = false,
     ): JsonResponse {
-        if (! $this->isDuplicateKey($exception)) {
+        if (! DatabaseDuplicateKey::is($exception)) {
             throw $exception;
         }
 
@@ -77,17 +78,5 @@ final class RoomClientMessageIdempotency
             ])
             ->response()
             ->setStatusCode(200);
-    }
-
-    private function isDuplicateKey(QueryException $e): bool
-    {
-        $sqlState = (string) ($e->errorInfo[0] ?? '');
-        if ($sqlState === '23505') {
-            return true;
-        }
-
-        $code = $e->errorInfo[1] ?? null;
-
-        return in_array($code, [1062, 19, '1062', '19'], true);
     }
 }
