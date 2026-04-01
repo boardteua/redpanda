@@ -63,6 +63,14 @@ return [
         'api_version' => env('GEMINI_API_VERSION', 'v1beta'),
         'timeout_ms' => (int) env('GEMINI_TIMEOUT_MS', 8000),
         'default_model' => env('GEMINI_DEFAULT_MODEL', 'gemini-2.5-flash'),
+        // T180: маршрутизація tier-ів (порожній model_flash_lite → fallback на model_flash)
+        'model_flash_lite' => env('GEMINI_MODEL_FLASH_LITE', ''),
+        'model_flash' => env('GEMINI_MODEL_FLASH', ''),
+        'model_pro' => env('GEMINI_MODEL_PRO', ''),
+        'model_image' => env('GEMINI_MODEL_IMAGE', ''),
+        // Опційно для Pro: thinkingBudget (128–8192) або thinkingLevel (Gemini 3.x), див. ai.google.dev thinking-mode
+        'pro_thinking_budget' => (int) env('GEMINI_PRO_THINKING_BUDGET', 0),
+        'pro_thinking_level' => env('GEMINI_PRO_THINKING_LEVEL', ''),
     ],
 
 ];
