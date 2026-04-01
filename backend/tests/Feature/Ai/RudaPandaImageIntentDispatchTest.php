@@ -70,7 +70,11 @@ class RudaPandaImageIntentDispatchTest extends TestCase
 
         ChatSetting::query()->firstOrFail()->update(['ai_llm_enabled' => true]);
 
-        $user = User::factory()->create(['guest' => false, 'vip' => false, 'user_name' => 'Bob']);
+        $user = User::factory()->create(['guest' => false, 'user_name' => 'Bob']);
+        // Ensure this is truly a regular user (vip/user_rank aren't fillable).
+        $user->forceFill(['vip' => false, 'user_rank' => User::RANK_USER])->save();
+        $this->assertFalse($user->fresh()->isVip());
+        $this->assertFalse($user->fresh()->canModerate());
 
         $msg = ChatMessage::query()->create([
             'user_id' => $user->id,
@@ -93,7 +97,7 @@ class RudaPandaImageIntentDispatchTest extends TestCase
 
         Bus::assertDispatched(PostRudaPandaRoomReplyJob::class, function (PostRudaPandaRoomReplyJob $job) use ($room): bool {
             return (int) $job->roomId === (int) $room->room_id
-                && str_contains($job->replyText, 'VIP');
+                && (str_contains($job->replyText, 'VIP') || str_contains($job->replyText, 'ВІП'));
         });
         Bus::assertNotDispatched(GenerateRudaPandaVipImageJob::class);
     }

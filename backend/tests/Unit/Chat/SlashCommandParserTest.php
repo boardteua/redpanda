@@ -41,6 +41,14 @@ class SlashCommandParserTest extends TestCase
         $this->assertNull(SlashCommandParser::tryParseCommand(' / '));
     }
 
+    public function test_bot_passthrough_commands_are_not_parsed_as_slash_commands(): void
+    {
+        $this->assertNull(SlashCommandParser::tryParseCommand('/img panda on bike'));
+        $this->assertNull(SlashCommandParser::tryParseCommand('/panda hello'));
+        $this->assertFalse(SlashCommandParser::looksLikeSlashCommand('/img panda on bike'));
+        $this->assertFalse(SlashCommandParser::looksLikeSlashCommand('/panda hello'));
+    }
+
     public function test_looks_like_slash_command(): void
     {
         $this->assertTrue(SlashCommandParser::looksLikeSlashCommand('/x'));

@@ -9,6 +9,19 @@ namespace App\Chat\SlashCommands;
 final class SlashCommandParser
 {
     /**
+     * Commands reserved for chat bot triggers (not "real" slash commands).
+     *
+     * They must pass through the normal message pipeline, otherwise they end up
+     * as "unknown command" client-only messages and never reach AI responders.
+     *
+     * @var array<string, true>
+     */
+    private const BOT_PASSTHROUGH = [
+        'img' => true,   // T187
+        'panda' => true, // T176 trigger
+    ];
+
+    /**
      * @return array{name: string, args: string}|null null — не slash-команда або порожнє ім’я
      */
     public static function tryParseCommand(string $rawMessage): ?array
@@ -26,6 +39,10 @@ final class SlashCommandParser
         $args = $space === false ? '' : ltrim(substr($withoutSlash, $space + 1));
 
         if ($name === '') {
+            return null;
+        }
+
+        if (isset(self::BOT_PASSTHROUGH[$name])) {
             return null;
         }
 
