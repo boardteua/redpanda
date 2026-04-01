@@ -160,8 +160,9 @@ export default {
             if (!it || it.id == null || !it.url) {
                 return;
             }
-            this.$emit('select', { id: it.id, url: it.url });
+            /** Спочатку закрити модал — тоді батько знімає `open`, і міксин фокусу в textarea не бачить «відкритий» модал (T195 / T152). */
             this.close();
+            this.$emit('select', { id: it.id, url: it.url });
         },
     },
 };

@@ -3257,10 +3257,12 @@ components:
       required: [client_message_id]
       description: |
         Потрібен непорожній `message` (після trim) або `image_id` власного зображення (`POST /api/v1/images`), узгоджено з кімнатою (T195).
-        Max довжина `message`: гість 2000, користувач 4000, VIP/модератор/адмін 8000.
+        Фактичний max для `message` залежить від ролі (як `POST …/rooms/…/messages`): гість 2000, звичайний користувач 4000, VIP/модератор/адмін 8000.
+        Поле `maxLength: 8000` нижче — верхня межа схеми; сервер відхилить довші рядки для ролей з меншим лімітом.
       properties:
         message:
           type: string
+          description: Plain text; макс. довжина за роллю — 2000 / 4000 / 8000 (див. опис схеми).
           maxLength: 8000
         image_id:
           type: integer
