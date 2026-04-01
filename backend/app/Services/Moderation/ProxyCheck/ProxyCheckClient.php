@@ -92,6 +92,7 @@ final class ProxyCheckClient
 
     private function fetchVerdict(string $ip, string $tag): ProxyCheckVerdict
     {
+        
         $key = $this->key();
         if ($key === '') {
             Log::warning('proxycheck disabled: missing key', ['ip' => $ip]);
