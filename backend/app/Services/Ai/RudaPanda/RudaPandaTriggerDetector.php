@@ -18,6 +18,11 @@ final class RudaPandaTriggerDetector
             return true;
         }
 
+        // Image shortcut (T187): allow "/img ..." to act as a trigger.
+        if (str_starts_with($t, '/img')) {
+            return true;
+        }
+
         // Very lightweight "direct mention" heuristics.
         if (str_contains($t, '@panda') || str_contains($t, 'руда панда') || str_contains($t, 'панда')) {
             return true;

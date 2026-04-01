@@ -2526,6 +2526,7 @@
 
 - **Delegate:** Backend Architect (+ Frontend Developer лише якщо потрібні підказки “/img” у UI)
 - **Залежність:** **T181** (job/image pipeline), **T176** (safety/політика), **T184** (налаштування моделей/LLM)
+- **Статус:** **PASS** (2026-04-01). `/img ...` тригерить intent=Image і dispatch `GenerateRudaPandaVipImageJob` для VIP; для non-VIP — відмова у стрічці через `PostRudaPandaRoomReplyJob`; QA — [`docs/chat-v2/T187-QA.md`](../docs/chat-v2/T187-QA.md).
 - **Deliverables:**
   - У pipeline обробки публічного повідомлення: якщо `RudaPandaIntentClassifier` класифікує intent як **Image** — **не** генерувати текстову відповідь, а dispatch `GenerateRudaPandaVipImageJob`.
   - Доступ: **VIP або staff (модератор/адмін)**; для інших — відмова у стрічці у зрозумілому форматі (узгоджено з **T176**).
