@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 final class ProxyCheckClient
 {
-    private const CACHE_PREFIX = 'proxycheck:v2:';
+    /** v3: кешуємо лише масив (не serialize об’єкта Verdict) — сумісність з Redis після змін класу. */
+    private const CACHE_PREFIX = 'proxycheck:v3:';
 
     public function verdictForIp(string $ip, string $tag): ProxyCheckVerdict
     {
@@ -27,12 +28,28 @@ final class ProxyCheckClient
         $cacheKey = self::CACHE_PREFIX.hash('sha256', $ip);
         $ttl = max(10, min(86400, (int) config('services.proxycheck.cache_ttl_seconds', 600)));
 
-        /** @var ProxyCheckVerdict $verdict */
-        $verdict = Cache::remember($cacheKey, $ttl, function () use ($ip, $tag): ProxyCheckVerdict {
-            return $this->fetchVerdict($ip, $tag);
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return ProxyCheckVerdict::fromArray($cached);
+        }
+        if ($cached instanceof ProxyCheckVerdict) {
+            return $cached;
+        }
+        if ($cached !== null) {
+            Cache::forget($cacheKey);
+        }
+
+        $payload = Cache::remember($cacheKey, $ttl, function () use ($ip, $tag): array {
+            return $this->fetchVerdict($ip, $tag)->toArray();
         });
 
-        return $verdict;
+        if (! is_array($payload)) {
+            Cache::forget($cacheKey);
+
+            return $this->fetchVerdict($ip, $tag);
+        }
+
+        return ProxyCheckVerdict::fromArray($payload);
     }
 
     private function enabled(): bool
