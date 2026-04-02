@@ -49,7 +49,7 @@ class WebPushService
             ->where('user_id', '!=', $authorId)
             ->get()
             ->filter(fn (PushSubscription $subscription): bool => $this->userCanReceiveRoomPush($subscription->user, $room)
-                && $this->preferences->shouldDeliverRoomWebPush($subscription->user, $room))
+                && $this->preferences->shouldDeliverRoomWebPushFromAuthor($subscription->user, $room, $authorId))
             ->values();
 
         if ($subscriptions->isEmpty()) {
