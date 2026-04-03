@@ -41,6 +41,11 @@
                         class="pointer-events-none absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-0.5 text-[10px] font-bold leading-none text-white shadow ring-1 ring-black/20"
                         aria-hidden="true"
                     >{{ privateUnreadBadgeText }}</span>
+                    <span
+                        v-if="tab.id === 'friends' && friendsIncomingPendingCount > 0"
+                        class="pointer-events-none absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-0.5 text-[10px] font-bold leading-none text-white shadow ring-1 ring-black/20"
+                        aria-hidden="true"
+                    >{{ friendsIncomingBadgeText }}</span>
                 </button>
             </div>
         </div>
@@ -80,6 +85,11 @@
                         class="pointer-events-none absolute right-1 top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-0.5 text-[10px] font-bold leading-none text-white shadow ring-1 ring-black/15"
                         aria-hidden="true"
                     >{{ privateUnreadBadgeText }}</span>
+                    <span
+                        v-if="tab.id === 'friends' && friendsIncomingPendingCount > 0"
+                        class="pointer-events-none absolute right-1 top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-600 px-0.5 text-[10px] font-bold leading-none text-white shadow ring-1 ring-black/15"
+                        aria-hidden="true"
+                    >{{ friendsIncomingBadgeText }}</span>
                 </button>
             </div>
             <RpCloseButton
@@ -99,10 +109,20 @@ export default {
         sidebarTabs: { type: Array, required: true },
         sidebarTab: { type: String, required: true },
         privateUnreadTotal: { type: Number, default: 0 },
+        /** T202: вхідні pending-запити на дружбу (той самий облік, що friendsIncoming). */
+        friendsIncomingPendingCount: { type: Number, default: 0 },
     },
     computed: {
         privateUnreadBadgeText() {
             const n = this.privateUnreadTotal;
+            if (!n) {
+                return '';
+            }
+
+            return n > 99 ? '99+' : String(n);
+        },
+        friendsIncomingBadgeText() {
+            const n = this.friendsIncomingPendingCount;
             if (!n) {
                 return '';
             }
@@ -118,16 +138,26 @@ export default {
             if (!tab) {
                 return '';
             }
-            if (tab.id !== 'private' || !this.privateUnreadTotal) {
-                return tab.title;
-            }
-            const n = this.privateUnreadTotal;
-            if (n === 1) {
-                return 'Приват, 1 непрочитане повідомлення';
-            }
-            const display = n > 99 ? '99+' : String(n);
+            if (tab.id === 'private' && this.privateUnreadTotal) {
+                const n = this.privateUnreadTotal;
+                if (n === 1) {
+                    return 'Приват, 1 непрочитане повідомлення';
+                }
+                const display = n > 99 ? '99+' : String(n);
 
-            return `Приват, ${display} непрочитаних повідомлень`;
+                return `Приват, ${display} непрочитаних повідомлень`;
+            }
+            if (tab.id === 'friends' && this.friendsIncomingPendingCount) {
+                const n = this.friendsIncomingPendingCount;
+                if (n === 1) {
+                    return 'Друзі, 1 вхідний запит на дружбу';
+                }
+                const display = n > 99 ? '99+' : String(n);
+
+                return `Друзі, ${display} вхідних запитів на дружбу`;
+            }
+
+            return tab.title;
         },
         onTabKeydown(e) {
             const ids = this.sidebarTabs.map((t) => t.id);

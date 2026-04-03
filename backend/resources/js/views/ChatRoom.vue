@@ -94,6 +94,7 @@
                 :conversations="conversations"
                 :private-conversation-rows="privateConversationRows"
                 :private-unread-total="totalPrivateUnread"
+                :friends-incoming-pending-count="friendsIncomingPendingCount"
                 :rooms="rooms"
                 :loading-rooms="loadingRooms"
                 :selected-room-id="selectedRoomId"
@@ -510,6 +511,10 @@ export default {
                 ...r,
                 menuPeer: peerTargetFromFriendUserPayload(r.user),
             }));
+        },
+        /** T202: той самий облік, що список вхідних запитів (без окремого лічильника). */
+        friendsIncomingPendingCount() {
+            return (this.friendsIncoming || []).length;
         },
         ignoresWithMenuPeer() {
             return (this.ignores || []).map((row) => ({

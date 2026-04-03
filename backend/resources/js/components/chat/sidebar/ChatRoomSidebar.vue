@@ -13,6 +13,7 @@
             :sidebar-tabs="sidebarTabs"
             :sidebar-tab="sidebarTab"
             :private-unread-total="privateUnreadTotal"
+            :friends-incoming-pending-count="friendsIncomingPendingCount"
             @close="$emit('close')"
             @select-tab="$emit('select-tab', $event)"
         />
@@ -186,6 +187,8 @@ export default {
         privateConversationRows: { type: Array, default: () => [] },
         /** T56: сума непрочитаних вхідних приватних для вкладки «Приват». */
         privateUnreadTotal: { type: Number, default: 0 },
+        /** T202: кількість вхідних запитів на дружбу (з тих самих даних, що список friendsIncoming). */
+        friendsIncomingPendingCount: { type: Number, default: 0 },
         rooms: { type: Array, default: () => [] },
         loadingRooms: { type: Boolean, default: false },
         selectedRoomId: {
