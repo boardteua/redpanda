@@ -24,7 +24,6 @@ use Illuminate\Broadcasting\BroadcastEvent;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -166,7 +165,7 @@ class ChatApiTest extends TestCase
 
     public function test_post_dispatches_broadcast_only_for_new_message(): void
     {
-        Bus::fake([BroadcastEvent::class]);
+        Queue::fake();
 
         [$public] = $this->seedRooms();
         $user = User::factory()->create();
@@ -181,7 +180,7 @@ class ChatApiTest extends TestCase
             ])
             ->assertCreated();
 
-        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+        Queue::assertPushed(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof MessagePosted;
         });
 
@@ -194,7 +193,7 @@ class ChatApiTest extends TestCase
             ])
             ->assertOk();
 
-        Bus::assertDispatchedTimes(BroadcastEvent::class, 1);
+        Queue::assertPushedTimes(BroadcastEvent::class, 1);
     }
 
     public function test_post_public_message_queues_web_push_only_for_new_message(): void
@@ -387,7 +386,7 @@ class ChatApiTest extends TestCase
 
     public function test_slash_unknown_does_not_dispatch_room_broadcast(): void
     {
-        Bus::fake([BroadcastEvent::class]);
+        Queue::fake();
 
         [$public] = $this->seedRooms();
         $user = User::factory()->create();
@@ -401,7 +400,7 @@ class ChatApiTest extends TestCase
             ])
             ->assertCreated();
 
-        Bus::assertNotDispatched(BroadcastEvent::class);
+        Queue::assertNotPushed(BroadcastEvent::class);
     }
 
     public function test_slash_rate_limit_follows_chat_settings(): void
@@ -737,7 +736,7 @@ class ChatApiTest extends TestCase
 
     public function test_post_msg_inline_private_dispatches_user_channel_broadcast_not_room(): void
     {
-        Bus::fake([BroadcastEvent::class]);
+        Queue::fake();
 
         [$public] = $this->seedRooms();
         $a = User::factory()->create(['user_name' => 'sender_x']);
@@ -765,13 +764,13 @@ class ChatApiTest extends TestCase
             'client_message_id' => $clientId,
         ]);
 
-        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+        Queue::assertPushed(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof RoomInlinePrivatePosted;
         });
-        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+        Queue::assertPushed(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof PrivateMessageCreated;
         });
-        Bus::assertNotDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+        Queue::assertNotPushed(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof MessagePosted;
         });
     }
@@ -937,7 +936,7 @@ class ChatApiTest extends TestCase
 
     public function test_patch_message_owner_updates_text_and_broadcasts(): void
     {
-        Bus::fake([BroadcastEvent::class]);
+        Queue::fake();
 
         [$public] = $this->seedRooms();
         $user = User::factory()->create();
@@ -955,14 +954,14 @@ class ChatApiTest extends TestCase
 
         $this->assertNotNull(ChatMessage::query()->find($msg->post_id)?->post_edited_at);
 
-        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+        Queue::assertPushed(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof MessageUpdated;
         });
     }
 
     public function test_patch_message_with_image_preserves_file_and_allows_empty_text(): void
     {
-        Bus::fake([BroadcastEvent::class]);
+        Queue::fake();
 
         [$public] = $this->seedRooms();
         $user = User::factory()->create();
@@ -1004,7 +1003,7 @@ class ChatApiTest extends TestCase
 
         $this->assertSame($image->id, (int) ChatMessage::query()->find($msg->post_id)?->file);
 
-        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+        Queue::assertPushed(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof MessageUpdated;
         });
     }
@@ -1220,7 +1219,7 @@ class ChatApiTest extends TestCase
 
     public function test_delete_message_owner_soft_deletes_and_broadcasts(): void
     {
-        Bus::fake([BroadcastEvent::class]);
+        Queue::fake();
 
         [$public] = $this->seedRooms();
         $user = User::factory()->create();
@@ -1240,7 +1239,7 @@ class ChatApiTest extends TestCase
         $this->assertSame('', $fresh->post_message);
         $this->assertSame(0, (int) $fresh->file);
 
-        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) {
+        Queue::assertPushed(BroadcastEvent::class, function (BroadcastEvent $job) {
             return $job->event instanceof MessageDeleted;
         });
     }
@@ -1257,7 +1256,7 @@ class ChatApiTest extends TestCase
             ->deleteJson('/api/v1/rooms/'.$public->room_id.'/messages/'.$msg->post_id)
             ->assertOk();
 
-        Bus::fake([BroadcastEvent::class]);
+        Queue::fake();
 
         $this->from(config('app.url'))
             ->actingAs($user, 'web')
@@ -1266,7 +1265,7 @@ class ChatApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.can_delete', false);
 
-        Bus::assertNotDispatched(BroadcastEvent::class);
+        Queue::assertNotPushed(BroadcastEvent::class);
     }
 
     public function test_delete_message_guest_forbidden(): void
@@ -1640,7 +1639,7 @@ class ChatApiTest extends TestCase
 
     public function test_slash_away_dispatches_presence_status_updated(): void
     {
-        Bus::fake([BroadcastEvent::class]);
+        Queue::fake();
 
         [$public] = $this->seedRooms();
         $user = User::factory()->create();
@@ -1655,7 +1654,7 @@ class ChatApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('meta.slash.name', 'away');
 
-        Bus::assertDispatched(BroadcastEvent::class, function (BroadcastEvent $job) use ($public, $user) {
+        Queue::assertPushed(BroadcastEvent::class, function (BroadcastEvent $job) use ($public, $user) {
             return $job->event instanceof PresenceStatusUpdated
                 && (int) $job->event->roomId === (int) $public->room_id
                 && (int) $job->event->userId === (int) $user->id

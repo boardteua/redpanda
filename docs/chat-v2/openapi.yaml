@@ -17,7 +17,7 @@ info:
 
     **oEmbed-проксі (T55):** `GET /api/v1/oembed` — лише автентифікований користувач (Sanctum SPA); безпечний проксі до провайдерів з реєстру oEmbed, кеш, SSRF-захист, санітизація `html` (лише `iframe` з дозволених хостів). Деталі — [T55-oembed.md](T55-oembed.md).
 
-    **Кімнати CRUD (T54):** `PATCH /api/v1/rooms/{roomId}` — назва/опис для творця або staff; поле `access` — лише модератор/адмін. `DELETE` — творець або staff, **422** (`room_has_messages`), якщо в кімнаті є повідомлення (захист історії). Деталі — [T54-QA.md](T54-QA.md).
+    **Кімнати CRUD (T54 / T199):** `PATCH /api/v1/rooms/{roomId}` — назва/опис для творця або staff; поле `access` — лише модератор/адмін. `DELETE` — soft-delete кімнати; дописи кімнати отримують `post_deleted_at` + мітку архіву (`archived_from_room_id`, `archived_room_name`, `archived_room_access`); права — **T199** (адмін / модератор з обмеженням на кімнати творця-адміна / творець з правом створення). Деталі — [T54-QA.md](T54-QA.md).
 
     **Прочитане в кімнаті (T47):** `GET .../rooms/{roomId}/messages` — `meta.last_read_post_id`; опційно `since_read=true` → `meta.first_unread_post_id` у межах сторінки; `POST .../rooms/{roomId}/read` з `last_read_post_id` (монотонно). Деталі — [T47-QA.md](T47-QA.md).
 
@@ -1928,9 +1928,9 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
     delete:
       tags: [Chat]
-      summary: Видалити порожню кімнату (T54)
+      summary: Видалити кімнату (T54, T199)
       description: |
-        Лише **не гість**; **творець** або **модератор/адмін**; доступ `interact`. Якщо є хоча б одне повідомлення в історії — **422** (`room_has_messages`). Throttle `room-manage`.
+        Лише **не гість**; доступ `interact`. **T199:** **адміністратор чату** — будь-яка кімната; **модератор** — якщо користувач з `created_by_user_id` **зараз** не є адміністратором чату; **творець** — своя кімната, якщо має право створення кімнат (**T44**). Кімната **soft-delete**; усі дописи в `chat` з цієї кімнати — soft-delete з полями архіву для **T09**. Throttle `room-manage`.
       operationId: deleteRoom
       security:
         - sanctumSession: []
@@ -1946,18 +1946,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiPlainMessageResponse"
-        "422":
-          description: У кімнаті є повідомлення
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  code:
-                    type: string
-                    enum: [room_has_messages]
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -3534,6 +3522,9 @@ components:
           type: integer
           nullable: true
           description: Творець кімнати (**T54**); `null` для legacy-рядків
+        creator_is_chat_admin:
+          type: boolean
+          description: Чи має творець зараз роль адміністратора чату (**T199**, для UI видимості DELETE модератором).
         created_by_me:
           type: boolean
           description: Чи є поточний користувач творцем цієї кімнати (**T58**)
@@ -4751,6 +4742,14 @@ components:
           nullable: true
         post_roomid:
           type: integer
+        archived_from_room_id:
+          type: integer
+          nullable: true
+          description: Якщо кімнату видалено (**T199**) — id цієї кімнати; для архіву та мітки в UI.
+        archived_room_name:
+          type: string
+          nullable: true
+          description: Назва кімнати на момент видалення (**T199**); для архіву.
         type:
           type: string
           description: >

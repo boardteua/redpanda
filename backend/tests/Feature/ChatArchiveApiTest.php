@@ -97,6 +97,29 @@ class ChatArchiveApiTest extends TestCase
             ->assertJsonPath('data.0.post_message', 'public only');
     }
 
+    public function test_archive_includes_public_messages_from_deleted_public_room_t199(): void
+    {
+        [$public] = $this->seedRooms();
+        $user = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $this->seedMessage($public, $user, 'before delete', 1_700_000_200);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$public->room_id)
+            ->assertNoContent();
+
+        $this->from(config('app.url'))
+            ->actingAs($user, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->getJson('/api/v1/archive/messages?per_page=10')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.post_message', 'before delete')
+            ->assertJsonPath('data.0.archived_room_name', 'Public');
+    }
+
     public function test_archive_excludes_soft_deleted_public_messages(): void
     {
         [$public] = $this->seedRooms();

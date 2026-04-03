@@ -111,6 +111,12 @@
                                 class="border-b border-[var(--rp-border-subtle)] px-3 py-2 align-top"
                                 :title="m.post_message"
                             >
+                                <p
+                                    v-if="m.archived_room_name"
+                                    class="mb-1 text-xs text-[var(--rp-text-muted)]"
+                                >
+                                    Кімната видалена: {{ m.archived_room_name }}
+                                </p>
                                 <img
                                     v-if="m.image && m.image.url"
                                     :src="m.image.url"

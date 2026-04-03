@@ -142,7 +142,9 @@
             :room-edit-saving="roomEditSaving"
             :room-edit-deleting="roomEditDeleting"
             :edit-room-error="editRoomError"
+            :room-edit-can-delete="roomEditCanDelete"
             :delete-room-confirm-open="deleteRoomConfirmOpen"
+            :delete-room-confirm-body="deleteRoomConfirmBody"
             @commands-help-close="commandsHelpOpen = false"
             @user-info-close="closeUserInfoModal"
             @user-info-cycle-theme="cycleTheme"
@@ -369,6 +371,39 @@ export default {
                 return null;
             }
             return this.rooms.find((r) => r.room_id === this.roomEditRoomId) || null;
+        },
+        /** T199: матриця DELETE узгоджена з RoomPolicy::delete. */
+        roomEditCanDelete() {
+            const r = this.roomBeingEdited;
+            const u = this.user;
+            if (!r || !u || u.guest) {
+                return false;
+            }
+            const role = u.chat_role;
+            if (role === 'admin') {
+                return true;
+            }
+            if (role === 'moderator') {
+                if (r.created_by_user_id == null) {
+                    return true;
+                }
+
+                return !r.creator_is_chat_admin;
+            }
+            if (Number(r.created_by_user_id) === Number(u.id) && this.canCreateRoom) {
+                return true;
+            }
+
+            return false;
+        },
+        deleteRoomConfirmBody() {
+            const r = this.roomBeingEdited;
+            const n = r && r.messages_count != null ? Number(r.messages_count) : 0;
+            if (n > 0) {
+                return 'Кімнату буде видалено зі списку. Дописи зникнуть зі стрічки; у архіві вони лишаться з міткою видаленої кімнати (за вашим доступом).';
+            }
+
+            return 'Кімната зникне зі списку. У ній ще немає повідомлень у стрічці.';
         },
         /** Реактивний статус «я» для індикатора в сайдбарі (T48). */
         viewerPresenceStatus() {
@@ -1202,6 +1237,9 @@ export default {
             if (Object.prototype.hasOwnProperty.call(payload, 'access')) {
                 body.access = payload.access;
             }
+            if (Object.prototype.hasOwnProperty.call(payload, 'ai_bot_enabled')) {
+                body.ai_bot_enabled = payload.ai_bot_enabled;
+            }
             this.editRoomError = '';
             this.roomEditSaving = true;
             try {
@@ -1265,16 +1303,10 @@ export default {
                 }
             } catch (e) {
                 const st = e.response && e.response.status;
-                const code = e.response && e.response.data && e.response.data.code;
                 let msg =
                     (e.response && e.response.data && e.response.data.message) ||
                     (st === 403 ? 'Немає права видалити цю кімнату.' : null) ||
                     'Не вдалося видалити кімнату.';
-                if (st === 422 && code === 'room_has_messages') {
-                    msg =
-                        e.response.data.message ||
-                        'Неможливо видалити кімнату з повідомленнями в історії.';
-                }
                 this.editRoomError = typeof msg === 'string' ? msg : 'Не вдалося видалити кімнату.';
                 this.closeDeleteRoomConfirm();
             } finally {

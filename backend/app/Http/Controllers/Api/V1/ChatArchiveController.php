@@ -8,6 +8,7 @@ use App\Models\ChatMessage;
 use App\Models\Room;
 use App\Services\Chat\IgnoredRoomMessageVisibility;
 use App\Support\ChatMessageListAbilityMap;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -63,9 +64,28 @@ class ChatArchiveController extends Controller
         }
 
         $query = ChatMessage::query()
-            ->whereIn('post_roomid', $accessibleIds)
-            ->whereIn('type', ['public', 'system'])
-            ->whereNull('post_deleted_at');
+            ->where(function (Builder $outer) use ($accessibleIds, $user): void {
+                $outer->where(function (Builder $q) use ($accessibleIds): void {
+                    $q->whereIn('post_roomid', $accessibleIds)
+                        ->whereIn('type', ['public', 'system'])
+                        ->whereNull('post_deleted_at');
+                });
+                $outer->orWhere(function (Builder $q) use ($user): void {
+                    $q->whereNotNull('archived_from_room_id')
+                        ->whereIn('type', ['public', 'system']);
+                    if ($user->guest) {
+                        $q->where('archived_room_access', Room::ACCESS_PUBLIC);
+                    } else {
+                        $q->where(function (Builder $inner) use ($user): void {
+                            $inner->where('archived_room_access', Room::ACCESS_PUBLIC)
+                                ->orWhere('archived_room_access', Room::ACCESS_REGISTERED);
+                            if ($user->canAccessVipRooms()) {
+                                $inner->orWhere('archived_room_access', '>=', Room::ACCESS_VIP);
+                            }
+                        });
+                    }
+                });
+            });
         IgnoredRoomMessageVisibility::scopeExcludeIgnoredAuthors($query, $user);
         $query->orderByDesc('post_id');
 

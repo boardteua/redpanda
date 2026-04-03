@@ -31,10 +31,20 @@ class ChatMessageResource extends JsonResource
             'post_deleted_at' => $this->post_deleted_at !== null ? (int) $this->post_deleted_at : null,
             'post_time' => $this->post_time,
             'post_user' => $this->post_user,
-            'post_message' => $this->post_deleted_at !== null ? '' : $this->post_message,
+            'post_message' => ($this->post_deleted_at !== null && $this->archived_from_room_id === null)
+                ? ''
+                : $this->post_message,
             'post_style' => $this->post_style,
             'post_color' => $this->post_color,
             'post_roomid' => (int) $this->post_roomid,
+            'archived_from_room_id' => $this->when(
+                $this->archived_from_room_id !== null,
+                fn () => (int) $this->archived_from_room_id,
+            ),
+            'archived_room_name' => $this->when(
+                $this->archived_room_name !== null && $this->archived_room_name !== '',
+                fn () => (string) $this->archived_room_name,
+            ),
             'type' => $this->type,
             'system_kind' => $this->type === 'system' ? $this->system_kind : null,
             'target_room_id' => $this->type === 'system' && $this->system_target_room_id !== null
@@ -50,7 +60,7 @@ class ChatMessageResource extends JsonResource
             'avatar' => $this->avatar,
             'file' => (int) $this->file,
             'image' => $this->when(
-                $this->post_deleted_at === null && (int) $this->file > 0,
+                ($this->post_deleted_at === null || $this->archived_from_room_id !== null) && (int) $this->file > 0,
                 fn () => [
                     'id' => (int) $this->file,
                     'url' => URL::route('api.v1.chat-images.file', ['image' => (int) $this->file], true),

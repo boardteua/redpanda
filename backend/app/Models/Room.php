@@ -6,6 +6,7 @@ use App\Services\Chat\RoomSlugService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Кімнати чату.
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Room extends Model
 {
+    use SoftDeletes;
+
     /** Сегмент URL/API, з якого виконано binding (для `slug_redirect` у JSON). */
     public ?string $slugBindingSource = null;
 

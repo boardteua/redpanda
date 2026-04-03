@@ -32,6 +32,10 @@ class RoomResource extends JsonResource
             'access' => (int) $this->access,
             'ai_bot_enabled' => (bool) ($this->ai_bot_enabled ?? true),
             'created_by_user_id' => $creatorId !== null ? (int) $creatorId : null,
+            'creator_is_chat_admin' => $this->when(
+                $this->relationLoaded('creator') && $this->creator !== null,
+                fn (): bool => $this->creator->isChatAdmin(),
+            ),
             'created_by_me' => $isCreator,
             'is_room_moderator' => $isCreator,
             'messages_count' => isset($this->messages_count) ? (int) $this->messages_count : null,

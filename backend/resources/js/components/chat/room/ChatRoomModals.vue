@@ -57,6 +57,7 @@
             :room="roomBeingEdited"
             :user="user"
             :chat-settings="chatSettings"
+            :can-delete-room="roomEditCanDelete"
             :saving-room="roomEditSaving"
             :deleting-room="roomEditDeleting"
             :form-error="editRoomError"
@@ -68,7 +69,7 @@
             :open="deleteRoomConfirmOpen"
             :z-index="95"
             title="Видалити кімнату?"
-            body="Кімната зникне зі списку. Це можливо лише якщо в ній ще немає повідомлень."
+            :body="deleteRoomConfirmBody"
             confirm-label="Видалити"
             cancel-label="Скасувати"
             @close="$emit('delete-room-close')"
@@ -122,7 +123,9 @@ export default {
         roomEditSaving: { type: Boolean, default: false },
         roomEditDeleting: { type: Boolean, default: false },
         editRoomError: { type: String, default: '' },
+        roomEditCanDelete: { type: Boolean, default: false },
         deleteRoomConfirmOpen: { type: Boolean, default: false },
+        deleteRoomConfirmBody: { type: String, default: '' },
     },
 };
 </script>

@@ -239,6 +239,8 @@ class RoomCrudApiTest extends TestCase
             'public_message_count_scope' => ChatSetting::SCOPE_ALL_PUBLIC_ROOMS,
             'message_count_room_id' => null,
         ]);
+        // T199: творець може видалити свою кімнату лише якщо має право create (тут count > N при N=0).
+        $this->seedPublicChatMessage($public, $owner);
 
         $this->from(config('app.url'))
             ->actingAs($owner, 'web')
@@ -246,10 +248,10 @@ class RoomCrudApiTest extends TestCase
             ->deleteJson('/api/v1/rooms/'.$room->room_id)
             ->assertNoContent();
 
-        $this->assertDatabaseMissing('rooms', ['room_id' => $room->room_id]);
+        $this->assertSoftDeleted('rooms', ['room_id' => $room->room_id]);
     }
 
-    public function test_delete_room_with_messages_returns_422(): void
+    public function test_creator_deletes_room_with_messages_soft_archives_posts_t199(): void
     {
         $owner = User::factory()->create();
         $room = Room::query()->create([
@@ -258,7 +260,7 @@ class RoomCrudApiTest extends TestCase
             'access' => Room::ACCESS_PUBLIC,
             'created_by_user_id' => $owner->id,
         ]);
-        $this->seedPublicChatMessage($room, $owner);
+        $msg = $this->seedPublicChatMessage($room, $owner);
         ChatSetting::query()->update([
             'room_create_min_public_messages' => 0,
             'public_message_count_scope' => ChatSetting::SCOPE_ALL_PUBLIC_ROOMS,
@@ -269,8 +271,97 @@ class RoomCrudApiTest extends TestCase
             ->actingAs($owner, 'web')
             ->withHeaders($this->statefulHeaders())
             ->deleteJson('/api/v1/rooms/'.$room->room_id)
-            ->assertStatus(422)
-            ->assertJsonPath('code', 'room_has_messages');
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('rooms', ['room_id' => $room->room_id]);
+
+        $msg->refresh();
+        $this->assertNotNull($msg->post_deleted_at);
+        $this->assertSame($room->room_id, (int) $msg->archived_from_room_id);
+        $this->assertSame('Has msgs', $msg->archived_room_name);
+        $this->assertSame(Room::ACCESS_PUBLIC, (int) $msg->archived_room_access);
+    }
+
+    public function test_moderator_can_delete_room_created_by_non_admin_even_with_messages_t199(): void
+    {
+        $creator = User::factory()->create();
+        $mod = User::factory()->moderator()->create();
+        $room = Room::query()->create([
+            'room_name' => 'Mod can del',
+            'topic' => null,
+            'access' => Room::ACCESS_PUBLIC,
+            'created_by_user_id' => $creator->id,
+        ]);
+        $this->seedPublicChatMessage($room, $creator);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$room->room_id)
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('rooms', ['room_id' => $room->room_id]);
+    }
+
+    public function test_moderator_cannot_delete_room_whose_creator_is_chat_admin_t199(): void
+    {
+        $creator = User::factory()->admin()->create();
+        $mod = User::factory()->moderator()->create();
+        $room = Room::query()->create([
+            'room_name' => 'Admin created',
+            'topic' => null,
+            'access' => Room::ACCESS_PUBLIC,
+            'created_by_user_id' => $creator->id,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($mod, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$room->room_id)
+            ->assertForbidden();
+    }
+
+    public function test_chat_admin_can_delete_room_created_by_other_admin_with_messages_t199(): void
+    {
+        $creator = User::factory()->admin()->create();
+        $actor = User::factory()->admin()->create();
+        $room = Room::query()->create([
+            'room_name' => 'Staff room',
+            'topic' => null,
+            'access' => Room::ACCESS_PUBLIC,
+            'created_by_user_id' => $creator->id,
+        ]);
+        $this->seedPublicChatMessage($room, $creator);
+
+        $this->from(config('app.url'))
+            ->actingAs($actor, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$room->room_id)
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('rooms', ['room_id' => $room->room_id]);
+    }
+
+    public function test_creator_cannot_delete_own_room_without_create_gate_t199(): void
+    {
+        $owner = User::factory()->create();
+        $room = Room::query()->create([
+            'room_name' => 'No gate',
+            'topic' => null,
+            'access' => Room::ACCESS_PUBLIC,
+            'created_by_user_id' => $owner->id,
+        ]);
+        ChatSetting::query()->update([
+            'room_create_min_public_messages' => 9999,
+            'public_message_count_scope' => ChatSetting::SCOPE_ALL_PUBLIC_ROOMS,
+            'message_count_room_id' => null,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($owner, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->deleteJson('/api/v1/rooms/'.$room->room_id)
+            ->assertForbidden();
     }
 
     public function test_stranger_cannot_delete_room(): void

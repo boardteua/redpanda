@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRoomRequest;
 use App\Http\Requests\UpdateRoomRequest;
 use App\Http\Resources\RoomResource;
+use App\Models\ChatMessage;
 use App\Models\Room;
 use App\Services\Chat\RedPandaBotNewPublicRoomAnnouncer;
 use App\Services\Chat\RoomSlugService;
@@ -15,6 +16,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class RoomController extends Controller
 {
@@ -30,6 +32,7 @@ class RoomController extends Controller
             abort(401);
         }
         $query = Room::query()
+            ->with(['creator' => static fn ($q) => $q->select('id', 'user_rank', 'guest')])
             ->withCount('messages')
             ->orderBy('room_id');
 
@@ -72,6 +75,7 @@ class RoomController extends Controller
         );
 
         $room->loadCount('messages');
+        $room->load(['creator' => static fn ($q) => $q->select('id', 'user_rank', 'guest')]);
 
         $this->newPublicRoomAnnouncer->announce($room);
 
@@ -124,6 +128,7 @@ class RoomController extends Controller
         $room->save();
         $room->refresh();
         $room->loadCount('messages');
+        $room->load(['creator' => static fn ($q) => $q->select('id', 'user_rank', 'guest')]);
 
         return RoomResource::make($room)->response();
     }
@@ -142,14 +147,34 @@ class RoomController extends Controller
 
         Gate::forUser($user)->authorize('delete', $room);
 
-        if ($room->messages()->exists()) {
-            return response()->json([
-                'message' => 'Неможливо видалити кімнату з повідомленнями в історії.',
-                'code' => 'room_has_messages',
-            ], 422);
-        }
+        DB::transaction(function () use ($room): void {
+            $rid = (int) $room->room_id;
+            $ts = time();
+            $name = (string) $room->room_name;
+            $access = (int) $room->access;
 
-        $room->delete();
+            ChatMessage::query()
+                ->where('post_roomid', $rid)
+                ->whereNull('archived_from_room_id')
+                ->update([
+                    'post_deleted_at' => $ts,
+                    'archived_from_room_id' => $rid,
+                    'archived_room_name' => mb_substr($name, 0, 191),
+                    'archived_room_access' => $access,
+                ]);
+
+            do {
+                $room->slug = 'del-'.$rid.'-'.Str::lower(Str::random(10));
+            } while (
+                Room::withTrashed()
+                    ->where('slug', $room->slug)
+                    ->where('room_id', '!=', $rid)
+                    ->exists()
+            );
+
+            $room->save();
+            $room->delete();
+        });
 
         return response()->noContent();
     }

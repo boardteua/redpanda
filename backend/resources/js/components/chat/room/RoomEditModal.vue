@@ -88,7 +88,7 @@
                         {{ savingRoom ? 'Збереження…' : 'Зберегти' }}
                     </RpButton>
                     <RpButton
-                        v-if="canDeleteSelected"
+                        v-if="canDeleteRoom"
                         variant="ghost"
                         class="text-sm text-[var(--rp-error)]"
                         :disabled="savingRoom || deletingRoom"
@@ -97,9 +97,6 @@
                         Видалити кімнату
                     </RpButton>
                 </div>
-                <p v-if="!canDeleteSelected && messagesCount > 0" class="text-xs text-[var(--rp-text-muted)]">
-                    Видалення недоступне: у кімнаті вже є повідомлення в історії.
-                </p>
             </form>
         </div>
     </RpModal>
@@ -117,6 +114,8 @@ export default {
         user: { type: Object, default: null },
         /** Зріз `GET /api/v1/chat/settings` (для `ai_llm_enabled` — той самий джерело, що ChatSettingsModal, T198). */
         chatSettings: { type: Object, default: null },
+        /** T199: дозвіл DELETE (батьківський computed за політикою). */
+        canDeleteRoom: { type: Boolean, default: false },
         savingRoom: { type: Boolean, default: false },
         deletingRoom: { type: Boolean, default: false },
         formError: { type: String, default: '' },
@@ -158,26 +157,6 @@ export default {
         /** Тільки коли глобальний LLM увімкнено — інакше секцію не показуємо (T198). */
         showRoomAiBotToggle() {
             return this.isChatAdmin && Boolean(this.chatSettings && this.chatSettings.ai_llm_enabled);
-        },
-        messagesCount() {
-            if (!this.room || this.room.messages_count == null) {
-                return 0;
-            }
-            return Number(this.room.messages_count);
-        },
-        canDeleteSelected() {
-            if (!this.room) {
-                return false;
-            }
-            if (!this.user || this.user.guest) {
-                return false;
-            }
-            if (this.isStaff) {
-                return this.messagesCount === 0;
-            }
-            const cid = this.room.created_by_user_id;
-            const isOwner = cid != null && Number(cid) === Number(this.user.id);
-            return isOwner && this.messagesCount === 0;
         },
         /** Є хоча б одне редаговане поле, значення якого відрізняється від поточних даних кімнати. */
         hasUnsavedChanges() {
@@ -268,7 +247,7 @@ export default {
         },
         requestDelete() {
             const r = this.room;
-            if (!r || !this.canDeleteSelected) {
+            if (!r || !this.canDeleteRoom) {
                 return;
             }
             this.$emit('request-delete-room', r.room_id);

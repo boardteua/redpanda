@@ -6,6 +6,7 @@ use App\Models\ChatSetting;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\Chat\UserPublicMessageCountService;
+use Illuminate\Support\Facades\Gate;
 
 class RoomPolicy
 {
@@ -90,7 +91,7 @@ class RoomPolicy
     }
 
     /**
-     * Видалення порожньої кімнати: творець або staff (**T54**); наявність повідомлень перевіряється в контролері (422).
+     * Видалення кімнати (**T199**): адмін — будь-яка; модератор — якщо творець зараз не адмін чату; творець — своя кімната, якщо має право створення (**T44**).
      */
     public function delete(User $user, Room $room): bool
     {
@@ -98,14 +99,28 @@ class RoomPolicy
             return false;
         }
 
-        if ($user->canModerate()) {
+        if ($user->isChatAdmin()) {
             return true;
+        }
+
+        if ($user->canModerate()) {
+            $creatorId = $room->created_by_user_id;
+            if ($creatorId === null) {
+                return true;
+            }
+            $creator = User::query()->find($creatorId);
+
+            return $creator === null || ! $creator->isChatAdmin();
         }
 
         if ($room->created_by_user_id === null) {
             return false;
         }
 
-        return (int) $room->created_by_user_id === (int) $user->id;
+        if ((int) $room->created_by_user_id !== (int) $user->id) {
+            return false;
+        }
+
+        return Gate::forUser($user)->allows('create', Room::class);
     }
 }
