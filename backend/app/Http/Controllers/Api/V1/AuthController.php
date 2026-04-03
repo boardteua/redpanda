@@ -52,7 +52,7 @@ class AuthController extends Controller
             'guest' => false,
         ]);
 
-        Auth::guard('web')->login($user);
+        Auth::guard('web')->login($user, true);
         $request->session()->regenerate();
 
         $this->transactionalMail->sendWelcomeRegisteredUser($user);

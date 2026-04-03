@@ -30,9 +30,16 @@ return [
     | to expire immediately when the browser is closed then you may
     | indicate that via the expire_on_close configuration option.
     |
+    | T203 (Sanctum SPA): default ≈ 30 days idle so returning users (e.g. after
+    | closing the tab or opening a Web Push deep link) keep the registered account
+    | instead of hitting guest auto-login on deep routes. With SESSION_DRIVER=database,
+    | Laravel refreshes last_activity on each request — this is sliding idle expiration,
+    | not a fixed wall-clock cutoff from first login. Longer sessions on shared devices
+    | are a trade-off; users should use «Вийти» on untrusted machines (see T203-QA.md).
+    |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    'lifetime' => (int) env('SESSION_LIFETIME', 43200),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 

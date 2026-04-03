@@ -106,7 +106,7 @@
 | `APP_URL` | URL додатку (посилання, Sanctum, генерація абсолютних URL) |
 | `SANCTUM_STATEFUL_DOMAINS` | Домени SPA для cookie-сесії на API |
 | `DB_*` | Підключення до MySQL |
-| `SESSION_*` | За потреби `SESSION_DOMAIN` для піддоменів |
+| `SESSION_*` | **`SESSION_LIFETIME`** (хвилини простою) — у репо орієнтир **T203** ≈ **30 діб** (`43200`); за потреби `SESSION_DOMAIN` для піддоменів; **`SESSION_SAME_SITE`** залишайте `lax`, якщо немає доведеної потреби в `none`+`Secure` |
 | `BROADCAST_CONNECTION=reverb` | Як у репо для Echo |
 | `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET` | Додаток Reverb |
 | `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME` | Мають відповідати тому, що бачить **сервер** і проксі |

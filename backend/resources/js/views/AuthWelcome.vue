@@ -407,7 +407,8 @@ export default {
             loginForm: {
                 user_name: '',
                 password: '',
-                remember: false,
+                // T203: default on — aligns with long SESSION_LIFETIME; user can uncheck on shared devices.
+                remember: true,
             },
             registerForm: {
                 user_name: '',
