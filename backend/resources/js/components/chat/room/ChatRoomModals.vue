@@ -63,7 +63,7 @@
             :form-error="editRoomError"
             @close="$emit('room-edit-close')"
             @save-room="$emit('room-edit-save', $event)"
-            @request-delete-room="$emit('room-edit-request-delete')"
+            @request-delete-room="$emit('room-edit-request-delete', $event)"
         />
         <ConfirmDialogModal
             :open="deleteRoomConfirmOpen"

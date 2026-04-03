@@ -2722,3 +2722,14 @@
 
 ---
 
+### [x] T200 — **Регресія (T199):** «Видалити кімнату» не відкривало підтвердження / не викликало API
+
+- **Статус:** **PASS** (2026-04-03). У `ChatRoomModals.vue` подія з `RoomEditModal` пересилалась як `$emit('room-edit-request-delete')` **без** `room_id`; `onRoomEditRequestDelete(roomId)` у `ChatRoom.vue` робив `return` при `roomId == null`.
+- **Delegate:** Frontend Developer
+- **Залежність:** **T54**, **T199**
+- **Контекст (клієнт):** адмін у кімнаті натискає «Видалити кімнату» — нічого не відбувається, у Network немає запитів.
+- **Deliverables:** у bridge `ChatRoomModals` передавати payload: `@request-delete-room="$emit('room-edit-request-delete', $event)"` (або еквівалент).
+- **QA evidence:** ручний сценарій: після кліку з’являється модал підтвердження, після підтвердження — `DELETE /api/v1/rooms/{id}`; `npm run build` PASS.
+
+---
+
