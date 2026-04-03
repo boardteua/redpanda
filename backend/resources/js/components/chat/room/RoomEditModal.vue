@@ -61,10 +61,10 @@
                         <option :value="2">VIP-зона</option>
                     </select>
                 </div>
-                <div v-if="isChatAdmin" class="rounded-md border border-[var(--rp-border-subtle)] p-3">
+                <div v-if="showRoomAiBotToggle" class="rounded-md border border-[var(--rp-border-subtle)] p-3">
                     <p class="text-xs text-[var(--rp-text-muted)]">
                         <strong class="text-[var(--rp-text)]">Розумна панда (T184):</strong> дозволити в цій кімнаті відповіді
-                        бота, icebreaker та VIP-зображення (якщо глобально увімкнено LLM у налаштуваннях чату).
+                        бота, icebreaker та VIP-зображення (узгоджено з глобальним LLM у «Налаштуваннях чату»).
                     </p>
                     <label class="mt-2 flex cursor-pointer items-center gap-2 text-sm text-[var(--rp-text)]">
                         <input
@@ -115,6 +115,8 @@ export default {
         open: { type: Boolean, default: false },
         room: { type: Object, default: null },
         user: { type: Object, default: null },
+        /** Зріз `GET /api/v1/chat/settings` (для `ai_llm_enabled` — той самий джерело, що ChatSettingsModal, T198). */
+        chatSettings: { type: Object, default: null },
         savingRoom: { type: Boolean, default: false },
         deletingRoom: { type: Boolean, default: false },
         formError: { type: String, default: '' },
@@ -152,6 +154,10 @@ export default {
             const r = this.user && this.user.chat_role;
 
             return r === 'admin';
+        },
+        /** Тільки коли глобальний LLM увімкнено — інакше секцію не показуємо (T198). */
+        showRoomAiBotToggle() {
+            return this.isChatAdmin && Boolean(this.chatSettings && this.chatSettings.ai_llm_enabled);
         },
         messagesCount() {
             if (!this.room || this.room.messages_count == null) {
@@ -195,7 +201,7 @@ export default {
                     return true;
                 }
             }
-            if (this.isChatAdmin) {
+            if (this.showRoomAiBotToggle) {
                 const aiOrig = r.ai_bot_enabled !== false;
                 if (Boolean(this.editAiBotEnabled) !== aiOrig) {
                     return true;
@@ -251,7 +257,7 @@ export default {
             if (this.canChangeAccess) {
                 payload.access = this.editAccess;
             }
-            if (this.isChatAdmin) {
+            if (this.showRoomAiBotToggle) {
                 payload.ai_bot_enabled = Boolean(this.editAiBotEnabled);
             }
             const keys = Object.keys(payload).filter((k) => k !== 'room_id');

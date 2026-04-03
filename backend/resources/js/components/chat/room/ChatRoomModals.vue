@@ -56,6 +56,7 @@
             :open="roomEditModalOpen && !!roomBeingEdited"
             :room="roomBeingEdited"
             :user="user"
+            :chat-settings="chatSettings"
             :saving-room="roomEditSaving"
             :deleting-room="roomEditDeleting"
             :form-error="editRoomError"

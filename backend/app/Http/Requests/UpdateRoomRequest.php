@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\ChatSetting;
 use App\Models\Room;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
@@ -47,6 +48,16 @@ class UpdateRoomRequest extends FormRequest
                 || array_key_exists('ai_bot_enabled', $data);
             if (! $has) {
                 $v->errors()->add('room_name', 'Надайте хоча б одне поле для оновлення.');
+            }
+
+            // T198: cannot persist room LLM on while global master switch is off.
+            if ($this->has('ai_bot_enabled') && $this->boolean('ai_bot_enabled')) {
+                if (! ChatSetting::current()->ai_llm_enabled) {
+                    $v->errors()->add(
+                        'ai_bot_enabled',
+                        'LLM глобально вимкнено в налаштуваннях чату; неможливо увімкнути кімнатного бота.',
+                    );
+                }
             }
         });
     }

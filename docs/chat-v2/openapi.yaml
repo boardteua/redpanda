@@ -1896,7 +1896,7 @@ paths:
       summary: Оновити кімнату (T54)
       description: |
         Лише **не гість**. Потрібен доступ `interact` до кімнати. Поля `room_name` та `topic` — **творець** (`created_by_user_id`) або **модератор/адмін**; legacy-кімнати без творця редагують лише staff.
-        Поле `access` (0 / 1 / 2) — **лише модератор або адмін**. Поле `ai_bot_enabled` — **лише адміністратор чату** (**T184**). Хоча б одне поле в тілі. Throttle `room-manage`.
+        Поле `access` (0 / 1 / 2) — **лише модератор або адмін**. Поле `ai_bot_enabled` — **лише адміністратор чату** (**T184**). Якщо глобальний master switch LLM (`chat_settings.ai_llm_enabled`) **вимкнено**, значення `ai_bot_enabled: true` дає **422** на полі `ai_bot_enabled` (**T198**). Хоча б одне поле в тілі. Throttle `room-manage`.
       operationId: patchRoom
       security:
         - sanctumSession: []
@@ -4049,7 +4049,8 @@ components:
           description: Лише staff (**T54**)
         ai_bot_enabled:
           type: boolean
-          description: Лише **адміністратор чату** (**T184**).
+          description: |
+            Лише **адміністратор чату** (**T184**). Якщо глобальний LLM вимкнено — `true` відхиляється з **422** (**T198**); `false` дозволено.
 
     RoomSingleResponse:
       type: object

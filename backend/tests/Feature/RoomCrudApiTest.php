@@ -394,4 +394,44 @@ class RoomCrudApiTest extends TestCase
             ->patchJson('/api/v1/rooms/'.$room->room_id, ['ai_bot_enabled' => false])
             ->assertForbidden();
     }
+
+    public function test_chat_admin_cannot_patch_ai_bot_enabled_true_when_global_llm_disabled(): void
+    {
+        $admin = User::factory()->admin()->create();
+        ChatSetting::query()->firstOrFail()->update(['ai_llm_enabled' => false]);
+
+        $room = Room::query()->create([
+            'room_name' => 'R',
+            'topic' => null,
+            'access' => Room::ACCESS_PUBLIC,
+            'ai_bot_enabled' => false,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$room->room_id, ['ai_bot_enabled' => true])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['ai_bot_enabled']);
+    }
+
+    public function test_chat_admin_can_patch_ai_bot_enabled_true_when_global_llm_enabled(): void
+    {
+        $admin = User::factory()->admin()->create();
+        ChatSetting::query()->firstOrFail()->update(['ai_llm_enabled' => true]);
+
+        $room = Room::query()->create([
+            'room_name' => 'R',
+            'topic' => null,
+            'access' => Room::ACCESS_PUBLIC,
+            'ai_bot_enabled' => false,
+        ]);
+
+        $this->from(config('app.url'))
+            ->actingAs($admin, 'web')
+            ->withHeaders($this->statefulHeaders())
+            ->patchJson('/api/v1/rooms/'.$room->room_id, ['ai_bot_enabled' => true])
+            ->assertOk()
+            ->assertJsonPath('data.ai_bot_enabled', true);
+    }
 }
