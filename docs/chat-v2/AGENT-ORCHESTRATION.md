@@ -20,6 +20,27 @@
 3. **Dev ↔ QA** — **строго одна задача** з task list: implement → **код-рев’ю** (роль [code-reviewer](../../.cursor/skills/code-reviewer/SKILL.md): коректність, безпека, тести) → збір доказів QA → **PASS** / **FAIL** (до 3 спроб на задачу). Якщо QA передбачає **live-чат / Echo / присутність / приват по WS** — дотримуйся розділу **«Локальне середовище real-time при завершенні задачі»** нижче.
 4. **Integration** — після всіх обов’язкових `[x]`: повний прохід + скептичний вердикт (NEEDS WORK за замовчуванням, якщо немає сильних доказів).
 
+## Superpowers (Cursor): де вмикати в пайплайні
+
+**Superpowers** — це набір опційних Cursor skills (ім’я пакета/колекції в профілі IDE), які **доповнюють**, а не замінюють канон репозиторію: [agents-orchestrator](../../.cursor/skills/agents-orchestrator/SKILL.md), **Context7** на kickoff, **api-tester** для HTTP-змін, **code-reviewer** після task-scoped commit. Нижче — **коли** варто їх підключати; повні процедури — у тексті відповідних skills.
+
+| Фаза / ситуація | Рекомендований skill (ім’я) | Коли коротко |
+|-----------------|----------------------------|--------------|
+| Старт сесії / орієнтація на skills | `using-superpowers` | Перед складною або довгою роботою — нагадати правила вибору skills. |
+| **Planning (PM)**, нова фіча з нуля | `brainstorming` → за потреби `writing-plans` | Уточнити намір і план **до** коду; чекліст оновлює [senior-project-manager](../../.cursor/skills/senior-project-manager/SKILL.md). |
+| **Architecture / UX**, великий невизначений обсяг | `writing-plans` | Якщо одного brainstorming недостатньо для структурованого плану. |
+| **Dev ↔ QA**, багатокрокова реалізація однієї **Txx** | `subagent-driven-development` або `executing-plans` | План уже є; виконання по кроках (зокрема в окремій сесії для `executing-plans`). |
+| Кілька **незалежних** доріжок без спільного стану | `dispatching-parallel-agents` | Лише якщо **не** порушується правило **однієї продуктової Txx у роботі** — або узгоджено з оркестратором як підзадачі всередині однієї Txx. |
+| Нова логіка, домовленість про тести спочатку | `test-driven-development` | Опційно; **QA evidence** з рядка задачі в `chat-v2-tasklist.md` лишається обов’язковим. |
+| Баг, регрес, невідома причина | `systematic-debugging` | **До** правок коду; не замінює доказ QA (логи, тести, скріни). |
+| Перед заявою **QA PASS** і **git commit** | `verification-before-completion` | Повторна перевірка команд/виходу; **додатково** до чекліста задачі, не замість нього. |
+| Після **QA PASS** + task-scoped commit | [code-reviewer](../../.cursor/skills/code-reviewer/SKILL.md) — **канон**; опційно `requesting-code-review` / `receiving-code-review` | Superpowers тут лише для формулювання брифу або критичного розбору фідбеку. |
+| HTTP API у складі Txx | — | Канон: [api-tester](../../.cursor/skills/api-tester/SKILL.md); Superpowers не замінюють. |
+| Фреймворки, бібліотеки, версії | — | Канон: **Context7** (див. skill agents-orchestrator). |
+| **Integration**, завершення гілки після серії **Txx** | `finishing-a-development-branch` | Вибір merge / PR / cleanup після закритих задач. |
+
+**Зіставлення з розділом «Пайплайн» вище:** кроки 1–4 **без змін**; цей розділ лише рекомендує опційні skills під кожен тип активності всередині тих самих фаз.
+
 ## Git: коміти при закритті задачі
 
 - Після **QA PASS** по задачі **Txx** — зробити **git commit** змін, що належать цій задачі (одна задача ≈ один коміт або зв’язана серія з чіткими префіксами у повідомленні).

@@ -56,6 +56,10 @@ head -n 20 project-tasks/*-tasklist.md
 ls -la css/ project-docs/*-architecture.md 2>/dev/null || true
 ```
 
+### Superpowers (optional, Chat v2 / redpanda)
+
+Якщо в IDE встановлено колекцію **Superpowers** (Cursor skills): повна **матриця** «фаза → skill» для цього репозиторію живе в **[docs/chat-v2/AGENT-ORCHESTRATION.md](../../../docs/chat-v2/AGENT-ORCHESTRATION.md)** → розділ *Superpowers (Cursor): де вмикати в пайплайні*. Тут не дублюємо таблицю — лишаються канонічні вимоги **Context7**, **api-tester**, **code-reviewer** з цього файлу та з [SKILL.md](SKILL.md).
+
 ## Phase 3: Dev ↔ QA (per task)
 
 Optional task count (if checklist uses `### [ ]` headings):

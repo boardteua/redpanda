@@ -2733,3 +2733,23 @@
 
 ---
 
+### [x] T201 — (Опційно) **Superpowers** у флоу оркестрації Chat v2
+
+- **Статус:** **PASS** (2026-04-03). Розділ *Superpowers (Cursor)* у [AGENT-ORCHESTRATION.md](../docs/chat-v2/AGENT-ORCHESTRATION.md); посилання в [agents-orchestrator/reference.md](../.cursor/skills/agents-orchestrator/reference.md).
+- **Припущення:** набір Cursor skills **Superpowers** (brainstorming, writing-plans, TDD, systematic-debugging, verification-before-completion, dispatching-parallel-agents, subagent-driven-development, executing-plans, requesting/receiving-code-review, finishing-a-development-branch, using-superpowers) доступний у профілі IDE; це **не** вимога продукту з `chat-v2-setup.md`, а **узгодження людино-агентного процесу** з наявним [agents-orchestrator](../.cursor/skills/agents-orchestrator/SKILL.md).
+- **Delegate:** технічний письменник / оркестратор (одна сесія)
+- **Deliverables:**
+  - Новий підрозділ у [docs/chat-v2/AGENT-ORCHESTRATION.md](../docs/chat-v2/AGENT-ORCHESTRATION.md) **«Superpowers (Cursor): де вмикати в пайплайні»** — таблиця або список: **фаза / ситуація** → **рекомендований skill (ім’я)** → **коротке «коли»** (без дублювання повного тексту skills).
+  - **Мінімальна матриця (обов’язково відобразити в докі):**
+    - **Planning / нова фіча з нуля** — `brainstorming` (уточнення наміру) → за потреби `writing-plans` перед кодом; оновлення чекліста — як і раніше [senior-project-manager](../.cursor/skills/senior-project-manager/SKILL.md).
+    - **Реалізація Txx з чітким планом** — `subagent-driven-development` або `executing-plans` (багатокрокові плани в окремій сесії); **паралельні незалежні підзадачі** — `dispatching-parallel-agents` (не порушуючи правило «одна **продуктова** Txx в роботі», якщо це два незалежні файлові напрямки — за погодженням оркестратора).
+    - **Нова логіка з тестами** — `test-driven-development` (опційно, якщо команда домовилась про TDD на задачі).
+    - **Баг / регрес / невідома причина** — `systematic-debugging` **до** правок; не замінює QA evidence.
+    - **Перед заявою PASS / комітом** — `verification-before-completion` узгодити з існуючим QA (команди, логи) — **додаткова** перевірка, не заміна чекліста задачі.
+    - **Після QA PASS + task-scoped commit** — залишити канонічним [code-reviewer](../.cursor/skills/code-reviewer/SKILL.md); `requesting-code-review` / `receiving-code-review` з Superpowers — **опційне посилення** формулювання брифу та критичного розбору фідбеку.
+    - **Завершення гілки** — `finishing-a-development-branch` при виборі merge / PR / cleanup після серії Txx.
+  - За потреби — 1 абзац у [.cursor/skills/agents-orchestrator/reference.md](../.cursor/skills/agents-orchestrator/reference.md) з посиланням на розділ у `AGENT-ORCHESTRATION.md` (без копіпасти всього матрицю в два місця).
+- **QA evidence:** merged diff: оновлений `AGENT-ORCHESTRATION.md` (і за наявності — `reference.md`); короткий рядок у коміті `Task: T201`; peer-перегляд або самоперевірка: кожна фаза з основного пайплайну документа **зіставлена** з хоча б одним рядком матриці або явно позначена «без змін — Context7 / api-tester / code-reviewer лишаються каноном».
+
+---
+
